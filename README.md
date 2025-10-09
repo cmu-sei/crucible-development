@@ -1,4 +1,4 @@
-# crucible-devevelopment
+# crucible-development
 
 Development Environment for Crucible
 
