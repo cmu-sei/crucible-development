@@ -15,8 +15,7 @@
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
     "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.13",
-      "installTools": "mkdocs-material,Pygments,pillow,cairosvg,vale"
+      "version": "3.13"
     },
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {}
   },
