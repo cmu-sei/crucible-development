@@ -7,11 +7,6 @@ using Crucible.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// builder.Configuration
-//     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-//     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-//     .AddEnvironmentVariables();
-
 LaunchOptions launchOptions = new();
 builder.Configuration.GetSection("Launch").Bind(launchOptions);
 
