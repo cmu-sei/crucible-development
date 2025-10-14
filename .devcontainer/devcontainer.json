@@ -12,7 +12,8 @@
       "version": "8.0",
       "additionalVersions": "7.0, 6.0"
     },
-    "ghcr.io/devcontainers/features/node:1": {}
+    "ghcr.io/devcontainers/features/node:1": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages" // this might not be needed. will try removing later.
@@ -21,7 +22,8 @@
     "source=crucible-dev-microsoft,target=/home/vscode/.microsoft,type=volume", // persist usersecrets across container rebuilds
     "source=crucible-dev-data,target=/mnt/data/,type=volume"
   ],
-  "onCreateCommand": "bash -l .devcontainer/postcreate.sh",
+  "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
+  "postStartCommand": "bash -l .devcontainer/poststart.sh",
   "customizations": {
     "vscode": {
       "extensions": [
