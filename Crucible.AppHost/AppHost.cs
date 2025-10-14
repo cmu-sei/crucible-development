@@ -24,6 +24,11 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithLifetime(ContainerLifetime.Persistent)
     .WithRealmImport("./resources/crucible-realm.json");
 
+var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
+    .WithBindMount("/mnt/data/crucible/crucible-docs/crucible-docs", "/docs", isReadOnly: true)
+    .WithHttpEndpoint(port: 8000, targetPort: 8000)
+    .WithArgs("serve", "-a", "0.0.0.0:8000");
+
 builder.AddPlayer(postgres, keycloak, launchOptions);
 builder.AddCaster(postgres, keycloak, launchOptions);
 builder.AddAlloy(postgres, keycloak, launchOptions);
