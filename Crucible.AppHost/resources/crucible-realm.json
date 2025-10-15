@@ -3617,8 +3617,7 @@
     "firstName" : "Admin",
     "lastName" : "User",
     "attributes" : {
-      "terms_and_conditions" : [ "1697642726" ],
-      "sub" : "9b3b331c-10c1-448b-8114-21b2586d8e38"
+      "terms_and_conditions" : [ "1697642726" ]
     },
     "credentials" : [ {
       "id" : "ccabf26b-41db-4ab6-8704-e2492961c29a",
