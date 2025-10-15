@@ -11,5 +11,3 @@ sudo chmod +x .devcontainer/clone-repos.sh
 
 dotnet tool install -g Aspire.Cli
 dotnet dev-certs https --trust
-
-pip install mkdocs-material Pygments pillow cairosvg vale

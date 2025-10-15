@@ -9,14 +9,10 @@
     },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/dotnet:2": {
-      "version": "8.0",
-      "additionalVersions": "7.0, 6.0"
+      "version": "8.0"
     },
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
-    "ghcr.io/devcontainers/features/python:1": {
-      "version": "3.13"
-    },
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {}
   },
   "containerEnv": {
@@ -36,9 +32,7 @@
         "microsoft-aspire.aspire-vscode@prerelease", // no official release yet, so have to specify pre-release version
         "esbenp.prettier-vscode",
         "angular.ng-template",
-        "yzhang.markdown-all-in-one",
         "DavidAnson.vscode-markdownlint",
-        "bierner.markdown-emoji",
         "streetsidesoftware.code-spell-checker",
         "GitHub.vscode-pull-request-github",
         "shardulm94.trailing-spaces",
