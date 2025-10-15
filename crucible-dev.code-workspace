@@ -9,24 +9,7 @@
   ],
   "settings": {
     "dotnet.defaultSolution": "Crucible.slnx",
-    "cSpell.words": [
-      "Anson",
-      "bierner",
-      "cairosvg",
-      "chrischinchilla",
-      "csdevkit",
-      "devcontainers",
-      "dotnettools",
-      "esbenp",
-      "mkdocs",
-      "postcreate",
-      "poststart",
-      "Pygments",
-      "shardulm",
-      "slnx",
-      "usersecrets",
-      "yzhang"
-    ]
+    "cSpell.files": ["**/*.md"]
   },
   "extensions": {
     "recommendations": ["ms-vscode-remote.remote-containers"]
