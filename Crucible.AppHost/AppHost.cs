@@ -7,11 +7,6 @@ using Crucible.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-    .AddEnvironmentVariables();
-
 LaunchOptions launchOptions = new();
 builder.Configuration.GetSection("Launch").Bind(launchOptions);
 
@@ -22,7 +17,7 @@ var postgres = builder.AddPostgres("postgres")
 
 var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithLifetime(ContainerLifetime.Persistent)
-    .WithRealmImport("./resources/crucible-realm.json");
+    .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
 
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithBindMount("/mnt/data/crucible/crucible-docs/crucible-docs", "/docs", isReadOnly: true)
@@ -57,7 +52,7 @@ public static class BuilderExtensions
 
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 
-        File.Copy("./resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var playerUi = builder.AddNpmApp("player-ui", playerUiRoot)
                 .WithHttpEndpoint(port: 4301, env: "PORT", isProxied: false)
@@ -86,7 +81,7 @@ public static class BuilderExtensions
 
         var vmUiRoot = "/mnt/data/crucible/player/vm.ui";
 
-        File.Copy("./resources/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var vmUi = builder.AddNpmApp("player-vm-ui", vmUiRoot)
                 .WithHttpEndpoint(port: 4303, env: "PORT", isProxied: false)
@@ -94,7 +89,7 @@ public static class BuilderExtensions
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
-        File.Copy("./resources/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var consoleUi = builder.AddNpmApp("player-vm-console-ui", consoleUiRoot)
                 .WithHttpEndpoint(port: 4305, env: "PORT", isProxied: false)
@@ -120,7 +115,7 @@ public static class BuilderExtensions
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
-        File.Copy("./resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var casterUi = builder.AddNpmApp("caster-ui", casterUiRoot)
             .WithHttpEndpoint(port: 4310, env: "PORT", isProxied: false)
@@ -153,7 +148,7 @@ public static class BuilderExtensions
 
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
-        File.Copy("./resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var alloyUi = builder.AddNpmApp("alloy-ui", alloyUiRoot)
                 .WithHttpEndpoint(port: 4403, env: "PORT", isProxied: false)
@@ -191,7 +186,7 @@ public static class BuilderExtensions
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
 
-        File.Copy("./resources/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
 
         var topoUi = builder.AddNpmApp("topomojo-ui", topoUiRoot, args: ["topomojo-work"])
             .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
