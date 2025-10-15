@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crucible.AppHost", "Crucible.AppHost\Crucible.AppHost.csproj", "{BAED8B94-7DEE-230A-9150-C5783CA71488}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BAED8B94-7DEE-230A-9150-C5783CA71488}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BAED8B94-7DEE-230A-9150-C5783CA71488}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BAED8B94-7DEE-230A-9150-C5783CA71488}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BAED8B94-7DEE-230A-9150-C5783CA71488}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {16945CF1-CB65-40E5-8FA6-40B8C0D8FD4A}
+	EndGlobalSection
+EndGlobal

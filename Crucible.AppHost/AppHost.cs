@@ -28,6 +28,10 @@ builder.AddPlayer(postgres, keycloak, launchOptions);
 builder.AddCaster(postgres, keycloak, launchOptions);
 builder.AddAlloy(postgres, keycloak, launchOptions);
 builder.AddTopoMojo(postgres, keycloak, launchOptions);
+builder.AddSteamfitter(postgres, keycloak, launchOptions);
+builder.AddCite(postgres, keycloak, launchOptions);
+builder.AddGallery(postgres, keycloak, launchOptions);
+builder.AddBlueprint(postgres, keycloak, launchOptions);
 
 builder.Build().Run();
 
@@ -192,4 +196,133 @@ public static class BuilderExtensions
             .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
             .WithNpmPackageInstallation();
     }
+
+    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        if (!options.Steamfitter) return;
+
+        var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter");
+
+        var steamfitterApi = builder.AddProject<Projects.Steamfitter_Api>("steamfitter-api", launchProfileName: "Steamfitter.Api")
+            .WaitFor(postgres)
+            .WaitFor(keycloak)
+            .WithHttpHealthCheck("api/health/ready")
+            .WithReference(steamfitterDb, "PostgreSQL")
+            .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
+            .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
+            .WithEnvironment("Authorization__ClientId", "steamfitter.api")
+            .WithEnvironment("ResourceOwnerAuthorization__Authority", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("ResourceOwnerAuthorization__ClientId", "steamfitter.admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm alloy steamfitter caster")
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+
+        var steamfitterUiRoot = "/mnt/data/crucible/steamfitter/steamfitter.ui";
+
+        File.Copy("./resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+
+        var steamfitterUi = builder.AddNpmApp("steamfitter-ui", steamfitterUiRoot)
+                .WithHttpEndpoint(port: 4401, env: "PORT", isProxied: false)
+                .WithNpmPackageInstallation();
+    }
+
+    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        if (!options.Cite) return;
+
+        var citeDb = postgres.AddDatabase("citeDb", "cite");
+
+        var citeApi = builder.AddProject<Projects.Cite_Api>("cite-api", launchProfileName: "Cite.Api")
+            .WaitFor(postgres)
+            .WaitFor(keycloak)
+            .WithHttpHealthCheck("api/health/ready")
+            .WithReference(citeDb, "PostgreSQL")
+            .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
+            .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
+            .WithEnvironment("Authorization__ClientId", "cite.api")
+            .WithEnvironment("ResourceOwnerAuthorization__Authority", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("ResourceOwnerAuthorization__ClientId", "cite.admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm cite steamfitter caster")
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+
+        var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
+
+        File.Copy("./resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+
+        var citeUi = builder.AddNpmApp("cite-ui", citeUiRoot)
+                .WithHttpEndpoint(port: 4721, env: "PORT", isProxied: false)
+                .WithNpmPackageInstallation();
+    }
+
+    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        if (!options.Gallery) return;
+
+        var galleryDb = postgres.AddDatabase("galleryDb", "gallery");
+
+        var galleryApi = builder.AddProject<Projects.Gallery_Api>("gallery-api", launchProfileName: "Api")
+            .WaitFor(postgres)
+            .WaitFor(keycloak)
+            .WithHttpHealthCheck("api/health/ready")
+            .WithReference(galleryDb, "PostgreSQL")
+            .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
+            .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
+            .WithEnvironment("Authorization__ClientId", "gallery.api")
+            .WithEnvironment("ResourceOwnerAuthorization__Authority", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("ResourceOwnerAuthorization__ClientId", "gallery.admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter caster")
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+
+        var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
+
+        File.Copy("./resources/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+
+        var galleryUi = builder.AddNpmApp("gallery-ui", galleryUiRoot)
+                .WithHttpEndpoint(port: 4723, env: "PORT", isProxied: false)
+                .WithNpmPackageInstallation();
+    }
+
+    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        if (!options.Blueprint) return;
+
+        var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint");
+
+        var blueprintApi = builder.AddProject<Projects.Blueprint_Api>("blueprint-api", launchProfileName: "Blueprint.Api")
+            .WaitFor(postgres)
+            .WaitFor(keycloak)
+            .WithHttpHealthCheck("api/health/ready")
+            .WithReference(blueprintDb, "PostgreSQL")
+            .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
+            .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
+            .WithEnvironment("Authorization__ClientId", "blueprint.api")
+            .WithEnvironment("ResourceOwnerAuthorization__Authority", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("ResourceOwnerAuthorization__ClientId", "blueprint.admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm blueprint steamfitter caster")
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+
+        var blueprintUiRoot = "/mnt/data/crucible/blueprint/blueprint.ui";
+
+        File.Copy("./resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+
+        var blueprintUi = builder.AddNpmApp("blueprint-ui", blueprintUiRoot)
+                .WithHttpEndpoint(port: 4725, env: "PORT", isProxied: false)
+                .WithNpmPackageInstallation();
+    }
+
 }

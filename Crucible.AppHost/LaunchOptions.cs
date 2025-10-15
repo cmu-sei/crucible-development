@@ -9,4 +9,8 @@ public class LaunchOptions
     public bool Caster { get; set; } = true;
     public bool Alloy { get; set; } = true;
     public bool TopoMojo { get; set; } = true;
+    public bool Steamfitter { get; set; } = true;
+    public bool Cite { get; set; } = true;
+    public bool Gallery { get; set; } = true;
+    public bool Blueprint { get; set; } = true;
 }

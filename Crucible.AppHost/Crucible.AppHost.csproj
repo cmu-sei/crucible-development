@@ -24,6 +24,10 @@
     <ProjectReference Include="/mnt/data/crucible/caster/caster.api/src/Caster.Api/Caster.Api.csproj" />
     <ProjectReference Include="/mnt/data/crucible/alloy/alloy.api/Alloy.Api/Alloy.Api.csproj" />
     <ProjectReference Include="/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/TopoMojo.Api.csproj" />
+    <ProjectReference Include="/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api/Steamfitter.Api.csproj" />
+    <ProjectReference Include="/mnt/data/crucible/cite/cite.api/Cite.Api/Cite.Api.csproj" />
+    <ProjectReference Include="/mnt/data/crucible/gallery/gallery.api/Gallery.Api/Gallery.Api.csproj" />
+    <ProjectReference Include="/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api/Blueprint.Api.csproj" />
   </ItemGroup>
 
 </Project>

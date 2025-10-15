@@ -1,18 +1,11 @@
 {
-  "folders": [
-    {
-      "path": "."
-    },
-    {
-      "path": "/mnt/data/crucible"
-    },
-  ],
-  "settings": {
-    "dotnet.defaultSolution": "Crucible.slnx"
-  },
-  "extensions": {
-    "recommendations": [
-      "ms-vscode-remote.remote-containers"
-    ]
-  }
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../mnt/data/crucible"
+		}
+	],
+	"settings": {}
 }

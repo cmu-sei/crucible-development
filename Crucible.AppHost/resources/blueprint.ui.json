@@ -1,0 +1,67 @@
+{
+  "ApiUrl": "http://localhost:4724",
+  "OIDCSettings": {
+    "authority": "http://localhost:8080/realms/crucible",
+    "client_id": "blueprint.ui",
+    "redirect_uri": "http://localhost:4725/auth-callback",
+    "post_logout_redirect_uri": "http://localhost:4725",
+    "response_type": "code",
+    "scope": "profile blueprint cite gallery player player-vm steamfitter",
+    "automaticSilentRenew": true,
+    "silent_redirect_uri": "http://localhost:4725/auth-callback-silent"
+  },
+    "AppTitle": "Blueprint",
+    "AppTopBarHexColor": "#2d69b4",
+    "AppTopBarHexTextColor": "#FFFFFF",
+    "AppTopBarText": "Blueprint - Collaborative MSEL Creation",
+    "AppTopBarImage": "/assets/img/pencil-ruler-white.png",
+    "UseLocalAuthStorage": false,
+    "DefaultDataFields": [
+      {
+        "name": "Control Number",
+        "dataType": "String",
+        "displayOrder": "-5"
+      },
+      {
+        "name": "From Org",
+        "dataType": "Organization",
+        "displayOrder": "-4"
+      },
+      {
+        "name": "To Org",
+        "dataType": "TeamsMultiple",
+        "displayOrder": "-3"
+      },
+      {
+        "name": "Description",
+        "dataType": "String",
+        "displayOrder": "-2"
+      },
+      {
+        "name": "Details",
+        "dataType": "String",
+        "displayOrder": "-1"
+      }
+    ],
+    "DefaultDeliveryMethodOptions": [
+      {"optionName": "Gallery", "optionValue": "Gallery"},
+      {"optionName": "Email", "optionValue": "Email"},
+      {"optionName": "Notification", "optionValue": "Notification"}
+    ],
+    "ScenarioEventBackgroundColors": [
+      "70, 130, 255",
+      "255, 69, 0",
+      "102, 51, 153",
+      "178, 34, 34",
+      "255, 140, 0",
+      "0, 100, 0",
+      "199, 21, 133",
+      "128, 128, 0",
+      "0, 128, 128",
+      "139, 69, 19"
+    ],
+    "DarkThemeTint": 0.7,
+    "LightThemeTint": 0.4,
+    "DefaultXlsxRowHeight": 15,
+    "useAccessTokenExpirationRedirect": true
+}
