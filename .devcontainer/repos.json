@@ -81,6 +81,58 @@
           "url": "https://github.com/cmu-sei/crucible"
         }
       ]
+    },
+    {
+      "name": "steamfitter",
+      "repos": [
+        {
+          "name": "steamfitter.api",
+          "url": "https://github.com/cmu-sei/steamfitter.api"
+        },
+        {
+          "name": "steamfitter.ui",
+          "url": "https://github.com/cmu-sei/steamfitter.ui"
+        }
+      ]
+    },
+    {
+      "name": "cite",
+      "repos": [
+        {
+          "name": "cite.api",
+          "url": "https://github.com/cmu-sei/cite.api"
+        },
+        {
+          "name": "cite.ui",
+          "url": "https://github.com/cmu-sei/cite.ui"
+        }
+      ]
+    },
+    {
+      "name": "gallery",
+      "repos": [
+        {
+          "name": "gallery.api",
+          "url": "https://github.com/cmu-sei/gallery.api"
+        },
+        {
+          "name": "gallery.ui",
+          "url": "https://github.com/cmu-sei/gallery.ui"
+        }
+      ]
+    },
+    {
+      "name": "blueprint",
+      "repos": [
+        {
+          "name": "blueprint.api",
+          "url": "https://github.com/cmu-sei/blueprint.api"
+        },
+        {
+          "name": "blueprint.ui",
+          "url": "https://github.com/cmu-sei/blueprint.ui"
+        }
+      ]
     }
   ]
 }

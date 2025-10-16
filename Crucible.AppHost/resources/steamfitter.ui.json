@@ -1,0 +1,16 @@
+{
+  "ApiUrl": "http://localhost:4400",
+  "OIDCSettings": {
+    "authority": "http://localhost:8080/realms/crucible",
+    "client_id": "steamfitter.ui",
+    "redirect_uri": "http://localhost:4401/auth-callback",
+    "post_logout_redirect_uri": "http://localhost:4401",
+    "response_type": "code",
+    "scope": "openid profile player player-vm steamfitter",
+    "automaticSilentRenew": true,
+    "silent_redirect_uri": "http://localhost:4401/auth-callback-silent"
+  },
+  "AppTitle": "Steamfitter",
+  "AppTopBarHexColor": "#BB0000",
+  "AppTopBarHexTextColor": "#FFFFFF"
+}
