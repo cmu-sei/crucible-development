@@ -74,6 +74,15 @@
       ]
     },
     {
+      "name": "crucible-docs",
+      "repos": [
+        {
+          "name": "crucible-docs",
+          "url": "https://github.com/cmu-sei/crucible"
+        }
+      ]
+    },
+    {
       "name": "steamfitter",
       "repos": [
         {

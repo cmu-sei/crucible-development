@@ -56,3 +56,6 @@ nunit-*.xml
 **/appsettings.[Dd]evelopment.json
 **/appsettings.[Ss]taging.json
 **/appsettings.[Pp]roduction.json
+
+# devcontainer certs
+.devcontainer/certs/*.crt
