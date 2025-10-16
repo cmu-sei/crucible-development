@@ -5,14 +5,13 @@
     },
     {
       "path": "/mnt/data/crucible"
-    },
+    }
   ],
   "settings": {
-    "dotnet.defaultSolution": "Crucible.slnx"
+    "dotnet.defaultSolution": "Crucible.slnx",
+    "cSpell.files": ["**/*.md"]
   },
   "extensions": {
-    "recommendations": [
-      "ms-vscode-remote.remote-containers"
-    ]
+    "recommendations": ["ms-vscode-remote.remote-containers"]
   }
 }

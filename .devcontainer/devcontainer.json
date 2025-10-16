@@ -9,11 +9,11 @@
     },
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/dotnet:2": {
-      "version": "8.0",
-      "additionalVersions": "7.0, 6.0"
+      "version": "8.0"
     },
     "ghcr.io/devcontainers/features/node:1": {},
-    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {}
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
+    "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages" // this might not be needed. will try removing later.
@@ -31,8 +31,22 @@
         "ms-dotnettools.csharp",
         "microsoft-aspire.aspire-vscode@prerelease", // no official release yet, so have to specify pre-release version
         "esbenp.prettier-vscode",
-        "angular.ng-template"
-      ]
+        "angular.ng-template",
+        "DavidAnson.vscode-markdownlint",
+        "streetsidesoftware.code-spell-checker",
+        "GitHub.vscode-pull-request-github",
+        "shardulm94.trailing-spaces",
+        "chrischinchilla.vale-vscode",
+        "shd101wyy.markdown-preview-enhanced"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "files.insertFinalNewline": true,
+        "files.eol": "\n",
+        "files.trimTrailingWhitespace": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "npm.packageManager": "npm"
+      }
     }
   }
 }

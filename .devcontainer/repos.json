@@ -72,6 +72,15 @@
           "url": "https://github.com/cmu-sei/TopoMojo-ui"
         }
       ]
+    },
+    {
+      "name": "crucible-docs",
+      "repos": [
+        {
+          "name": "crucible-docs",
+          "url": "https://github.com/cmu-sei/crucible"
+        }
+      ]
     }
   ]
 }

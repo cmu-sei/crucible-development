@@ -19,8 +19,17 @@ ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt \
     PIP_CERT=/etc/ssl/certs/ca-certificates.crt
 
 # required for those running ARM builds, possibly confined only to Angular 16. Try back later.
-RUN apt update
-RUN apt install -y python3-dev
+RUN apt update && apt install -y python3-dev
+
+# Install Vale
+ARG VALE_VERSION=3.12.0
+RUN set -eux; \
+    curl -fsSL -o /tmp/vale.tgz \
+      "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" \
+    && tar -xzf /tmp/vale.tgz -C /usr/local/bin vale \
+    && rm /tmp/vale.tgz \
+    && chmod +x /usr/local/bin/vale \
+    && vale --version
 
 # Switch back to vscode user
 USER vscode
