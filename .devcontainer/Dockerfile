@@ -31,5 +31,9 @@ RUN set -eux; \
     && chmod +x /usr/local/bin/vale \
     && vale --version
 
+# Install k-alias
+RUN git clone https://github.com/jaggedmountain/k-alias.git /tmp/k-alias && \
+    cp /tmp/k-alias/[h,k]* /usr/local/bin
+
 # Switch back to vscode user
 USER vscode

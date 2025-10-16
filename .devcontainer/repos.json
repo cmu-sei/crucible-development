@@ -74,15 +74,6 @@
       ]
     },
     {
-      "name": "crucible-docs",
-      "repos": [
-        {
-          "name": "crucible-docs",
-          "url": "https://github.com/cmu-sei/crucible"
-        }
-      ]
-    },
-    {
       "name": "steamfitter",
       "repos": [
         {
@@ -131,6 +122,24 @@
         {
           "name": "blueprint.ui",
           "url": "https://github.com/cmu-sei/blueprint.ui"
+        }
+      ]
+    },
+    {
+      "name": "crucible-docs",
+      "repos": [
+        {
+          "name": "crucible-docs",
+          "url": "https://github.com/cmu-sei/crucible"
+        }
+      ]
+    },
+        {
+      "name": "helm-charts",
+      "repos": [
+        {
+          "name": "helm-charts",
+          "url": "https://github.com/cmu-sei/helm-charts"
         }
       ]
     }
