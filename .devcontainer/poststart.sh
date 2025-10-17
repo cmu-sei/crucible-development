@@ -1,3 +1,4 @@
 #!/bin/bash
 
-minikube start --mount-string="/mnt/data/terraform/root:/terraform/root" --embed-certs
+npm install -g @angular/cli@latest
+minikube start --mount-string="/mnt/data/terraform/root:/terraform/root"
