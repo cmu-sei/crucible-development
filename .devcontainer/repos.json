@@ -124,24 +124,16 @@
           "url": "https://github.com/cmu-sei/blueprint.ui"
         }
       ]
-    },
+    }
+  ],
+  "repos": [
     {
       "name": "crucible-docs",
-      "repos": [
-        {
-          "name": "crucible-docs",
-          "url": "https://github.com/cmu-sei/crucible"
-        }
-      ]
+      "url": "https://github.com/cmu-sei/crucible"
     },
-        {
+    {
       "name": "helm-charts",
-      "repos": [
-        {
-          "name": "helm-charts",
-          "url": "https://github.com/cmu-sei/helm-charts"
-        }
-      ]
+      "url": "https://github.com/cmu-sei/helm-charts"
     }
   ]
 }
