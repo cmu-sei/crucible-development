@@ -20,7 +20,7 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
 
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
-    .WithBindMount("/mnt/data/crucible/crucible-docs/crucible-docs", "/docs", isReadOnly: true)
+    .WithBindMount("/mnt/data/crucible/crucible-docs", "/docs", isReadOnly: true)
     .WithHttpEndpoint(port: 8000, targetPort: 8000)
     .WithArgs("serve", "-a", "0.0.0.0:8000");
 
