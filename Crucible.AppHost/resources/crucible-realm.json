@@ -1761,6 +1761,7 @@
         "roles",
         "profile",
         "cite",
+        "gallery",
         "email"
       ],
       "optionalClientScopes": [
@@ -2087,7 +2088,6 @@
       "nodeReRegistrationTimeout": -1,
       "defaultClientScopes": [
         "web-origins",
-        "blueprint",
         "acr",
         "openid",
         "roles",
@@ -3639,19 +3639,19 @@
     "notBefore" : 0,
     "groups" : [ ]
   }, {
-    "id" : "5cad7558-7a92-4385-8246-1a31aa29aa59",
+    "id" : "9fd3c38e-58b0-4af1-80d1-1895af91f1f9",
     "createdTimestamp" : 1730729236429,
-    "username" : "aschlack",
+    "username" : "OGadmin",
     "enabled" : true,
     "totp" : false,
     "emailVerified" : false,
-    "firstName" : "Andrew",
-    "lastName" : "Schlackman",
+    "firstName" : "OG",
+    "lastName" : "Admin",
     "attributes" : {
       "terms_and_conditions" : [ "1730729259" ]
     },
     "credentials" : [ {
-      "id" : "039c2699-f3b6-4f00-a3e3-25ac37964efe",
+      "id" : "930c2699-f3b6-4f00-a3e3-25ac37964fef",
       "type" : "password",
       "userLabel" : "My password",
       "createdDate" : 1730729246788,
