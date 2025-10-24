@@ -3655,7 +3655,7 @@
       "type" : "password",
       "userLabel" : "My password",
       "createdDate" : 1730729246788,
-      "secretData" : "{\"value\":\"7tyeoBxftnEZ/uSn6bapzvcXK1puAtW0I8rdsiUK8QM=\",\"salt\":\"WI3T2+ACdtSBRoGG6LQrsw==\",\"additionalParameters\":{}}",
+      "secretData" : "{\"value\":\"3E3znP6H4/QTbd2w1PznMm+PIygqTmvznggrzAarD+8=\",\"salt\":\"ldA2KO1HhEv6xQxWhktn3Q==\",\"additionalParameters\":{}}",
       "credentialData" : "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
     } ],
     "disableableCredentialTypes" : [ ],

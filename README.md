@@ -29,3 +29,26 @@ This repo is still under construction, so you may run into the occasional challe
 ## Known issues
 
 - Some extensions (e.g. C#) very rarely seem to fail to install in the container's VS Code environment. If you see weird intellisense behavior or have compilation/debugging problems, ensure all extensions in the `devcontainers.json` file are installed in your container.
+
+
+# Database seeding and backup
+## setup
+... using blueprint as the example
+create a db-dumps folder under crucible-dev
+copy your blueprint.dump file into the db-dumps folder
+
+## seed/restore a database
+navigate to the db-dumps folder in the integrated terminal
+drop the blueprint database using pgadmin
+create a new blueprint database using pgadmin
+assuming postgres-03939690 is the postgres container name,
+docker cp blueprint.dump postgres-03939690:/tmp/blueprint.dump
+docker exec -it postgres-03939690 /bin/bash
+/usr/lib/postgresql/17/bin/psql --username=postgres blueprint < /tmp/blueprint.dump
+exit
+
+## backup/dump a database
+docker exec -it postgres-03939690 /bin/bash
+pg_dump -U postgres blueprint > /tmp/blueprint.dump
+exit
+docker cp postgres-03939690:/tmp/blueprint.dump blueprint.dump

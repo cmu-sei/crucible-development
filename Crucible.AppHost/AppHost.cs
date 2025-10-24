@@ -13,6 +13,7 @@ builder.Configuration.GetSection("Launch").Bind(launchOptions);
 var postgres = builder.AddPostgres("postgres")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
+    .WithContainerName("crucible-postgres")
     .WithPgAdmin();
 
 var kcAdminPassword = builder.AddParameter("keycloak-password", secret: true);
