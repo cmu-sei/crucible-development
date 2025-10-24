@@ -238,7 +238,6 @@ public static class BuilderExtensions
 
         var steamfitterUi = builder.AddNpmApp("steamfitter-ui", steamfitterUiRoot)
                 .WithHttpEndpoint(port: 4401, env: "PORT", isProxied: false)
-                .WithEnvironment("OIDCSettings__scope", "openid profile player player-vm steamfitter")
                 .WithNpmPackageInstallation();
     }
 
@@ -273,7 +272,6 @@ public static class BuilderExtensions
 
         var citeUi = builder.AddNpmApp("cite-ui", citeUiRoot)
                 .WithHttpEndpoint(port: 4721, env: "PORT", isProxied: false)
-                .WithEnvironment("OIDCSettings__scope", "openid profile cite gallery")
                 .WithNpmPackageInstallation();
     }
 
@@ -308,8 +306,6 @@ public static class BuilderExtensions
 
         var galleryUi = builder.AddNpmApp("gallery-ui", galleryUiRoot)
                 .WithHttpEndpoint(port: 4723, env: "PORT", isProxied: false)
-                .WithEnvironment("OIDCSettings__scope", "openid profile gallery steamfitter")
-                .WithEnvironment("IsEmailActive", "false")
                 .WithNpmPackageInstallation();
     }
 
