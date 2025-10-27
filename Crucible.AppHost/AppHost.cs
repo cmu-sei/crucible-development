@@ -10,18 +10,23 @@ var builder = DistributedApplication.CreateBuilder(args);
 LaunchOptions launchOptions = new();
 builder.Configuration.GetSection("Launch").Bind(launchOptions);
 
+var postgresPassword = builder.AddParameter("postgres-password", secret: true);
 var postgres = builder.AddPostgres("postgres")
+    .WithPassword(postgresPassword)
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
     .WithContainerName("crucible-postgres")
     .WithPgAdmin();
 
+var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak");
 var kcAdminPassword = builder.AddParameter("keycloak-password", secret: true);
 var keycloak = builder.AddKeycloak("keycloak", 8080, adminPassword: kcAdminPassword)
-    .WithDataVolume()
+    .WithReference(keycloakDb)
+    // Configure environment variables for the PostgreSQL connection
+    .WithEnvironment("KC_DB", "postgres")
     .WithEnvironment("KC_DB_URL_HOST", "postgres")
-    .WithReference(postgres)
-    .WaitFor(postgres)
+    .WithEnvironment("KC_DB_USERNAME", "postgres")
+    .WithEnvironment("KC_DB_PASSWORD", postgresPassword)
     .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
 
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
