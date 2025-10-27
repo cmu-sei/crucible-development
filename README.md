@@ -41,14 +41,14 @@ copy your blueprint.dump file into the db-dumps folder
 navigate to the db-dumps folder in the integrated terminal
 drop the blueprint database using pgadmin
 create a new blueprint database using pgadmin
-assuming postgres-03939690 is the postgres container name,
-docker cp blueprint.dump postgres-03939690:/tmp/blueprint.dump
-docker exec -it postgres-03939690 /bin/bash
+assuming crucible-postgres is the postgres container name,
+docker cp blueprint.dump crucible-postgres:/tmp/blueprint.dump
+docker exec -it crucible-postgres /bin/bash
 /usr/lib/postgresql/17/bin/psql --username=postgres blueprint < /tmp/blueprint.dump
 exit
 
 ## backup/dump a database
-docker exec -it postgres-03939690 /bin/bash
+docker exec -it crucible-postgres /bin/bash
 pg_dump -U postgres blueprint > /tmp/blueprint.dump
 exit
-docker cp postgres-03939690:/tmp/blueprint.dump blueprint.dump
+docker cp crucible-postgres:/tmp/blueprint.dump blueprint.dump
