@@ -4,6 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="/mnt/data/crucible"
 MAX_DEPTH=2
+FETCH_ARGS=("$@")
 
 if [[ ! -d "$ROOT_DIR" ]]; then
     echo "Directory not found: $ROOT_DIR" >&2
@@ -14,7 +15,7 @@ fetch_repository() {
     local dir=$1
     if git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         echo "Fetching updates in $dir"
-        git -C "$dir" fetch
+        git -C "$dir" fetch "${FETCH_ARGS[@]}"
         return 0
     fi
     return 1
