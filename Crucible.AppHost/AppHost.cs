@@ -57,7 +57,6 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithEnvironment("KC_TRACING_SERVICE_NAME", "keycloak")
     .WithEnvironment("KC_TRACING_SAMPLE", "1.0")
     .WithEnvironment("KC_LOG", "console,file")
-    .WithEnvironment("KC_LOG_CONSOLE_OUTPUT", "json")
     .WithEnvironment("KC_LOG_FILE", "/opt/keycloak/data/log/keycloak.log")
     .WithEnvironment("KC_LOG_FILE_OUTPUT", "json");
 
