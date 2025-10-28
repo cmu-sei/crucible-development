@@ -12,6 +12,9 @@ sudo chmod +x .devcontainer/clone-repos.sh
 dotnet tool install -g Aspire.Cli
 dotnet dev-certs https --trust
 
+npm config -g set fund false
+npm install -g @angular/cli@latest
+
 # Stage custom CA certs so Minikube trusts them
 CUSTOM_CERT_SOURCE="/usr/local/share/ca-certificates/custom"
 MINIKUBE_CERT_DEST="${HOME}/.minikube/files/etc/ssl/certs/custom"
