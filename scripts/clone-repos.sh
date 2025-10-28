@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-MANIFEST=.devcontainer/repos.json
+MANIFEST=scripts/repos.json
 
 jq -c '.groups[]' $MANIFEST | while read group; do
     GROUP=$(echo $group | jq -r .name)
