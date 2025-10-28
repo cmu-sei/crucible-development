@@ -13,10 +13,17 @@ builder.Configuration.GetSection("Launch").Bind(launchOptions);
 var postgres = builder.AddPostgres("postgres")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
+    .WithContainerName("crucible-postgres")
     .WithPgAdmin();
 
+var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak");
 var keycloak = builder.AddKeycloak("keycloak", 8080)
-    .WithLifetime(ContainerLifetime.Persistent)
+    .WithReference(keycloakDb)
+    // Configure environment variables for the PostgreSQL connection
+    .WithEnvironment("KC_DB", "postgres")
+    .WithEnvironment("KC_DB_URL_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+    .WithEnvironment("KC_DB_USERNAME", postgres.Resource.UserNameReference)
+    .WithEnvironment("KC_DB_PASSWORD", postgres.Resource.PasswordParameter)
     .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
 
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
@@ -49,6 +56,7 @@ public static class BuilderExtensions
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(playerDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
@@ -76,6 +84,7 @@ public static class BuilderExtensions
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(vmDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("VmUsageLogging__Enabled", "true")
             .WithEnvironment("VmUsageLogging__PostgreSQL", vmLoggingDb.Resource.ConnectionStringExpression)
             .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
@@ -112,6 +121,7 @@ public static class BuilderExtensions
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(casterDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
@@ -138,6 +148,7 @@ public static class BuilderExtensions
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(alloyDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
@@ -172,6 +183,7 @@ public static class BuilderExtensions
             .WithReference(topoDb, "PostgreSQL")
             .WithEnvironment("Database__ConnectionString", topoDb.Resource.ConnectionStringExpression)
             .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Oidc__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("Oidc__Audience", "topomojo")
             .WithEnvironment("OpenApi__Client__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
@@ -209,15 +221,17 @@ public static class BuilderExtensions
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(steamfitterDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
+            .WithEnvironment("Authorization__AuthorizationScope", "steamfitter player player-vm")
             .WithEnvironment("Authorization__ClientId", "steamfitter.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "steamfitter.admin")
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
-            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm alloy steamfitter caster")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "steamfitter player player-vm cite gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         var steamfitterUiRoot = "/mnt/data/crucible/steamfitter/steamfitter.ui";
@@ -241,15 +255,17 @@ public static class BuilderExtensions
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(citeDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
+            .WithEnvironment("Authorization__AuthorizationScope", "cite")
             .WithEnvironment("Authorization__ClientId", "cite.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "cite.admin")
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
-            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm cite steamfitter caster")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "openid profile email cite gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
@@ -273,15 +289,17 @@ public static class BuilderExtensions
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(galleryDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
+            .WithEnvironment("Authorization__AuthorizationScope", "gallery")
             .WithEnvironment("Authorization__ClientId", "gallery.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "gallery.admin")
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
-            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter caster")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm steamfitter")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
@@ -305,6 +323,7 @@ public static class BuilderExtensions
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(blueprintDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Authorization__Authority", "http://localhost:8080/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
@@ -313,7 +332,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "blueprint.admin")
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
-            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm blueprint steamfitter caster")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         var blueprintUiRoot = "/mnt/data/crucible/blueprint/blueprint.ui";

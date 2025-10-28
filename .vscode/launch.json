@@ -19,6 +19,62 @@
             "envFile": "${workspaceFolder}/.env/exercise.env"
         },
         {
+            "name": "TTX",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/ttx.env"
+        },
+        {
+            "name": "Alloy",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/alloy.env"
+        },
+        {
+            "name": "Blueprint",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/blueprint.env"
+        },
+        {
+            "name": "Caster",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/caster.env"
+        },
+        {
+            "name": "CITE",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/cite.env"
+        },
+        {
+            "name": "Gallery",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/gallery.env"
+        },
+        {
+            "name": "Player",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/player.env"
+        },
+        {
+            "name": "Steamfitter",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/steamfitter.env"
+        },
+        {
             "name": "TopoMojo",
             "type": "dotnet",
             "request": "launch",

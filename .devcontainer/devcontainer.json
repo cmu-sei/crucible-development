@@ -1,5 +1,9 @@
 {
   "name": "Crucible Development",
+  "runArgs": [
+    "--name",
+    "crucible-dev"
+  ],
   "build": {
     "dockerfile": "Dockerfile"
   },

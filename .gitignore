@@ -59,3 +59,6 @@ nunit-*.xml
 
 # devcontainer certs
 .devcontainer/certs/*.crt
+
+# db dumps to restore into postgres
+db-dumps/
