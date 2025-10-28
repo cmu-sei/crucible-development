@@ -1,0 +1,73 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  prometheus/keycloak:
+    config:
+      scrape_configs:
+        - job_name: keycloak
+          scrape_interval: 15s
+          metrics_path: /metrics
+          static_configs:
+            - targets: ["keycloak:8080"]
+  filelog/keycloak:
+    include:
+      - /var/log/keycloak/keycloak.log
+    start_at: end
+    resource:
+      service.name: keycloak
+      service.namespace: crucible
+    operators:
+      - type: json_parser
+        id: keycloak_json_parser
+        parse_from: body
+        on_error: send
+      - type: move
+        from: attributes.msg
+        to: body
+        if: attributes.msg != nil
+      - type: add
+        field: attributes.source
+        value: keycloak
+
+processors:
+  batch:
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp/aspire:
+    endpoint: ${env:ASPIRE_ENDPOINT}
+    headers:
+      x-otlp-api-key: ${env:ASPIRE_API_KEY}
+    tls:
+        insecure: ${env:ASPIRE_INSECURE}
+        insecure_skip_verify: true # Required in local development because cert is localhost and the endpoint is host.docker.internal
+  otlphttp/prometheus:
+    endpoint: ${env:PROMETHEUS_ENDPOINT}
+    tls:
+        insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/aspire]
+    logs:
+      receivers:
+        - otlp
+        - filelog/keycloak
+      processors: [batch]
+      exporters: [otlp/aspire]
+    metrics:
+      receivers:
+        - otlp
+        - prometheus/keycloak
+      processors: [batch]
+      exporters:
+        - otlp/aspire
+        - otlphttp/prometheus
