@@ -48,7 +48,6 @@
         "files.insertFinalNewline": true,
         "files.eol": "\n",
         "files.trimTrailingWhitespace": true,
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
         "npm.packageManager": "npm"
       }
     }
