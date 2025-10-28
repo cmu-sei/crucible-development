@@ -17,8 +17,7 @@ var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin();
 
 var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak");
-var kcAdminPassword = builder.AddParameter("keycloak-password", secret: true);
-var keycloak = builder.AddKeycloak("keycloak", 8080, adminPassword: kcAdminPassword)
+var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithReference(keycloakDb)
     // Configure environment variables for the PostgreSQL connection
     .WithEnvironment("KC_DB", "postgres")
