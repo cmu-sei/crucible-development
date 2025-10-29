@@ -11,7 +11,8 @@ var builder = DistributedApplication.CreateBuilder(args);
 LaunchOptions launchOptions = new();
 builder.Configuration.GetSection("Launch").Bind(launchOptions);
 
-var prometheusEndpoint = "http://localhost:9090";
+var prometheusEndpoint = "";
+var otelConfig = "../otelcollector/config.yaml";
 var keycloakLogHostPath = Path.Combine(builder.AppHostDirectory, "logs", "keycloak");
 
 Directory.CreateDirectory(keycloakLogHostPath);
@@ -24,9 +25,10 @@ if (launchOptions.Prometheus)
        .WithHttpEndpoint(targetPort: 9090, name: "http");
 
     prometheusEndpoint = $"{prometheus.GetEndpoint("http")}/api/v1/otlp";
+    otelConfig = "../otelcollector/config-prometheus.yaml";
 }
 
-var otelCollector = builder.AddOpenTelemetryCollector("otelcollector", "../otelcollector/config.yaml")
+var otelCollector = builder.AddOpenTelemetryCollector("otelcollector", otelConfig)
        .WithEnvironment("PROMETHEUS_ENDPOINT", prometheusEndpoint)
        .WithBindMount(keycloakLogHostPath, "/var/log/keycloak", isReadOnly: true);
 
@@ -57,7 +59,8 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithEnvironment("KC_TRACING_SAMPLE", "1.0")
     .WithEnvironment("KC_LOG", "console,file")
     .WithEnvironment("KC_LOG_FILE", "/opt/keycloak/data/log/keycloak.log")
-    .WithEnvironment("KC_LOG_FILE_OUTPUT", "json");
+    .WithEnvironment("KC_LOG_FILE_OUTPUT", "json")
+    .WaitFor(otelCollector);
 
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithBindMount("/mnt/data/crucible/crucible-docs", "/docs", isReadOnly: true)
