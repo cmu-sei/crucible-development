@@ -59,8 +59,7 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithEnvironment("KC_TRACING_SAMPLE", "1.0")
     .WithEnvironment("KC_LOG", "console,file")
     .WithEnvironment("KC_LOG_FILE", "/opt/keycloak/data/log/keycloak.log")
-    .WithEnvironment("KC_LOG_FILE_OUTPUT", "json")
-    .WaitFor(otelCollector);
+    .WithEnvironment("KC_LOG_FILE_OUTPUT", "json");
 
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithBindMount("/mnt/data/crucible/crucible-docs", "/docs", isReadOnly: true)
