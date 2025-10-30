@@ -1,10 +1,13 @@
-FROM mcr.microsoft.com/devcontainers/dotnet:9.0-bookworm
+FROM mcr.microsoft.com/devcontainers/dotnet:9.0-noble
 
 ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Switch to root for configuring image
 USER root
+
+# Install man pages
+RUN yes | unminimize
 
 # Custom Cert Support
 COPY ./certs /usr/local/share/ca-certificates/custom/
@@ -25,7 +28,7 @@ RUN apt update && apt install -y python3-dev
 ARG VALE_VERSION=3.12.0
 RUN set -eux; \
     curl -fsSL -o /tmp/vale.tgz \
-      "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" \
+    "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" \
     && tar -xzf /tmp/vale.tgz -C /usr/local/bin vale \
     && rm /tmp/vale.tgz \
     && chmod +x /usr/local/bin/vale \
