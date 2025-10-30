@@ -4,11 +4,33 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Crucible.AppHost;
+using Crucible.AppHost.OpenTelemetryCollector;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
 LaunchOptions launchOptions = new();
 builder.Configuration.GetSection("Launch").Bind(launchOptions);
+
+var prometheusEndpoint = "";
+var otelConfig = "../otelcollector/config.yaml";
+var keycloakLogHostPath = Path.Combine(builder.AppHostDirectory, "logs", "keycloak");
+
+Directory.CreateDirectory(keycloakLogHostPath);
+
+if (launchOptions.Prometheus)
+{
+    var prometheus = builder.AddContainer("prometheus", "prom/prometheus", "v3.2.1")
+       .WithBindMount("../prometheus", "/etc/prometheus", isReadOnly: true)
+       .WithArgs("--web.enable-otlp-receiver", "--config.file=/etc/prometheus/prometheus.yml")
+       .WithHttpEndpoint(targetPort: 9090, name: "http");
+
+    prometheusEndpoint = $"{prometheus.GetEndpoint("http")}/api/v1/otlp";
+    otelConfig = "../otelcollector/config-prometheus.yaml";
+}
+
+var otelCollector = builder.AddOpenTelemetryCollector("otelcollector", otelConfig)
+       .WithEnvironment("PROMETHEUS_ENDPOINT", prometheusEndpoint)
+       .WithBindMount(keycloakLogHostPath, "/var/log/keycloak", isReadOnly: true);
 
 var postgres = builder.AddPostgres("postgres")
     .WithDataVolume()
@@ -18,13 +40,26 @@ var postgres = builder.AddPostgres("postgres")
 
 var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak");
 var keycloak = builder.AddKeycloak("keycloak", 8080)
+    .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json")
     .WithReference(keycloakDb)
+    .WithLifetime(ContainerLifetime.Persistent)
     // Configure environment variables for the PostgreSQL connection
     .WithEnvironment("KC_DB", "postgres")
     .WithEnvironment("KC_DB_URL_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
     .WithEnvironment("KC_DB_USERNAME", postgres.Resource.UserNameReference)
     .WithEnvironment("KC_DB_PASSWORD", postgres.Resource.PasswordParameter)
-    .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
+    // Configure environment variables for Otel
+    .WithBindMount(keycloakLogHostPath, "/opt/keycloak/data/log")
+    .WithEnvironment("KC_METRICS_ENABLED", "true")
+    .WithEnvironment("KC_FEATURES", "preview")
+    .WithEnvironment("KC_TRACING_ENABLED", "true")
+    .WithEnvironment("KC_TRACING_PROTOCOL", "grpc")
+    .WithEnvironment("KC_TRACING_ENDPOINT", "http://otelcollector:4317")
+    .WithEnvironment("KC_TRACING_SERVICE_NAME", "keycloak")
+    .WithEnvironment("KC_TRACING_SAMPLE", "1.0")
+    .WithEnvironment("KC_LOG", "console,file")
+    .WithEnvironment("KC_LOG_FILE", "/opt/keycloak/data/log/keycloak.log")
+    .WithEnvironment("KC_LOG_FILE_OUTPUT", "json");
 
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithBindMount("/mnt/data/crucible/crucible-docs", "/docs", isReadOnly: true)
