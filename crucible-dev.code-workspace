@@ -9,7 +9,8 @@
   ],
   "settings": {
     "dotnet.defaultSolution": "Crucible.slnx",
-    "cSpell.files": ["**/*.md"]
+    "cSpell.files": ["**/*.md"],
+    "git.repositoryScanMaxDepth": 3
   },
   "extensions": {
     "recommendations": ["ms-vscode-remote.remote-containers"]
