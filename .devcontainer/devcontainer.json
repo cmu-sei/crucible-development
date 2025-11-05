@@ -17,7 +17,8 @@
     },
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
-    "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {}
+    "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages" // this might not be needed. will try removing later.
@@ -40,7 +41,6 @@
         "streetsidesoftware.code-spell-checker",
         "GitHub.vscode-pull-request-github",
         "shardulm94.trailing-spaces",
-        "chrischinchilla.vale-vscode",
         "shd101wyy.markdown-preview-enhanced"
       ],
       "settings": {
