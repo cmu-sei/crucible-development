@@ -19,9 +19,9 @@ If you're on a Windows machine, Docker's consumption of your host machine's memo
 - Memory Limit: 16GB
 - Disk Usage Limit: 120GB
 
-### zscalar
+### Zscaler
 
-The dev container is designed to work with zscalar.  You will need to copy the required certs into the **.devcontainer/certs** folder.
+The dev container is designed to work with Zscaler.  You will need to copy the required certs into the **.devcontainer/certs** folder.
 
 ## Troubleshooting
 
