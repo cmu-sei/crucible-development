@@ -13,4 +13,5 @@ public class LaunchOptions
     public bool Cite { get; set; } = true;
     public bool Gallery { get; set; } = true;
     public bool Blueprint { get; set; } = true;
+    public bool Gameboard { get; set; } = true;
 }

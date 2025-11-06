@@ -124,6 +124,19 @@
           "url": "https://github.com/cmu-sei/blueprint.ui"
         }
       ]
+    },
+    {
+      "name": "gameboard",
+      "repos": [
+        {
+          "name": "gameboard",
+          "url": "https://github.com/cmu-sei/gameboard"
+        },
+        {
+          "name": "gameboard-ui",
+          "url": "https://github.com/cmu-sei/gameboard-ui"
+        }
+      ]
     }
   ],
   "repos": [
