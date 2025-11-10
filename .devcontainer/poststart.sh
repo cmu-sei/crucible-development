@@ -13,7 +13,7 @@ start_minikube() {
 }
 
 TMPFILE=$(mktemp)
-trap "rm -f $TMPFILE" EXIT
+trap "rm -f $TMPFILE" EXIT # ensure we clean up the tmpfile
 
 if ! start_minikube "$TMPFILE"; then
     if grep -q "GUEST_MOUNT_CONFLICT" "$TMPFILE"; then
