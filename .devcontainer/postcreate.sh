@@ -6,7 +6,6 @@ git config devcontainers-theme.show-dirty 1
 sudo chown -R $(whoami): /home/vscode/.microsoft
 sudo chown -R $(whoami): /mnt/data/
 
-sudo chmod +x scripts/clone-repos.sh
 scripts/clone-repos.sh
 
 dotnet tool install -g Aspire.Cli
@@ -25,3 +24,37 @@ if compgen -G "${CUSTOM_CERT_SOURCE}"'/*.crt' > /dev/null; then
 else
   echo "No custom CA certificates found in ${CUSTOM_CERT_SOURCE}; skipping copy."
 fi
+
+# Welcome message
+cat <<'EOF'
+
+                         @@@@
+                       @@@@@@@@
+                     @@@@@@@@@@@@
+                    @@@@@@@@@@@@@@@
+                  @@@@@@@@@@@@@@@@@@@
+                @@@@@@           @@@@@@
+              @@@@@                 @@@@
+            @@@@@                   @@@@@@
+          @@@@@@         @@@@@     @@@@@@@@@
+         @@@@@@       @@@@@@@@@@@@@@@@@@@@@@@@
+       @@@@@@@@      @@@@@@@@@@@@@@@@@@@@@@@@@@
+      @@@@@@@@       @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+      @@@@@@@@       @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+     @@@@@@@@@@      @@@@@@@@@@@@@@@@@@@@@@@@@@@
+     @@@@@@@@@@       @@@@@@@@@@@@@@@@@@@@@@@@@
+     @@@@@@@@@@@         @@@@@     @@@@@@@@@@
+     @@@@@@@@@@@@                   @@@@@@@
+     @@@@@@@@@@@@@@                 @@@@@
+      @@@@@@@@@@@@@@@@           @@@@@@
+       @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        @@@@@@@@@@@@@@@@@@@@@@@@@@@@
+          @@@@@@@@@@@@@@@@@@@@@@@@
+            @@@@@@@@@@@@@@@@@@@@
+               @@@@@@@@@@@@@@
+
+      Welcome to the Crucible Dev Container!
+
+Type Ctrl-Shift-` (backtick) to open a new terminal and get started building. 🤓
+
+EOF

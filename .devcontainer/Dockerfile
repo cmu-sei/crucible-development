@@ -27,8 +27,13 @@ RUN apt update && apt install -y python3-dev
 # Install Vale
 ARG VALE_VERSION=3.12.0
 RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64)  VALE_ARCH="64-bit" ;; \
+        arm64)  VALE_ARCH="arm64" ;; \
+        *)      echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac && \
     curl -fsSL -o /tmp/vale.tgz \
-    "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" \
+    "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_${VALE_ARCH}.tar.gz" \
     && tar -xzf /tmp/vale.tgz -C /usr/local/bin vale \
     && rm /tmp/vale.tgz \
     && chmod +x /usr/local/bin/vale \
