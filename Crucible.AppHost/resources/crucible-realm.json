@@ -1160,10 +1160,12 @@
       "frontchannelLogout": true,
       "protocol": "openid-connect",
       "attributes": {
+        "realm_client": "false",
         "oidc.ciba.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "+",
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
-        "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false"
       },
       "authenticationFlowBindingOverrides": {},
@@ -1175,6 +1177,7 @@
         "acr",
         "profile",
         "roles",
+        "basic",
         "email"
       ],
       "optionalClientScopes": [
@@ -1187,22 +1190,22 @@
     {
       "id": "1b7ba890-6578-4941-9eb0-a4e325e58866",
       "clientId": "gameboard.ui",
-      "name": "",
+      "name": "gameboard.ui",
       "description": "",
-      "rootUrl": "",
-      "adminUrl": "",
-      "baseUrl": "",
+      "rootUrl": "http://localhost:4202",
+      "adminUrl": "http://localhost:4202",
+      "baseUrl": "http://localhost:4202",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "http://localhost:5002/gameboard/assets/oidc-silent.html",
-        "http://localhost:5002/gameboard/oidc"
+        "http://localhost:4202",
+        "http://localhost:4202/oidc",
+        "http://localhost:4202/oidc-silent.html"
       ],
       "webOrigins": [
-        "",
-        "http://localhost:5002"
+        "http://localhost:4202"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -1215,10 +1218,14 @@
       "frontchannelLogout": true,
       "protocol": "openid-connect",
       "attributes": {
+        "realm_client": "false",
         "oidc.ciba.grant.enabled": "false",
-        "display.on.consent.screen": "false",
-        "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
+        "standard.token.exchange.enabled": "false",
+        "frontchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "http://localhost:4202",
+        "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "true",
         "backchannel.logout.revoke.offline.tokens": "false"
       },
       "authenticationFlowBindingOverrides": {},
@@ -1230,6 +1237,7 @@
         "acr",
         "profile",
         "roles",
+        "basic",
         "email"
       ],
       "optionalClientScopes": [

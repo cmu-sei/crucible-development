@@ -440,7 +440,8 @@ public static class BuilderExtensions
             .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4202")
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
-            .WithEnvironment("Headers__Cors__AllowCredentials", "true");
+            .WithEnvironment("Headers__Cors__AllowCredentials", "true")
+            .WithEnvironment("Oidc__UserRolesClaimMap__Administrator", "Admin");
 
         var gameboardUiRoot = "/mnt/data/crucible/gameboard/gameboard-ui/";
 
