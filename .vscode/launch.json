@@ -80,6 +80,13 @@
             "request": "launch",
             "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
             "envFile": "${workspaceFolder}/.env/topo.env"
+        },
+        {
+            "name": "Moodle",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/moodle.env"
         }
     ]
 }
