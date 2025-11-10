@@ -14,4 +14,5 @@ public class LaunchOptions
     public bool Gallery { get; set; } = true;
     public bool Blueprint { get; set; } = true;
     public bool Gameboard { get; set; } = true;
+    public bool Moodle { get; set; } = false;
 }

@@ -34,6 +34,7 @@ var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithHttpEndpoint(port: 8000, targetPort: 8000)
     .WithArgs("serve", "-a", "0.0.0.0:8000");
 
+<<<<<<< HEAD
 builder.AddPlayer(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddCaster(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddAlloy(postgres, keycloak, launchOptions, addAllApplications);
@@ -43,6 +44,17 @@ builder.AddCite(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddGallery(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddBlueprint(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddGameboard(postgres, keycloak, launchOptions, addAllApplications);
+=======
+builder.AddPlayer(postgres, keycloak, launchOptions);
+builder.AddCaster(postgres, keycloak, launchOptions);
+builder.AddAlloy(postgres, keycloak, launchOptions);
+builder.AddTopoMojo(postgres, keycloak, launchOptions);
+builder.AddSteamfitter(postgres, keycloak, launchOptions);
+builder.AddCite(postgres, keycloak, launchOptions);
+builder.AddGallery(postgres, keycloak, launchOptions);
+builder.AddBlueprint(postgres, keycloak, launchOptions);
+builder.AddMoodle(postgres, keycloak, launchOptions);
+>>>>>>> 78f16c0 (adds initial moodle container)
 
 builder.Build().Run();
 
@@ -458,4 +470,19 @@ public static class BuilderExtensions
         }
     }
 
+    public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        if (!options.Moodle) return;
+
+        var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
+
+        var moodle = builder.AddContainer("moodle", "erseco/alpine-moodle")
+            .WithImageTag("v5.1.0")
+            .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)
+            .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
+            .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
+            .WithHttpEndpoint(port: 80, targetPort: 8080);
+        // .WithBindMount("/mnt/data/crucible/crucible-docs", "/docs", isReadOnly: true)
+    }
 }
