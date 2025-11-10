@@ -54,7 +54,7 @@ cat <<'EOF'
             @@@@@@@@@@@@@@@@@@@@
                @@@@@@@@@@@@@@
 
-            Welcome to Crucible Docs!
+      Welcome to the Crucible Dev Container!
 
 Type Ctrl-Shift-` (backtick) to open a new terminal and get started building. 🤓
 
