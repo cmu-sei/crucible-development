@@ -483,6 +483,12 @@ public static class BuilderExtensions
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
             .WithHttpEndpoint(port: 80, targetPort: 8080)
-            .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/moodle/mod/crucible", isReadOnly: true);
+            .WithBindMount("/mnt/data/crucible/moodle/block_crucible", "/var/www/html/public/blocks/crucible", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/public/mod/crucible", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/mod_groupquiz", "/var/www/html/public/mod/groupquiz", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/mod_topomojo", "/var/www/html/public/mod/topomojo", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/qtype_mojomatch", "/var/www/html/public/question/type/mojomatch", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/qbehaviour_mojomatch", "/var/www/html/public/question/behaviour/mojomatch", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/public/admin/tool/lptmanager", isReadOnly: true);
     }
 }
