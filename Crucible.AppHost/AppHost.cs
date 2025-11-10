@@ -482,7 +482,7 @@ public static class BuilderExtensions
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
-            .WithHttpEndpoint(port: 80, targetPort: 8080);
-        // .WithBindMount("/mnt/data/crucible/crucible-docs", "/docs", isReadOnly: true)
+            .WithHttpEndpoint(port: 80, targetPort: 8080)
+            .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/moodle/mod/crucible", isReadOnly: true);
     }
 }

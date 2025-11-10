@@ -135,6 +135,17 @@
         {
           "name": "gameboard-ui",
           "url": "https://github.com/cmu-sei/gameboard-ui"
+        },
+    {
+      "name": "moodle",
+      "repos": [
+        {
+          "name": "mod_crucible",
+          "url": "https://github.com/cmu-sei/moodle-mod_crucible"
+        },
+        {
+          "name": "mod_topomojo",
+          "url": "https://github.com/cmu-sei/moodle-mod_topomojo"
         }
       ]
     }
