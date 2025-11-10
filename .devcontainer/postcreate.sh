@@ -6,6 +6,7 @@ git config devcontainers-theme.show-dirty 1
 sudo chown -R $(whoami): /home/vscode/.microsoft
 sudo chown -R $(whoami): /mnt/data/
 
+sudo chmod +x scripts/clone-repos.sh
 scripts/clone-repos.sh
 
 dotnet tool install -g Aspire.Cli
