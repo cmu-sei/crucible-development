@@ -39,6 +39,7 @@ builder.AddSteamfitter(postgres, keycloak, launchOptions);
 builder.AddCite(postgres, keycloak, launchOptions);
 builder.AddGallery(postgres, keycloak, launchOptions);
 builder.AddBlueprint(postgres, keycloak, launchOptions);
+builder.AddMoodle(postgres, keycloak, launchOptions);
 
 builder.Build().Run();
 
@@ -344,4 +345,19 @@ public static class BuilderExtensions
                 .WithNpmPackageInstallation();
     }
 
+    public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        if (!options.Moodle) return;
+
+        var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
+
+        var moodle = builder.AddContainer("moodle", "erseco/alpine-moodle")
+            .WithImageTag("v5.1.0")
+            .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)
+            .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
+            .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
+            .WithHttpEndpoint(port: 80, targetPort: 8080);
+        // .WithBindMount("/mnt/data/crucible/crucible-docs", "/docs", isReadOnly: true)
+    }
 }
