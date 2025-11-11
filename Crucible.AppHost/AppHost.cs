@@ -497,7 +497,7 @@ public static class BuilderExtensions
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --unset;
-                    php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set=$'80\n443\n8080';")
+                    php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set=$'80\n443\n8080\n8443';")
             //php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='email,oauth2';")
             //moosh plugin-list;
             //moosh plugin-install tool_userdebug")
