@@ -21,7 +21,11 @@ If you're on a Windows machine, Docker's consumption of your host machine's memo
 
 ### Zscaler
 
-The dev container is designed to work with Zscaler.  You will need to copy the required certs into the **.devcontainer/certs** folder.
+The dev container is designed to work with Zscaler. You will need to copy the required certs into the **.devcontainer/certs** folder.
+
+### Custom Certificates
+
+For details on how to add root CA certificates (including Zscaler and any development CAs), see the [Custom Certs Docs](.devcontainer/certs/README.md).
 
 ## Troubleshooting
 
@@ -34,14 +38,16 @@ This repo is still under construction, so you may run into the occasional challe
 
 - Some extensions (e.g. C#) very rarely seem to fail to install in the container's VS Code environment. If you see weird intellisense behavior or have compilation/debugging problems, ensure all extensions in the `devcontainers.json` file are installed in your container.
 
-
 # Database seeding and backup
+
 ## setup
+
 ... using blueprint as the example
 create a db-dumps folder under crucible-dev
 copy your blueprint.dump file into the db-dumps folder
 
 ## seed/restore a database
+
 navigate to the db-dumps folder in the integrated terminal
 drop the blueprint database using pgadmin
 create a new blueprint database using pgadmin
@@ -52,6 +58,7 @@ docker exec -it crucible-postgres /bin/bash
 exit
 
 ## backup/dump a database
+
 docker exec -it crucible-postgres /bin/bash
 pg_dump -U postgres blueprint > /tmp/blueprint.dump
 exit

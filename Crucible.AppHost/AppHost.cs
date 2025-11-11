@@ -28,8 +28,17 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithEnvironment("KC_DB_USERNAME", postgres.Resource.UserNameReference)
     .WithEnvironment("KC_DB_PASSWORD", postgres.Resource.PasswordParameter)
     .WithEnvironment("KC_HOSTNAME", "localhost")
-    .WithEnvironment("KC_HOSTNAME_PORT", "8080")
+    .WithEnvironment("KC_HTTPS_PORT", "8443")
     .WithEnvironment("KC_HOSTNAME_STRICT", "false")
+    .WithBindMount("../.devcontainer/certs/crucible.p12", "/opt/keycloak/conf/crucible.p12")
+    .WithEndpoint(8443, 8443, "https")
+    .WithArgs("start",
+              "--http-enabled=true",
+              "--http-port=8080",
+              "--https-port=8443",
+              "--https-key-store-file=/opt/keycloak/conf/crucible.p12",
+              "--https-key-store-password=password",
+              "--hostname-strict=false")
     .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
 
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
@@ -486,7 +495,6 @@ public static class BuilderExtensions
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
-            //.WithEnvironment("MOOSH_URL", "https://github.com/tmuras/moosh/archive/refs/tags/1.34.tar.gz")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --unset;
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set=$'80\n443\n8080';")
@@ -500,9 +508,9 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/block_crucible", "/var/www/html/blocks/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/mod/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_groupquiz", "/var/www/html/mod/groupquiz", isReadOnly: true)
-            //.WithBindMount("/mnt/data/crucible/moodle/mod_topomojo", "/var/www/html/mole/mod/topomojo", isReadOnly: true)
-            //.WithBindMount("/mnt/data/crucible/moodle/qtype_mojomatch", "/var/www/html/question/type/mojomatch", isReadOnly: true)
-            //.WithBindMount("/mnt/data/crucible/moodle/qbehaviour_mojomatch", "/var/www/html/question/behaviour/mojomatch", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/mod_topomojo", "/var/www/html/mod/topomojo", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/qtype_mojomatch", "/var/www/html/question/type/mojomatch", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/qbehaviour_mojomatch", "/var/www/html/question/behaviour/mojomatch", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true);
     }
 }
