@@ -496,8 +496,24 @@ public static class BuilderExtensions
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"
+                    echo confguring crucible...
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --unset;
-                    php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set=$'80\n443\n8080\n8443';")
+                    #php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set=$'80\n443\n8080\n8443';
+                    php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --unset;
+                    #php /var/www/html/admin/cli/cfg.php --component=crucible --name=issuerid --set=1;
+                    php /var/www/html/admin/cli/cfg.php --component=crucible --name=alloyapiurl --set=http://host.docker.internal:4402;
+                    php /var/www/html/admin/cli/cfg.php --component=crucible --name=playerappurl --set=http://localhost:4301;
+                    php /var/www/html/admin/cli/cfg.php --component=crucible --name=vmappurl --set=http://localhost:4303;
+                    php /var/www/html/admin/cli/cfg.php --component=crucible --name=steamfitterapiurl --set=http://host.docker.internal:4400
+                    echo confguring topomojo...
+                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableoauth --set=1;
+                    #php /var/www/html/admin/cli/cfg.php --component=topomojo --name=issuerid --set=1;
+                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=topomojoapiurl --set=http://host.docker.internal:5000/api;
+                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=topomojobaseurl --set=http://localhost:4201;
+                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableapikey --set=1;
+                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
+                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enablemanagername --set=1;
+                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';")
             //php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='email,oauth2';")
             //moosh plugin-list;
             //moosh plugin-install tool_userdebug")
