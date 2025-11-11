@@ -486,12 +486,17 @@ public static class BuilderExtensions
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
+            //.WithEnvironment("MOOSH_URL", "https://github.com/tmuras/moosh/archive/refs/tags/1.34.tar.gz")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --unset;
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set=$'80\n443\n8080';")
+            //php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='email,oauth2';")
             //moosh plugin-list;
             //moosh plugin-install tool_userdebug")
-            .WithHttpEndpoint(port: 80, targetPort: 8080)
+            .WithHttpEndpoint(port: 8081, targetPort: 8080)
+            .WithEnvironment("REVERSEPROXY", "true")
+            .WithEnvironment("SITE_URL", "http://localhost:8081")
+            .WithEnvironment("SSLPROXY", "false")
             .WithBindMount("/mnt/data/crucible/moodle/block_crucible", "/var/www/html/blocks/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/mod/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_groupquiz", "/var/www/html/mod/groupquiz", isReadOnly: true)
