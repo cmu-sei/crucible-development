@@ -522,8 +522,9 @@ public static class BuilderExtensions
                     php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableapikey --set=1;
                     php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
                     php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enablemanagername --set=1;
-                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';")
-            //php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='email,oauth2';")
+                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';
+                    moosh course-list | grep -q 'Test Course' || moosh course-create 'Test' 'Test Course' 1
+                    #php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='email,oauth2';")
             //moosh plugin-list;
             //moosh plugin-install tool_userdebug")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
