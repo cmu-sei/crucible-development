@@ -481,13 +481,16 @@ public static class BuilderExtensions
 
         var moodle = builder.AddContainer("moodle", "erseco/alpine-moodle")
             .WithImageTag("v5.0.0")
+            .WithContainerName("moodle")
             .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --unset;
-                    php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set=$'80\n443\n8080'")
+                    php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set=$'80\n443\n8080';")
+            //moosh plugin-list;
+            //moosh plugin-install tool_userdebug")
             .WithHttpEndpoint(port: 80, targetPort: 8080)
             .WithBindMount("/mnt/data/crucible/moodle/block_crucible", "/var/www/html/blocks/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/mod/crucible", isReadOnly: true)
