@@ -445,7 +445,7 @@ public static class BuilderExtensions
 
         var gameboardUiRoot = "/mnt/data/crucible/gameboard/gameboard-ui/";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.ts", $"{gameboardUiRoot}/projects/gameboard-ui/src/environments/environment.ts", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
 
         var gameboardUi = builder.AddNpmApp("gameboard-ui", gameboardUiRoot)
             .WithHttpEndpoint(port: 4202, env: "PORT", isProxied: false)
