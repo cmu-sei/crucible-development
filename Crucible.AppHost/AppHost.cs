@@ -30,16 +30,25 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithEnvironment("KC_HOSTNAME", "localhost")
     .WithEnvironment("KC_HTTPS_PORT", "8443")
     .WithEnvironment("KC_HOSTNAME_STRICT", "false")
-    .WithBindMount("../.devcontainer/certs/crucible-dev.p12", "/opt/keycloak/conf/crucible-dev.p12")
-    .WithEndpoint(8443, 8443, "https")
-    .WithArgs("start",
-              "--http-enabled=true",
+    .WithBindMount("../.devcontainer/certs/crucible.p12", "/opt/keycloak/conf/crucible.p12")
+    .WithHttpsEndpoint(8443, 8443)
+    .WithArgs("--http-enabled=true",
               "--http-port=8080",
               "--https-port=8443",
               "--https-key-store-file=/opt/keycloak/conf/crucible-dev.p12",
               "--https-key-store-password=password",
               "--hostname-strict=false")
     .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
+
+var keycloakManagementEndpointAnnotation = keycloak.Resource.Annotations
+    .OfType<EndpointAnnotation>()
+    .FirstOrDefault(e => e.Name == "management");
+
+if (keycloakManagementEndpointAnnotation is not null)
+{
+    keycloakManagementEndpointAnnotation.Transport = "https";
+    keycloakManagementEndpointAnnotation.UriScheme = "https";
+}
 
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithBindMount("/mnt/data/crucible/crucible-docs", "/docs", isReadOnly: true)
