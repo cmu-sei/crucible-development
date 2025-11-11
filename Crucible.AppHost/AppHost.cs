@@ -30,7 +30,7 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithEnvironment("KC_HOSTNAME", "localhost")
     .WithEnvironment("KC_HTTPS_PORT", "8443")
     .WithEnvironment("KC_HOSTNAME_STRICT", "false")
-    .WithBindMount("../.devcontainer/certs/crucible.p12", "/opt/keycloak/conf/crucible.p12")
+    .WithBindMount("../.devcontainer/certs/crucible-dev.p12", "/opt/keycloak/conf/crucible-dev.p12")
     .WithEndpoint(8443, 8443, "https")
     .WithArgs("start",
               "--http-enabled=true",
