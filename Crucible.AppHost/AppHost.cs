@@ -28,8 +28,17 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithEnvironment("KC_DB_USERNAME", postgres.Resource.UserNameReference)
     .WithEnvironment("KC_DB_PASSWORD", postgres.Resource.PasswordParameter)
     .WithEnvironment("KC_HOSTNAME", "localhost")
-    .WithEnvironment("KC_HOSTNAME_PORT", "8080")
+    .WithEnvironment("KC_HTTPS_PORT", "8443")
     .WithEnvironment("KC_HOSTNAME_STRICT", "false")
+    .WithBindMount("../.devcontainer/certs/crucible.p12", "/opt/keycloak/conf/crucible.p12")
+    .WithEndpoint(8443, 8443, "https")
+    .WithArgs("start",
+              "--http-enabled=true",
+              "--http-port=8080",
+              "--https-port=8443",
+              "--https-key-store-file=/opt/keycloak/conf/crucible.p12",
+              "--https-key-store-password=password",
+              "--hostname-strict=false")
     .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
 
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
@@ -486,14 +495,13 @@ public static class BuilderExtensions
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
-            //.WithEnvironment("MOOSH_URL", "https://github.com/tmuras/moosh/archive/refs/tags/1.34.tar.gz")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --unset;
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set=$'80\n443\n8080';")
             //php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='email,oauth2';")
             //moosh plugin-list;
             //moosh plugin-install tool_userdebug")
-            .WithHttpEndpoint(port: 8081, targetPort: 8080)
+            .WithHttpEndpoint(port: 808181, targetPort: 8080)
             .WithEnvironment("REVERSEPROXY", "true")
             .WithEnvironment("SITE_URL", "http://localhost:8081")
             .WithEnvironment("SSLPROXY", "false")
