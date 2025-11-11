@@ -36,7 +36,7 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
               "--http-enabled=true",
               "--http-port=8080",
               "--https-port=8443",
-              "--https-key-store-file=/opt/keycloak/conf/crucible.p12",
+              "--https-key-store-file=/opt/keycloak/conf/crucible-dev.p12",
               "--https-key-store-password=password",
               "--hostname-strict=false")
     .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
