@@ -11,7 +11,7 @@
     "silent_redirect_uri": "http://localhost:4723/auth-callback-silent"
   },
     "AppTitle": "Gallery",
-    "AppTopBarHexColor": "#2d69b4",
+    "AppTopBarHexColor": "#E81717",
     "AppTopBarHexTextColor": "#FFFFFF",
     "AppTopBarText": "Gallery  -  Exercise Information Sharing",
     "AppTopBarImage": "/assets/img/monitor-dashboard-white.png",

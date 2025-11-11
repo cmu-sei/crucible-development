@@ -28,6 +28,7 @@
     <ProjectReference Include="/mnt/data/crucible/cite/cite.api/Cite.Api/Cite.Api.csproj" />
     <ProjectReference Include="/mnt/data/crucible/gallery/gallery.api/Gallery.Api/Gallery.Api.csproj" />
     <ProjectReference Include="/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api/Blueprint.Api.csproj" />
+    <ProjectReference Include="/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api/Gameboard.Api.csproj" />
   </ItemGroup>
 
 </Project>

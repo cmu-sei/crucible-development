@@ -1,6 +1,8 @@
 // Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
+using System;
+using Aspire.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Crucible.AppHost;
@@ -9,6 +11,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 LaunchOptions launchOptions = new();
 builder.Configuration.GetSection("Launch").Bind(launchOptions);
+bool addAllApplications = builder.Configuration.GetSection("Options").GetValue<bool>("addAllApplications");
 
 var postgres = builder.AddPostgres("postgres")
     .WithDataVolume()
@@ -31,22 +34,24 @@ var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithHttpEndpoint(port: 8000, targetPort: 8000)
     .WithArgs("serve", "-a", "0.0.0.0:8000");
 
-builder.AddPlayer(postgres, keycloak, launchOptions);
-builder.AddCaster(postgres, keycloak, launchOptions);
-builder.AddAlloy(postgres, keycloak, launchOptions);
-builder.AddTopoMojo(postgres, keycloak, launchOptions);
-builder.AddSteamfitter(postgres, keycloak, launchOptions);
-builder.AddCite(postgres, keycloak, launchOptions);
-builder.AddGallery(postgres, keycloak, launchOptions);
-builder.AddBlueprint(postgres, keycloak, launchOptions);
+builder.AddPlayer(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddCaster(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddAlloy(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddTopoMojo(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddSteamfitter(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddCite(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddGallery(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddBlueprint(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddGameboard(postgres, keycloak, launchOptions, addAllApplications);
 
 builder.Build().Run();
 
 public static class BuilderExtensions
 {
-    public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
-        if (!options.Player) return;
+        if (!addAll && !options.Player)
+            return;
 
         var playerDb = postgres.AddDatabase("playerDb", "player");
 
@@ -70,10 +75,16 @@ public static class BuilderExtensions
                 .WithHttpEndpoint(port: 4301, env: "PORT", isProxied: false)
                 .WithNpmPackageInstallation();
 
-        builder.AddPlayerVm(postgres, keycloak);
+        if (!options.Player)
+        {
+            playerApi.WithExplicitStart();
+            playerUi.WithExplicitStart();
+        }
+
+        builder.AddPlayerVm(postgres, keycloak, options.Player);
     }
 
-    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak)
+    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, bool startByDefault)
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm");
         var vmLoggingDb = postgres.AddDatabase("vmLoggingDb", "player_vm_logging");
@@ -107,11 +118,20 @@ public static class BuilderExtensions
         var consoleUi = builder.AddNpmApp("player-vm-console-ui", consoleUiRoot)
                 .WithHttpEndpoint(port: 4305, env: "PORT", isProxied: false)
                 .WithNpmPackageInstallation();
+
+        if (!startByDefault)
+        {
+            vmApi.WithExplicitStart();
+            vmUi.WithExplicitStart();
+            consoleUi.WithExplicitStart();
+        }
+
     }
 
-    public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
-        if (!options.Caster) return;
+        if (!addAll && !options.Caster)
+            return;
 
         var casterDb = postgres.AddDatabase("casterDb", "caster");
 
@@ -134,11 +154,18 @@ public static class BuilderExtensions
         var casterUi = builder.AddNpmApp("caster-ui", casterUiRoot)
             .WithHttpEndpoint(port: 4310, env: "PORT", isProxied: false)
             .WithNpmPackageInstallation();
+
+        if (!options.Caster)
+        {
+            casterApi.WithExplicitStart();
+            casterUi.WithExplicitStart();
+        }
     }
 
-    public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
-        if (!options.Alloy) return;
+        if (!addAll && !options.Alloy)
+            return;
 
         var alloyDb = postgres.AddDatabase("alloyDb", "alloy");
 
@@ -168,11 +195,18 @@ public static class BuilderExtensions
         var alloyUi = builder.AddNpmApp("alloy-ui", alloyUiRoot)
                 .WithHttpEndpoint(port: 4403, env: "PORT", isProxied: false)
                 .WithNpmPackageInstallation();
+
+        if (!options.Alloy)
+        {
+            alloyApi.WithExplicitStart();
+            alloyUi.WithExplicitStart();
+        }
     }
 
-    public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
-        if (!options.TopoMojo) return;
+        if (!addAll && !options.TopoMojo)
+            return;
 
         var topoDb = postgres.AddDatabase("topoDb", "topomojo");
 
@@ -207,11 +241,18 @@ public static class BuilderExtensions
         var topoUi = builder.AddNpmApp("topomojo-ui", topoUiRoot, args: ["topomojo-work"])
             .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
             .WithNpmPackageInstallation();
+
+        if (!options.TopoMojo)
+        {
+            topoApi.WithExplicitStart();
+            topoUi.WithExplicitStart();
+        }
     }
 
-    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
-        if (!options.Steamfitter) return;
+        if (!addAll && !options.Steamfitter)
+            return;
 
         var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter");
 
@@ -236,16 +277,23 @@ public static class BuilderExtensions
 
         var steamfitterUiRoot = "/mnt/data/crucible/steamfitter/steamfitter.ui";
 
-        File.Copy("./resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var steamfitterUi = builder.AddNpmApp("steamfitter-ui", steamfitterUiRoot)
                 .WithHttpEndpoint(port: 4401, env: "PORT", isProxied: false)
                 .WithNpmPackageInstallation();
+
+        if (!options.Steamfitter)
+        {
+            steamfitterApi.WithExplicitStart();
+            steamfitterUi.WithExplicitStart();
+        }
     }
 
-    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
-        if (!options.Cite) return;
+        if (!addAll && !options.Cite)
+            return;
 
         var citeDb = postgres.AddDatabase("citeDb", "cite");
 
@@ -270,16 +318,22 @@ public static class BuilderExtensions
 
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
 
-        File.Copy("./resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var citeUi = builder.AddNpmApp("cite-ui", citeUiRoot)
                 .WithHttpEndpoint(port: 4721, env: "PORT", isProxied: false)
                 .WithNpmPackageInstallation();
+        if (!options.Cite)
+        {
+            citeApi.WithExplicitStart();
+            citeUi.WithExplicitStart();
+        }
     }
 
-    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
-        if (!options.Gallery) return;
+        if (!addAll && !options.Gallery)
+            return;
 
         var galleryDb = postgres.AddDatabase("galleryDb", "gallery");
 
@@ -304,16 +358,23 @@ public static class BuilderExtensions
 
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
 
-        File.Copy("./resources/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var galleryUi = builder.AddNpmApp("gallery-ui", galleryUiRoot)
                 .WithHttpEndpoint(port: 4723, env: "PORT", isProxied: false)
                 .WithNpmPackageInstallation();
+
+        if (!options.Gallery)
+        {
+            galleryApi.WithExplicitStart();
+            galleryUi.WithExplicitStart();
+        }
     }
 
-    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
-        if (!options.Blueprint) return;
+        if (!addAll && !options.Blueprint)
+            return;
 
         var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint");
 
@@ -337,11 +398,64 @@ public static class BuilderExtensions
 
         var blueprintUiRoot = "/mnt/data/crucible/blueprint/blueprint.ui";
 
-        File.Copy("./resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var blueprintUi = builder.AddNpmApp("blueprint-ui", blueprintUiRoot)
                 .WithHttpEndpoint(port: 4725, env: "PORT", isProxied: false)
                 .WithNpmPackageInstallation();
+
+        if (!options.Blueprint)
+        {
+            blueprintApi.WithExplicitStart();
+            blueprintUi.WithExplicitStart();
+        }
+    }
+
+    public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    {
+        if (!addAll && !options.Gameboard)
+            return;
+
+        var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard");
+
+        var gameboardApi = builder.AddProject<Projects.Gameboard_Api>("gameboard", launchProfileName: "Project")
+            .WaitFor(postgres)
+            .WaitFor(keycloak)
+            .WithReference(gameboardDb, "PostgreSQL")
+            .WithEnvironment("Database__ConnectionString", gameboardDb.Resource.ConnectionStringExpression)
+            .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
+            .WithEnvironment("PathBase", "")
+            .WithEnvironment("Oidc__Authority", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("Oidc__Audience", "gameboard")
+            .WithEnvironment("OpenApi__Client__AuthorizationUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/auth")
+            .WithEnvironment("OpenApi__Client__TokenUrl", "http://localhost:8080/realms/crucible/protocol/openid-connect/token")
+            .WithEnvironment("OpenApi__Client__ClientId", "gameboard.api")
+            .WithEnvironment("OpenApi__Enabled", "true")
+            .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+            .WithEnvironment("Core__GameEngineUrl", "http://localhost:5000/api")
+            .WithEnvironment("Core__ChallengeDocUrl", "http://localhost:5000/api")
+            .WithEnvironment("GameEngine__ClientId", "topomojo.api")
+            .WithEnvironment("GameEngine__ClientSecret", "aoctxRpJThNs9rpNuHATBiT18afno78R")
+            .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4202")
+            .WithEnvironment("Headers__Cors__Methods__0", "*")
+            .WithEnvironment("Headers__Cors__Headers__0", "*")
+            .WithEnvironment("Headers__Cors__AllowCredentials", "true")
+            .WithEnvironment("Oidc__UserRolesClaimMap__Administrator", "Admin");
+
+        var gameboardUiRoot = "/mnt/data/crucible/gameboard/gameboard-ui/";
+
+        File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
+
+        var gameboardUi = builder.AddNpmApp("gameboard-ui", gameboardUiRoot)
+            .WithHttpEndpoint(port: 4202, env: "PORT", isProxied: false)
+            .WithNpmPackageInstallation();
+
+        if (!options.Gameboard)
+        {
+            gameboardApi.WithExplicitStart();
+            gameboardUi.WithExplicitStart();
+        }
     }
 
 }
