@@ -59,6 +59,7 @@ nunit-*.xml
 
 # devcontainer certs
 .devcontainer/certs/*.crt
+!.devcontainer/certs/crucible.crt
 
 # db dumps to restore into postgres
 db-dumps/
