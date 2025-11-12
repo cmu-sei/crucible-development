@@ -87,6 +87,28 @@
             "request": "launch",
             "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
             "envFile": "${workspaceFolder}/.env/moodle.env"
+        },
+        {
+            "name": "Xdebug",
+            "type": "php",
+            "request": "launch",
+            "port": 9003,
+            "pathMappings": {
+                // Map the remote path (inside the container) to the local path (on your host machine)
+                "/var/www/html/mod/crucible": "/mnt/data/crucible/moodle/mod_crucible",
+                "/var/www/html/mod/topomojo": "/mnt/data/crucible/moodle/mod_topomojo",
+                "/var/www/html/mod/groupquiz": "/mnt/data/crucible/moodle/mod_groupquiz",
+                "/var/www/html/block/crucible": "/mnt/data/crucible/moodle/block_crucible",
+                "/var/www/html/admin/tool/lptmanager": "/mnt/data/crucible/moodle/tool_lptmanager",
+                "/var/www/html/qtype/crucible": "/mnt/data/crucible/moodle/qtyoe_mojomatch",
+                "/var/www/html/qbehaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch"
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Moodle Debug",
+            "configurations": ["Moodle", "Xdebug"]
         }
     ]
 }
