@@ -30,14 +30,18 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithEnvironment("KC_HOSTNAME", "localhost")
     .WithEnvironment("KC_HTTPS_PORT", "8443")
     .WithEnvironment("KC_HOSTNAME_STRICT", "false")
-    .WithBindMount("../.devcontainer/certs/crucible-dev.p12", "/opt/keycloak/conf/crucible-dev.p12")
+    .WithBindMount("../.devcontainer/certs/crucible-dev.crt", "/opt/keycloak/conf/crucible-dev.crt", isReadOnly: true)
+    .WithBindMount("../.devcontainer/certs/crucible-dev.key", "/opt/keycloak/conf/crucible-dev.key", isReadOnly: true)
     .WithHttpsEndpoint(8443, 8443)
-    .WithArgs("--http-enabled=true",
-              "--http-port=8080",
-              "--https-port=8443",
-              "--https-key-store-file=/opt/keycloak/conf/crucible-dev.p12",
-              "--https-key-store-password=password",
-              "--hostname-strict=false")
+    .WithArgs(
+        "start",
+        "--http-enabled=true",
+        "--http-port=8080",
+        "--https-port=8443",
+        "--https-certificate-file=/opt/keycloak/conf/crucible-dev.crt",
+        "--https-certificate-key-file=/opt/keycloak/conf/crucible-dev.key",
+        "--hostname-strict=false"
+    )
     .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
 
 var keycloakManagementEndpointAnnotation = keycloak.Resource.Annotations
@@ -528,6 +532,7 @@ public static class BuilderExtensions
             //moosh plugin-list;
             //moosh plugin-install tool_userdebug")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
+            .WithHttpHealthCheck(endpointName: "http")
             .WithEnvironment("REVERSEPROXY", "true")
             .WithEnvironment("SITE_URL", "http://localhost:8081")
             .WithEnvironment("SSLPROXY", "false")
