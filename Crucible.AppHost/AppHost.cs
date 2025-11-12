@@ -532,6 +532,7 @@ public static class BuilderExtensions
             //moosh plugin-list;
             //moosh plugin-install tool_userdebug")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
+            .WithHttpHealthCheck(endpointName: "http")
             .WithEnvironment("REVERSEPROXY", "true")
             .WithEnvironment("SITE_URL", "http://localhost:8081")
             .WithEnvironment("SSLPROXY", "false")
