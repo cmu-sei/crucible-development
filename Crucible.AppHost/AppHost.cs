@@ -501,8 +501,8 @@ public static class BuilderExtensions
 
         var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
 
-        var moodle = builder.AddContainer("moodle", "erseco/alpine-moodle")
-            .WithImageTag("v5.0.0")
+        var moodle = builder.AddContainer("moodle", "moodle-custom-image")
+            .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
             .WithContainerName("moodle")
             .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
@@ -511,7 +511,6 @@ public static class BuilderExtensions
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"
                     echo confguring crucible...
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --unset;
-                    #php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set=$'80\n443\n8080\n8443';
                     php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --unset;
                     #php /var/www/html/admin/cli/cfg.php --component=crucible --name=issuerid --set=1;
                     php /var/www/html/admin/cli/cfg.php --component=crucible --name=alloyapiurl --set=http://host.docker.internal:4402/api;
@@ -527,12 +526,13 @@ public static class BuilderExtensions
                     php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
                     php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enablemanagername --set=1;
                     php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';
-                    moosh course-list | grep -q 'Test Course' || moosh course-create 'Test' 'Test Course' 1
-                    #php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='email,oauth2';")
+                    moosh course-list | grep -q 'Test Course' || moosh course-create 'Test Course';
+                    #php /var/www/html/admin/cli/cfg.php --name=auth --set='email,oauth2';")
             //moosh plugin-list;
             //moosh plugin-install tool_userdebug")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
             .WithHttpHealthCheck(endpointName: "http")
+            .WithEnvironment("XDEBUG_MODE", "debug")
             .WithEnvironment("REVERSEPROXY", "true")
             .WithEnvironment("SITE_URL", "http://localhost:8081")
             .WithEnvironment("SSLPROXY", "false")
