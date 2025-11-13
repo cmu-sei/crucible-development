@@ -532,13 +532,13 @@ public static class BuilderExtensions
                     #moosh plugin-install --release 2025070100 tool_userdebug;")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
             .WithHttpHealthCheck(endpointName: "http")
-            //.WithEnvironment("memory_limit", "512M") // needs to be set for moosh plugin-list to work
-            //.WithEnvironment("DEBUG", "true")
+            .WithEnvironment("memory_limit", "512M") // needs to be set for moosh plugin-list to work
             .WithEnvironment("XDEBUG_MODE", "coverage,debug")
             //.WithEnvironment("XDEBUG_FILTER", "exclude path /opt/moosh/*") // this only works with 'coverage' in the mode variable
             .WithEnvironment("REVERSEPROXY", "true")
             .WithEnvironment("SITE_URL", "http://localhost:8081")
             .WithEnvironment("SSLPROXY", "false")
+            .WithEnvironment("DEBUG", "true")
             .WithBindMount("/mnt/data/crucible/moodle/block_crucible", "/var/www/html/blocks/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/mod/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_groupquiz", "/var/www/html/mod/groupquiz", isReadOnly: true)
