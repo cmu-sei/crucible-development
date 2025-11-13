@@ -93,6 +93,12 @@
             "type": "php",
             "request": "launch",
             "port": 9003,
+            // prevent VS Code from stepping into core files
+            "skipFiles": [
+                "/var/www/html/theme/**",       // Skip all files in theme directory
+                "/var/www/html/lib/**",         // Skip Moodle core lib files
+                "/var/www/html/vendor/**"       // Skip Composer vendor files
+            ],
             "pathMappings": {
                 // Map the remote path (inside the container) to the local path (on your host machine)
                 "/var/www/html/mod/crucible": "/mnt/data/crucible/moodle/mod_crucible",
@@ -100,8 +106,8 @@
                 "/var/www/html/mod/groupquiz": "/mnt/data/crucible/moodle/mod_groupquiz",
                 "/var/www/html/block/crucible": "/mnt/data/crucible/moodle/block_crucible",
                 "/var/www/html/admin/tool/lptmanager": "/mnt/data/crucible/moodle/tool_lptmanager",
-                "/var/www/html/qtype/crucible": "/mnt/data/crucible/moodle/qtyoe_mojomatch",
-                "/var/www/html/qbehaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch"
+                "/var/www/html/question/type/crucible": "/mnt/data/crucible/moodle/qtype_mojomatch",
+                "/var/www/html/question/behaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch"
             }
         }
     ],
