@@ -4527,6 +4527,7 @@
       "id": "9b3b331c-10c1-448b-8114-21b2586d8e38",
       "createdTimestamp": 1691686431553,
       "username": "admin",
+      "email" : "admin@localhost",
       "enabled": true,
       "totp": false,
       "emailVerified": true,
