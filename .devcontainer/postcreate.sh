@@ -25,6 +25,9 @@ else
   echo "No custom CA certificates found in ${CUSTOM_CERT_SOURCE}; skipping copy."
 fi
 
+# Install dotnet-ef globally
+dotnet tool install --global dotnet-ef --version 10
+
 # Welcome message
 cat <<'EOF'
 
