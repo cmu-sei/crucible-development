@@ -59,7 +59,6 @@ var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithHttpEndpoint(port: 8000, targetPort: 8000)
     .WithArgs("serve", "-a", "0.0.0.0:8000");
 
-<<<<<<< HEAD
 builder.AddPlayer(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddCaster(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddAlloy(postgres, keycloak, launchOptions, addAllApplications);
@@ -69,17 +68,7 @@ builder.AddCite(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddGallery(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddBlueprint(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddGameboard(postgres, keycloak, launchOptions, addAllApplications);
-=======
-builder.AddPlayer(postgres, keycloak, launchOptions);
-builder.AddCaster(postgres, keycloak, launchOptions);
-builder.AddAlloy(postgres, keycloak, launchOptions);
-builder.AddTopoMojo(postgres, keycloak, launchOptions);
-builder.AddSteamfitter(postgres, keycloak, launchOptions);
-builder.AddCite(postgres, keycloak, launchOptions);
-builder.AddGallery(postgres, keycloak, launchOptions);
-builder.AddBlueprint(postgres, keycloak, launchOptions);
 builder.AddMoodle(postgres, keycloak, launchOptions);
->>>>>>> 78f16c0 (adds initial moodle container)
 
 builder.Build().Run();
 
