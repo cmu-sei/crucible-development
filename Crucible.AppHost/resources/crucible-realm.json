@@ -2756,7 +2756,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "super-safe-secret",
       "redirectUris": [
         "http://localhost/admin/oauth2callback.php"
       ],
