@@ -5,6 +5,13 @@ USER root
 # Install Xdebug cleanly without apk update
 RUN apk add --no-cache php83-pecl-xdebug
 
+# Copy files for debugging
+RUN mkdir -p /moodle/admin && \
+    cp -pr /var/www/html/theme /moodle/ && \
+    cp -pr /var/www/html/lib /moodle/ && \
+    cp -pr /var/www/html/admin/cli /moodle/admin/ && \
+    chown -R nobody:nobody /moodle
+
 # Copy Xdebug configuration
 COPY xdebug.ini /etc/php83/conf.d/50_xdebug.ini
 
@@ -18,4 +25,9 @@ COPY moosh.sh /usr/local/bin/moosh-new
 USER nobody
 
 # Copy xdebug filter settings
+# TODO: determine if the script is actually working to limit xdebug
 COPY xdebug_filter.php /var/www/html/xdebug_filter.php
+
+# Copy scripts
+COPY post_configure.sh /usr/local/bin/
+COPY pre_configure.sh /usr/local/bin/
