@@ -504,41 +504,26 @@ public static class BuilderExtensions
         var moodle = builder.AddContainer("moodle", "moodle-custom-image")
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
             .WithContainerName("moodle")
-            .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)
-            .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
-            .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
-            .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
-            .WithEnvironment("POST_CONFIGURE_COMMANDS", @"
-                    echo confguring crucible...
-                    php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --unset;
-                    php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --unset;
-                    #php /var/www/html/admin/cli/cfg.php --component=crucible --name=issuerid --set=1;
-                    php /var/www/html/admin/cli/cfg.php --component=crucible --name=alloyapiurl --set=http://host.docker.internal:4402/api;
-                    php /var/www/html/admin/cli/cfg.php --component=crucible --name=playerappurl --set=http://localhost:4301;
-                    php /var/www/html/admin/cli/cfg.php --component=crucible --name=vmappurl --set=http://localhost:4303;
-                    php /var/www/html/admin/cli/cfg.php --component=crucible --name=steamfitterapiurl --set=http://host.docker.internal:4400/api
-                    echo confguring topomojo...
-                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableoauth --set=1;
-                    #php /var/www/html/admin/cli/cfg.php --component=topomojo --name=issuerid --set=1;
-                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=topomojoapiurl --set=http://host.docker.internal:5000/api;
-                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=topomojobaseurl --set=http://localhost:4201;
-                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableapikey --set=1;
-                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
-                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enablemanagername --set=1;
-                    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';
-                    moosh course-list | grep -q 'Test Course' || moosh course-create 'Test Course';
-                    #php /var/www/html/admin/cli/cfg.php --name=auth --set='email,oauth2';
-                    #moosh plugin-list;
-                    #moosh plugin-install --release 2025070100 tool_userdebug;")
+            //.WithCommand("/bin/bash", "-c", "mkdir /mnt/data/crucible/moodle/theme")
+            //.WithCommand("/bin/bash", "-c", "mkdir /mnt/data/crucible/moodle/lib")
+            //.WithCommand("/bin/bash", "-c", "mkdir /mnt/data/crucible/moodle/admin/cli")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
             .WithHttpHealthCheck(endpointName: "http")
             .WithEnvironment("memory_limit", "512M") // needs to be set for moosh plugin-list to work
             .WithEnvironment("XDEBUG_MODE", "coverage,debug")
-            //.WithEnvironment("XDEBUG_FILTER", "exclude path /opt/moosh/*") // this only works with 'coverage' in the mode variable
             .WithEnvironment("REVERSEPROXY", "true")
             .WithEnvironment("SITE_URL", "http://localhost:8081")
             .WithEnvironment("SSLPROXY", "false")
             .WithEnvironment("DEBUG", "true")
+            .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)
+            .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
+            .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
+            .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
+            .WithEnvironment("POST_CONFIGURE_COMMANDS", @"/usr/local/bin/post_configure.sh")
+            .WithBindMount("/mnt/data/crucible/moodle/theme", "/var/www/html/theme", isReadOnly: false)
+            .WithBindMount("/mnt/data/crucible/moodle/lib", "/var/www/html/lib", isReadOnly: false)
+            .WithBindMount("/mnt/data/crucible/moodle/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/block_crucible", "/var/www/html/blocks/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/mod/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_groupquiz", "/var/www/html/mod/groupquiz", isReadOnly: true)
