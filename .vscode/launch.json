@@ -79,7 +79,14 @@
             "type": "dotnet",
             "request": "launch",
             "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/topo.env"
+            "envFile": "${workspaceFolder}/.env/topomojo.env"
+        },
+        {
+            "name": "Gameboard",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/gameboard.env"
         },
         {
             "name": "Moodle",
