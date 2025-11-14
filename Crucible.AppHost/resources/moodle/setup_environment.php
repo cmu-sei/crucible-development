@@ -28,6 +28,8 @@ list($options, $unrecognized) = cli_get_params([
     'create-user-field' => false,
     'json' => false,
     'requireconfirmation' => false,
+    'tokenendpoint' => '',
+    'userinfoendpoint' => '',
 ]);
 
 // Step dispatcher
@@ -138,16 +140,62 @@ function manage_oauth($options) {
     }
 
     if (empty($data->id)) {
-        $newissuer = $api->create_issuer($data);
-        $newid = $newissuer->get('id');
-        if ($newid) {
-            cli_writeln("Created provider with ID {$newid}");
+        $issuer = $api->create_issuer($data);
+        $issuerid = $issuer->get('id');
+        if ($issuerid) {
+            cli_writeln("Created provider with ID {$issuerid}");
         } else {
             cli_error("Failed to retrieve ID of new provider.");
         }
     } else {
         $api->update_issuer($data);
         cli_writeln("Updated provider with ID {$data->id}");
+    }
+
+    // Update endpoint
+    $tokenurl    = $options['tokenendpoint'] ?? '';
+    $userinfourl = $options['userinfoendpoint'] ?? '';
+
+    if ($tokenurl !== '' || $userinfourl !== '') {
+        // Get existing endpoints
+        $existing = [];
+        foreach (\core\oauth2\api::get_endpoints($issuer) as $endpoint) {
+            $existing[$endpoint->get('name')] = $endpoint;
+        }
+
+        // Token endpoint.
+        if ($tokenurl !== '') {
+            $edata = new stdClass();
+            $edata->issuerid = $issuerid;
+            $edata->name     = 'token_endpoint';
+            $edata->url      = $tokenurl;
+
+            if (isset($existing['token_endpoint'])) {
+                $edata->id = $existing['token_endpoint']->get('id');
+                \core\oauth2\api::update_endpoint($edata);
+                cli_writeln("Updated token_endpoint for issuer ID {$issuerid} to {$tokenurl}");
+            } else {
+                \core\oauth2\api::create_endpoint($edata);
+                cli_writeln("Created token_endpoint for issuer ID {$issuerid} with URL {$tokenurl}");
+            }
+        }
+
+        // Userinfo endpoint.
+        if ($userinfourl !== '') {
+            $edata = new stdClass();
+            $edata->issuerid = $issuerid;
+            $edata->name     = 'userinfo_endpoint';
+            $edata->url      = $userinfourl;
+
+            if (isset($existing['userinfo_endpoint'])) {
+                $edata->id = $existing['userinfo_endpoint']->get('id');
+                \core\oauth2\api::update_endpoint($edata);
+                cli_writeln("Updated userinfo_endpoint for issuer ID {$issuerid} to {$userinfourl}");
+            } else {
+                \core\oauth2\api::create_endpoint($edata);
+                cli_writeln("Created userinfo_endpoint for issuer ID {$issuerid} with URL {$userinfourl}");
+            }
+        }
     }
 }
 

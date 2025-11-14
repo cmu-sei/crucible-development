@@ -111,6 +111,8 @@ configure_oauth2() {
     --loginscopes="$KEYCLOAK_LOGINSCOPES" \
     --loginscopesoffline="$KEYCLOAK_LOGINSCOPESOFFLINE" \
     --name="$KEYCLOAK_NAME" \
+    --tokenendpoint="https://keycloak:8443/realms/crucible/protocol/openid-connect/token" \
+    --userinfoendpoint="https://keycloak:8443/realms/crucible/protocol/openid-connect/userinfo" \
     --image="$KEYCLOAK_IMAGE" \
     --requireconfirmation=0 \
     --showonloginpage=1 \
