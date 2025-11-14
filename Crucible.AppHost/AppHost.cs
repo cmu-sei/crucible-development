@@ -212,7 +212,9 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm alloy steamfitter caster")
-            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
+            .WithEnvironment("CorsPolicy__Origins__0", "http://localhost:4403") // for alloy-ui
+            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081"); // for moodle
 
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
@@ -251,7 +253,8 @@ public static class BuilderExtensions
             .WithEnvironment("OpenApi__Client__ClientId", "topomojo.api")
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("ASPNETCORE_URLS", "http://localhost:5000")
-            .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201")
+            .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201") // for topo-ui
+            .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithHttpEndpoint(name: "http", port: 5000, env: "PORT", isProxied: false)
