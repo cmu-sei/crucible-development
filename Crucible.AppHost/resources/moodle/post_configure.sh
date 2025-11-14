@@ -184,6 +184,7 @@ configure_xapi() {
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=username --set=defaultkey
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=password --set=defaultsed
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=mbox --set=1
+  php /var/www/html/admin/cli/cfg.php --component=tool_log --name=enabled_stores  --set=logstore_standard,logstore_xapi
 }
 
 configure_site() {
