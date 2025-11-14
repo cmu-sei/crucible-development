@@ -27,9 +27,11 @@ COPY 015-copy-plugins.sh /docker-entrypoint-init.d/
 # Copy scripts
 COPY post_configure.sh /usr/local/bin/
 COPY pre_configure.sh /usr/local/bin/
+COPY setup_environment.php /usr/local/bin/
+COPY install.sh /usr/local/bin/
 
 # Make scripts executable
-RUN chmod 755 /usr/local/bin/pre_configure.sh && chmod 755 /usr/local/bin/post_configure.sh
+RUN chmod 755 /usr/local/bin/pre_configure.sh && chmod 755 /usr/local/bin/post_configure.sh && chmod 755 /usr/local/bin/setup_environment.php && chmod 755 /usr/local/bin/install.sh
 
 # Switch back to nobody for security
 USER nobody
