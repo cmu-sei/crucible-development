@@ -40,10 +40,6 @@ switch ($options['step']) {
         enable_auth_oauth2();
         break;
 
-    case 'enable_logstore_xapi':
-        enable_logstore_xapi();
-        break;
-
     default:
         cli_error("Unknown step");
 }
@@ -178,32 +174,6 @@ function output_results($options, $results) {
         echo json_encode($results, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
     } else {
         print_r($results);
-    }
-}
-
-function enable_logstore_xapi() {
-    $plugin = 'tool_log';
-    $configname = 'enabled_stores';
-    $xapientry = 'logstore_xapi';
-
-    // Get current config value using Moodle API
-    $current = get_config($plugin, $configname);
-
-    if ($current !== false && $current !== null) {
-        $stores = array_map('trim', explode(',', $current));
-
-        if (in_array($xapientry, $stores)) {
-            echo "logstore_xapi is already enabled in enabled_stores.\n";
-        } else {
-            $stores[] = $xapientry;
-            set_config($configname, implode(',', $stores), $plugin);
-            echo "Added logstore_xapi to enabled_stores successfully.\n";
-        }
-    } else {
-        // No current value set, initialize it
-        $default = 'logstore_standard,' . $xapientry;
-        set_config($configname, $default, $plugin);
-        echo "Inserted new enabled_stores config with logstore_xapi.\n";
     }
 }
 ?>
