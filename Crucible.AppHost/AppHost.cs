@@ -535,8 +535,9 @@ public static class BuilderExtensions
         var lrsqlDb = postgres.AddDatabase("lrsqlDb", "lrsql");
 
         var moodle = builder.AddContainer("lrsql", "yetanalytics/lrsql")
+            .WaitFor(postgres)
             .WithContainerName("lrsql")
-            .WithHttpEndpoint(port: 1000, targetPort: 8080)
+            .WithHttpEndpoint(port: 9274, targetPort: 8080)
             .WithHttpHealthCheck(endpointName: "http")
             .WithEntrypoint("bin/run_postgres.sh")
             .WithEnvironment("LRSQL_ADMIN_USER_DEFAULT", "admin")

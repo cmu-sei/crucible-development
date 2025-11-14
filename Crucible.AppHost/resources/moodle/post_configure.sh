@@ -182,7 +182,7 @@ configure_xapi() {
   echo "Configuring xAPI"
   log "Enabling Logstore XAPI Plugin"
   php /var/www/html/admin/cli/cfg.php --component=tool_log --name=enabled_stores  --set=logstore_standard,logstore_xapi
-  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=endpoint --set=http://host.docker.internal:1000/xapi
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=endpoint --set=http://host.docker.internal:9274/xapi
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=username --set=defaultkey
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=password --set=defaultsecret
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=mbox --set=1
