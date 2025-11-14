@@ -495,6 +495,8 @@ public static class BuilderExtensions
         var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
 
         var moodle = builder.AddContainer("moodle", "moodle-custom-image")
+            .WaitFor(postgres)
+            .WaitFor(keycloak)
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
             .WithContainerName("moodle")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
