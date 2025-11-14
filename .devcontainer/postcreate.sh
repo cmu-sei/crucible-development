@@ -7,6 +7,7 @@ sudo chown -R $(whoami): /home/vscode/.microsoft
 sudo chown -R $(whoami): /mnt/data/
 
 scripts/clone-repos.sh
+scripts/add-moodle-mounts.sh
 
 dotnet tool install -g Aspire.Cli
 dotnet dev-certs https --trust
