@@ -79,7 +79,6 @@ configure_oauth2() {
       --list \
       --json=1 2>/dev/null)
 
-  # Use PHP to parse JSON and extract the ID for the matching name
   EXISTING_ID=$(printf '%s\n' "$EXISTING_JSON" | php -r '
     $name = "'"$KEYCLOAK_NAME"'";
     $data = json_decode(stream_get_contents(STDIN), true);
@@ -149,7 +148,6 @@ configure_oauth2() {
     log "User field mapping output: $MAP_OUT"
 
     if [ "$rc" -ne 0 ]; then
-      # Treat "already exists" as non-fatal if your PHP prints that verbiage
       if printf '%s\n' "$MAP_OUT" | grep -qi "already exists"; then
         log "Mapping ($external -> $internal) already exists; continuing."
       else
