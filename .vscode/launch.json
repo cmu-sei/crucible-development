@@ -89,6 +89,13 @@
             "envFile": "${workspaceFolder}/.env/gameboard.env"
         },
         {
+            "name": "Lrsql",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/lrsql.env"
+        },
+        {
             "name": "Moodle",
             "type": "dotnet",
             "request": "launch",

@@ -69,6 +69,7 @@ builder.AddGallery(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddBlueprint(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddGameboard(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddMoodle(postgres, keycloak, launchOptions);
+builder.AddLrsql(postgres, keycloak, launchOptions);
 
 builder.Build().Run();
 
@@ -504,7 +505,6 @@ public static class BuilderExtensions
             .WithEnvironment("SITE_URL", "http://localhost:8081")
             .WithEnvironment("SSLPROXY", "false")
             .WithEnvironment("DEBUG", "true")
-            .WithEnvironment("AUTO_UPDATE_MOODLE", "false") // went to stay fixed on 5.0.0 until the next LTS comes out
             .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
@@ -524,5 +524,27 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/qbehaviour_mojomatch", "/var/www/html/question/behaviour/mojomatch", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/aiplacement_classifyassist", "/var/www/html/ai/placement/classifyassist", isReadOnly: true);
+    }
+
+    public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        if (!options.Moodle) return;
+
+        var lrsqlDb = postgres.AddDatabase("lrsqlDb", "lrsql");
+
+        var moodle = builder.AddContainer("lrsql", "yetanalytics/lrsql")
+            .WithContainerName("lrsql")
+            .WithHttpEndpoint(port: 1000, targetPort: 8080)
+            .WithHttpHealthCheck(endpointName: "http")
+            .WithEntrypoint("bin/run_postgres.sh")
+            .WithEnvironment("LRSQL_ADMIN_USER_DEFAULT", "admin")
+            .WithEnvironment("LRSQL_ADMIN_PASS_DEFAULT", "Tartans@1")
+            .WithEnvironment("LRSQL_LOG_LEVEL", "INFO")
+            .WithEnvironment("LRSQL_DB_TYPE", "postgres")
+            .WithEnvironment("LRSQL_DB_USER", postgres.Resource.UserNameReference)
+            .WithEnvironment("LRSQL_DB_PASSWORD", postgres.Resource.PasswordParameter)
+            .WithEnvironment("LRSQL_DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("LRSQL_DB_PORT", "5432")
+            .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
     }
 }
