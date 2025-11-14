@@ -1,3 +1,6 @@
+echo configuring oauth
+/usr/local/bin/install.sh
+
 # TODO: configure lrsql before configuring issuerid and auth values below
 echo configuring xapi
 php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=endpoint --set=http://host.docker.internal:1000/xapi
