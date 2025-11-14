@@ -59,8 +59,8 @@ configure_oauth2() {
   KEYCLOAK_CLIENTSECRET="super-safe-secret"
   KEYCLOAK_NAME="Crucible Keycloak"
   KEYCLOAK_IMAGE="https://keycloak:8443/favicon.svg"
-  KEYCLOAK_LOGINSCOPES="openid basic profile email alloy-api blueprint-api caster-api cite-api gallery-api gameboard-api player-api steamfitter-api topomojo-api vm-api"
-  KEYCLOAK_LOGINSCOPESOFFLINE="openid basic profile email offline_access alloy-api blueprint-api caster-api cite-api gallery-api gameboard-api player-api steamfitter-api topomojo-api vm-api"
+  KEYCLOAK_LOGINSCOPES="openid profile email player player-vm alloy steamfitter caster"
+  KEYCLOAK_LOGINSCOPESOFFLINE="openid profile email offline_access player player-vm alloy steamfitter caster"
 
   # Verify required keys
   REQUIRED_KEYS="KEYCLOAK_URL KEYCLOAK_CLIENTID KEYCLOAK_CLIENTSECRET KEYCLOAK_LOGINSCOPES KEYCLOAK_LOGINSCOPESOFFLINE KEYCLOAK_NAME KEYCLOAK_IMAGE"
@@ -180,9 +180,11 @@ enable_oauth2_plugin() {
 configure_xapi() {
   # TODO: configure lrsql before configuring issuerid and auth values below
   echo "Configuring xAPI"
-  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=endpoint --set=http://host.docker.internal:1000/xapi
-  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=username --set=
-  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=password --set=
+  log "Enabling Logstore XAPI Plugin"
+  php /var/www/html/admin/cli/cfg.php --component=tool_log --name=enabled_stores  --set=logstore_standard,logstore_xapi
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=endpoint --set=http://host.docker.internal:9274/xapi
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=username --set=defaultkey
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=password --set=defaultsecret
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=mbox --set=1
 }
 

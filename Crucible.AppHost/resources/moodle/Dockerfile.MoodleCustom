@@ -24,6 +24,8 @@ COPY moosh.sh /usr/local/bin/moosh-new
 # Copy plugins install script
 COPY 015-copy-plugins.sh /docker-entrypoint-init.d/
 
+RUN chmod +x /docker-entrypoint-init.d/015-copy-plugins.sh
+
 # Copy scripts
 COPY post_configure.sh /usr/local/bin/
 COPY pre_configure.sh /usr/local/bin/

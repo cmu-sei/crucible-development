@@ -38,7 +38,7 @@ switch ($options['step']) {
 
     case 'enable_auth_oauth2':
         enable_auth_oauth2();
-    break;
+        break;
 
     default:
         cli_error("Unknown step");
