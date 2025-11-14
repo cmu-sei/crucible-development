@@ -168,4 +168,12 @@ function enable_auth_oauth2() {
         }
     }
 }
+
+function output_results($options, $results) {
+    if ($options['json']) {
+        echo json_encode($results, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+    } else {
+        print_r($results);
+    }
+}
 ?>

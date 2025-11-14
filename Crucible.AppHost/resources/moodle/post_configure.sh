@@ -71,6 +71,38 @@ configure_oauth2() {
     fi
   done
 
+  # Check if issuer already exists
+  log "Checking for existing OAuth2 provider named '$KEYCLOAK_NAME'..."
+
+  EXISTING_JSON=$(php /usr/local/bin/setup_environment.php \
+      --step=manage_oauth \
+      --list \
+      --json=1 2>/dev/null)
+
+  # Use PHP to parse JSON and extract the ID for the matching name
+  EXISTING_ID=$(printf '%s\n' "$EXISTING_JSON" | php -r '
+    $name = "'"$KEYCLOAK_NAME"'";
+    $data = json_decode(stream_get_contents(STDIN), true);
+    if (!empty($data["data"])) {
+        foreach ($data["data"] as $issuer) {
+            if (isset($issuer["name"]) && $issuer["name"] === $name) {
+                echo $issuer["id"];
+                exit(0);
+            }
+        }
+    }
+    exit(1);
+  ')
+
+  if [ -n "$EXISTING_ID" ]; then
+      log "OAuth2 provider already exists with ID: $EXISTING_ID"
+      OAUTH2_ISSUER_ID="$EXISTING_ID"
+      return 0
+  fi
+
+  log "No existing provider found. Creating a new one..."
+
+
   log "Creating a new OAuth2 provider..."
   PROVIDER_OUTPUT=$(php /usr/local/bin/setup_environment.php \
     --step=manage_oauth \
