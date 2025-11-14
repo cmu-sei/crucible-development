@@ -1,12 +1,20 @@
-# TODO: adjust permissions
+#!/bin/sh
+# Alpine default shell: ash
 
-echo removing old moodle core files
-rm -rf /var/www/html/theme
-rm -rf /var/www/html/lib
-rm -rf /var/www/html/admin/cli
+# Set moodle web root
+BASE="/var/www/html"
 
-# TODO: make sure that the dev container has the mounts set to 777 first
-echo copying moodle core files for debugging
-cp -r /moodle/theme /var/www/html/
-cp -r /moodle/lib /var/www/html/
-cp -r /moodle/admin/cli /var/www/html/admin/
+# Emulate array with space-separated values
+MOUNTPATHS="/var/www/html/theme /var/www/html/lib /var/www/html/admin/cli"
+
+for MOUNTPATH in $MOUNTPATHS; do
+    RELATIVE_PATH="${MOUNTPATH#$BASE/}"
+    # check for emtpy mount
+    if [ -z "$(ls -A "$MOUNTPATH")" ]; then
+        echo "$MOUNTPATH is empty, copying files";
+        PARENT_DIR=$(dirname "$MOUNTPATH")
+        cp -r /moodle/$RELATIVE_PATH "$PARENT_DIR"
+    else
+        echo "$MOUNTPATH is not empty, persisting files";
+    fi
+done

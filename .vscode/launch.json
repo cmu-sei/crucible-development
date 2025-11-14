@@ -107,9 +107,9 @@
             ],
             "pathMappings": {
                 // Map the remote path (inside the container) to the local path (on your host machine)
-                "/var/www/html/theme": "/mnt/data/crucible/moodle/theme",
-                "/var/www/html/lib": "/mnt/data/crucible/moodle/lib",
-                "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/admin/cli",
+                "/var/www/html/theme": "/mnt/data/crucible/moodle/moodle-core/theme",
+                "/var/www/html/lib": "/mnt/data/crucible/moodle/moodle-core/lib",
+                "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/moodle-core/admin/cli",
                 "/var/www/html/mod/crucible": "/mnt/data/crucible/moodle/mod_crucible",
                 "/var/www/html/mod/topomojo": "/mnt/data/crucible/moodle/mod_topomojo",
                 "/var/www/html/mod/groupquiz": "/mnt/data/crucible/moodle/mod_groupquiz",
