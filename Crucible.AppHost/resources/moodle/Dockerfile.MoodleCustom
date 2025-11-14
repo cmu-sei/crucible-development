@@ -3,7 +3,7 @@ FROM erseco/alpine-moodle:v5.0.0
 USER root
 
 # Install Xdebug cleanly without apk update
-RUN apk add --no-cache php83-pecl-xdebug su-exec
+RUN apk add --no-cache php83-pecl-xdebug
 
 # Copy files for debugging
 RUN mkdir -p /moodle/admin && \
@@ -20,6 +20,9 @@ COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy moosh with user-agent setting since we don't have the latest alpine-moodle or moosh
 COPY moosh.sh /usr/local/bin/moosh-new
+
+# Copy plugins install script
+COPY 015-copy-plugins.sh /docker-entrypoint-init.d/
 
 # Copy scripts
 COPY post_configure.sh /usr/local/bin/
