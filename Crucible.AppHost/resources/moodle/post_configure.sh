@@ -1,3 +1,9 @@
+# TODO: configure lrsql before configuring issuerid and auth values below
+echo configuring xapi
+php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=endpoint --set=http://host.docker.internal:1000/xapi
+php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=username --set=
+php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=password --set=
+php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=mbox --set=1
 
 # TODO: configure oauth before configuring issuerid and auth values below
 echo confguring crucible...
