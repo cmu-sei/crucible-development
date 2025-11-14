@@ -26,7 +26,7 @@ COPY post_configure.sh /usr/local/bin/
 COPY pre_configure.sh /usr/local/bin/
 
 # Make scripts executable
-RUN chmod 755 /usr/local/bin/post_configure.sh && chmod 755 /usr/local/bin/post_configure.sh
+RUN chmod 755 /usr/local/bin/pre_configure.sh && chmod 755 /usr/local/bin/post_configure.sh
 
 # Switch back to nobody for security
 USER nobody

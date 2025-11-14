@@ -493,9 +493,6 @@ public static class BuilderExtensions
         var moodle = builder.AddContainer("moodle", "moodle-custom-image")
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
             .WithContainerName("moodle")
-            //.WithCommand("/bin/bash", "-c", "mkdir /mnt/data/crucible/moodle/theme")
-            //.WithCommand("/bin/bash", "-c", "mkdir /mnt/data/crucible/moodle/lib")
-            //.WithCommand("/bin/bash", "-c", "mkdir /mnt/data/crucible/moodle/admin/cli")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
             .WithHttpHealthCheck(endpointName: "http")
             .WithEnvironment("memory_limit", "512M") // needs to be set for moosh plugin-list to work
