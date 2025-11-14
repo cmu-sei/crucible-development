@@ -121,7 +121,6 @@ configure_oauth2() {
     error "$section" "Provider creation failed (rc=$rc)."
   fi
 
-  # Extract provider ID from "Created provider with ID <num>"
   NEW_ISSUER_ID=$(printf '%s\n' "$PROVIDER_OUTPUT" \
     | awk '/Created provider with ID[[:space:]][0-9]+/ {print $NF; exit}')
   if [ -z "$NEW_ISSUER_ID" ]; then
