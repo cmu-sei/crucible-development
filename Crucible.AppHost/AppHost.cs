@@ -17,7 +17,10 @@ var postgres = builder.AddPostgres("postgres")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
     .WithContainerName("crucible-postgres")
-    .WithPgAdmin();
+    .WithPgAdmin(pgAdmin =>
+    {
+        pgAdmin.WithEndpoint("http", endpoint => endpoint.Port = 33000);
+    });
 
 var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak");
 var keycloak = builder.AddKeycloak("keycloak", 8080)
@@ -30,6 +33,7 @@ var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithEnvironment("KC_HOSTNAME", "localhost")
     .WithEnvironment("KC_HTTPS_PORT", "8443")
     .WithEnvironment("KC_HOSTNAME_STRICT", "false")
+    .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
     .WithBindMount("../.devcontainer/certs/crucible-dev.crt", "/opt/keycloak/conf/crucible-dev.crt", isReadOnly: true)
     .WithBindMount("../.devcontainer/certs/crucible-dev.key", "/opt/keycloak/conf/crucible-dev.key", isReadOnly: true)
     .WithHttpsEndpoint(8443, 8443)
@@ -507,6 +511,8 @@ public static class BuilderExtensions
             .WithEnvironment("SITE_URL", "http://localhost:8081")
             .WithEnvironment("SSLPROXY", "false")
             .WithEnvironment("DEBUG", "true")
+            .WithEnvironment("MOODLE_ADMIN_USERNAME", "admin")
+            .WithEnvironment("MOODLE_ADMIN_PASSWORD", "admin")
             .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
