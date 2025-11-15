@@ -60,7 +60,7 @@ for entry in $PLUGINS; do
     gradereport) target="/var/www/html/grade/report/$plugin_subdir" ;;
     message) target="/var/www/html/message/output/$plugin_subdir" ;;
     tool) target="/var/www/html/admin/tool/$plugin_subdir" ;;
-    logstore) target="/var/www/html/admin/tool/log/store/$plugin_subdir" ;;
+    logstore) target="/var/www/html/admin/tool/log/store/$plugin_subdir" ;; # added to support logstore_xapi plugin
     profilefield) target="/var/www/html/user/profile/field/$plugin_subdir" ;;
     quiz) target="/var/www/html/mod/quiz/report/$plugin_subdir" ;;
     plagiarism) target="/var/www/html/plagiarism/$plugin_subdir" ;;

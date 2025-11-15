@@ -1,11 +1,15 @@
 #!/bin/bash
 
-mkdir -p /mnt/data/crucible/moodle/moodle-core/
-mkdir -p /mnt/data/crucible/moodle/moodle-core/theme
-mkdir -p /mnt/data/crucible/moodle/moodle-core/lib
-mkdir -p /mnt/data/crucible/moodle/moodle-core/admin/cli
-chmod 777 /mnt/data/crucible/moodle/moodle-core/
-chmod 777 /mnt/data/crucible/moodle/moodle-core/theme
-chmod 777 /mnt/data/crucible/moodle/moodle-core/lib
-chmod 777 /mnt/data/crucible/moodle/moodle-core/admin/cli
+# Define an array of directories
+DIRS=(
+    "/mnt/data/crucible/moodle/moodle-core/"
+    "/mnt/data/crucible/moodle/moodle-core/theme"
+    "/mnt/data/crucible/moodle/moodle-core/lib"
+    "/mnt/data/crucible/moodle/moodle-core/admin/cli"
+)
 
+# Loop through the array to create directories and set permissions
+for DIR in "${DIRS[@]}"; do
+    mkdir -p "$DIR"
+    chmod 777 "$DIR"
+done

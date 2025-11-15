@@ -168,10 +168,6 @@
         {
           "name": "tool_lptmanager",
           "url": "https://github.com/cmu-sei/moodle-tool_lptmanager"
-        },
-        {
-          "name": "aiplacement_classifyassist",
-          "url": "https://github.com/sei-npacheco/moodle-aiplacement_classifyassist"
         }
       ]
     }

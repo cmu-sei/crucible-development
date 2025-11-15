@@ -1,4 +1,8 @@
 #!/usr/bin/env php
+
+# this script is used to set the user-agent header and is copied from alpine-moodle at:
+# https://github.com/erseco/alpine-moodle/blob/main/rootfs/usr/local/bin/moosh
+
 <?php
 putenv('HOME=/tmp');
 chdir('/opt/moosh');

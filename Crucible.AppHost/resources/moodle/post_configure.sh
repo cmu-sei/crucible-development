@@ -212,16 +212,15 @@ configure_topomojo() {
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=topomojoapiurl --set=http://localhost:5000/api;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=topomojobaseurl --set=http://localhost:4201;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableapikey --set=1;
-  php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enablemanagername --set=1;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';
+  echo "TopoMojo API KEY needs to be generated and set manually"
+  #php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
 }
 
 create_course() {
   echo "Creating course"
   moosh course-list | grep -q 'Test Course' || moosh course-create 'Test Course';
-  #moosh-new plugin-list;
-  #moosh plugin-install --release 2025070100 tool_userdebug
 }
 
 # Main execution
@@ -231,12 +230,19 @@ log "Starting script..."
 touch "$STATUS_FILE"
 
 # Execute sections based on status
+execute_section "Site Configuration" configure_site
 execute_section "OAuth2 Configuration" configure_oauth2
 execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
-execute_section "Site Configuration" configure_site
 execute_section "Crucible Configuration" configure_crucible
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
+
+# On subsequent runs add admin user to the list of site admins
+ADMINUSERID=$(moosh user-list | grep admin@localhost | sed -e "s/admin.*(\([0-9]\)),.*/\1/")
+if [ -n "$ADMINUSERID" ]; then
+    log "Found user admin@localhost with ID: $ADMINUSERID and resetting siteadmins list"
+    php admin/cli/cfg.php --name=siteadmins --set="2,$ADMINUSERID"
+fi
 
 log "Script completed successfully!"
