@@ -22,47 +22,12 @@ var postgres = builder.AddPostgres("postgres")
         pgAdmin.WithEndpoint("http", endpoint => endpoint.Port = 33000);
     });
 
-var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak");
-var keycloak = builder.AddKeycloak("keycloak", 8080)
-    .WithReference(keycloakDb)
-    // Configure environment variables for the PostgreSQL connection
-    .WithEnvironment("KC_DB", "postgres")
-    .WithEnvironment("KC_DB_URL_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
-    .WithEnvironment("KC_DB_USERNAME", postgres.Resource.UserNameReference)
-    .WithEnvironment("KC_DB_PASSWORD", postgres.Resource.PasswordParameter)
-    .WithEnvironment("KC_HOSTNAME", "localhost")
-    .WithEnvironment("KC_HTTPS_PORT", "8443")
-    .WithEnvironment("KC_HOSTNAME_STRICT", "false")
-    .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
-    .WithBindMount("../.devcontainer/certs/crucible-dev.crt", "/opt/keycloak/conf/crucible-dev.crt", isReadOnly: true)
-    .WithBindMount("../.devcontainer/certs/crucible-dev.key", "/opt/keycloak/conf/crucible-dev.key", isReadOnly: true)
-    .WithHttpsEndpoint(8443, 8443)
-    .WithArgs(
-        "start",
-        "--http-enabled=true",
-        "--http-port=8080",
-        "--https-port=8443",
-        "--https-certificate-file=/opt/keycloak/conf/crucible-dev.crt",
-        "--https-certificate-key-file=/opt/keycloak/conf/crucible-dev.key",
-        "--hostname-strict=false"
-    )
-    .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
-
-var keycloakManagementEndpointAnnotation = keycloak.Resource.Annotations
-    .OfType<EndpointAnnotation>()
-    .FirstOrDefault(e => e.Name == "management");
-
-if (keycloakManagementEndpointAnnotation is not null)
-{
-    keycloakManagementEndpointAnnotation.Transport = "https";
-    keycloakManagementEndpointAnnotation.UriScheme = "https";
-}
-
 var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithBindMount("/mnt/data/crucible/crucible-docs", "/docs", isReadOnly: true)
     .WithHttpEndpoint(port: 8000, targetPort: 8000)
     .WithArgs("serve", "-a", "0.0.0.0:8000");
 
+var keycloak = builder.AddKeycloak(postgres);
 builder.AddPlayer(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddCaster(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddAlloy(postgres, keycloak, launchOptions, addAllApplications);
@@ -79,6 +44,40 @@ builder.Build().Run();
 
 public static class BuilderExtensions
 {
+    public static IResourceBuilder<KeycloakResource> AddKeycloak(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres)
+    {
+        var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak");
+        var keycloak = builder.AddKeycloak("keycloak", 8080)
+            .WithReference(keycloakDb)
+            // Configure environment variables for the PostgreSQL connection
+            .WithEnvironment("KC_DB", "postgres")
+            .WithEnvironment("KC_DB_URL_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("KC_DB_USERNAME", postgres.Resource.UserNameReference)
+            .WithEnvironment("KC_DB_PASSWORD", postgres.Resource.PasswordParameter)
+            .WithEnvironment("KC_HOSTNAME", "localhost")
+            .WithEnvironment("KC_HTTPS_PORT", "8443")
+            .WithEnvironment("KC_HOSTNAME_STRICT", "false")
+            .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
+            .WithEnvironment("KC_HTTPS_CERTIFICATE_FILE", "/opt/keycloak/conf/crucible-dev.crt")
+            .WithEnvironment("KC_HTTPS_CERTIFICATE_KEY_FILE", "/opt/keycloak/conf/crucible-dev.key")
+            .WithBindMount("../.devcontainer/certs/crucible-dev.crt", "/opt/keycloak/conf/crucible-dev.crt", isReadOnly: true)
+            .WithBindMount("../.devcontainer/certs/crucible-dev.key", "/opt/keycloak/conf/crucible-dev.key", isReadOnly: true)
+            .WithHttpsEndpoint(8443, 8443)
+            .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
+
+        var keycloakManagementEndpointAnnotation = keycloak.Resource.Annotations
+            .OfType<EndpointAnnotation>()
+            .FirstOrDefault(e => e.Name == "management");
+
+        if (keycloakManagementEndpointAnnotation is not null)
+        {
+            keycloakManagementEndpointAnnotation.Transport = "https";
+            keycloakManagementEndpointAnnotation.UriScheme = "https";
+        }
+
+        return keycloak;
+    }
+
     public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
         if (!addAll && !options.Player)
