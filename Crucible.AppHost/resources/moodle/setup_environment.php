@@ -1,7 +1,7 @@
+<?php
 // Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
-<?php
 // setup_environment.php — multi-function CLI, retains category creation as-is
 define('CLI_SCRIPT', true);
 require('/var/www/html/config.php');
