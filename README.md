@@ -63,3 +63,41 @@ docker exec -it crucible-postgres /bin/bash
 pg_dump -U postgres blueprint > /tmp/blueprint.dump
 exit
 docker cp crucible-postgres:/tmp/blueprint.dump blueprint.dump
+
+## Moodle configuration
+
+Moodle will be configured using files located in `scripts/` and `resources/moodle/`.
+When starting for the first time, Moodle will make a copy of some core files that will
+be copied into mounts on the dev container's file system so that they are accessible for
+debugging with xdebug. These files will be mounted alongside our repos under the folder
+`/mnt/data/crucible/moodle/moodle-core/`. Moodle will be configured for oauth automatically.
+The xAPI logstore plugin will also be configured automatically as will one default Moodle
+course with no activities within it.
+
+The oauth admin user has an email address set and the Moodle client has a hard-coded secret.
+
+After Moodle starts for the first time, login using the oauth admin user account, navigate
+to the oauth settings and connect the system account. When the container reboots, the
+oauth admin user will be added to the list of site admins. Please note that every time
+the container restarts the list of site admins will be reset to the local admin and the
+oauth admin account.
+
+To configure Moodle to work with TopoMojo, login to TopoMojo, generate an API key, and
+add that API key to the Moodle crucible plugin's configuration in the Moodle UI or in the
+script `post_configure.sh`.
+
+To add new Moodle plugins, add them to `scripts/repos.json`, `launch.json`, `AppHost.cs`,
+and possible `xdebug_filter.sh`.
+
+The xdebug configuration is set to `off` in its configuration file, `xdebug.ini`, however
+the `AppHost.cs` file sets the `XDEBUG_MODE` environment variable to enable it. PHP on the
+Moodle container will pause its execution if xdebug is enabled and the remote debugger in
+the devcontainer is not running. To prevent this from happening, ensure that the Xdebug task
+is running in vscode when `XDEBUG_MODE` is enabled via the `AppHost.cs` file. An additional
+configuration for xdebug in enabled when the mode includes `coverage`: `xdebug_filter.php`.
+This script is meant to limit the scope of the code being analyzed by xdebug.
+
+To make additional paths available for debugging, add the paths to `Dockerfile.MoodleCustom`,
+`add-moodle-mounts.sh`, `AppHost.cs`, `pre_configure.sh` and `launch.json`.
+
+To add additional plugins, add them to the `PLUGINS` environment variable in `AppHost.cs`.
