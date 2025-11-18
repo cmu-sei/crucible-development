@@ -18,7 +18,8 @@
     "ghcr.io/devcontainers/features/node:1": {},
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/php:1": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages" // this might not be needed. will try removing later.
@@ -29,6 +30,7 @@
   ],
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
+  "forwardPorts": [9003],  // ✅ Added this line for Xdebug
   "customizations": {
     "vscode": {
       "extensions": [

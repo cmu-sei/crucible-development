@@ -15,7 +15,7 @@
         "showBrowserNotificationsOnConsoleEvents": true
     },
     "oidc": {
-        "authority": "http://localhost:8080/realms/crucible",
+        "authority": "https://localhost:8443/realms/crucible",
         "client_id": "gameboard.ui",
         "redirect_uri": "http://localhost:4202/oidc",
         "post_logout_redirect_uri": "http://localhost:4202",

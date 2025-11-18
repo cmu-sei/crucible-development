@@ -3,7 +3,7 @@
   "apphost": "http://localhost:5000",
   "mkshost": "http://localhost:5004/mks/",
   "oidc": {
-    "authority": "http://localhost:8080/realms/crucible",
+    "authority": "https://localhost:8443/realms/crucible",
     "client_id": "topomojo.ui",
     "response_type": "code",
     "scope": "openid profile topomojo",

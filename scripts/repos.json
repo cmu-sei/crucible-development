@@ -137,6 +137,39 @@
           "url": "https://github.com/cmu-sei/gameboard-ui"
         }
       ]
+    },
+    {
+      "name": "moodle",
+      "repos": [
+        {
+          "name": "block_crucible",
+          "url": "https://github.com/cmu-sei/moodle-block_crucible"
+        },
+        {
+          "name": "mod_crucible",
+          "url": "https://github.com/cmu-sei/moodle-mod_crucible"
+        },
+        {
+          "name": "mod_groupquiz",
+          "url": "https://github.com/cmu-sei/moodle-mod_groupquiz"
+        },
+        {
+          "name": "mod_topomojo",
+          "url": "https://github.com/cmu-sei/moodle-mod_topomojo"
+        },
+        {
+          "name": "qtype_mojomatch",
+          "url": "https://github.com/cmu-sei/moodle-qtype_mojomatch"
+        },
+        {
+          "name": "qbehaviour_mojomatch",
+          "url": "https://github.com/cmu-sei/moodle-qbehaviour_mojomatch"
+        },
+        {
+          "name": "tool_lptmanager",
+          "url": "https://github.com/cmu-sei/moodle-tool_lptmanager"
+        }
+      ]
     }
   ],
   "repos": [

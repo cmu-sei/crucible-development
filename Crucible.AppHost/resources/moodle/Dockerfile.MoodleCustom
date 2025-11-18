@@ -1,0 +1,42 @@
+FROM erseco/alpine-moodle:v5.0.0
+
+USER root
+
+# Install Xdebug cleanly without apk update
+RUN apk add --no-cache php83-pecl-xdebug
+
+# Copy files for debugging
+RUN mkdir -p /moodle/admin && \
+    cp -pr /var/www/html/theme /moodle/ && \
+    cp -pr /var/www/html/lib /moodle/ && \
+    cp -pr /var/www/html/admin/cli /moodle/admin/ && \
+    chown -R nobody:nobody /moodle
+
+# Copy Xdebug configuration
+COPY xdebug.ini /etc/php83/conf.d/50_xdebug.ini
+
+# Copy nginx configuration with fastcgi_read_timeout 300
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy moosh with user-agent setting since we don't have the latest alpine-moodle or moosh
+COPY moosh.sh /usr/local/bin/moosh-new
+
+# Copy plugins install script
+COPY 015-copy-plugins.sh /docker-entrypoint-init.d/
+
+RUN chmod +x /docker-entrypoint-init.d/015-copy-plugins.sh
+
+# Copy scripts
+COPY post_configure.sh /usr/local/bin/
+COPY pre_configure.sh /usr/local/bin/
+COPY setup_environment.php /usr/local/bin/
+
+# Make scripts executable
+RUN chmod 755 /usr/local/bin/pre_configure.sh && chmod 755 /usr/local/bin/post_configure.sh && chmod 755 /usr/local/bin/setup_environment.php
+
+# Switch back to nobody for security
+USER nobody
+
+# Copy xdebug filter settings
+# TODO: determine if the script is actually working to limit xdebug
+COPY xdebug_filter.php /var/www/html/xdebug_filter.php
