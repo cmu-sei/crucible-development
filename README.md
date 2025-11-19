@@ -78,11 +78,16 @@ automatically as will one default Moodle course with no activities within it.
 Moodle will be configured for oauth automatically. The oauth admin user has an email
 address set and the Moodle client has a hard-coded secret.
 
-After Moodle starts for the first time, login using the oauth admin user account, navigate
-to the oauth settings and connect the system account. When the container reboots, the
-oauth admin user will be added to the list of site admins. Please note that every time
-the container restarts the list of site admins will be reset to the local admin and the
-oauth admin account.
+After Moodle starts for the first time, login using the oauth admin user account and
+it will than have an account on Moodle. Make the oauth admin account a site admin by
+either logging in as local admin and using the Site Administration menu, or, simply
+restart the Moodle container via the Aspire dashboard and when the container restarts,
+the oauth admin user will be added to the list of site admins. Please note that every
+time the container restarts the list of site admins will be reset to the local admin
+and the oauth admin account. When the oauth admin account has been made a site admin,
+login with it and navigate to the oauth server settings under Site Administration,
+Server, and connect the system account. This will enable our plugins to communicate with
+the various Crucible applications.
 
 ### Crucible Plugin
 
@@ -100,11 +105,17 @@ script `post_configure.sh`.
 To add new Moodle plugin repositories, add them to `scripts/repos.json`, `launch.json`,
 `AppHost.cs`, and the `xdebug_filter.sh` files.
 
-### Adding Additional Official Plugins
+### Adding Additional Official Plugins for Moodle
 
 To add additional plugins, add them to the `PLUGINS` environment variable in `AppHost.cs`.
 
-### Debugging
+### Moodle PHP Debugging with xdebug
+
+If you do not wish to debug Moodle, simply run Moodle via the `Moodle` task. Id you do wish
+to debug Mooodle, run Moodle via the `Moodle Debug` composite task. This task will start
+both the Moodle and Xdebug tasks. The specific setting to control the xdebug mode is set
+inside the `moodle.env` file or the `moodle-xdebug.env` file. Update the `XdebugMode` to
+the type of xdebug feature(s) you wish to use.
 
 The xdebug configuration is set to `off` in its configuration file, `xdebug.ini`, however
 the `AppHost.cs` file sets the `XDEBUG_MODE` environment variable to enable it. PHP on the
@@ -117,3 +128,10 @@ This script is meant to limit the scope of the code being analyzed by xdebug.
 To make additional paths available for debugging, add the paths to `Dockerfile.MoodleCustom`,
 `add-moodle-mounts.sh`, `AppHost.cs`, `pre_configure.sh` and `launch.json`.
 
+### Moodle UI Debug Display
+
+The standard Moodle debugging level and display via the UI can be set under the normal Site
+Administration, Development, menu. The install process for this container installs the plugin
+`tool_userdebug` which allows site admins to easily toggle debug display via an icon added
+to the header just to the left of the user avatar in the upper right corner of the screen.
+This is the preferred method to enable display of debug messages inside of the browser.
