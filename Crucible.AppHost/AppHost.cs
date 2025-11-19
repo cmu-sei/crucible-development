@@ -505,11 +505,10 @@ public static class BuilderExtensions
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
             .WithHttpHealthCheck(endpointName: "http")
             .WithEnvironment("memory_limit", "512M") // needs to be set for moosh plugin-list to work
-            .WithEnvironment("XDEBUG_MODE", "debug")
+            .WithEnvironment("XDEBUG_MODE", options.XdebugMode)
             .WithEnvironment("REVERSEPROXY", "true")
             .WithEnvironment("SITE_URL", "http://localhost:8081")
             .WithEnvironment("SSLPROXY", "false")
-            .WithEnvironment("DEBUG", "true")
             .WithEnvironment("MOODLE_ADMIN_USERNAME", "admin")
             .WithEnvironment("MOODLE_ADMIN_PASSWORD", "admin")
             .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)

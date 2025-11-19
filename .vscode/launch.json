@@ -130,6 +130,7 @@
     "compounds": [
         {
             "name": "Moodle Debug",
+            "envFile": "${workspaceFolder}/.env/moodle-xdebug.env",
             "configurations": ["Moodle", "Xdebug"]
         }
     ]
