@@ -3,7 +3,12 @@ FROM erseco/alpine-moodle:v5.0.0
 USER root
 
 # Install Xdebug cleanly without apk update
-RUN apk add --no-cache php83-pecl-xdebug
+RUN apk add --no-cache php83-pecl-xdebug ca-certificates
+
+# Adding Zscaler Cert
+COPY certs/ZscalerRootCertificate-2048-SHA256.crt \
+    /usr/local/share/ca-certificates/ZscalerRootCertificate-2048-SHA256.crt
+RUN update-ca-certificates
 
 # Copy files for debugging
 RUN mkdir -p /moodle/admin && \
