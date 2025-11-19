@@ -18,10 +18,14 @@ npm install -g @angular/cli@latest
 # Stage custom CA certs so Minikube trusts them
 CUSTOM_CERT_SOURCE="/usr/local/share/ca-certificates/custom"
 MINIKUBE_CERT_DEST="${HOME}/.minikube/files/etc/ssl/certs/custom"
+MOODLE_CERT_DEST="/workspaces/crucible-development/Crucible.AppHost/resources/moodle/certs"
 if compgen -G "${CUSTOM_CERT_SOURCE}"'/*.crt' > /dev/null; then
   mkdir -p "${MINIKUBE_CERT_DEST}"
   cp "${CUSTOM_CERT_SOURCE}"/*.crt "${MINIKUBE_CERT_DEST}/"
   echo "Copied custom CA certificates to ${MINIKUBE_CERT_DEST}"
+  mkdir -p "${MOODLE_CERT_DEST}"
+  cp "${CUSTOM_CERT_SOURCE}"/*.crt "${MOODLE_CERT_DEST}/"
+  echo "Copied custom CA certificates to ${MOODLE_CERT_DEST}"
 else
   echo "No custom CA certificates found in ${CUSTOM_CERT_SOURCE}; skipping copy."
 fi
