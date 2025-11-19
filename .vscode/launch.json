@@ -103,6 +103,16 @@
             "envFile": "${workspaceFolder}/.env/moodle.env"
         },
         {
+            "name": "Moodle-Xdebug",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/moodle-xdebug.env",
+                "presentation": {
+                    "hidden": true
+                }
+        },
+        {
             "name": "Xdebug",
             "type": "php",
             "request": "launch",
@@ -124,14 +134,16 @@
                 "/var/www/html/admin/tool/lptmanager": "/mnt/data/crucible/moodle/tool_lptmanager",
                 "/var/www/html/question/type/crucible": "/mnt/data/crucible/moodle/qtype_mojomatch",
                 "/var/www/html/question/behaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch"
-            }
+            },
+                "presentation": {
+                    "hidden": true
+                }
         }
     ],
     "compounds": [
         {
             "name": "Moodle Debug",
-            "envFile": "${workspaceFolder}/.env/moodle-xdebug.env",
-            "configurations": ["Moodle", "Xdebug"]
+            "configurations": ["Moodle-Xdebug", "Xdebug"]
         }
     ]
 }
