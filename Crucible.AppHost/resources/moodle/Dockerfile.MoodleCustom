@@ -9,7 +9,7 @@ RUN apk add --no-cache php83-pecl-xdebug ca-certificates
 COPY certs/ /usr/local/share/ca-certificates/custom/
 
 # Only run update-ca-certificates if any .crt exists
-RUN if ls /usr/local/share/ca-certificates/custom/*.crt >/dev/null 2>&1; then \
+RUN if [ -f /usr/local/share/ca-certificates/custom/*.crt ]; then \
     cp /usr/local/share/ca-certificates/custom/Zscaler* /usr/local/share/ca-certificates/ && \
     echo "Updating CA certificates..." && update-ca-certificates; \
     else \
