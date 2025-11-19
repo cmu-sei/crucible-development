@@ -118,12 +118,14 @@ inside the `moodle.env` file or the `moodle-xdebug.env` file. Update the `Xdebug
 the type of xdebug feature(s) you wish to use.
 
 The xdebug configuration is set to `off` in its configuration file, `xdebug.ini`, however
-the `AppHost.cs` file sets the `XDEBUG_MODE` environment variable to enable it. PHP on the
-Moodle container will pause its execution if xdebug is enabled and the remote debugger in
-the devcontainer is not running. To prevent this from happening, ensure that the Xdebug task
-is running in vscode when `XDEBUG_MODE` is enabled via the `AppHost.cs` file. An additional
-configuration for xdebug is enabled when the mode includes `coverage`: `xdebug_filter.php`.
-This script is meant to limit the scope of the code being analyzed by xdebug.
+the `AppHost.cs` file sets the `XDEBUG_MODE` environment variable to enable it.
+
+**PHP on the Moodle container will pause execution after the line `Upgrading config.php...`
+if xdebug is enabled and the remote debugger in the devcontainer is not running.** To prevent
+this from happening, ensure that the Xdebug task is running in vscode when `XDEBUG_MODE` is
+enabled via the `AppHost.cs` file. An additional configuration for xdebug is enabled when the
+mode includes `coverage`: `xdebug_filter.php`. This script is meant to limit the scope of the
+code being analyzed by xdebug.
 
 To make additional paths available for debugging, add the paths to `Dockerfile.MoodleCustom`,
 `add-moodle-mounts.sh`, `AppHost.cs`, `pre_configure.sh` and `launch.json`.
