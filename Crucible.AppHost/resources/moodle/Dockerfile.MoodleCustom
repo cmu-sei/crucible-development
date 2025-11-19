@@ -9,8 +9,12 @@ RUN apk add --no-cache php83-pecl-xdebug ca-certificates
 COPY certs/ /usr/local/share/ca-certificates/custom/
 
 # Only run update-ca-certificates if any .crt exists
-RUN cp /usr/local/share/ca-certificates/custom/*.crt /usr/local/share/ca-certificates/ 2>/dev/null || true && \
-    update-ca-certificates || echo "No extra CA certificates found"
+RUN sh -c 'if ls /usr/local/share/ca-certificates/custom/*.crt >/dev/null 2>&1; then \
+    cp /usr/local/share/ca-certificates/custom/*.crt /usr/local/share/ca-certificates/ && \
+    update-ca-certificates; \
+    else \
+    echo "No extra CA certificates found, skipping update-ca-certificates"; \
+    fi'
 
 # Copy files for debugging
 RUN mkdir -p /moodle/admin && \
