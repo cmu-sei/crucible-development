@@ -1,0 +1,50 @@
+{{- $postgresConfig := .Values.postgresql -}}
+{{- if not $postgresConfig }}
+{{- $postgresConfig = .Values.postgresql -}}
+{{- end }}
+{{- $postgresUser := "postgres" -}}
+{{- if and $postgresConfig $postgresConfig.env $postgresConfig.env.vars (hasKey $postgresConfig.env.vars "POSTGRES_USER") }}
+{{- $postgresUser = index $postgresConfig.env.vars "POSTGRES_USER" -}}
+{{- end }}
+{{- $postgresPort := 5432 -}}
+{{- if and $postgresConfig $postgresConfig.service $postgresConfig.service.port }}
+{{- $postgresPort = $postgresConfig.service.port -}}
+{{- end }}
+{{- $postgresHost := include "crucible.postgresql.serviceName" . -}}
+{{- $postgresSecretName := include "crucible.postgresql.secretName" . -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-postgres-create-keycloak-db"
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: "{{ .Release.Name }}"
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: create-keycloak-db
+        image: postgres:15-alpine
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ $postgresSecretName }}
+              key: postgres-password
+        command:
+        - sh
+        - -c
+        - |
+          until pg_isready -h {{ $postgresHost }} -p {{ $postgresPort }} -U "{{ $postgresUser }}" ; do
+            echo "Waiting for Postgres to be ready..."
+            sleep 5
+          done
+          echo "Postgres is ready - creating database keycloak"
+          psql -h {{ $postgresHost }} -p {{ $postgresPort }} -U "{{ $postgresUser }}" -d postgres \
+            -c "CREATE DATABASE keycloak;" \
+            || echo "Database may already exist or an error occurred"
+      # optionally add serviceAccountName, imagePullSecrets, etc.

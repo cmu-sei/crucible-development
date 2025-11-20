@@ -1,0 +1,4 @@
+certificateAuthority:
+  commonName: Crucible CA
+  organization: Carnegie Mellon University
+  organizationalUnit: Software Engineering Institute

@@ -1,0 +1,24 @@
+apiVersion: v2
+name: crucible
+description: Crucible stack deployment
+
+type: application
+version: 0.0.0
+
+dependencies:
+  - name: nfs-server-provisioner
+    repository: https://kvaps.github.io/charts
+    version: 1.8.0
+  - name: ingress-nginx
+    repository: https://kubernetes.github.io/ingress-nginx
+    version: 4.12.2
+  - name: postgres
+    alias: postgresql
+    repository: https://self-hosters-by-night.github.io/helm-charts
+    version: 0.12.0
+  - name: keycloak
+    repository: oci://registry-1.docker.io/bitnamicharts
+    version: 24.6.4
+  - name: topomojo
+    repository: https://helm.cmusei.dev/charts
+    version: 0.5.2

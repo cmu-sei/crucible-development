@@ -25,6 +25,21 @@ else
   echo "No custom CA certificates found in ${CUSTOM_CERT_SOURCE}; skipping copy."
 fi
 
+# Add helm repos
+declare -A HELM_REPOS=(
+  [cmusei]="https://helm.cmusei.dev/charts"
+  [jetstack]="https://charts.jetstack.io"
+  [prometheus-community]="https://prometheus-community.github.io/helm-charts"
+  [ingress-nginx]="https://kubernetes.github.io/ingress-nginx"
+  [kvaps]="https://kvaps.github.io/charts"
+  [selfhosters]="https://self-hosters-by-night.github.io/helm-charts"
+)
+
+for name in "${!HELM_REPOS[@]}"; do
+  url="${HELM_REPOS[$name]}"
+  helm repo add "$name" "$url"
+done
+
 # Welcome message
 cat <<'EOF'
 

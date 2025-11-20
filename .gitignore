@@ -62,3 +62,6 @@ nunit-*.xml
 
 # db dumps to restore into postgres
 db-dumps/
+
+# helm charts
+helm-charts/*/charts/*
