@@ -11,9 +11,7 @@ BOLD='\033[1m'
 RESET='\033[0m'
 
 CHARTS_DIR=/workspaces/crucible-development/helm-charts
-CERT_MANAGER_VERSION=v1.17.2
 CRUCIBLE_RELEASE=crucible
-INFRA_RELEASE=infra
 
 refresh_current_namespace() {
   CURRENT_NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}' 2>/dev/null || true)
@@ -125,6 +123,74 @@ stage_custom_ca_certs() {
   fi
 }
 
+print_web_app_urls() {
+  echo -e "\n${BLUE}${BOLD}# Web application endpoints${RESET}\n"
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "jq is required to list ingress URLs but was not found in PATH."
+    return
+  fi
+
+  local ingress_json
+  if ! ingress_json=$(kubectl get ingress -n "$CURRENT_NAMESPACE" -l "app.kubernetes.io/instance=${CRUCIBLE_RELEASE}" -o json 2>/dev/null); then
+    echo "Unable to query ingress resources in namespace ${CURRENT_NAMESPACE}."
+    return
+  fi
+
+  local urls
+  urls=$(echo "$ingress_json" | jq -r '
+    [
+      .items[]? as $ingress |
+      ([$ingress.spec.tls[]?.hosts[]?] | unique) as $tlsHosts |
+      $ingress.spec.rules[]? as $rule |
+      $rule.http.paths[]? as $path |
+      ($path.path // "/") as $rawPath |
+      {
+        scheme: (if ($tlsHosts | index($rule.host)) then "https" else "http" end),
+        host: ($rule.host // ""),
+        path: (if ($rawPath | startswith("/")) then $rawPath else "/" + $rawPath end),
+        service: ($path.backend.service.name // $ingress.metadata.name)
+      }
+    ]
+    | map(select(.host != ""))
+    | unique
+    | .[]
+    | "- \(.scheme)://\(.host)\(.path) (service: \(.service))"
+  ' 2>/dev/null)
+
+  if [[ -z "${urls//[[:space:]]/}" ]]; then
+    echo "No ingress endpoints were found for release ${CRUCIBLE_RELEASE}."
+    return
+  fi
+
+  echo "$urls"
+}
+
+print_keycloak_admin_credentials() {
+  echo -e "\n${BLUE}${BOLD}# Keycloak admin credentials${RESET}\n"
+
+  local secret_name="${CRUCIBLE_RELEASE}-keycloak-auth"
+  local encoded_password
+  if ! encoded_password=$(kubectl get secret "$secret_name" -n "$CURRENT_NAMESPACE" -o jsonpath='{.data.admin-password}' 2>/dev/null); then
+    echo "Unable to read secret ${secret_name} in namespace ${CURRENT_NAMESPACE}."
+    return
+  fi
+
+  if [[ -z "$encoded_password" ]]; then
+    echo "Secret ${secret_name} does not contain an admin-password key."
+    return
+  fi
+
+  local decoded_password
+  if ! decoded_password=$(echo "$encoded_password" | base64 --decode 2>/dev/null); then
+    echo "Failed to decode the Keycloak admin password from secret ${secret_name}."
+    return
+  fi
+
+  echo "  Username: keycloak-admin"
+  echo "  Password: $decoded_password"
+}
+
 start_minikube_cluster() {
   stage_custom_ca_certs
 
@@ -156,13 +222,9 @@ fi
 
 if $UNINSTALL; then
   helm_uninstall_if_exists "$CRUCIBLE_RELEASE"
-  helm_uninstall_if_exists "$INFRA_RELEASE"
 
   echo -e "\n${BLUE}${BOLD}# Deleting completed/failed pods for ${CRUCIBLE_RELEASE}${RESET}\n"
   delete_finished_pods_for_release "$CRUCIBLE_RELEASE"
-
-  echo -e "\n${BLUE}${BOLD}# Removing cert-manager CRDs${RESET}\n"
-  kubectl delete --ignore-not-found=true -f https://github.com/cert-manager/cert-manager/releases/download/$CERT_MANAGER_VERSION/cert-manager.crds.yaml
 
   echo -e "\n${GREEN}${BOLD}# Uninstall complete${RESET}\n"
   exit 0
@@ -209,22 +271,18 @@ ensure_chart_dependencies() {
 }
 
 # Build dependencies for Helm charts
-CHARTS=("infra" "crucible")
+CHARTS=("crucible")
 for chart in "${CHARTS[@]}"; do
   ensure_chart_dependencies "$chart"
 done
-
-echo -e "\n${BLUE}${BOLD}# Applying yaml for cert-manager${RESET}\n"
-kubectl apply --validate=false -f https://github.com/cert-manager/cert-manager/releases/download/$CERT_MANAGER_VERSION/cert-manager.crds.yaml
-
-echo -e "\n${BLUE}${BOLD}# Helm installing ${CHARTS_DIR}/infra${RESET}\n"
-helm upgrade --install "$INFRA_RELEASE" "$CHARTS_DIR/infra"
-timeout --foreground 300 bash -c "while ! kubectl get secret ${INFRA_RELEASE}-ca &>/dev/null; do echo 'Waiting for ${INFRA_RELEASE}-ca secret...'; sleep 5; done"
 
 echo -e "\n${BLUE}${BOLD}# Helm installing ${CHARTS_DIR}/crucible${RESET}\n"
 helm upgrade --install "$CRUCIBLE_RELEASE" "$CHARTS_DIR/crucible"
 
 echo -e "\n${BLUE}${BOLD}# Enabling port-forwarding${RESET}\n"
 nohup kk port-forward -n default "service/crucible-ingress-nginx-controller" "443:443" > /dev/null 2>&1 &
+
+print_web_app_urls
+print_keycloak_admin_credentials
 
 echo -e "\n${GREEN}${BOLD}Crucible has been deployed${RESET}\n"

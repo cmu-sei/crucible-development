@@ -1,8 +1,7 @@
 global:
-  domain: crucible.local
+  domain: crucible
   namespace: default
   version: "0.0.0"
-  infraHelmRelease: infra
   security:
     allowInsecureImages: true
 
@@ -57,15 +56,18 @@ keycloak:
     ingressClassName: nginx
     hostname: "{{ .Values.global.domain }}"
     annotations:
-      cert-manager.io/cluster-issuer: "{{ .Values.global.infraHelmRelease }}-issuer"
       nginx.ingress.kubernetes.io/server-snippet: |
         location ~ ^/keycloak/?$ {
           return 302 $scheme://$host/keycloak/admin/crucible/console/;
         }
     tls: true
+    extraTls:
+      - hosts:
+          - "{{ .Values.global.domain }}"
+        secretName: '{{ printf "%s-cert" .Release.Name }}'
   extraEnvVars:
-  - name: KEYCLOAK_EXTRA_ARGS
-    value: "--import-realm"
+    - name: KEYCLOAK_EXTRA_ARGS
+      value: "--import-realm"
   extraVolumes:
     - name: realm-import
       configMap:
@@ -89,7 +91,6 @@ topomojo:
       enabled: true
       className: nginx
       annotations:
-        cert-manager.io/cluster-issuer: "{{ .Values.global.infraHelmRelease }}-issuer"
         nginx.ingress.kubernetes.io/proxy-body-size: 6g
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -103,7 +104,7 @@ topomojo:
       tls:
         - hosts:
             - "{{ .Values.global.domain }}"
-          secretName: '{{ include "crucible.fullname" . }}-cert'
+          secretName: '{{ printf "%s-cert" .Release.Name }}'
     storage:
       existing: '{{ include "crucible.fullname" . }}-nfs'
     existingSecret: '{{ include "crucible.fullname" . }}-custom'
@@ -113,7 +114,6 @@ topomojo:
       binaryFiles: {}
       files:
         start.sh: |
-          #!/bin/sh
           cd /home/app && SSL_CERT_FILE=/home/app/conf/cacert.crt dotnet TopoMojo.Api.dll
     env:
       PathBase: /topomojo
@@ -122,10 +122,12 @@ topomojo:
       FileUpload__IsoRoot: /mnt/tm
       FileUpload__TopoRoot: /mnt/tm
       FileUpload__DocRoot: /mnt/tm/_docs
-      Oidc__Authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
+      Oidc__Authority: http://{{ include "crucible.fullname" . }}-keycloak:8080/keycloak/realms/crucible
       Oidc__Audience: topomojo
-      OpenApi__Client__AuthorizationUrl: "https://{{ .Values.global.domain }}/realms/crucible/protocol/openid-connect/auth"
-      OpenApi__Client__TokenUrl: "https://{{ .Values.global.domain }}/realms/crucible/protocol/openid-connect/token"
+      Oidc__MetadataAddress: http://{{ include "crucible.fullname" . }}-keycloak:8080/keycloak/realms/crucible/.well-known/openid-configuration
+      Oidc__RequireHttpsMetadata: false
+      OpenApi__Client__AuthorizationUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth
+      OpenApi__Client__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
       OpenApi__Client__ClientId: topomojo.api
       Headers__Cors__Origins__0: https://{{ .Values.global.domain }}
       Headers__Forwarding__TargetHeaders: All
@@ -136,7 +138,6 @@ topomojo:
       enabled: true
       className: nginx
       annotations:
-        cert-manager.io/cluster-issuer: "{{ .Values.global.infraHelmRelease }}-issuer"
         nginx.ingress.kubernetes.io/proxy-body-size: 6g
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -146,7 +147,7 @@ topomojo:
       tls:
         - hosts:
             - "{{ .Values.global.domain }}"
-          secretName: '{{ include "crucible.fullname" . }}-cert'
+          secretName: '{{ printf "%s-cert" .Release.Name }}'
     basehref: /topomojo
     settingsYaml:
       appname: TopoMojo
@@ -157,7 +158,7 @@ topomojo:
         silent_redirect_uri: https://{{ .Values.global.domain }}/topomojo/oidc-silent.html
         post_logout_redirect_uri: https://{{ .Values.global.domain }}/topomojo
         response_type: code
-        scope: profile topomojo
+        scope: openid profile topomojo
         automaticSilentRenew: true
         includeIdTokenInSilentRenew: false
         filterProtocolClaims: true

@@ -33,7 +33,6 @@ fi
 # Add helm repos
 declare -A HELM_REPOS=(
   [cmusei]="https://helm.cmusei.dev/charts"
-  [jetstack]="https://charts.jetstack.io"
   [prometheus-community]="https://prometheus-community.github.io/helm-charts"
   [ingress-nginx]="https://kubernetes.github.io/ingress-nginx"
   [kvaps]="https://kvaps.github.io/charts"
