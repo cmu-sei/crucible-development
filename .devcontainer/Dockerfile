@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/dotnet:9.0-noble
+FROM mcr.microsoft.com/devcontainers/dotnet:10.0-noble
 
 ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
@@ -28,9 +28,9 @@ RUN apt update && apt install -y python3-dev
 ARG VALE_VERSION=3.12.0
 RUN set -eux; \
     case "${TARGETARCH}" in \
-        amd64)  VALE_ARCH="64-bit" ;; \
-        arm64)  VALE_ARCH="arm64" ;; \
-        *)      echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    amd64)  VALE_ARCH="64-bit" ;; \
+    arm64)  VALE_ARCH="arm64" ;; \
+    *)      echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac && \
     curl -fsSL -o /tmp/vale.tgz \
     "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_${VALE_ARCH}.tar.gz" \

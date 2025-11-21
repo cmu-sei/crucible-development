@@ -1,0 +1,29 @@
+{
+    "appname": "Gameboard",
+    "apphost": "http://localhost:5002",
+    "basehref": "gb",
+    "imghost": "http://localhost:5002/img",
+    "tochost": "http://localhost:5002/doc",
+    "supporthost": "http://localhost:5002/supportfiles",
+    "tocfile": "",
+    "countdownStartSecondsAtMinute": 5,
+    "custom_background": "custom-bg-dark-gray",
+    "isProduction": false,
+    "consoleForgeConfig": {
+        "consoleBackgroundStyle": "rgb(0, 0, 0)",
+        "defaultConsoleClientType": "vnc",
+        "showBrowserNotificationsOnConsoleEvents": true
+    },
+    "oidc": {
+        "authority": "https://localhost:8443/realms/crucible",
+        "client_id": "gameboard.ui",
+        "redirect_uri": "http://localhost:4202/oidc",
+        "post_logout_redirect_uri": "http://localhost:4202",
+        "silent_redirect_uri": "http://localhost:4202/assets/oidc-silent.html",
+        "response_type": "code",
+        "scope": "openid profile gameboard",
+        "automaticSilentRenew": true,
+        "loadUserInfo": true,
+        "useLocalStorage": true
+    }
+}

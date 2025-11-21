@@ -13,4 +13,7 @@ public class LaunchOptions
     public bool Cite { get; set; } = true;
     public bool Gallery { get; set; } = true;
     public bool Blueprint { get; set; } = true;
+    public bool Gameboard { get; set; } = true;
+    public bool Moodle { get; set; } = false;
+    public string XdebugMode { get; set; } = "off";
 }

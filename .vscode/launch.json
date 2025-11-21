@@ -79,7 +79,71 @@
             "type": "dotnet",
             "request": "launch",
             "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/topo.env"
+            "envFile": "${workspaceFolder}/.env/topomojo.env"
+        },
+        {
+            "name": "Gameboard",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/gameboard.env"
+        },
+        {
+            "name": "Lrsql",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/lrsql.env"
+        },
+        {
+            "name": "Moodle",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/moodle.env"
+        },
+        {
+            "name": "Moodle-Xdebug",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/moodle-xdebug.env",
+                "presentation": {
+                    "hidden": true
+                }
+        },
+        {
+            "name": "Xdebug",
+            "type": "php",
+            "request": "launch",
+            "port": 9003,
+            // prevent VS Code from stepping into core files - only works for stepping
+            "skipFiles": [
+                //"/var/www/html/theme/**",       // Skip all files in theme directory
+                //"/var/www/html/lib/**"          // Skip Moodle core lib files
+            ],
+            "pathMappings": {
+                // Map the remote path (inside the container) to the local path (on your host machine)
+                "/var/www/html/theme": "/mnt/data/crucible/moodle/moodle-core/theme",
+                "/var/www/html/lib": "/mnt/data/crucible/moodle/moodle-core/lib",
+                "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/moodle-core/admin/cli",
+                "/var/www/html/mod/crucible": "/mnt/data/crucible/moodle/mod_crucible",
+                "/var/www/html/mod/topomojo": "/mnt/data/crucible/moodle/mod_topomojo",
+                "/var/www/html/mod/groupquiz": "/mnt/data/crucible/moodle/mod_groupquiz",
+                "/var/www/html/blocks/crucible": "/mnt/data/crucible/moodle/block_crucible",
+                "/var/www/html/admin/tool/lptmanager": "/mnt/data/crucible/moodle/tool_lptmanager",
+                "/var/www/html/question/type/crucible": "/mnt/data/crucible/moodle/qtype_mojomatch",
+                "/var/www/html/question/behaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch"
+            },
+                "presentation": {
+                    "hidden": true
+                }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Moodle Debug",
+            "configurations": ["Moodle-Xdebug", "Xdebug"]
         }
     ]
 }

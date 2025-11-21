@@ -59,6 +59,13 @@ nunit-*.xml
 
 # devcontainer certs
 .devcontainer/certs/*.crt
+.devcontainer/certs/*.key
+!.devcontainer/certs/crucible-dev.crt
+!.devcontainer/certs/crucible-dev.key
+
+# moodle certs
+Crucible.AppHost/resources/moodle/certs/*.crt
+Crucible.AppHost/resources/moodle/certs/*.key
 
 # db dumps to restore into postgres
 db-dumps/
