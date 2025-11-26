@@ -533,7 +533,7 @@ public static class BuilderExtensions
 
     public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.Moodle) return;
+        if (!options.Lrsql) return;
 
         var lrsqlDb = postgres.AddDatabase("lrsqlDb", "lrsql");
 
