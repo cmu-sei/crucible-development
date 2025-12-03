@@ -145,15 +145,18 @@ print_web_app_urls() {
       $ingress.spec.rules[]? as $rule |
       $rule.http.paths[]? as $path |
       ($path.path // "/") as $rawPath |
+      ($rawPath | if startswith("/") then . else "/" + . end) as $normalizedPath |
       {
         scheme: (if ($tlsHosts | index($rule.host)) then "https" else "http" end),
         host: ($rule.host // ""),
-        path: (if ($rawPath | startswith("/")) then $rawPath else "/" + $rawPath end),
+        path: $normalizedPath,
         service: ($path.backend.service.name // $ingress.metadata.name)
       }
     ]
     | map(select(.host != ""))
-    | unique
+    | sort_by([.scheme, .host, .service])
+    | group_by({scheme: .scheme, host: .host, service: .service})
+    | map(min_by(.path | length))
     | .[]
     | "- \(.scheme)://\(.host)\(.path) (service: \(.service))"
   ' 2>/dev/null)
@@ -167,7 +170,7 @@ print_web_app_urls() {
 }
 
 print_keycloak_admin_credentials() {
-  echo -e "\n${BLUE}${BOLD}# Keycloak admin credentials${RESET}\n"
+  echo -e "\n${BLUE}${BOLD}# Keycloak master realm credentials${RESET}\n"
 
   local secret_name="${CRUCIBLE_RELEASE}-keycloak-auth"
   local encoded_password
@@ -238,6 +241,9 @@ fi
 chart_dependencies_ready() {
   local chart_path=$1
   [[ -f "${chart_path}/Chart.lock" ]] || return 1
+  if [[ "${chart_path}/Chart.yaml" -nt "${chart_path}/Chart.lock" ]]; then
+    return 1
+  fi
   [[ -d "${chart_path}/charts" ]] || return 1
   if helm dependency list "$chart_path" 2>/dev/null | grep -qE '[[:space:]]missing$'; then
     return 1
@@ -249,6 +255,12 @@ build_chart_dependencies() {
   local chart_name=$1
   local chart_path="${CHARTS_DIR}/${chart_name}"
   echo "Building dependencies for chart ${chart_path}"
+  if helm dependency build "$chart_path"; then
+    return
+  fi
+
+  echo "Dependency build failed for ${chart_path}; refreshing lockfile and fetching missing charts"
+  helm dependency update "$chart_path"
   helm dependency build "$chart_path"
 }
 
