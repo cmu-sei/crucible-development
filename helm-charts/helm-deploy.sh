@@ -248,6 +248,7 @@ print_web_app_urls() {
       }
     ]
     | map(select(.host != ""))
+    | map(select((.service // "") | test("(?:-ui|keycloak)$")))
     | sort_by([.scheme, .host, .service])
     | group_by({scheme: .scheme, host: .host, service: .service})
     | map(min_by(.path | length))
