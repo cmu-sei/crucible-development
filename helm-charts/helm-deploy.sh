@@ -220,11 +220,6 @@ EOF
 print_web_app_urls() {
   echo -e "\n${BLUE}${BOLD}# Web application endpoints${RESET}\n"
 
-  if ! command -v jq >/dev/null 2>&1; then
-    echo "jq is required to list ingress URLs but was not found in PATH."
-    return
-  fi
-
   local ingress_json
   if ! ingress_json=$(kubectl get ingress -n "$CURRENT_NAMESPACE" -l "app.kubernetes.io/instance=${CRUCIBLE_RELEASE}" -o json 2>/dev/null); then
     echo "Unable to query ingress resources in namespace ${CURRENT_NAMESPACE}."
