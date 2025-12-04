@@ -12,6 +12,7 @@ RESET='\033[0m'
 
 CHARTS_DIR=/workspaces/crucible-development/helm-charts
 CRUCIBLE_RELEASE=crucible
+CRUCIBLE_DOMAIN=${CRUCIBLE_DOMAIN:-crucible}
 
 refresh_current_namespace() {
   CURRENT_NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}' 2>/dev/null || true)
@@ -122,6 +123,99 @@ stage_custom_ca_certs() {
     echo -e "\n${YELLOW}${BOLD}# No custom CA certificates found in ${src}; skipping copy${RESET}\n"
   fi
 }
+
+ensure_nodehosts_entry() {
+  local ingress_service="${INGRESS_SERVICE:-${CRUCIBLE_RELEASE}-ingress-nginx-controller}"
+  local ingress_namespace="${INGRESS_NAMESPACE:-$CURRENT_NAMESPACE}"
+  local dns_namespace="kube-system"
+  local dns_configmap="coredns"
+
+  echo -e "\n${BLUE}${BOLD}# Ensuring NodeHosts contains ${CRUCIBLE_DOMAIN}${RESET}\n"
+
+  local ingress_ip=""
+  local waited=0
+  while [[ $waited -lt 60 ]]; do
+    ingress_ip=$(kubectl -n "$ingress_namespace" get svc "$ingress_service" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)
+    if [[ -n "$ingress_ip" && "$ingress_ip" != "<no value>" ]]; then
+      break
+    fi
+    waited=$((waited + 1))
+    sleep 1
+  done
+
+  if [[ -z "$ingress_ip" || "$ingress_ip" == "<no value>" ]]; then
+    echo -e "${YELLOW}Unable to determine ClusterIP for ${ingress_service}; skipping NodeHosts update${RESET}"
+    return
+  fi
+
+  local cm_patch
+  cm_patch=$(mktemp)
+  cat <<EOF > "$cm_patch"
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${dns_configmap}
+  namespace: ${dns_namespace}
+data:
+  Corefile: |
+    .:53 {
+        log
+        errors
+        health {
+           lameduck 5s
+        }
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+           pods insecure
+           fallthrough in-addr.arpa ip6.arpa
+           ttl 30
+        }
+        prometheus :9153
+        hosts /etc/coredns/NodeHosts {
+           fallthrough
+        }
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+        }
+        cache 30 {
+           disable success cluster.local
+           disable denial cluster.local
+        }
+        loop
+        reload
+        loadbalance
+    }
+  NodeHosts: |
+    ${ingress_ip} ${CRUCIBLE_DOMAIN}
+    192.168.49.1 host.minikube.internal
+EOF
+
+  kubectl -n "$dns_namespace" patch configmap "$dns_configmap" --type merge --patch-file "$cm_patch"
+
+  local deploy_patch
+  deploy_patch=$(mktemp)
+  cat <<EOF > "$deploy_patch"
+spec:
+  template:
+    spec:
+      volumes:
+      - name: config-volume
+        configMap:
+          name: ${dns_configmap}
+          items:
+          - key: Corefile
+            path: Corefile
+          - key: NodeHosts
+            path: NodeHosts
+EOF
+  kubectl -n "$dns_namespace" patch deployment coredns --patch-file "$deploy_patch"
+
+  kubectl -n "$dns_namespace" rollout restart deployment/coredns
+  kubectl -n "$dns_namespace" rollout status deployment/coredns --timeout=120s || true
+
+  rm -f "$cm_patch" "$deploy_patch"
+}
+
 
 print_web_app_urls() {
   echo -e "\n${BLUE}${BOLD}# Web application endpoints${RESET}\n"
@@ -290,6 +384,8 @@ done
 
 echo -e "\n${BLUE}${BOLD}# Helm installing ${CHARTS_DIR}/crucible${RESET}\n"
 helm upgrade --install "$CRUCIBLE_RELEASE" "$CHARTS_DIR/crucible"
+
+ensure_nodehosts_entry
 
 echo -e "\n${BLUE}${BOLD}# Enabling port-forwarding${RESET}\n"
 nohup kk port-forward -n default "service/crucible-ingress-nginx-controller" "443:443" > /dev/null 2>&1 &
