@@ -1,0 +1,11 @@
+{{- if .Files.Get "files/crucible-dev.crt" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "crucible-ca-cert"
+  labels:
+    {{- include "crucible.labels" $ | nindent 4 }}
+data:
+  crucible-dev.crt: |
+{{ .Files.Get "files/crucible-dev.crt" | nindent 4 }}
+{{- end }}

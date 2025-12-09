@@ -12,6 +12,9 @@ dependencies:
   - name: ingress-nginx
     repository: https://kubernetes.github.io/ingress-nginx
     version: 4.12.2
+  - name: pgadmin4
+    repository: https://helm.runix.net
+    version: 1.50.0
   - name: postgres
     alias: postgresql
     repository: https://self-hosters-by-night.github.io/helm-charts
@@ -21,4 +24,7 @@ dependencies:
     version: 24.6.4
   - name: topomojo
     repository: https://helm.cmusei.dev/charts
-    version: 0.5.2
+    version: 0.5.13
+  - name: player
+    repository: https://helm.cmusei.dev/charts
+    version: 1.7.6

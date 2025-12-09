@@ -13,6 +13,11 @@ RESET='\033[0m'
 CHARTS_DIR=/workspaces/crucible-development/helm-charts
 CRUCIBLE_RELEASE=crucible
 CRUCIBLE_DOMAIN=${CRUCIBLE_DOMAIN:-crucible}
+PGADMIN_EMAIL=${PGADMIN_EMAIL:-pgadmin@crucible.dev}
+# Disable Helm 4's server-side apply by default because several upstream charts
+# still rely on client-side merge semantics (SSA triggers managedFields errors).
+HELM_UPGRADE_FLAGS=${HELM_UPGRADE_FLAGS:---wait --timeout 15m --server-side=false}
+MINIKUBE_FLAGS=${MINIKUBE_FLAGS:---mount-string=/mnt/data/terraform/root:/terraform/root --embed-certs --cpus 4 --memory 12000}
 
 refresh_current_namespace() {
   CURRENT_NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}' 2>/dev/null || true)
@@ -101,13 +106,39 @@ delete_finished_pods_for_release() {
     if [[ "$pod_phase" == "Succeeded" || "$pod_phase" == "Failed" ]]; then
       deleted=true
       echo "Deleting pod ${pod_name} (phase: ${pod_phase})"
-      kubectl delete pod "$pod_name" -n "$CURRENT_NAMESPACE" --ignore-not-found
+      kubectl delete pod "$pod_name" -n "$CURRENT_NAMESPACE" --ignore-not-found --force
     fi
   done <<< "$pod_list"
 
   if ! $deleted; then
     echo "No Completed/Failed pods for release ${release_name}"
   fi
+}
+
+delete_pvcs_for_release() {
+  local release_name=$1
+  local ns="$CURRENT_NAMESPACE"
+  # Target PVCs bound to the NFS provisioner and TopoMojo API storage.
+  local pvcs=(
+    "data-${release_name}-nfs-server-provisioner-0"
+    "${release_name}-topomojo-api-nfs"
+  )
+
+  for pvc in "${pvcs[@]}"; do
+    echo "Deleting PVC ${ns}/${pvc} (if present)"
+    kubectl delete pvc "$pvc" -n "$ns" --ignore-not-found
+
+    # Find and delete the PV bound to this PVC to avoid orphaned volumes.
+    local pv_name
+    pv_name=$(kubectl get pv -o json | jq -r --arg ns "$ns" --arg claim "$pvc" \
+      '.items[] | select(.spec.claimRef.namespace==$ns and .spec.claimRef.name==$claim) | .metadata.name' | head -n1)
+    if [[ -n "$pv_name" && "$pv_name" != "null" ]]; then
+      echo "Deleting PV ${pv_name} bound to ${ns}/${pvc}"
+      kubectl delete pv "$pv_name" --ignore-not-found
+    else
+      echo "No PV found for ${ns}/${pvc}"
+    fi
+  done
 }
 
 stage_custom_ca_certs() {
@@ -243,7 +274,7 @@ print_web_app_urls() {
       }
     ]
     | map(select(.host != ""))
-    | map(select((.service // "") | test("(?:-ui|keycloak)$")))
+    | map(select((.service // "") | test("(?:-ui|keycloak|pgadmin)$")))
     | sort_by([.scheme, .host, .service])
     | group_by({scheme: .scheme, host: .host, service: .service})
     | map(min_by(.path | length))
@@ -284,15 +315,44 @@ print_keycloak_admin_credentials() {
   echo "  Password: $decoded_password"
 }
 
+print_pgadmin_credentials() {
+  echo -e "\n${BLUE}${BOLD}# pgAdmin credentials${RESET}\n"
+
+  local secret_name="crucible-pgadmin"
+  local encoded_password
+  if ! encoded_password=$(kubectl get secret "$secret_name" -n "$CURRENT_NAMESPACE" -o jsonpath='{.data.password}' 2>/dev/null); then
+    echo "Unable to read secret ${secret_name} in namespace ${CURRENT_NAMESPACE}."
+    return
+  fi
+
+  if [[ -z "$encoded_password" ]]; then
+    echo "Secret ${secret_name} does not contain a password key."
+    return
+  fi
+
+  local decoded_password
+  if ! decoded_password=$(echo "$encoded_password" | base64 --decode 2>/dev/null); then
+    echo "Failed to decode the pgAdmin password from secret ${secret_name}."
+    return
+  fi
+
+  echo "  Email: ${PGADMIN_EMAIL}"
+  echo "  Password: $decoded_password"
+}
+
 start_minikube_cluster() {
   stage_custom_ca_certs
 
   echo -e "\n${BLUE}${BOLD}# Starting minikube cluster${RESET}\n"
-  minikube start --mount-string="/mnt/data/terraform/root:/terraform/root" --embed-certs
+  minikube start $MINIKUBE_FLAGS
 }
 
 purge_minikube_cluster() {
   echo -e "\n${BLUE}${BOLD}# Purging minikube cluster${RESET}\n"
+  echo "Attempting sudo umount of ~/.minikube to release mounts (may prompt for sudo)"
+  if ! sudo umount "${HOME}/.minikube"; then
+    echo -e "${YELLOW}sudo umount ~/.minikube did not succeed; continuing${RESET}"
+  fi
   minikube delete --all --purge
 
   start_minikube_cluster
@@ -318,6 +378,9 @@ if $UNINSTALL; then
 
   echo -e "\n${BLUE}${BOLD}# Deleting completed/failed pods for ${CRUCIBLE_RELEASE}${RESET}\n"
   delete_finished_pods_for_release "$CRUCIBLE_RELEASE"
+
+  echo -e "\n${BLUE}${BOLD}# Deleting PVCs/PVs for ${CRUCIBLE_RELEASE}${RESET}\n"
+  delete_pvcs_for_release "$CRUCIBLE_RELEASE"
 
   echo -e "\n${GREEN}${BOLD}# Uninstall complete${RESET}\n"
   exit 0
@@ -365,9 +428,9 @@ ensure_chart_dependencies() {
   fi
 
   if chart_dependencies_ready "$chart_path"; then
-    echo "Dependencies for ${chart_path} already present, skipping rebuild"
+    echo -e "\n${BLUE}${BOLD}# Dependencies for ${chart_path} already present, skipping rebuild${RESET}\n"
   else
-    echo "Dependencies missing for ${chart_path}, rebuilding"
+    echo -e "\n${BLUE}${BOLD}# Dependencies missing for ${chart_path}, rebuilding${RESET}\n"
     build_chart_dependencies "$chart"
   fi
 }
@@ -379,7 +442,13 @@ for chart in "${CHARTS[@]}"; do
 done
 
 echo -e "\n${BLUE}${BOLD}# Helm installing ${CHARTS_DIR}/crucible${RESET}\n"
-helm upgrade --install "$CRUCIBLE_RELEASE" "$CHARTS_DIR/crucible"
+if helm status "$CRUCIBLE_RELEASE" &>/dev/null; then
+  echo "Existing release detected; running helm upgrade"
+  helm upgrade "$CRUCIBLE_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS}
+else
+  echo "Release not found; running helm install"
+  helm install "$CRUCIBLE_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS}
+fi
 
 ensure_nodehosts_entry
 
@@ -388,5 +457,6 @@ nohup kk port-forward -n default "service/crucible-ingress-nginx-controller" "44
 
 print_web_app_urls
 print_keycloak_admin_credentials
+print_pgadmin_credentials
 
 echo -e "\n${GREEN}${BOLD}Crucible has been deployed${RESET}\n"
