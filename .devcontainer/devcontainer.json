@@ -27,12 +27,18 @@
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages" // this might not be needed. will try removing later.
   },
   "mounts": [
-    "source=crucible-dev-microsoft,target=/home/vscode/.microsoft,type=volume", // persist usersecrets across container rebuilds
-    "source=crucible-dev-data,target=/mnt/data/,type=volume"
+    // crucible repo data
+    "source=crucible-dev-data,target=/mnt/data/,type=volume",
+    // Usersecrets
+    "source=crucible-dev-microsoft,target=/home/vscode/.microsoft,type=volume",
+    // Shell history
+    "source=crucible-dev-shell-history,target=/home/vscode/.history,type=volume"
   ],
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
-  "forwardPorts": [9003],  // ✅ Added this line for Xdebug
+  "forwardPorts": [
+    9003
+  ], // ✅ Added this line for Xdebug
   "customizations": {
     "vscode": {
       "extensions": [
