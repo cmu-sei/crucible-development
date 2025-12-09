@@ -10,6 +10,8 @@ scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
 
 dotnet tool install -g Aspire.Cli
+# Install dotnet-ef globally
+dotnet tool install --global dotnet-ef --version 10
 dotnet dev-certs https --trust
 
 npm config -g set fund false
@@ -43,9 +45,6 @@ for name in "${!HELM_REPOS[@]}"; do
   url="${HELM_REPOS[$name]}"
   helm repo add "$name" "$url"
 done
-
-# Install dotnet-ef globally
-dotnet tool install --global dotnet-ef --version 10
 
 # Welcome message
 cat <<'EOF'
