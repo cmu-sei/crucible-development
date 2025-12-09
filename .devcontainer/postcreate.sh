@@ -10,6 +10,8 @@ scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
 
 dotnet tool install -g Aspire.Cli
+# Install dotnet-ef globally
+dotnet tool install --global dotnet-ef --version 10
 dotnet dev-certs https --trust
 
 npm config -g set fund false
@@ -29,9 +31,6 @@ if compgen -G "${CUSTOM_CERT_SOURCE}"'/*.crt' > /dev/null; then
 else
   echo "No custom CA certificates found in ${CUSTOM_CERT_SOURCE}; skipping copy."
 fi
-
-# Install dotnet-ef globally
-dotnet tool install --global dotnet-ef --version 10
 
 # Welcome message
 cat <<'EOF'
