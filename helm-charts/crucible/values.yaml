@@ -376,8 +376,7 @@ prometheus:
             - "{{ .Values.global.domain }}"
 
 grafana:
-  env:
-    SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
+  # ingress hosts grafana at https://<domain>/grafana
   ingress:
     enabled: true
     ingressClassName: nginx
@@ -396,15 +395,18 @@ grafana:
     server:
       root_url: https://{{ .Values.global.domain }}/grafana/
       serve_from_sub_path: true
+
+  # configure datasources from Prometheus (metrics), Loki (logs), Tempo (Otel traces)
+  # data sources use cluster service addresses
   datasources:
     datasources.yaml:
       apiVersion: 1
       datasources:
         - name: Prometheus
-          uid: prometheus
+          url: http://{{ .Release.Name }}-prometheus-server
           type: prometheus
           access: proxy
-          url: http://{{ .Release.Name }}-prometheus-server/prometheus
+          url: http://{{ .Release.Name }}-prometheus-server
           isDefault: true
         - name: Loki
           uid: loki
@@ -424,6 +426,10 @@ grafana:
               datasourceUid: prometheus
             serviceMap:
               datasourceUid: prometheus
+
+  # Add the crucible-ca cert as trusted
+  env:
+    SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
   extraVolumes:
     - name: crucible-ca
       configMap:
@@ -438,7 +444,6 @@ grafana:
       readOnly: true
 
 loki:
-  auth_enabled: false
   deploymentMode: SingleBinary
   gateway:
     enabled: false
@@ -498,17 +503,19 @@ tempo:
             endpoint: "0.0.0.0:4318"
   persistence:
     enabled: true
-    size: 10Gi
+    size: 5Gi
     storageClass: null
   service:
     type: ClusterIP
   tempoQuery:
     enabled: false
+
 grafana-alloy:
   fullnameOverride: "crucible-grafana-alloy"
   controller:
     type: daemonset
     volumes:
+      # Alloy Controller to trust the custom cert
       extra:
         - name: crucible-ca
           configMap:
@@ -518,6 +525,8 @@ grafana-alloy:
                 path: crucible-dev.crt
   alloy:
     stabilityLevel: experimental
+
+    # Alloy app to trust the custom cert
     extraEnv:
       - name: SSL_CERT_FILE
         value: /usr/local/share/ca-certificates/crucible-dev.crt
@@ -529,6 +538,8 @@ grafana-alloy:
           mountPath: /usr/local/share/ca-certificates/crucible-dev.crt
           subPath: crucible-dev.crt
           readOnly: true
+
+    # Extra ports to handle the otel grpc/http receivers
     extraPorts:
       - name: otlp-grpc
         port: 4317
@@ -539,42 +550,62 @@ grafana-alloy:
         targetPort: 4318
         protocol: TCP
     configMap:
+      # Grafana Alloy Configuration
+      # Reference: https://grafana.com/docs/alloy/latest/reference/components/
+      # Reference: https://grafana.com/docs/alloy/latest/collect/logs-in-kubernetes/
+      # Reference: https://grafana.com/docs/alloy/latest/collect/opentelemetry-to-lgtm-stack/
+      # Consider adding the following in the future:
+      # 1. Kubernetes Cluster Events: https://grafana.com/docs/alloy/latest/collect/logs-in-kubernetes/#kubernetes-cluster-events
+      # 2. Kuberenetes Node Logs: https://grafana.com/docs/alloy/latest/collect/logs-in-kubernetes/#system-logs
+      # 3. Grafana Alloy Meta-Metrics (metrics about the metrics collector): https://grafana.com/docs/alloy/latest/collect/metamonitoring/
       content: |-
         logging {
           level = "info"
         }
 
+        // Begin Kubernetes discovery configuration
+
+        // discovery.kubernetes allows you to find scrape targets from Kubernetes resources.
+        // this spec will automatically discover all kubernetes pods in the cluster
         discovery.kubernetes "pods" {
           role = "pod"
         }
 
+        // discovery.relabel rewrites the label set of the input targets by applying one or more relabeling rules.
+        // this simplifies the names of labels
         discovery.relabel "pod_logs" {
           targets = discovery.kubernetes.pods.targets
 
+          // Label creation - "namespace" field from "__meta_kubernetes_namespace"
           rule {
             source_labels = ["__meta_kubernetes_namespace"]
             action        = "replace"
             target_label  = "namespace"
           }
 
+          // Label creation - "pod" field from "__meta_kubernetes_pod_name"
           rule {
             source_labels = ["__meta_kubernetes_pod_name"]
             action        = "replace"
             target_label  = "pod"
           }
 
+          // Label creation - "container" field from "__meta_kubernetes_pod_container_name"
           rule {
             source_labels = ["__meta_kubernetes_pod_container_name"]
             action        = "replace"
             target_label  = "container"
           }
 
+          // Label creation -  "app" field from "__meta_kubernetes_pod_label_app_kubernetes_io_name"
           rule {
             source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
             action        = "replace"
             target_label  = "app"
           }
 
+          // Label creation -  "job" field from "__meta_kubernetes_namespace" and "__meta_kubernetes_pod_container_name"
+          // Concatenate values __meta_kubernetes_namespace/__meta_kubernetes_pod_container_name
           rule {
             source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
             action        = "replace"
@@ -584,37 +615,95 @@ grafana-alloy:
           }
         }
 
+        // End Kubernetes discovery configuration
+
+        // Begin Loki configuration
+
+        // loki.source.kubernetes tails logs from Kubernetes containers using the Kubernetes API.
         loki.source.kubernetes "pods" {
           targets    = discovery.relabel.pod_logs.output
           forward_to = [loki.process.pods.receiver]
         }
 
+        // loki.process receives log entries from other Loki components, applies one or more processing stages,
+        // and forwards the results to the list of receivers in the component's arguments.
         loki.process "pods" {
           stage.docker {}
           forward_to = [loki.write.default.receiver]
         }
 
+        // loki.write sends logs to the Loki endpoint
         loki.write "default" {
           endpoint {
             url = "http://{{ .Release.Name }}-loki:3100/loki/api/v1/push"
           }
         }
 
-        otelcol.receiver.otlp "default" {
-          grpc { }
-          http { }
+        // End Loki configuration
 
-          output {
-            metrics = [otelcol.exporter.prometheus.default.input]
+        // Begin Prometheus configuration
+
+        // deliver metrics to the prometheus endpoint
+        prometheus.remote_write "default" {
+          endpoint {
+            url = "http://{{ .Release.Name }}-prometheus-server/api/v1/write"
           }
         }
 
+        // scrape prometheus metrics from kubernetes pods
+        prometheus.scrape "pods" {
+          targets    = discovery.kubernetes.pods.targets
+          forward_to = [prometheus.remote_write.default.receiver]
+        }
+
+        // End Prometheus configuration
+
+        // Begin OpenTelemetry configuration
+
+        // Export otel logs to Loki
+        otelcol.exporter.loki "default" {
+          forward_to = [loki.write.default.receiver]
+        }
+
+        // Export otel traces to Tempo
+        otelcol.exporter.otlp "default" {
+          client {
+            endpoint = "http://{{ .Release.Name }}-tempo:4317"
+          }
+        }
+
+        // Export otel metrics to Prometheus
         otelcol.exporter.prometheus "default" {
           forward_to = [prometheus.remote_write.default.receiver]
         }
 
-        prometheus.remote_write "default" {
-          endpoint {
-            url = "http://crucible-prometheus-server/api/v1/write"
+        // Batch otel exports to reduce network chatter
+        otelcol.processor.batch "default" {
+          output {
+            metrics = [otelcol.exporter.prometheus.default.input]
+            logs    = [otelcol.exporter.loki.default.input]
+            traces  = [otelcol.exporter.otlp.default.input]
           }
         }
+
+        // Configure an otel receiver for apps to send otel to
+        // This is a compatible Otel Collector for http and grpc
+        otelcol.receiver.otlp "default" {
+          grpc {
+            endpoint = "0.0.0.0:4317"
+          }
+
+          http {
+            endpoint = "0.0.0.0:4318"
+          }
+
+          // Send output to the batch processor
+          // Batch processor then forwards to the correct services
+          output {
+            metrics = [otelcol.processor.batch.default.input]
+            logs    = [otelcol.processor.batch.default.input]
+            traces  = [otelcol.processor.batch.default.input]
+          }
+        }
+
+        // End OpenTelemetry configuration
