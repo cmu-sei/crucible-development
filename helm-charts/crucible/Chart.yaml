@@ -28,3 +28,19 @@ dependencies:
   - name: player
     repository: https://helm.cmusei.dev/charts
     version: 1.7.6
+  - name: prometheus
+    repository: https://prometheus-community.github.io/helm-charts
+    version: 27.50.0
+  - name: grafana
+    repository: https://grafana.github.io/helm-charts
+    version: 10.3.0
+  - name: alloy
+    repository: https://grafana.github.io/helm-charts
+    version: 1.5.0
+    alias: grafana-alloy
+  - name: loki
+    repository: https://grafana.github.io/helm-charts
+    version: 6.48.0
+  - name: tempo
+    repository: https://grafana.github.io/helm-charts
+    version: 1.10.0

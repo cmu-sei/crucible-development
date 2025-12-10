@@ -20,5 +20,20 @@ dependencies:
 - name: player
   repository: https://helm.cmusei.dev/charts
   version: 1.7.6
-digest: sha256:bcd9fff3652688d44cf00279a4f3490c63ec65de395e8cb0a808f4542f275d61
-generated: "2025-12-04T05:17:14.881207824Z"
+- name: prometheus
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 27.50.0
+- name: grafana
+  repository: https://grafana.github.io/helm-charts
+  version: 10.3.0
+- name: alloy
+  repository: https://grafana.github.io/helm-charts
+  version: 1.5.0
+- name: loki
+  repository: https://grafana.github.io/helm-charts
+  version: 6.48.0
+- name: tempo
+  repository: https://grafana.github.io/helm-charts
+  version: 1.10.0
+digest: sha256:3f39c3d0e3bfd69240719582584f03ee25b78de885229e281dd869c1f6265fbd
+generated: "2025-12-09T21:06:58.650611943Z"

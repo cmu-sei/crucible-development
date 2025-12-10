@@ -340,3 +340,257 @@ player:
         response_type: code
         scope: openid profile player player-vm
         automaticSilentRenew: true
+
+prometheus:
+  server:
+    prefixURL: /prometheus
+    extraArgs:
+      # web.route-prefix: /prometheus
+      web.external-url: https://crucible/prometheus
+      # web.enable-remote-write-receiver: true
+    env:
+      - name: SSL_CERT_FILE
+        value: /usr/local/share/ca-certificates/crucible-dev.crt
+    extraVolumes:
+      - name: crucible-ca
+        configMap:
+          name: crucible-ca-cert
+          items:
+            - key: crucible-dev.crt
+              path: crucible-dev.crt
+    extraVolumeMounts:
+      - name: crucible-ca
+        mountPath: /usr/local/share/ca-certificates/crucible-dev.crt
+        subPath: crucible-dev.crt
+        readOnly: true
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      hosts:
+        - "{{ .Values.global.domain }}"
+      path: /prometheus
+      pathType: Prefix
+      tls:
+        - secretName: crucible-cert
+          hosts:
+            - "{{ .Values.global.domain }}"
+
+grafana:
+  env:
+    SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/configuration-snippet: |
+        rewrite ^(/grafana)$ $1/ break;
+    hosts:
+      - "{{ .Values.global.domain }}"
+    path: /grafana
+    pathType: Prefix
+    tls:
+      - secretName: crucible-cert
+        hosts:
+          - "{{ .Values.global.domain }}"
+  grafana.ini:
+    server:
+      root_url: https://{{ .Values.global.domain }}/grafana/
+      serve_from_sub_path: true
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          uid: prometheus
+          type: prometheus
+          access: proxy
+          url: http://{{ .Release.Name }}-prometheus-server/prometheus
+          isDefault: true
+        - name: Loki
+          uid: loki
+          type: loki
+          access: proxy
+          url: http://{{ .Release.Name }}-loki:3100
+          jsonData:
+            maxLines: 1000
+        - name: Tempo
+          uid: tempo
+          type: tempo
+          access: proxy
+          url: http://{{ .Release.Name }}-tempo:3100
+          jsonData:
+            httpMethod: GET
+            tracesToMetrics:
+              datasourceUid: prometheus
+            serviceMap:
+              datasourceUid: prometheus
+  extraVolumes:
+    - name: crucible-ca
+      configMap:
+        name: crucible-ca-cert
+        items:
+          - key: crucible-dev.crt
+            path: crucible-dev.crt
+  extraVolumeMounts:
+    - name: crucible-ca
+      mountPath: /usr/local/share/ca-certificates/crucible-dev.crt
+      subPath: crucible-dev.crt
+      readOnly: true
+
+loki:
+  auth_enabled: false
+  deploymentMode: SingleBinary
+  gateway:
+    enabled: false
+  singleBinary:
+    replicas: 1
+    persistence:
+      enabled: true
+      size: 5Gi
+    extraEnv:
+      - name: SSL_CERT_FILE
+        value: /usr/local/share/ca-certificates/crucible-dev.crt
+    extraVolumes:
+      - name: crucible-ca
+        configMap:
+          name: crucible-ca-cert
+          items:
+            - key: crucible-dev.crt
+              path: crucible-dev.crt
+    extraVolumeMounts:
+      - name: crucible-ca
+        mountPath: /usr/local/share/ca-certificates/crucible-dev.crt
+        subPath: crucible-dev.crt
+        readOnly: true
+  read:
+    replicas: 0
+  write:
+    replicas: 0
+  backend:
+    replicas: 0
+  loki:
+    auth_enabled: false
+    storage:
+      type: filesystem
+      filesystem:
+        chunks_directory: /var/loki/chunks
+        rules_directory: /var/loki/rules
+    commonConfig:
+      replication_factor: 1
+    useTestSchema: true
+
+tempo:
+  replicas: 1
+  tempo:
+    storage:
+      trace:
+        backend: local
+        local:
+          path: /var/tempo/traces
+        wal:
+          path: /var/tempo/wal
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: "0.0.0.0:4317"
+          http:
+            endpoint: "0.0.0.0:4318"
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: null
+  service:
+    type: ClusterIP
+  tempoQuery:
+    enabled: false
+grafana-alloy:
+  fullnameOverride: "crucible-grafana-alloy"
+  controller:
+    type: daemonset
+    volumes:
+      extra:
+        - name: crucible-ca
+          configMap:
+            name: crucible-ca-cert
+            items:
+              - key: crucible-dev.crt
+                path: crucible-dev.crt
+  alloy:
+    stabilityLevel: experimental
+    extraEnv:
+      - name: SSL_CERT_FILE
+        value: /usr/local/share/ca-certificates/crucible-dev.crt
+    mounts:
+      varlog: true
+      dockercontainers: true
+      extra:
+        - name: crucible-ca
+          mountPath: /usr/local/share/ca-certificates/crucible-dev.crt
+          subPath: crucible-dev.crt
+          readOnly: true
+    extraPorts:
+      - name: otlp-grpc
+        port: 4317
+        targetPort: 4317
+        protocol: TCP
+      - name: otlp-http
+        port: 4318
+        targetPort: 4318
+        protocol: TCP
+      - name: jaeger-grpc
+        port: 14250
+        targetPort: 14250
+        protocol: TCP
+      - name: jaeger-thrift
+        port: 14268
+        targetPort: 14268
+        protocol: TCP
+      - name: zipkin
+        port: 9411
+        targetPort: 9411
+        protocol: TCP
+    configMap:
+      content: |-
+        logging {
+          level = "info"
+        }
+
+        discovery.kubernetes "pods" {
+          role = "pod"
+        }
+
+        loki.source.kubernetes "pods" {
+          targets    = discovery.kubernetes.pods.targets
+          forward_to = [loki.process.pods.receiver]
+        }
+
+        loki.process "pods" {
+          stage.docker {}
+          forward_to = [loki.write.default.receiver]
+        }
+
+        loki.write "default" {
+          endpoint {
+            url = "http://{{ .Release.Name }}-loki:3100/loki/api/v1/push"
+          }
+        }
+
+        otelcol.receiver.otlp "default" {
+          grpc { }
+          http { }
+
+          output {
+            metrics = [otelcol.exporter.prometheus.default.input]
+          }
+        }
+
+        otelcol.exporter.prometheus "default" {
+          forward_to = [prometheus.remote_write.default.receiver]
+        }
+
+        prometheus.remote_write "default" {
+          endpoint {
+            url = "http://crucible-prometheus-server/api/v1/write"
+          }
+        }
