@@ -343,37 +343,10 @@ player:
 
 prometheus:
   server:
-    prefixURL: /prometheus
+    prefixURL: ""
+    baseURL: ""
     extraArgs:
-      # web.route-prefix: /prometheus
-      web.external-url: https://crucible/prometheus
-      # web.enable-remote-write-receiver: true
-    env:
-      - name: SSL_CERT_FILE
-        value: /usr/local/share/ca-certificates/crucible-dev.crt
-    extraVolumes:
-      - name: crucible-ca
-        configMap:
-          name: crucible-ca-cert
-          items:
-            - key: crucible-dev.crt
-              path: crucible-dev.crt
-    extraVolumeMounts:
-      - name: crucible-ca
-        mountPath: /usr/local/share/ca-certificates/crucible-dev.crt
-        subPath: crucible-dev.crt
-        readOnly: true
-    ingress:
-      enabled: true
-      ingressClassName: nginx
-      hosts:
-        - "{{ .Values.global.domain }}"
-      path: /prometheus
-      pathType: Prefix
-      tls:
-        - secretName: crucible-cert
-          hosts:
-            - "{{ .Values.global.domain }}"
+      web.enable-remote-write-receiver: "" # enable the remote-write-receiver for Grafana-Alloy writing
 
 grafana:
   # ingress hosts grafana at https://<domain>/grafana
@@ -403,7 +376,7 @@ grafana:
       apiVersion: 1
       datasources:
         - name: Prometheus
-          url: http://{{ .Release.Name }}-prometheus-server
+          uid: prometheus
           type: prometheus
           access: proxy
           url: http://{{ .Release.Name }}-prometheus-server
