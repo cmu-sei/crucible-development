@@ -538,18 +538,6 @@ grafana-alloy:
         port: 4318
         targetPort: 4318
         protocol: TCP
-      - name: jaeger-grpc
-        port: 14250
-        targetPort: 14250
-        protocol: TCP
-      - name: jaeger-thrift
-        port: 14268
-        targetPort: 14268
-        protocol: TCP
-      - name: zipkin
-        port: 9411
-        targetPort: 9411
-        protocol: TCP
     configMap:
       content: |-
         logging {
@@ -560,8 +548,44 @@ grafana-alloy:
           role = "pod"
         }
 
+        discovery.relabel "pod_logs" {
+          targets = discovery.kubernetes.pods.targets
+
+          rule {
+            source_labels = ["__meta_kubernetes_namespace"]
+            action        = "replace"
+            target_label  = "namespace"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_pod_name"]
+            action        = "replace"
+            target_label  = "pod"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_pod_container_name"]
+            action        = "replace"
+            target_label  = "container"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+            action        = "replace"
+            target_label  = "app"
+          }
+
+          rule {
+            source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+            action        = "replace"
+            target_label  = "job"
+            separator     = "/"
+            replacement   = "$1"
+          }
+        }
+
         loki.source.kubernetes "pods" {
-          targets    = discovery.kubernetes.pods.targets
+          targets    = discovery.relabel.pod_logs.output
           forward_to = [loki.process.pods.receiver]
         }
 
