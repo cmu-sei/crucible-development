@@ -28,6 +28,7 @@ ingress-nginx:
 # Deploy a postgres database
 # https://github.com/self-hosters-by-night/helm-charts/tree/main/charts/postgres
 postgresql:
+  enabled: true
   image:
     registry: docker.io
     repository: postgres
@@ -55,6 +56,7 @@ postgresql:
 # Deploy pgadmin4 for managing the database
 # https://artifacthub.io/packages/helm/runix/pgadmin4
 pgadmin4:
+  enabled: true
   fullnameOverride: crucible-pgadmin
   existingSecret: crucible-pgadmin
   env:
@@ -96,6 +98,7 @@ pgadmin4:
 # Deploy Keycloak IdP
 # https://artifacthub.io/packages/helm/bitnami/keycloak
 keycloak:
+  enabled: true
   image:
     # This bitnamilegacy image requires allowing insecure images
     repository: bitnamilegacy/keycloak
@@ -146,6 +149,7 @@ keycloak:
 # Deploy TopoMojo
 # https://github.com/cmu-sei/helm-charts/tree/main/charts/topomojo
 topomojo:
+  enabled: true
   topomojo-api:
     ingress:
       enabled: true
@@ -234,6 +238,7 @@ topomojo:
 # Deploy Player
 # https://github.com/cmu-sei/helm-charts/tree/main/charts/player
 player:
+  enabled: true
   player-api:
     # use a configmap to define the custom ca cert
     certificateMap: "crucible-ca-cert"
@@ -384,6 +389,7 @@ player:
 # Deploy Prometheus for metrics collection
 # https://artifacthub.io/packages/helm/prometheus-community/prometheus
 prometheus:
+  enabled: true
   server:
     prefixURL: ""
     baseURL: ""
@@ -393,6 +399,7 @@ prometheus:
 # Deploy Grafana for dashboards/visualization
 # https://artifacthub.io/packages/helm/grafana/grafana
 grafana:
+  enabled: true
   # ingress hosts grafana at https://<domain>/grafana
   ingress:
     enabled: true
@@ -504,6 +511,7 @@ grafana:
 # Deploy Grafana Loki for log collection
 # https://artifacthub.io/packages/helm/grafana/loki
 loki:
+  enabled: true
   # SingleBinary mode is good for a small dev cluster and runs the loki server in one pod
   deploymentMode: SingleBinary
   gateway:
@@ -552,6 +560,7 @@ loki:
 # Deploy Grafana Temp for OpenTelemetry Trace collection
 # https://artifacthub.io/packages/helm/grafana/tempo
 tempo:
+  enabled: true
   replicas: 1
   tempo:
     # Use local storage for trace data
@@ -584,6 +593,7 @@ tempo:
 # metrics to Prometheus, logs to Loki, and traces to Tempo
 # https://artifacthub.io/packages/helm/grafana/alloy
 grafana-alloy:
+  enabled: true
   fullnameOverride: "crucible-grafana-alloy"
   controller:
     type: daemonset

@@ -15,32 +15,42 @@ dependencies:
   - name: pgadmin4
     repository: https://helm.runix.net
     version: 1.50.0
+    condition: pgadmin4.enabled
   - name: postgres
     alias: postgresql
     repository: https://self-hosters-by-night.github.io/helm-charts
     version: 0.12.0
+    condition: postgresql.enabled
   - name: keycloak
     repository: oci://registry-1.docker.io/bitnamicharts
     version: 24.6.4
+    condition: keycloak.enabled
   - name: topomojo
     repository: https://helm.cmusei.dev/charts
     version: 0.5.13
+    condition: topomojo.enabled
   - name: player
     repository: https://helm.cmusei.dev/charts
     version: 1.8.0
+    condition: player.enabled
   - name: prometheus
     repository: https://prometheus-community.github.io/helm-charts
     version: 27.50.0
+    condition: prometheus.enabled
   - name: grafana
     repository: https://grafana.github.io/helm-charts
     version: 10.3.0
+    condition: grafana.enabled
   - name: alloy
     repository: https://grafana.github.io/helm-charts
     version: 1.5.0
     alias: grafana-alloy
+    condition: grafana-alloy.enabled
   - name: loki
     repository: https://grafana.github.io/helm-charts
     version: 6.48.0
+    condition: loki.enabled
   - name: tempo
     repository: https://grafana.github.io/helm-charts
     version: 1.10.0
+    condition: tempo.enabled
