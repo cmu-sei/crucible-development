@@ -5,10 +5,15 @@ global:
   security:
     allowInsecureImages: true
 
+# Provision an NFS Server for apps to use for PVCs
+# https://artifacthub.io/packages/helm/kvaps/nfs-server-provisioner
 nfs-server-provisioner:
   persistence:
     enabled: true
 
+# Deploy an ingress-nginx ingress controller
+# https://kubernetes.github.io/ingress-nginx/
+#
 ingress-nginx:
   controller:
     config:
@@ -20,6 +25,8 @@ ingress-nginx:
   tcp:
     2049: "{{ .Release.Namespace }}/{{ .Release.Name }}-nfs-server-provisioner:2049"
 
+# Deploy a postgres database
+# https://github.com/self-hosters-by-night/helm-charts/tree/main/charts/postgres
 postgresql:
   image:
     registry: docker.io
@@ -27,10 +34,12 @@ postgresql:
     tag: "16"
   env:
     vars:
+      # default postgres username and database
       POSTGRES_USER: "postgres"
       POSTGRES_DB: "postgres"
     fromSecret:
-      # The self-hosters postgres chart does not support templating here
+      # Postgres passsword comes from a secret
+      # The postgres sub-chart does not support templating here
       POSTGRES_PASSWORD:
         from: crucible-postgresql
         key: postgres-password
@@ -43,21 +52,26 @@ postgresql:
     size: "1Gi"
     selector: null
 
+# Deploy pgadmin4 for managing the database
+# https://artifacthub.io/packages/helm/runix/pgadmin4
 pgadmin4:
   fullnameOverride: crucible-pgadmin
   existingSecret: crucible-pgadmin
   env:
+    # email address for the default user
     email: pgadmin@crucible.dev
     contextPath: /pgadmin
     variables:
       - name: PGADMIN_CONFIG_UPGRADE_CHECK_ENABLED
         value: "False"
+      # ignore ssl errors caused by self-signed cert
       - name: PGADMIN_CONFIG_SSL_VERIFY
         value: "False"
   serverDefinitions:
     enabled: true
     resourceType: Secret
     servers:
+      # configure the postgres database to connect on deploy
       crucible-postgres:
         Name: "Crucible Postgres"
         Group: "Servers"
@@ -79,10 +93,14 @@ pgadmin4:
           - "{{ .Values.global.domain }}"
         secretName: crucible-cert
 
+# Deploy Keycloak IdP
+# https://artifacthub.io/packages/helm/bitnami/keycloak
 keycloak:
   image:
+    # This bitnamilegacy image requires allowing insecure images
     repository: bitnamilegacy/keycloak
   auth:
+    # default admin creds come from an existing secret
     adminUser: "keycloak-admin"
     existingSecret: '{{ include "crucible.fullname" . }}-auth'
   proxyHeaders: xforwarded
@@ -101,6 +119,9 @@ keycloak:
       - hosts:
           - "{{ .Values.global.domain }}"
         secretName: crucible-cert
+  # import realm on startup
+  # If the realm already exists, keycloak will not overwrite it
+  #    (even if the realm.json is different than keycloak's config)
   extraEnvVars:
     - name: KEYCLOAK_EXTRA_ARGS
       value: "--import-realm"
@@ -112,6 +133,7 @@ keycloak:
     - name: realm-import
       mountPath: /opt/bitnami/keycloak/data/import
       readOnly: true
+  # Use the external postgres instead of the one provided by the bitnami chart
   postgresql:
     enabled: false
   externalDatabase:
@@ -121,6 +143,8 @@ keycloak:
     existingSecret: "{{ .Release.Name }}-postgresql"
     existingSecretPasswordKey: postgres-password
 
+# Deploy TopoMojo
+# https://github.com/cmu-sei/helm-charts/tree/main/charts/topomojo
 topomojo:
   topomojo-api:
     ingress:
@@ -143,7 +167,9 @@ topomojo:
           secretName: crucible-cert
     storage:
       existing: '{{ include "crucible.fullname" . }}-nfs'
+    # This secret includes a database connection string and a custom CA cert
     existingSecret: '{{ include "crucible.fullname" . }}-custom'
+    # The custom start command allows TopoMojo to trust a custom CA cert (self-signed)
     customStart:
       command: ["/bin/sh"]
       args: ["/home/app/start/start.sh"]
@@ -153,10 +179,12 @@ topomojo:
           cd /home/app && SSL_CERT_FILE=/home/app/conf/cacert.crt dotnet TopoMojo.Api.dll
     env:
       PathBase: /topomojo
+      # postgres database connection string provided by secret
       Database__Provider: PostgreSQL
       FileUpload__IsoRoot: /mnt/tm
       FileUpload__TopoRoot: /mnt/tm
       FileUpload__DocRoot: /mnt/tm/_docs
+      # Configure OIDC to use Keycloak
       Oidc__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
       Oidc__Audience: topomojo
       Oidc__MetadataAddress: https://{{ .Values.global.domain }}/keycloak/realms/crucible/.well-known/openid-configuration
@@ -187,6 +215,7 @@ topomojo:
     settingsYaml:
       appname: TopoMojo
       oidc:
+        # Use Keycloak client configurations
         authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
         client_id: topomojo.ui
         redirect_uri: https://{{ .Values.global.domain }}/topomojo/oidc
@@ -202,8 +231,11 @@ topomojo:
         monitorSession: false
         useLocalStorage: true
 
+# Deploy Player
+# https://github.com/cmu-sei/helm-charts/tree/main/charts/player
 player:
   player-api:
+    # use a configmap to define the custom ca cert
     certificateMap: "crucible-ca-cert"
     ingress:
       enabled: true
@@ -221,9 +253,11 @@ player:
         - hosts:
             - "{{ .Values.global.domain }}"
           secretName: crucible-cert
+    # This secret contains the postgres connection string
     existingSecret: "{{ .Release.Name }}-player-api-custom"
     env:
       PathBase: /player
+      # Use Keycloak client configurations
       Authorization__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
       Authorization__AuthorizationUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth
       Authorization__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
@@ -232,9 +266,12 @@ player:
       Authorization__ClientId: player.api
       Authorization__RequireHttpsMetadata: "false"
       CorsPolicy__Origins__0: https://{{ .Values.global.domain }}
+      # Trust the custom ca-cert
       SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
       SSL_CERT_DIR: /usr/local/share/ca-certificates
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://crucible-grafana-alloy:4317
+      # Configure an OTLP collector for sending opentelemetry
+      # Use the kubernetes cluster address for the collector
+      OTEL_EXPORTER_OTLP_ENDPOINT: crucible-grafana-alloy:4317
   player-ui:
     ingress:
       enabled: true
@@ -264,6 +301,7 @@ player:
       NotificationsSettings:
         url: https://{{ .Values.global.domain }}/player/hubs
   vm-api:
+    # use a configmap to define the custom ca cert
     certificateMap: "crucible-ca-cert"
     ingress:
       enabled: true
@@ -277,6 +315,7 @@ player:
         - hosts:
             - "{{ .Values.global.domain }}"
           secretName: crucible-cert
+    # This secret contains 2 different postgres connection strings that are required for this application
     existingSecret: "{{ .Release.Name }}-vm-api-custom"
     env:
       PathBase: /vm
@@ -342,6 +381,8 @@ player:
         scope: openid profile player player-vm
         automaticSilentRenew: true
 
+# Deploy Prometheus for metrics collection
+# https://artifacthub.io/packages/helm/prometheus-community/prometheus
 prometheus:
   server:
     prefixURL: ""
@@ -349,6 +390,8 @@ prometheus:
     extraArgs:
       web.enable-remote-write-receiver: "" # enable the remote-write-receiver for Grafana-Alloy writing
 
+# Deploy Grafana for dashboards/visualization
+# https://artifacthub.io/packages/helm/grafana/grafana
 grafana:
   # ingress hosts grafana at https://<domain>/grafana
   ingress:
@@ -401,7 +444,7 @@ grafana:
             serviceMap:
               datasourceUid: prometheus
 
-  # Add the crucible-ca cert as trusted
+  # Add custom cert as trusted via the configmap
   env:
     SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
   extraVolumes:
@@ -417,7 +460,10 @@ grafana:
       subPath: crucible-dev.crt
       readOnly: true
 
+# Deploy Grafana Loki for log collection
+# https://artifacthub.io/packages/helm/grafana/loki
 loki:
+  # SingleBinary mode is good for a small dev cluster and runs the loki server in one pod
   deploymentMode: SingleBinary
   gateway:
     enabled: false
@@ -426,6 +472,8 @@ loki:
     persistence:
       enabled: true
       size: 5Gi
+
+    # Add custom cert as trusted via the configmap
     extraEnv:
       - name: SSL_CERT_FILE
         value: /usr/local/share/ca-certificates/crucible-dev.crt
@@ -448,6 +496,8 @@ loki:
   backend:
     replicas: 0
   loki:
+    # auth is disabled to simplify deployment
+    # this service is kubernetes-internal
     auth_enabled: false
     storage:
       type: filesystem
@@ -458,9 +508,12 @@ loki:
       replication_factor: 1
     useTestSchema: true
 
+# Deploy Grafana Temp for OpenTelemetry Trace collection
+# https://artifacthub.io/packages/helm/grafana/tempo
 tempo:
   replicas: 1
   tempo:
+    # Use local storage for trace data
     storage:
       trace:
         backend: local
@@ -468,6 +521,7 @@ tempo:
           path: /var/tempo/traces
         wal:
           path: /var/tempo/wal
+    # The OTLP receiver listens for gRPC and HTTP
     receivers:
       otlp:
         protocols:
@@ -484,6 +538,10 @@ tempo:
   tempoQuery:
     enabled: false
 
+# Deploy Grafana Alloy as an OpenTelemetry Collector
+# Apps will send OTLP data to Grafana Alloy, which when forwards the data to other services.
+# metrics to Prometheus, logs to Loki, and traces to Tempo
+# https://artifacthub.io/packages/helm/grafana/alloy
 grafana-alloy:
   fullnameOverride: "crucible-grafana-alloy"
   controller:
