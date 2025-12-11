@@ -39,6 +39,8 @@ declare -A HELM_REPOS=(
   [ingress-nginx]="https://kubernetes.github.io/ingress-nginx"
   [kvaps]="https://kvaps.github.io/charts"
   [selfhosters]="https://self-hosters-by-night.github.io/helm-charts"
+  [runix]="https://helm.runix.net"
+  [grafana]="https://grafana.github.io/helm-charts"
 )
 
 for name in "${!HELM_REPOS[@]}"; do
