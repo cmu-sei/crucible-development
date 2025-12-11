@@ -638,10 +638,14 @@ grafana-alloy:
           forward_to = [loki.write.default.receiver]
         }
 
-        // Export otel traces to Tempo
+        // Export otel traces to Tempo via gRPC
         otelcol.exporter.otlp "default" {
           client {
-            endpoint = "http://{{ .Release.Name }}-tempo:4317"
+            endpoint = "{{ .Release.Name }}-tempo:4317"
+            // insecure is ok since this just stays in the cluster
+            tls {
+              insecure = true
+            }
           }
         }
 
