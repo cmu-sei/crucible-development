@@ -1,4 +1,6 @@
-{{- if .Files.Get "files/crucible-dev.crt" }}
+{{- $crucibleCa := .Files.Get "files/crucible-dev.crt" -}}
+{{- $zscalerCa := .Files.Get "files/zscaler-ca.crt" -}}
+{{- if or $crucibleCa $zscalerCa }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,6 +8,12 @@ metadata:
   labels:
     {{- include "crucible.labels" $ | nindent 4 }}
 data:
+  {{- if $crucibleCa }}
   crucible-dev.crt: |
-{{ .Files.Get "files/crucible-dev.crt" | nindent 4 }}
+{{ $crucibleCa | nindent 4 }}
+  {{- end }}
+  {{- if $zscalerCa }}
+  zscaler-ca.crt: |
+{{ $zscalerCa | nindent 4 }}
+  {{- end }}
 {{- end }}

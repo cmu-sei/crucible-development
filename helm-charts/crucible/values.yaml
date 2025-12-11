@@ -412,6 +412,23 @@ grafana:
     server:
       root_url: https://{{ .Values.global.domain }}/grafana/
       serve_from_sub_path: true
+    auth:
+      disable_login_form: true
+      signout_redirect_url: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/logout?redirect_uri=https://{{ .Values.global.domain }}/grafana/
+    auth.generic_oauth:
+      enabled: true
+      name: Keycloak
+      allow_sign_up: true
+      client_id: grafana
+      client_secret: ${GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET}
+      scopes: openid profile email
+      auth_url: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth
+      token_url: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
+      api_url: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/userinfo
+      email_attribute_path: email
+      login_attribute_path: email
+      name_attribute_path: preferred_username
+      role_attribute_path: "contains(realm_access.roles[*], 'Administrator') && 'Admin' || 'Viewer'"
 
   # configure datasources from Prometheus (metrics), Loki (logs), Tempo (Otel traces)
   # data sources use cluster service addresses
@@ -446,7 +463,24 @@ grafana:
 
   # Add custom cert as trusted via the configmap
   env:
-    SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
+    SSL_CERT_FILE: /etc/ssl/certs/combined-ca/ca-certificates.crt
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: 516aea1d6915825e2dd757834a34386bd21c942c6c42e7cbc52ef2ba7cfb5518
+  extraInitContainers:
+    - name: grafana-ca-bundle
+      image: alpine:3.19
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          cp /etc/ssl/certs/ca-certificates.crt /ca-bundle/ca-certificates.crt
+          cat /crucible-ca/crucible-dev.crt >> /ca-bundle/ca-certificates.crt
+          if [ -f /crucible-ca/zscaler-ca.crt ]; then cat /crucible-ca/zscaler-ca.crt >> /ca-bundle/ca-certificates.crt; fi
+      volumeMounts:
+        - name: ca-bundle
+          mountPath: /ca-bundle
+        - name: crucible-ca
+          mountPath: /crucible-ca
   extraVolumes:
     - name: crucible-ca
       configMap:
@@ -454,10 +488,17 @@ grafana:
         items:
           - key: crucible-dev.crt
             path: crucible-dev.crt
+          - key: zscaler-ca.crt
+            path: zscaler-ca.crt
+    - name: ca-bundle
+      emptyDir: {}
   extraVolumeMounts:
     - name: crucible-ca
-      mountPath: /usr/local/share/ca-certificates/crucible-dev.crt
+      mountPath: /crucible-ca/crucible-dev.crt
       subPath: crucible-dev.crt
+      readOnly: true
+    - name: ca-bundle
+      mountPath: /etc/ssl/certs/combined-ca
       readOnly: true
 
 # Deploy Grafana Loki for log collection
