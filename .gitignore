@@ -72,3 +72,4 @@ db-dumps/
 
 # helm charts
 helm-charts/*/charts/*
+helm-charts/crucible/files/*.crt
