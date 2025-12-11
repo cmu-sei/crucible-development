@@ -234,6 +234,7 @@ player:
       CorsPolicy__Origins__0: https://{{ .Values.global.domain }}
       SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
       SSL_CERT_DIR: /usr/local/share/ca-certificates
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://crucible-grafana-alloy:4317
   player-ui:
     ingress:
       enabled: true
