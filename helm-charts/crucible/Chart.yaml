@@ -25,6 +25,11 @@ dependencies:
     repository: oci://registry-1.docker.io/bitnamicharts
     version: 24.6.4
     condition: keycloak.enabled
+  - name: alloy
+    repository: https://helm.cmusei.dev/charts
+    version: 1.6.9
+    condition: crucible-alloy.enabled
+    alias: crucible-alloy
   - name: topomojo
     repository: https://helm.cmusei.dev/charts
     version: 0.5.13
@@ -41,11 +46,11 @@ dependencies:
     repository: https://grafana.github.io/helm-charts
     version: 10.3.0
     condition: grafana.enabled
-  - name: alloy
-    repository: https://grafana.github.io/helm-charts
-    version: 1.5.0
-    alias: grafana-alloy
-    condition: grafana-alloy.enabled
+  # - name: alloy
+  #   repository: https://grafana.github.io/helm-charts
+  #   version: 1.5.0
+  #   alias: grafana-alloy
+  #   condition: grafana-alloy.enabled
   - name: loki
     repository: https://grafana.github.io/helm-charts
     version: 6.48.0
