@@ -14,26 +14,29 @@ dependencies:
 - name: keycloak
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 24.6.4
-- name: alloy
-  repository: https://helm.cmusei.dev/charts
-  version: 1.6.9
 - name: topomojo
   repository: https://helm.cmusei.dev/charts
   version: 0.5.13
 - name: player
   repository: https://helm.cmusei.dev/charts
   version: 1.8.0
+- name: caster
+  repository: https://helm.cmusei.dev/charts
+  version: 1.6.7
 - name: prometheus
   repository: https://prometheus-community.github.io/helm-charts
   version: 27.50.0
 - name: grafana
   repository: https://grafana.github.io/helm-charts
   version: 10.3.0
+- name: alloy
+  repository: https://grafana.github.io/helm-charts
+  version: 1.5.0
 - name: loki
   repository: https://grafana.github.io/helm-charts
   version: 6.48.0
 - name: tempo
   repository: https://grafana.github.io/helm-charts
   version: 1.10.0
-digest: sha256:f06f3f0e47919e67967d715347a6a8ce8f79308881a16094ed22184354873e52
-generated: "2025-12-12T16:11:27.298376553Z"
+digest: sha256:68308ce9e9950b2bb8c457d8326409ed2bb99fb0503c04bb03d4792e7e6b8921
+generated: "2025-12-15T18:41:52.527170176Z"
