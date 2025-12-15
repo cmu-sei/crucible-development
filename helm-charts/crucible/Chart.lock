@@ -20,6 +20,9 @@ dependencies:
 - name: blueprint
   repository: https://helm.cmusei.dev/charts
   version: 1.6.6
+- name: cite
+  repository: https://helm.cmusei.dev/charts
+  version: 1.6.9
 - name: topomojo
   repository: https://helm.cmusei.dev/charts
   version: 0.5.13
@@ -41,5 +44,5 @@ dependencies:
 - name: tempo
   repository: https://grafana.github.io/helm-charts
   version: 1.10.0
-digest: sha256:21340c15e82382928f751a43a0cb34e6c0b5d4edc5a70341c544aaa6e8fc1959
-generated: "2025-12-15T19:14:23.346180729Z"
+digest: sha256:5dc2500ef06ce69e55516eb34c4acf445eab2e337f215f01ecb57a7424398c88
+generated: "2025-12-15T21:19:33.775022886Z"

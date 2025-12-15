@@ -34,6 +34,10 @@ dependencies:
     repository: https://helm.cmusei.dev/charts
     version: 1.6.6
     condition: blueprint.enabled
+  - name: cite
+    repository: https://helm.cmusei.dev/charts
+    version: 1.6.9
+    condition: cite.enabled
   - name: topomojo
     repository: https://helm.cmusei.dev/charts
     version: 0.5.13

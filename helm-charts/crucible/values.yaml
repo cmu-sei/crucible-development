@@ -315,6 +315,79 @@ blueprint:
       AppTopBarImage: /blueprint/assets/img/pencil-ruler-white.png
       UseLocalAuthStorage: false
 
+# Deploy CITE
+# https://github.com/cmu-sei/helm-charts/tree/main/charts/cite
+cite:
+  enabled: true
+  cite-api:
+    # use a configmap to define the custom ca cert
+    certificateMap: "crucible-ca-cert"
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /cite/(api|swagger|hubs)
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    # This secret contains the postgres connection string
+    existingSecret: "{{ .Release.Name }}-cite-api-custom"
+    env:
+      PathBase: /cite
+      # CORS policy settings
+      CorsPolicy__Origins__0: https://{{ .Values.global.domain }}
+      # OAuth2 Identity Client for Application
+      Authorization__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+      Authorization__AuthorizationUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth
+      Authorization__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
+      Authorization__AuthorizationScope: "openid cite"
+      Authorization__ClientId: cite.api
+      Authorization__ClientName: "CITE API"
+      # Trust the custom ca-cert
+      SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
+      SSL_CERT_DIR: /usr/local/share/ca-certificates
+  cite-ui:
+    # Starting with CITE 1.9.0, there is a bug in path based routing. Using an older version for now.
+    image:
+      tag: 1.8.3
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /cite
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    env:
+      APP_BASEHREF: "/cite"
+    settingsYaml:
+      ApiUrl: https://{{ .Values.global.domain }}/cite
+      OIDCSettings:
+        authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+        client_id: cite.ui
+        redirect_uri: https://{{ .Values.global.domain }}/cite/auth-callback
+        post_logout_redirect_uri: https://{{ .Values.global.domain }}/cite
+        response_type: code
+        scope: openid profile cite
+        automaticSilentRenew: true
+        silent_redirect_uri: https://{{ .Values.global.domain }}/cite/auth-callback-silent
+      AppTitle: CITE
+      AppTopBarText: "CITE  -  Collaborative Incident Threat Evaluator"
+      AppTopBarImage: "/cite/assets/img/account-group-white.png"
+      UseLocalAuthStorage: false
+
 # Deploy Caster
 # https://github.com/cmu-sei/helm-charts/tree/main/charts/caster
 caster:
