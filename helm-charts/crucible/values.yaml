@@ -146,90 +146,250 @@ keycloak:
     existingSecret: "{{ .Release.Name }}-postgresql"
     existingSecretPasswordKey: postgres-password
 
-# crucible-alloy:
-#   enabled: true
-#   alloy-api:
-#     ingress:
-#       enabled: true
-#       className: "nginx"
-#       annotations:
-#         kubernetes.io/ingress.class: nginx
-#         nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
-#         nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
-#         nginx.ingress.kubernetes.io/use-regex: "true"
-#       hosts:
-#         - host: "{{ .Values.global.domain }}"
-#           paths:
-#             - path: /alloy/(api|swagger|hubs)
-#               pathType: ImplementationSpecific
-#       tls:
-#         - hosts:
-#             - "{{ .Values.global.domain }}"
-#           secretName: crucible-cert
-#     # This secret contains the postgres connection string
-#     existingSecret: "{{ .Release.Name }}-alloy-api-custom"
-#     # Values placed into the {{ .Release.Name }}-alloy-api-custom secret
-#     resourceOwnerAuthorization:
-#       authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
-#       clientId: "alloy.admin"
-#       clientSecret: "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW"
-#       userName: "admin"
-#       password: "admin"
-#     env:
-#       PathBase: /alloy
-#       # CORS policy settings.
-#       CorsPolicy__Origins__0: "https://{{ .Values.global.domain }}"
-#       # OAuth2 Identity Client for Application
-#       Authorization__Authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
-#       Authorization__AuthorizationUrl: "https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth"
-#       Authorization__TokenUrl: "https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token"
-#       Authorization__AuthorizationScope: "openid alloy player player-vm steamfitter caster"
-#       Authorization__ClientId: alloy.api
-#       Authorization__ClientName: "Alloy API"
-#       # OAuth2 Identity Client /w Password
-#       ResourceOwnerAuthorization__Authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
-#       ResourceOwnerAuthorization__ClientId: alloy.admin
-#       ResourceOwnerAuthorization__UserName: "admin@{{ .Values.global.domain }}.dev"
-#       ResourceOwnerAuthorization__Scope: "openid alloy player player-vm caster steamfitter"
-#       # Crucible Application URLs
-#       ClientSettings__urls__playerApi: "https://{{ .Values.global.domain }}/player"
-#       ClientSettings__urls__casterApi: "https://{{ .Values.global.domain }}/caster"
-#       ClientSettings__urls__steamfitterApi: "https://{{ .Values.global.domain }}/steamfitter"
+crucible-alloy:
+  enabled: true
+  alloy-api:
+    ingress:
+      enabled: true
+      className: "nginx"
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /alloy/(api|swagger|hubs)
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    # This secret contains the postgres connection string
+    existingSecret: "{{ .Release.Name }}-alloy-api-custom"
+    # Values placed into the {{ .Release.Name }}-alloy-api-custom secret
+    resourceOwnerAuthorization:
+      authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
+      clientId: "alloy.admin"
+      clientSecret: "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW"
+      userName: "admin"
+      password: "admin"
+    env:
+      PathBase: /alloy
+      # CORS policy settings.
+      CorsPolicy__Origins__0: "https://{{ .Values.global.domain }}"
+      # OAuth2 Identity Client for Application
+      Authorization__Authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
+      Authorization__AuthorizationUrl: "https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth"
+      Authorization__TokenUrl: "https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token"
+      Authorization__AuthorizationScope: "openid alloy player player-vm steamfitter caster"
+      Authorization__ClientId: alloy.api
+      Authorization__ClientName: "Alloy API"
+      # OAuth2 Identity Client /w Password
+      ResourceOwnerAuthorization__Authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
+      ResourceOwnerAuthorization__ClientId: alloy.admin
+      ResourceOwnerAuthorization__UserName: "admin@{{ .Values.global.domain }}.dev"
+      ResourceOwnerAuthorization__Scope: "openid alloy player player-vm caster steamfitter"
+      # Crucible Application URLs
+      ClientSettings__urls__playerApi: "https://{{ .Values.global.domain }}/player"
+      ClientSettings__urls__casterApi: "https://{{ .Values.global.domain }}/caster"
+      ClientSettings__urls__steamfitterApi: "https://{{ .Values.global.domain }}/steamfitter"
 
-#   alloy-ui:
-#     ingress:
-#       enabled: true
-#       className: "nginx"
-#       annotations:
-#         kubernetes.io/ingress.class: nginx
-#       hosts:
-#         - host: "{{ .Values.global.domain }}"
-#           paths:
-#             - path: /alloy
-#               pathType: ImplementationSpecific
-#       tls:
-#         - hosts:
-#             - "{{ .Values.global.domain }}"
-#           secretName: crucible-cert
-#     env:
-#       APP_BASEHREF: /alloy
-#     settings: '{
-#       "ApiUrl": "https://{{ .Values.global.domain }}/alloy",
-#       "OIDCSettings": {
-#       "authority": "https://{{ .Values.global.domain }}/keycloak/realms/crucible",
-#       "client_id": "alloy.ui",
-#       "redirect_uri": "https://{{ .Values.global.domain }}/alloy/auth-callback",
-#       "post_logout_redirect_uri": "https://{{ .Values.global.domain }}/alloy",
-#       "response_type": "code",
-#       "scope": "openid profile alloy player player-vm caster steamfitter",
-#       "automaticSilentRenew": true,
-#       "silent_redirect_uri": "https://{{ .Values.global.domain }}/alloy/auth-callback-silent"
-#       },
-#       "AppTitle": "Alloy",
-#       "AppTopBarText": "Alloy",
-#       "PlayerUIAddress": "https://{{ .Values.global.domain }}/player",
-#       "UseLocalAuthStorage": true
-#       }'
+  alloy-ui:
+    ingress:
+      enabled: true
+      className: "nginx"
+      annotations:
+        kubernetes.io/ingress.class: nginx
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /alloy
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    env:
+      APP_BASEHREF: /alloy
+    settings: '{
+      "ApiUrl": "https://{{ .Values.global.domain }}/alloy",
+      "OIDCSettings": {
+      "authority": "https://{{ .Values.global.domain }}/keycloak/realms/crucible",
+      "client_id": "alloy.ui",
+      "redirect_uri": "https://{{ .Values.global.domain }}/alloy/auth-callback",
+      "post_logout_redirect_uri": "https://{{ .Values.global.domain }}/alloy",
+      "response_type": "code",
+      "scope": "openid profile alloy player player-vm caster steamfitter",
+      "automaticSilentRenew": true,
+      "silent_redirect_uri": "https://{{ .Values.global.domain }}/alloy/auth-callback-silent"
+      },
+      "AppTitle": "Alloy",
+      "AppTopBarText": "Alloy",
+      "PlayerUIAddress": "https://{{ .Values.global.domain }}/player",
+      "UseLocalAuthStorage": true
+      }'
+
+# Deploy Blueprint
+# https://github.com/cmu-sei/helm-charts/tree/main/charts/blueprint
+blueprint:
+  enabled: true
+  blueprint-api:
+    # use a configmap to define the custom ca cert
+    certificateMap: "crucible-ca-cert"
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /blueprint/(api|swagger|hubs)
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    # This secret contains the postgres connection string
+    existingSecret: "{{ .Release.Name }}-blueprint-api-custom"
+    env:
+      PathBase: /blueprint
+      # CORS policy settings
+      CorsPolicy__Origins__0: https://{{ .Values.global.domain }}
+      # OAuth2 Identity Client for Application
+      Authorization__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+      Authorization__AuthorizationUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth
+      Authorization__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
+      Authorization__AuthorizationScope: "openid blueprint player player-vm cite gallery steamfitter"
+      Authorization__ClientId: blueprint.api
+      Authorization__ClientName: "Blueprint API"
+      # Resource Owner Authorization for service account
+      ResourceOwnerAuthorization__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+      ResourceOwnerAuthorization__ClientId: blueprint.admin
+      ResourceOwnerAuthorization__Scope: "openid profile blueprint player player-vm cite gallery steamfitter"
+      # Client Settings for other Crucible services
+      ClientSettings__CiteApiUrl: https://{{ .Values.global.domain }}/cite
+      ClientSettings__GalleryApiUrl: https://{{ .Values.global.domain }}/gallery
+      ClientSettings__PlayerApiUrl: https://{{ .Values.global.domain }}/player
+      ClientSettings__SteamfitterApiUrl: https://{{ .Values.global.domain }}/steamfitter
+      # Database settings
+      Database__AutoMigrate: true
+      Database__DevModeRecreate: false
+      # Trust the custom ca-cert
+      SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
+      SSL_CERT_DIR: /usr/local/share/ca-certificates
+  blueprint-ui:
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /blueprint
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    env:
+      APP_BASEHREF: /blueprint
+    settingsYaml:
+      ApiUrl: https://{{ .Values.global.domain }}/blueprint
+      GalleryApiUrl: https://{{ .Values.global.domain }}/gallery
+      PlayerUrl: https://{{ .Values.global.domain }}/player
+      OIDCSettings:
+        authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+        client_id: blueprint.ui
+        redirect_uri: https://{{ .Values.global.domain }}/blueprint/auth-callback
+        post_logout_redirect_uri: https://{{ .Values.global.domain }}/blueprint
+        response_type: code
+        scope: openid profile blueprint player player-vm cite gallery steamfitter
+        automaticSilentRenew: true
+        silent_redirect_uri: https://{{ .Values.global.domain }}/blueprint/auth-callback-silent
+      AppTitle: Blueprint
+      AppTopBarText: "Blueprint  -  Exercise Planning"
+      AppTopBarImage: /blueprint/assets/img/pencil-ruler-white.png
+      UseLocalAuthStorage: false
+
+# Deploy Caster
+# https://github.com/cmu-sei/helm-charts/tree/main/charts/caster
+caster:
+  enabled: true
+  caster-api:
+    # use a configmap to define the custom ca cert
+    certificateMap: "crucible-ca-cert"
+    # Git credentials - placeholder for local development
+    gitcredentials: ""
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /caster/(api|swagger|hubs)
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: "{{ .Release.Name }}-cert"
+    storage:
+      existing: "{{ .Release.Name }}-caster-api-nfs"
+    # This secret contains the postgres connection string
+    existingSecret: "{{ .Release.Name }}-caster-api-custom"
+    env:
+      PathBase: /caster
+      # Use Keycloak client configurations
+      Authorization__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+      Authorization__AuthorizationUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth
+      Authorization__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
+      Authorization__AuthorizationScope: "caster"
+      Authorization__ClientId: caster.api
+      CorsPolicy__Origins__0: https://{{ .Values.global.domain }}
+      # Resource Owner Authorization for service account
+      Client__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
+      Client__ClientId: caster.admin
+      Client__Scope: "player player-vm"
+      # Crucible Player URLs
+      Player__VmApiUrl: https://{{ .Values.global.domain }}/vm
+      Player__VmConsoleUrl: https://{{ .Values.global.domain }}/console/vm/{id}/console
+      # Trust the custom ca-cert
+      SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
+      SSL_CERT_DIR: /usr/local/share/ca-certificates
+  caster-ui:
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /caster
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: "{{ .Release.Name }}-cert"
+    env:
+      APP_BASEHREF: /caster
+    settingsYaml:
+      ApiUrl: https://{{ .Values.global.domain }}/caster
+      OIDCSettings:
+        authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+        client_id: caster.ui
+        redirect_uri: https://{{ .Values.global.domain }}/caster/auth-callback
+        post_logout_redirect_uri: https://{{ .Values.global.domain }}/caster
+        response_type: code
+        scope: openid profile caster
+        automaticSilentRenew: true
+        silent_redirect_uri: https://{{ .Values.global.domain }}/caster/auth-callback-silent
+      UseLocalAuthStorage: true
 
 # Deploy TopoMojo
 # https://github.com/cmu-sei/helm-charts/tree/main/charts/topomojo
@@ -470,82 +630,6 @@ player:
         response_type: code
         scope: openid profile player player-vm
         automaticSilentRenew: true
-
-# Deploy Caster
-# https://github.com/cmu-sei/helm-charts/tree/main/charts/caster
-caster:
-  enabled: true
-  caster-api:
-    # use a configmap to define the custom ca cert
-    certificateMap: "crucible-ca-cert"
-    # Git credentials - placeholder for local development
-    gitcredentials: ""
-    ingress:
-      enabled: true
-      className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
-        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
-        nginx.ingress.kubernetes.io/use-regex: "true"
-      hosts:
-        - host: "{{ .Values.global.domain }}"
-          paths:
-            - path: /caster/(api|swagger|hubs)
-              pathType: ImplementationSpecific
-      tls:
-        - hosts:
-            - "{{ .Values.global.domain }}"
-          secretName: "{{ .Release.Name }}-cert"
-    storage:
-      existing: '{{ .Release.Name }}-caster-api-nfs'
-    # This secret contains the postgres connection string
-    existingSecret: "{{ .Release.Name }}-caster-api-custom"
-    env:
-      PathBase: /caster
-      # Use Keycloak client configurations
-      Authorization__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
-      Authorization__AuthorizationUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth
-      Authorization__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
-      Authorization__AuthorizationScope: "caster"
-      Authorization__ClientId: caster.api
-      CorsPolicy__Origins__0: https://{{ .Values.global.domain }}
-      # Resource Owner Authorization for service account
-      Client__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
-      Client__ClientId: caster.admin
-      Client__Scope: "player player-vm"
-      # Crucible Player URLs
-      Player__VmApiUrl: https://{{ .Values.global.domain }}/vm
-      Player__VmConsoleUrl: https://{{ .Values.global.domain }}/console/vm/{id}/console
-      # Trust the custom ca-cert
-      SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
-      SSL_CERT_DIR: /usr/local/share/ca-certificates
-  caster-ui:
-    ingress:
-      enabled: true
-      className: nginx
-      hosts:
-        - host: "{{ .Values.global.domain }}"
-          paths:
-            - path: /caster
-              pathType: ImplementationSpecific
-      tls:
-        - hosts:
-            - "{{ .Values.global.domain }}"
-          secretName: "{{ .Release.Name }}-cert"
-    env:
-      APP_BASEHREF: /caster
-    settingsYaml:
-      ApiUrl: https://{{ .Values.global.domain }}/caster
-      OIDCSettings:
-        authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
-        client_id: caster.ui
-        redirect_uri: https://{{ .Values.global.domain }}/caster/auth-callback
-        post_logout_redirect_uri: https://{{ .Values.global.domain }}/caster
-        response_type: code
-        scope: openid profile caster
-        automaticSilentRenew: true
-        silent_redirect_uri: https://{{ .Values.global.domain }}/caster/auth-callback-silent
-      UseLocalAuthStorage: true
 
 # Deploy Prometheus for metrics collection
 # https://artifacthub.io/packages/helm/prometheus-community/prometheus
