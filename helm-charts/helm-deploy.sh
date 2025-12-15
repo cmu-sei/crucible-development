@@ -340,40 +340,6 @@ print_pgadmin_credentials() {
   echo "  Password: $decoded_password"
 }
 
-print_grafana_credentials() {
-  echo -e "\n${BLUE}${BOLD}# Grafana credentials${RESET}\n"
-
-  local secret_name="${CRUCIBLE_RELEASE}-grafana"
-  local secret_json
-  if ! secret_json=$(kubectl get secret "$secret_name" -n "$CURRENT_NAMESPACE" -o json 2>/dev/null); then
-    echo "Unable to read secret ${secret_name} in namespace ${CURRENT_NAMESPACE}."
-    return
-  fi
-
-  local encoded_user encoded_password
-  encoded_user=$(echo "$secret_json" | jq -r '.data["admin-user"] // empty')
-  encoded_password=$(echo "$secret_json" | jq -r '.data["admin-password"] // empty')
-
-  if [[ -z "$encoded_user" || -z "$encoded_password" ]]; then
-    echo "Secret ${secret_name} is missing admin-user or admin-password keys."
-    return
-  fi
-
-  local decoded_user decoded_password
-  if ! decoded_user=$(echo "$encoded_user" | base64 --decode 2>/dev/null); then
-    echo "Failed to decode Grafana admin username from secret ${secret_name}."
-    return
-  fi
-
-  if ! decoded_password=$(echo "$encoded_password" | base64 --decode 2>/dev/null); then
-    echo "Failed to decode Grafana admin password from secret ${secret_name}."
-    return
-  fi
-
-  echo "  Username: $decoded_user"
-  echo "  Password: $decoded_password"
-}
-
 start_minikube_cluster() {
   stage_custom_ca_certs
 
@@ -492,6 +458,5 @@ nohup kk port-forward -n default "service/crucible-ingress-nginx-controller" "44
 print_web_app_urls
 print_keycloak_admin_credentials
 print_pgadmin_credentials
-print_grafana_credentials
 
 echo -e "\n${GREEN}${BOLD}Crucible has been deployed${RESET}\n"
