@@ -17,7 +17,7 @@ PGADMIN_EMAIL=${PGADMIN_EMAIL:-pgadmin@crucible.dev}
 # Disable Helm 4's server-side apply by default because several upstream charts
 # still rely on client-side merge semantics (SSA triggers managedFields errors).
 HELM_UPGRADE_FLAGS=${HELM_UPGRADE_FLAGS:---wait --timeout 15m --server-side=false}
-MINIKUBE_FLAGS=${MINIKUBE_FLAGS:---mount-string=/mnt/data/terraform/root:/terraform/root --embed-certs --cpus 4 --memory 12000}
+MINIKUBE_FLAGS=${MINIKUBE_FLAGS:---mount-string=/mnt/data/terraform/root:/terraform/root --embed-certs}
 
 refresh_current_namespace() {
   CURRENT_NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}' 2>/dev/null || true)
