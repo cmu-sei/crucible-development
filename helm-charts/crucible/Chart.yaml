@@ -36,7 +36,7 @@ dependencies:
     condition: blueprint.enabled
   - name: cite
     repository: https://helm.cmusei.dev/charts
-    version: 1.6.9
+    version: 1.6.10
     condition: cite.enabled
   - name: topomojo
     repository: https://helm.cmusei.dev/charts

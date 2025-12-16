@@ -431,9 +431,6 @@ cite:
       SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   cite-ui:
-    # Starting with CITE 1.9.0, there is a bug in path based routing. Using an older version for now.
-    image:
-      tag: 1.8.3
     ingress:
       enabled: true
       className: nginx
