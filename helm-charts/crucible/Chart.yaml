@@ -38,6 +38,10 @@ dependencies:
     repository: https://helm.cmusei.dev/charts
     version: 1.6.10
     condition: cite.enabled
+  - name: gallery
+    repository: https://helm.cmusei.dev/charts
+    version: 1.6.8
+    condition: gallery.enabled
   - name: topomojo
     repository: https://helm.cmusei.dev/charts
     version: 0.5.13
