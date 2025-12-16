@@ -122,6 +122,8 @@ delete_pvcs_for_release() {
   local pvcs=(
     "data-${release_name}-nfs-server-provisioner-0"
     "${release_name}-topomojo-api-nfs"
+    "${release_name}-gameboard-api-nfs"
+    "${release_name}-caster-api-nfs"
   )
 
   for pvc in "${pvcs[@]}"; do

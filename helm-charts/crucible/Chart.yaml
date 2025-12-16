@@ -42,9 +42,13 @@ dependencies:
     repository: https://helm.cmusei.dev/charts
     version: 1.6.8
     condition: gallery.enabled
+  - name: gameboard
+    repository: https://helm.cmusei.dev/charts
+    version: 0.5.12
+    condition: gameboard.enabled
   - name: topomojo
     repository: https://helm.cmusei.dev/charts
-    version: 0.5.13
+    version: 0.5.14
     condition: topomojo.enabled
   - name: player
     repository: https://helm.cmusei.dev/charts

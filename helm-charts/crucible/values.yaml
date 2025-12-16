@@ -531,11 +531,98 @@ gallery:
       AppTopBarImage: /gallery/assets/img/monitor-dashboard-white.png
       UseLocalAuthStorage: false
 
+# Deploy Gameboard
+# https://github.com/cmu-sei/helm-charts/tree/main/charts/gameboard
+gameboard:
+  enabled: true
+  gameboard-api:
+    certificateMap: "crucible-ca-cert"
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+        nginx.ingress.kubernetes.io/proxy-body-size: 30m
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /gameboard/(api|hub|img|docs|supportfiles)
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    storage:
+      existing: '{{ include "crucible.fullname" . }}-nfs'
+    existingSecret: "{{ .Release.Name }}-gameboard-api-custom"
+    # This gets added to a secret
+    # In prod, the data should come from an external secret store
+    gameEngineClientSecret: "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW"
+    env:
+      PathBase: /gameboard
+      # Game Engine (TopoMojo) configuration
+      # Use K8s service addresses here to keep traffic between GB and TM in-cluster
+      Core__GameEngineUrl: http://crucible-topomojo-api
+      Core__ChallengeDocUrl: http://crucible-topomojo-api
+      Core__GameEngineDeployBatchSize: "6"
+      # OAuth Client Credentials configuration for TopoMojo access
+      GameEngine__ClientId: gameboard.api
+      # CORS policy settings
+      Headers__Cors__Origins__0: https://{{ .Values.global.domain }}
+      Headers__Cors__AllowCredentials: "true"
+      # OIDC settings
+      Oidc__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+      Oidc__Audience: gameboard
+      # Role mappings from Keycloak
+      # See https://github.com/cmu-sei/Gameboard/releases/tag/3.35.0 for more details
+      Oidc__UserRolesClaimPath: "realm_access.roles"
+      Oidc__UserRolesClaimMap__administrator: Administrator
+      Oidc__UserRolesClaimMap__director: Director
+      Oidc__UserRolesClaimMap__member: Member
+      Oidc__UserRolesClaimMap__support: Support
+      Oidc__UserRolesClaimMap__tester: Tester
+  gameboard-ui:
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /gameboard
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    basehref: /gameboard
+    settingsYaml:
+      appname: Gameboard
+      apphost: https://{{ .Values.global.domain }}/gameboard
+      basehref: /gameboard
+      imghost: https://{{ .Values.global.domain }}/gameboard/img
+      tochost: https://{{ .Values.global.domain }}/gameboard/docs
+      supporthost: https://{{ .Values.global.domain }}/gameboard/supportfiles
+      custom_background: custom-bg-dark-gray
+      consoleForgeConfig:
+        defaultConsoleType: vmware
+        logThreshold: 2
+      oidc:
+        client_id: gameboard.ui
+        authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+        redirect_uri: https://{{ .Values.global.domain }}/gameboard/oidc
+        silent_redirect_uri: https://{{ .Values.global.domain }}/gameboard/assets/oidc-silent.html
+        response_type: code
+        scope: openid profile gameboard topomojo
+        loadUserInfo: true
+        useLocalStorage: true
+
 # Deploy TopoMojo
 # https://github.com/cmu-sei/helm-charts/tree/main/charts/topomojo
 topomojo:
   enabled: true
   topomojo-api:
+    certificateMap: "crucible-ca-cert"
     ingress:
       enabled: true
       className: nginx
@@ -544,11 +631,7 @@ topomojo:
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
-            - path: /topomojo/api
-              pathType: ImplementationSpecific
-            - path: /topomojo/hub
-              pathType: ImplementationSpecific
-            - path: /topomojo/docs
+            - path: /topomojo/(api|hub|docs)
               pathType: ImplementationSpecific
       tls:
         - hosts:
@@ -556,16 +639,7 @@ topomojo:
           secretName: crucible-cert
     storage:
       existing: '{{ include "crucible.fullname" . }}-nfs'
-    # This secret includes a database connection string and a custom CA cert
     existingSecret: '{{ include "crucible.fullname" . }}-custom'
-    # The custom start command allows TopoMojo to trust a custom CA cert (self-signed)
-    customStart:
-      command: ["/bin/sh"]
-      args: ["/home/app/start/start.sh"]
-      binaryFiles: {}
-      files:
-        start.sh: |
-          cd /home/app && SSL_CERT_FILE=/home/app/conf/cacert.crt dotnet TopoMojo.Api.dll
     env:
       PathBase: /topomojo
       # postgres database connection string provided by secret

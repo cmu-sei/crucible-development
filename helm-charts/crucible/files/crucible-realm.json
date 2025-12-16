@@ -1117,6 +1117,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
+      "secret": "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW",
       "redirectUris": [
         "https://crucible/gameboard/api/oauth2-redirect.html",
         "https://crucible/gameboard/api/oauth2-redirect.html"
@@ -1128,8 +1129,8 @@
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": false,
-      "publicClient": true,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
       "frontchannelLogout": true,
       "protocol": "openid-connect",
       "attributes": {
@@ -1145,6 +1146,7 @@
       "defaultClientScopes": [
         "web-origins",
         "gameboard",
+        "topomojo",
         "acr",
         "profile",
         "roles",
@@ -1197,6 +1199,7 @@
       "defaultClientScopes": [
         "web-origins",
         "gameboard",
+        "topomojo",
         "acr",
         "profile",
         "roles",
