@@ -6,6 +6,7 @@ type: application
 version: 0.0.0
 
 dependencies:
+  # Prerequisite services
   - name: nfs-server-provisioner
     repository: https://kvaps.github.io/charts
     version: 1.8.0
@@ -21,10 +22,14 @@ dependencies:
     repository: https://self-hosters-by-night.github.io/helm-charts
     version: 0.12.0
     condition: postgresql.enabled
+
+    # Identity Provider
   - name: keycloak
     repository: oci://registry-1.docker.io/bitnamicharts
     version: 24.6.4
     condition: keycloak.enabled
+
+    # Crucible Applications
   - name: alloy
     repository: https://helm.cmusei.dev/charts
     version: 1.6.9
@@ -34,6 +39,10 @@ dependencies:
     repository: https://helm.cmusei.dev/charts
     version: 1.6.6
     condition: blueprint.enabled
+  - name: caster
+    repository: https://helm.cmusei.dev/charts
+    version: 1.6.7
+    condition: caster.enabled
   - name: cite
     repository: https://helm.cmusei.dev/charts
     version: 1.6.10
@@ -46,22 +55,20 @@ dependencies:
     repository: https://helm.cmusei.dev/charts
     version: 0.5.12
     condition: gameboard.enabled
-  - name: topomojo
-    repository: https://helm.cmusei.dev/charts
-    version: 0.5.14
-    condition: topomojo.enabled
   - name: player
     repository: https://helm.cmusei.dev/charts
     version: 1.8.0
     condition: player.enabled
-  - name: caster
-    repository: https://helm.cmusei.dev/charts
-    version: 1.6.7
-    condition: caster.enabled
   - name: steamfitter
     repository: https://helm.cmusei.dev/charts
     version: 1.6.8
     condition: steamfitter.enabled
+  - name: topomojo
+    repository: https://helm.cmusei.dev/charts
+    version: 0.5.14
+    condition: topomojo.enabled
+
+  # Grafana / Open Telemetry / Monitoring stack
   - name: prometheus
     repository: https://prometheus-community.github.io/helm-charts
     version: 27.50.0
