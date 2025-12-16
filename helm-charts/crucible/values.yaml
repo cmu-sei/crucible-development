@@ -617,83 +617,6 @@ gameboard:
         loadUserInfo: true
         useLocalStorage: true
 
-# Deploy TopoMojo
-# https://github.com/cmu-sei/helm-charts/tree/main/charts/topomojo
-topomojo:
-  enabled: true
-  topomojo-api:
-    certificateMap: "crucible-ca-cert"
-    ingress:
-      enabled: true
-      className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-body-size: 6g
-      hosts:
-        - host: "{{ .Values.global.domain }}"
-          paths:
-            - path: /topomojo/(api|hub|docs)
-              pathType: ImplementationSpecific
-      tls:
-        - hosts:
-            - "{{ .Values.global.domain }}"
-          secretName: crucible-cert
-    storage:
-      existing: '{{ include "crucible.fullname" . }}-nfs'
-    existingSecret: '{{ include "crucible.fullname" . }}-custom'
-    env:
-      PathBase: /topomojo
-      # postgres database connection string provided by secret
-      Database__Provider: PostgreSQL
-      FileUpload__IsoRoot: /mnt/tm
-      FileUpload__TopoRoot: /mnt/tm
-      FileUpload__DocRoot: /mnt/tm/_docs
-      # Configure OIDC to use Keycloak
-      Oidc__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
-      Oidc__Audience: topomojo
-      Oidc__MetadataAddress: https://{{ .Values.global.domain }}/keycloak/realms/crucible/.well-known/openid-configuration
-      Oidc__RequireHttpsMetadata: false
-      OpenApi__Client__AuthorizationUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth
-      OpenApi__Client__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
-      OpenApi__Client__ClientId: topomojo.api
-      Headers__Cors__Origins__0: https://{{ .Values.global.domain }}
-      Headers__Forwarding__TargetHeaders: All
-      # Core__ConsoleHost: "{{ .Values.global.domain }}/console"
-      # Pod__ConsoleUrl: "{{ .Values.global.domain }}/console"
-  topomojo-ui:
-    ingress:
-      enabled: true
-      className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-body-size: 6g
-      hosts:
-        - host: "{{ .Values.global.domain }}"
-          paths:
-            - path: /topomojo
-              pathType: ImplementationSpecific
-      tls:
-        - hosts:
-            - "{{ .Values.global.domain }}"
-          secretName: crucible-cert
-    basehref: /topomojo
-    settingsYaml:
-      appname: TopoMojo
-      oidc:
-        # Use Keycloak client configurations
-        authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
-        client_id: topomojo.ui
-        redirect_uri: https://{{ .Values.global.domain }}/topomojo/oidc
-        silent_redirect_uri: https://{{ .Values.global.domain }}/topomojo/oidc-silent.html
-        post_logout_redirect_uri: https://{{ .Values.global.domain }}/topomojo
-        response_type: code
-        scope: openid profile topomojo
-        automaticSilentRenew: true
-        includeIdTokenInSilentRenew: false
-        filterProtocolClaims: true
-        loadUserInfo: true
-        accessTokenExpiringNotificationTime: 120
-        monitorSession: false
-        useLocalStorage: true
-
 # Deploy Player
 # https://github.com/cmu-sei/helm-charts/tree/main/charts/player
 player:
@@ -844,6 +767,163 @@ player:
         response_type: code
         scope: openid profile player player-vm
         automaticSilentRenew: true
+
+# Deploy Steamfitter
+# https://github.com/cmu-sei/helm-charts/tree/main/charts/steamfitter
+steamfitter:
+  enabled: true
+  steamfitter-api:
+    # use a configmap to define the custom ca cert
+    certificateMap: "crucible-ca-cert"
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /steamfitter/(api|swagger|hubs)
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    # This secret contains the postgres connection string
+    existingSecret: "{{ .Release.Name }}-steamfitter-api-custom"
+    env:
+      PathBase: /steamfitter
+      # CORS policy settings
+      CorsPolicy__Origins__0: https://{{ .Values.global.domain }}
+      # OAuth2 Identity Client for Application
+      Authorization__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+      Authorization__AuthorizationUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth
+      Authorization__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
+      Authorization__AuthorizationScope: "openid steamfitter player player-vm"
+      Authorization__ClientId: steamfitter.api
+      Authorization__ClientName: "Steamfitter API"
+      # Resource Owner Authorization for service account
+      ResourceOwnerAuthorization__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+      ResourceOwnerAuthorization__ClientId: steamfitter.admin
+      ResourceOwnerAuthorization__Scope: "player player-vm"
+      # Client Settings for other Crucible services
+      ClientSettings__urls__playerApi: https://{{ .Values.global.domain }}/player
+      ClientSettings__urls__vmApi: https://{{ .Values.global.domain }}/vm
+      # Stackstorm Configuration (placeholder for local development)
+      VmTaskProcessing__ApiType: st2
+      VmTaskProcessing__ApiUsername: "st2admin"
+      VmTaskProcessing__ApiBaseUrl: "https://stackstorm.local"
+      # Trust the custom ca-cert
+      SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
+      SSL_CERT_DIR: /usr/local/share/ca-certificates
+  steamfitter-ui:
+    ingress:
+      enabled: true
+      className: nginx
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /steamfitter
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    env:
+      APP_BASEHREF: /steamfitter
+    settingsYaml:
+      ApiUrl: https://{{ .Values.global.domain }}/steamfitter
+      VmApiUrl: https://{{ .Values.global.domain }}/vm
+      ApiPlayerUrl: https://{{ .Values.global.domain }}/player
+      OIDCSettings:
+        authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+        client_id: steamfitter.ui
+        redirect_uri: https://{{ .Values.global.domain }}/steamfitter/auth-callback
+        post_logout_redirect_uri: https://{{ .Values.global.domain }}/steamfitter
+        response_type: code
+        scope: openid profile steamfitter player player-vm
+        automaticSilentRenew: true
+        silent_redirect_uri: https://{{ .Values.global.domain }}/steamfitter/auth-callback-silent
+      UseLocalAuthStorage: true
+
+# Deploy TopoMojo
+# https://github.com/cmu-sei/helm-charts/tree/main/charts/topomojo
+topomojo:
+  enabled: true
+  topomojo-api:
+    certificateMap: "crucible-ca-cert"
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-body-size: 6g
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /topomojo/(api|hub|docs)
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    storage:
+      existing: '{{ include "crucible.fullname" . }}-nfs'
+    existingSecret: '{{ include "crucible.fullname" . }}-custom'
+    env:
+      PathBase: /topomojo
+      # postgres database connection string provided by secret
+      Database__Provider: PostgreSQL
+      FileUpload__IsoRoot: /mnt/tm
+      FileUpload__TopoRoot: /mnt/tm
+      FileUpload__DocRoot: /mnt/tm/_docs
+      # Configure OIDC to use Keycloak
+      Oidc__Authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+      Oidc__Audience: topomojo
+      Oidc__MetadataAddress: https://{{ .Values.global.domain }}/keycloak/realms/crucible/.well-known/openid-configuration
+      Oidc__RequireHttpsMetadata: false
+      OpenApi__Client__AuthorizationUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth
+      OpenApi__Client__TokenUrl: https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token
+      OpenApi__Client__ClientId: topomojo.api
+      Headers__Cors__Origins__0: https://{{ .Values.global.domain }}
+      Headers__Forwarding__TargetHeaders: All
+      # Core__ConsoleHost: "{{ .Values.global.domain }}/console"
+      # Pod__ConsoleUrl: "{{ .Values.global.domain }}/console"
+  topomojo-ui:
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-body-size: 6g
+      hosts:
+        - host: "{{ .Values.global.domain }}"
+          paths:
+            - path: /topomojo
+              pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - "{{ .Values.global.domain }}"
+          secretName: crucible-cert
+    basehref: /topomojo
+    settingsYaml:
+      appname: TopoMojo
+      oidc:
+        # Use Keycloak client configurations
+        authority: https://{{ .Values.global.domain }}/keycloak/realms/crucible
+        client_id: topomojo.ui
+        redirect_uri: https://{{ .Values.global.domain }}/topomojo/oidc
+        silent_redirect_uri: https://{{ .Values.global.domain }}/topomojo/oidc-silent.html
+        post_logout_redirect_uri: https://{{ .Values.global.domain }}/topomojo
+        response_type: code
+        scope: openid profile topomojo
+        automaticSilentRenew: true
+        includeIdTokenInSilentRenew: false
+        filterProtocolClaims: true
+        loadUserInfo: true
+        accessTokenExpiringNotificationTime: 120
+        monitorSession: false
+        useLocalStorage: true
 
 # Deploy Prometheus for metrics collection
 # https://artifacthub.io/packages/helm/prometheus-community/prometheus

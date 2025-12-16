@@ -38,6 +38,9 @@ dependencies:
 - name: caster
   repository: https://helm.cmusei.dev/charts
   version: 1.6.7
+- name: steamfitter
+  repository: https://helm.cmusei.dev/charts
+  version: 1.6.8
 - name: prometheus
   repository: https://prometheus-community.github.io/helm-charts
   version: 27.50.0
@@ -50,5 +53,5 @@ dependencies:
 - name: tempo
   repository: https://grafana.github.io/helm-charts
   version: 1.10.0
-digest: sha256:df521adde0a58a54a21c89ef8503f538b55d396b82350adcf6bae85847d1ee9f
-generated: "2025-12-16T18:52:43.04364854Z"
+digest: sha256:41d683e89ca781ecdc75a6d6965efed5e9ee4be4d29d8da29434aee4c8604269
+generated: "2025-12-16T20:31:14.016634728Z"

@@ -58,6 +58,10 @@ dependencies:
     repository: https://helm.cmusei.dev/charts
     version: 1.6.7
     condition: caster.enabled
+  - name: steamfitter
+    repository: https://helm.cmusei.dev/charts
+    version: 1.6.8
+    condition: steamfitter.enabled
   - name: prometheus
     repository: https://prometheus-community.github.io/helm-charts
     version: 27.50.0
