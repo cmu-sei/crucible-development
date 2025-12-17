@@ -925,6 +925,43 @@ topomojo:
         monitorSession: false
         useLocalStorage: true
 
+# Deploy Moodle
+moodle:
+  enabled: true
+  moodle:
+    admin:
+      # Admin username (defaults to "admin" if not set)
+      # username: "admin"
+      # Admin email (defaults to "admin@example.com" if not set)
+      # email: "admin@crucible.dev"
+      # Admin password will be auto-generated and preserved across upgrades
+      # To use an existing secret instead:
+      # existingSecret: "moodle-admin-secret"
+      # existingSecretKey: "admin-password"
+      # Or to set a specific password directly:
+      # password: "YourSecurePassword"
+    site:
+      url: "https://{{ .Values.global.domain }}"
+    proxy:
+      reverseProxy: false
+      sslProxy: true
+    database:
+      host: "{{ .Release.Name }}-postgresql"
+      name: "moodle"
+      user: "postgres"
+      existingSecret: "{{ .Release.Name }}-postgresql"
+      existingSecretKey: "postgres-password"
+  ingress:
+    enabled: true
+    className: "nginx"
+    hostname: "{{ .Values.global.domain }}"
+    path: /
+    pathType: Prefix
+    tls:
+      - hosts:
+          - "{{ .Values.global.domain }}"
+        secretName: crucible-cert
+
 # Deploy Prometheus for metrics collection
 # https://artifacthub.io/packages/helm/prometheus-community/prometheus
 prometheus:

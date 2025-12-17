@@ -41,6 +41,9 @@ dependencies:
 - name: topomojo
   repository: https://helm.cmusei.dev/charts
   version: 0.5.14
+- name: moodle
+  repository: ""
+  version: 0.1.0
 - name: prometheus
   repository: https://prometheus-community.github.io/helm-charts
   version: 27.50.0
@@ -53,5 +56,5 @@ dependencies:
 - name: tempo
   repository: https://grafana.github.io/helm-charts
   version: 1.10.0
-digest: sha256:53b8cea878000d325875cd7044e91acb6b1c9d85199e3abeca16825d60a4a1a3
-generated: "2025-12-16T20:57:39.178580413Z"
+digest: sha256:c4fc4834bc23fbd54d024fce2761e3080e4ad51deb6e8da37f1b87a13a1266c5
+generated: "2025-12-17T16:05:32.397101851Z"

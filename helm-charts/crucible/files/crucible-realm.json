@@ -2626,6 +2626,77 @@
         "offline_access",
         "microprofile-jwt"
       ]
+    },
+    {
+      "id": "716049ee-7008-49bd-8baa-0aebfbe2de80",
+      "clientId": "moodle-client",
+      "name": "moodle",
+      "description": "",
+      "rootUrl": "https://crucible",
+      "adminUrl": "https://crucible",
+      "baseUrl": "https://crucible",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "super-safe-secret",
+      "redirectUris": [
+        "https://crucible/admin/oauth2callback.php"
+      ],
+      "webOrigins": [
+        "https://crucible"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "realm_client": "false",
+        "oidc.ciba.grant.enabled": "false",
+        "client.secret.creation.time": "1762805282",
+        "backchannel.logout.session.required": "true",
+        "standard.token.exchange.enabled": "false",
+        "frontchannel.logout.session.required": "true",
+        "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "service_account",
+        "xview2",
+        "gameboard",
+        "player-vm-privileged",
+        "alloy",
+        "profile",
+        "roles",
+        "steamfitter",
+        "player-vm",
+        "topomojo",
+        "web-origins",
+        "blueprint",
+        "caster",
+        "acr",
+        "cite",
+        "basic",
+        "email",
+        "gallery",
+        "player"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
     }
   ],
   "clientScopes": [

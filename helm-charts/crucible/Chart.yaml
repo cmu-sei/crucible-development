@@ -67,6 +67,9 @@ dependencies:
     repository: https://helm.cmusei.dev/charts
     version: 0.5.14
     condition: topomojo.enabled
+  - name: moodle
+    version: 0.1.0
+    condition: moodle.enabled
 
   # Grafana / Open Telemetry / Monitoring stack
   - name: prometheus

@@ -237,7 +237,7 @@ print_web_app_urls() {
       }
     ]
     | map(select(.host != ""))
-    | map(select((.service // "") | test("(?:-ui|keycloak|pgadmin|grafana|prometheus(?:-server)?)$")))
+    | map(select((.service // "") | test("(?:-ui|keycloak|pgadmin|grafana|prometheus(?:-server)?|moodle)$")))
     | sort_by([.scheme, .host, .service])
     | group_by({scheme: .scheme, host: .host, service: .service})
     | map(min_by(.path | length))
