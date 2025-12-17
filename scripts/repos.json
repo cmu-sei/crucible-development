@@ -139,6 +139,15 @@
       ]
     },
     {
+      "name": "seer",
+      "repos": [
+        {
+          "name": "seer",
+          "url": "https://github.com/cmu-sei/seer"
+        }
+      ]
+    },
+    {
       "name": "moodle",
       "repos": [
         {

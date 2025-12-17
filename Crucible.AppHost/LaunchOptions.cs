@@ -14,6 +14,7 @@ public class LaunchOptions
     public bool Gallery { get; set; } = true;
     public bool Blueprint { get; set; } = true;
     public bool Gameboard { get; set; } = true;
+    public bool Seer { get; set; } = false;
     public bool Moodle { get; set; } = false;
     public bool Lrsql { get; set; } = false;
     public string XdebugMode { get; set; } = "off";

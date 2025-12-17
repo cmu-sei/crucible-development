@@ -89,6 +89,13 @@
             "envFile": "${workspaceFolder}/.env/gameboard.env"
         },
         {
+            "name": "SEER",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/seer.env"
+        },
+        {
             "name": "Lrsql",
             "type": "dotnet",
             "request": "launch",

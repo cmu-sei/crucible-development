@@ -39,6 +39,7 @@ builder.AddBlueprint(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddGameboard(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
+builder.AddSeer(postgres, keycloak, launchOptions, addAllApplications);
 
 builder.Build().Run();
 
@@ -555,5 +556,29 @@ public static class BuilderExtensions
             .WithEnvironment("LRSQL_DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("LRSQL_DB_PORT", "5432")
             .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
+    }
+
+    public static void AddSeer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    {
+        if (!addAll && !options.Seer)
+            return;
+
+        var seerRoot = "/mnt/data/crucible/seer/seer/";
+        File.Copy($"{builder.AppHostDirectory}/resources/seer.json", $"{seerRoot}/src/appsettings.Development.json", overwrite: true);
+
+        var seerDb = postgres.AddDatabase("seerDb", "seer");
+
+        var seerApi = builder.AddProject<Projects.Seer>("seer", launchProfileName: "Seer")
+            .WaitFor(postgres)
+            .WaitFor(keycloak)
+            .WithReference(seerDb, "PostgreSQL")
+            .WithEnvironment("ApplicationConfiguration__Database__ConnectionString", seerDb.Resource.ConnectionStringExpression)
+            .WithEnvironment("ApplicationConfiguration__Database__Provider", "PostgreSQL")
+            .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
+
+        if (!options.Seer)
+        {
+            seerApi.WithExplicitStart();
+        }
     }
 }

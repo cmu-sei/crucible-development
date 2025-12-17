@@ -2,6 +2,7 @@
   <Project Path="/mnt/data/crucible/player/player.api/Player.Api/Player.Api.csproj" />
   <Project Path="/mnt/data/crucible/player/vm.api/src/Player.Vm.Api/Player.Vm.Api.csproj" />
   <Project Path="/mnt/data/crucible/caster/caster.api/src/Caster.Api/Caster.Api.csproj" />
+  <Project Path="/mnt/data/crucible/seer/seer/src/Seer.csproj" />
   <Project Path="/mnt/data/crucible/alloy/alloy.api/Alloy.Api/Alloy.Api.csproj" />
   <Project Path="/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/TopoMojo.Api.csproj" />
   <Project Path="Crucible.AppHost/Crucible.AppHost.csproj" />

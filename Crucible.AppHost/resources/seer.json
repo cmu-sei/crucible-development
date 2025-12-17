@@ -1,0 +1,26 @@
+{
+  "Logging": {
+    "IncludeScopes": true,
+    "LogLevel": {
+      "Default": "Debug"
+    }
+  },
+  "ApplicationConfiguration": {
+    "Database": {
+      "ConnectionString": "",
+      "Provider": "PostgreSQL",
+      "SeedFile": "seed.json"
+    },
+    "TimeZone": "EST",
+    "DefaultAdminAccounts": ["ddupdyke", "tgpodnar", "mpbragg", "mjaconski", "cjfetterman", "mcwarren"]
+  },
+  "CorsPolicy": {
+    "Origins": [],
+    "Methods": [],
+    "Headers": [],
+    "AllowAnyOrigin": true,
+    "AllowAnyMethod": true,
+    "AllowAnyHeader": true,
+    "SupportsCredentials": false
+  }
+}
