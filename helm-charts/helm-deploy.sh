@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-# --- Color codes ---
+# Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -10,10 +10,17 @@ BLUE='\033[1;34m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
+# Defaults
+UNINSTALL=false
+UPDATE_CHARTS=false
+PURGE_CLUSTER=false
+DELETE_CLUSTER=false
+NO_INSTALL=false
 CHARTS_DIR=/workspaces/crucible-development/helm-charts
 CRUCIBLE_RELEASE=crucible
 CRUCIBLE_DOMAIN=${CRUCIBLE_DOMAIN:-crucible}
 PGADMIN_EMAIL=${PGADMIN_EMAIL:-pgadmin@crucible.dev}
+
 # Disable Helm 4's server-side apply by default because several upstream charts
 # still rely on client-side merge semantics (SSA triggers managedFields errors).
 HELM_UPGRADE_FLAGS=${HELM_UPGRADE_FLAGS:---wait --timeout 15m --server-side=false}
@@ -24,8 +31,6 @@ refresh_current_namespace() {
   CURRENT_NAMESPACE=${CURRENT_NAMESPACE:-default}
 }
 
-refresh_current_namespace
-
 show_usage() {
   echo "Usage: $0 [--uninstall] [--update-charts] [--purge] [--delete] [--no-install] [--cache-images]"
   echo "  --uninstall       Removes the Helm releases and CRDs installed by this script."
@@ -34,50 +39,6 @@ show_usage() {
   echo "  --delete          Deletes and restarts minikube using cached artifacts (no purge)."
   echo "  --no-install      Skips the install phase (useful with --purge/--delete for cleanup only)."
 }
-
-UNINSTALL=false
-UPDATE_CHARTS=false
-PURGE_CLUSTER=false
-DELETE_CLUSTER=false
-NO_INSTALL=false
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --uninstall)
-      UNINSTALL=true
-      shift
-      ;;
-    --update-charts)
-      UPDATE_CHARTS=true
-      shift
-      ;;
-    --purge)
-      PURGE_CLUSTER=true
-      shift
-      ;;
-    --delete)
-      DELETE_CLUSTER=true
-      shift
-      ;;
-    --no-install)
-      NO_INSTALL=true
-      shift
-      ;;
-    -h|--help)
-      show_usage
-      exit 0
-      ;;
-    *)
-      echo -e "${RED}Unknown option: $1${RESET}"
-      show_usage
-      exit 1
-      ;;
-  esac
-done
-
-if $PURGE_CLUSTER && $DELETE_CLUSTER; then
-  echo -e "${RED}Cannot specify both --purge and --delete.${RESET}"
-  exit 1
-fi
 
 helm_uninstall_if_exists() {
   local release_name=$1
@@ -367,32 +328,6 @@ delete_minikube_cluster() {
   start_minikube_cluster
 }
 
-if $PURGE_CLUSTER; then
-  purge_minikube_cluster
-  refresh_current_namespace
-elif $DELETE_CLUSTER; then
-  delete_minikube_cluster
-  refresh_current_namespace
-fi
-
-if $UNINSTALL; then
-  helm_uninstall_if_exists "$CRUCIBLE_RELEASE"
-
-  echo -e "\n${BLUE}${BOLD}# Deleting completed/failed pods for ${CRUCIBLE_RELEASE}${RESET}\n"
-  delete_finished_pods_for_release "$CRUCIBLE_RELEASE"
-
-  echo -e "\n${BLUE}${BOLD}# Deleting PVCs/PVs for ${CRUCIBLE_RELEASE}${RESET}\n"
-  delete_pvcs_for_release "$CRUCIBLE_RELEASE"
-
-  echo -e "\n${GREEN}${BOLD}# Uninstall complete${RESET}\n"
-  exit 0
-fi
-
-if $NO_INSTALL; then
-  echo -e "\n${YELLOW}${BOLD}# --no-install specified; skipping install phase${RESET}\n"
-  exit 0
-fi
-
 chart_dependencies_ready() {
   local chart_path=$1
   [[ -f "${chart_path}/Chart.lock" ]] || return 1
@@ -437,12 +372,95 @@ ensure_chart_dependencies() {
   fi
 }
 
+#### Script start
+
+# Update kubeconfig
+refresh_current_namespace
+
+# Get arguments
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --uninstall)
+      UNINSTALL=true
+      shift
+      ;;
+    --update-charts)
+      UPDATE_CHARTS=true
+      shift
+      ;;
+    --purge)
+      PURGE_CLUSTER=true
+      shift
+      ;;
+    --delete)
+      DELETE_CLUSTER=true
+      shift
+      ;;
+    --no-install)
+      NO_INSTALL=true
+      shift
+      ;;
+    -h|--help)
+      show_usage
+      exit 0
+      ;;
+    *)
+      echo -e "${RED}Unknown option: $1${RESET}"
+      show_usage
+      exit 1
+      ;;
+  esac
+done
+
+if $PURGE_CLUSTER && $DELETE_CLUSTER; then
+  echo -e "${RED}Cannot specify both --purge and --delete.${RESET}"
+  exit 1
+fi
+
+# Delete or Purge cluster if requested
+if $PURGE_CLUSTER; then
+  purge_minikube_cluster
+  refresh_current_namespace
+elif $DELETE_CLUSTER; then
+  delete_minikube_cluster
+  refresh_current_namespace
+fi
+
+# Uninstall release if requested
+if $UNINSTALL; then
+  helm_uninstall_if_exists "$CRUCIBLE_RELEASE"
+
+  echo -e "\n${BLUE}${BOLD}# Deleting completed/failed pods for ${CRUCIBLE_RELEASE}${RESET}\n"
+  delete_finished_pods_for_release "$CRUCIBLE_RELEASE"
+
+  echo -e "\n${BLUE}${BOLD}# Deleting PVCs/PVs for ${CRUCIBLE_RELEASE}${RESET}\n"
+  delete_pvcs_for_release "$CRUCIBLE_RELEASE"
+
+  echo -e "\n${GREEN}${BOLD}# Uninstall complete${RESET}\n"
+  exit 0
+fi
+
+# Skip install if requested
+if $NO_INSTALL; then
+  echo -e "\n${YELLOW}${BOLD}# --no-install specified; skipping install phase${RESET}\n"
+  exit 0
+fi
+
 # Build dependencies for Helm charts
 CHARTS=("crucible")
 for chart in "${CHARTS[@]}"; do
   ensure_chart_dependencies "$chart"
 done
 
+## Logic to install / upgrade starts here
+
+# Ensure minikube cluster is running
+if ! kk get node > /dev/null 2>&1 ; then
+  echo -e "\n${BLUE}${BOLD}# Minikube cluster not running. Starting it now.${RESET}\n"
+  start_minikube_cluster
+fi
+
+# Install or upgrade Crucible Helm releae
 echo -e "\n${BLUE}${BOLD}# Helm installing ${CHARTS_DIR}/crucible${RESET}\n"
 if helm status "$CRUCIBLE_RELEASE" &>/dev/null; then
   echo "Existing release detected; running helm upgrade"
@@ -452,13 +470,17 @@ else
   helm install "$CRUCIBLE_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS}
 fi
 
+# Configure CoreDNS to resolve Crucible hostname
 ensure_nodehosts_entry
 
+# Enable K8s port forwarding to allow connection to web apps from host
 echo -e "\n${BLUE}${BOLD}# Enabling port-forwarding${RESET}\n"
 nohup kk port-forward -n default "service/crucible-ingress-nginx-controller" "443:443" > /dev/null 2>&1 &
 
+# Print URLs and Creds
 print_web_app_urls
 print_keycloak_admin_credentials
 print_pgadmin_credentials
 
+# Done
 echo -e "\n${GREEN}${BOLD}Crucible has been deployed${RESET}\n"
