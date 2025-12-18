@@ -20,8 +20,6 @@ ingress-nginx:
       hsts: "false"
       annotations-risk-level: critical
     allowSnippetAnnotations: true
-    updateStrategy:
-      type: RollingUpdate
   tcp:
     2049: "{{ .Release.Namespace }}/{{ .Release.Name }}-nfs-server-provisioner:2049"
 
@@ -46,12 +44,9 @@ postgresql:
         key: postgres-password
   persistence:
     enabled: true
-    annotations: {}
-    storageClass: null
     accessModes:
       - ReadWriteOnce
     size: "1Gi"
-    selector: null
 
 # Deploy pgadmin4 for managing the database
 # https://artifacthub.io/packages/helm/runix/pgadmin4
@@ -70,8 +65,6 @@ pgadmin4:
       - name: PGADMIN_CONFIG_SSL_VERIFY
         value: "False"
   serverDefinitions:
-    enabled: true
-    resourceType: Secret
     servers:
       # configure the postgres database to connect on deploy
       crucible-postgres:
@@ -83,7 +76,6 @@ pgadmin4:
         SSLMode: "prefer"
         MaintenanceDB: "postgres"
   ingress:
-    enabled: true
     ingressClassName: nginx
     hosts:
       - host: "{{ .Values.global.domain }}"
@@ -109,7 +101,6 @@ keycloak:
   proxyHeaders: xforwarded
   httpRelativePath: /keycloak/
   ingress:
-    enabled: true
     ingressClassName: nginx
     hostname: "{{ .Values.global.domain }}"
     annotations:
@@ -150,13 +141,7 @@ crucible-alloy:
   enabled: true
   alloy-api:
     ingress:
-      enabled: true
       className: "nginx"
-      annotations:
-        kubernetes.io/ingress.class: nginx
-        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
-        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
-        nginx.ingress.kubernetes.io/use-regex: "true"
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -198,10 +183,7 @@ crucible-alloy:
 
   alloy-ui:
     ingress:
-      enabled: true
       className: "nginx"
-      annotations:
-        kubernetes.io/ingress.class: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -239,12 +221,7 @@ blueprint:
     # use a configmap to define the custom ca cert
     certificateMap: "crucible-ca-cert"
     ingress:
-      enabled: true
       className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
-        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
-        nginx.ingress.kubernetes.io/use-regex: "true"
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -284,7 +261,6 @@ blueprint:
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   blueprint-ui:
     ingress:
-      enabled: true
       className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -325,12 +301,7 @@ caster:
     # Git credentials - placeholder for local development
     gitcredentials: ""
     ingress:
-      enabled: true
       className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
-        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
-        nginx.ingress.kubernetes.io/use-regex: "true"
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -365,7 +336,6 @@ caster:
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   caster-ui:
     ingress:
-      enabled: true
       className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -399,12 +369,7 @@ cite:
     # use a configmap to define the custom ca cert
     certificateMap: "crucible-ca-cert"
     ingress:
-      enabled: true
       className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
-        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
-        nginx.ingress.kubernetes.io/use-regex: "true"
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -432,7 +397,6 @@ cite:
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   cite-ui:
     ingress:
-      enabled: true
       className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -469,12 +433,7 @@ gallery:
     # use a configmap to define the custom ca cert
     certificateMap: "crucible-ca-cert"
     ingress:
-      enabled: true
       className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
-        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
-        nginx.ingress.kubernetes.io/use-regex: "true"
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -502,7 +461,6 @@ gallery:
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   gallery-ui:
     ingress:
-      enabled: true
       className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -538,7 +496,6 @@ gameboard:
   gameboard-api:
     certificateMap: "crucible-ca-cert"
     ingress:
-      enabled: true
       className: nginx
       annotations:
         nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
@@ -584,7 +541,6 @@ gameboard:
       Oidc__UserRolesClaimMap__tester: Tester
   gameboard-ui:
     ingress:
-      enabled: true
       className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -625,12 +581,7 @@ player:
     # use a configmap to define the custom ca cert
     certificateMap: "crucible-ca-cert"
     ingress:
-      enabled: true
       className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
-        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
-        nginx.ingress.kubernetes.io/use-regex: "true"
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -661,7 +612,6 @@ player:
       OTEL_EXPORTER_OTLP_ENDPOINT: crucible-grafana-alloy:4317
   player-ui:
     ingress:
-      enabled: true
       className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -691,7 +641,6 @@ player:
     # use a configmap to define the custom ca cert
     certificateMap: "crucible-ca-cert"
     ingress:
-      enabled: true
       className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -716,7 +665,6 @@ player:
       CorsPolicy__Origins__0: https://{{ .Values.global.domain }}
   vm-ui:
     ingress:
-      enabled: true
       className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -744,7 +692,6 @@ player:
         silent_redirect_uri: https://{{ .Values.global.domain }}/vm/auth-callback-silent.html
   console-ui:
     ingress:
-      enabled: true
       className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -776,12 +723,7 @@ steamfitter:
     # use a configmap to define the custom ca cert
     certificateMap: "crucible-ca-cert"
     ingress:
-      enabled: true
       className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
-        nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
-        nginx.ingress.kubernetes.io/use-regex: "true"
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -820,7 +762,6 @@ steamfitter:
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   steamfitter-ui:
     ingress:
-      enabled: true
       className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
@@ -855,7 +796,6 @@ topomojo:
   topomojo-api:
     certificateMap: "crucible-ca-cert"
     ingress:
-      enabled: true
       className: nginx
       annotations:
         nginx.ingress.kubernetes.io/proxy-body-size: 6g
@@ -892,7 +832,6 @@ topomojo:
       # Pod__ConsoleUrl: "{{ .Values.global.domain }}/console"
   topomojo-ui:
     ingress:
-      enabled: true
       className: nginx
       annotations:
         nginx.ingress.kubernetes.io/proxy-body-size: 6g
@@ -942,9 +881,6 @@ moodle:
       # password: "YourSecurePassword"
     site:
       url: "https://{{ .Values.global.domain }}"
-    proxy:
-      reverseProxy: false
-      sslProxy: true
     database:
       host: "{{ .Release.Name }}-postgresql"
       name: "moodle"
@@ -952,8 +888,6 @@ moodle:
       existingSecret: "{{ .Release.Name }}-postgresql"
       existingSecretKey: "postgres-password"
   ingress:
-    enabled: true
-    className: "nginx"
     hostname: "{{ .Values.global.domain }}"
     path: /
     pathType: Prefix
@@ -967,8 +901,6 @@ moodle:
 prometheus:
   enabled: true
   server:
-    prefixURL: ""
-    baseURL: ""
     extraArgs:
       web.enable-remote-write-receiver: "" # enable the remote-write-receiver for Grafana-Alloy writing
 
@@ -978,7 +910,6 @@ grafana:
   enabled: true
   # ingress hosts grafana at https://<domain>/grafana
   ingress:
-    enabled: true
     ingressClassName: nginx
     annotations:
       nginx.ingress.kubernetes.io/configuration-snippet: |
@@ -1022,20 +953,17 @@ grafana:
         - name: Prometheus
           uid: prometheus
           type: prometheus
-          access: proxy
           url: http://{{ .Release.Name }}-prometheus-server
           isDefault: true
         - name: Loki
           uid: loki
           type: loki
-          access: proxy
           url: http://{{ .Release.Name }}-loki:3100
           jsonData:
             maxLines: 1000
         - name: Tempo
           uid: tempo
           type: tempo
-          access: proxy
           url: http://{{ .Release.Name }}-tempo:3100
           jsonData:
             httpMethod: GET
@@ -1158,9 +1086,6 @@ tempo:
   persistence:
     enabled: true
     size: 5Gi
-    storageClass: null
-  service:
-    type: ClusterIP
   tempoQuery:
     enabled: false
 
