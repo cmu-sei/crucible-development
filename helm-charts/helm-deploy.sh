@@ -359,7 +359,7 @@ ensure_chart_dependencies() {
   local chart_path="${CHARTS_DIR}/${chart}"
 
   if $UPDATE_CHARTS; then
-    echo "Forcing dependency rebuild for ${chart_path}"
+    echo -e "\n${BLUE}${BOLD}# Forcing dependency rebuild for ${chart_path}${RESET}\n"
     build_chart_dependencies "$chart"
     return
   fi
