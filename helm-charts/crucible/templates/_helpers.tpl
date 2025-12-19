@@ -61,16 +61,6 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
-{{- define "crucible.gitea.image" -}}
-{{- $giteaCtx := dict
-      "Values"       .Values.gitea
-      "Chart"        .Subcharts.gitea
-      "Release"      .Release
-      "Capabilities" .Capabilities
-  -}}
-{{- include "gitea.image" $giteaCtx -}}
-{{- end -}}
-
 {{/*
 Return the expected Kubernetes name for the postgresql dependency.
 */}}
