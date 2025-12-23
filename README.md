@@ -27,6 +27,32 @@ The dev container is designed to work with Zscaler. You will need to copy the re
 
 For details on how to add root CA certificates (including Zscaler and any development CAs), see the [Custom Certs Docs](.devcontainer/certs/README.md).
 
+## Claude Code
+
+The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for Claude, configured to use AWS Bedrock.
+
+### Setup
+
+1. Copy the example environment file:
+   ```bash
+   cp .devcontainer/devcontainer.env.example .devcontainer/devcontainer.env
+   ```
+
+2. Edit `.devcontainer/devcontainer.env` and add your AWS credentials:
+   ```
+   CLAUDE_CODE_USE_BEDROCK=1
+   AWS_REGION=us-east-1
+   ANTHROPIC_DEFAULT_HAIKU_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0
+   AWS_ACCESS_KEY_ID=<your-aws-access-key>
+   AWS_SECRET_ACCESS_KEY=<your-aws-secret-key>
+   ```
+
+3. Rebuild the dev container (required after any changes to `devcontainer.env`)
+
+### Usage
+
+Once the container is running with valid credentials, run `claude` in the terminal to start Claude Code.
+
 ## Troubleshooting
 
 This repo is still under construction, so you may run into the occasional challenge or oddity. From our lessons learned:

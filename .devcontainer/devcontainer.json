@@ -2,7 +2,9 @@
   "name": "Crucible Development",
   "runArgs": [
     "--name",
-    "crucible-dev"
+    "crucible-dev",
+    "--env-file",
+    ".devcontainer/devcontainer.env"
   ],
   "build": {
     "dockerfile": "Dockerfile"
@@ -21,7 +23,8 @@
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/php:1": {
       "version": "8.3"
-    }
+    },
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages" // this might not be needed. will try removing later.
