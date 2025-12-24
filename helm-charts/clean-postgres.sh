@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-CRUCIBLE_RELEASE=${CRUCIBLE_RELEASE:-crucible}
+CRUCIBLE_RELEASE=${CRUCIBLE_RELEASE:-crucible-infra}
 CRUCIBLE_NAMESPACE=${CRUCIBLE_NAMESPACE:-default}
 
 echo "Using release '$CRUCIBLE_RELEASE' in namespace '$CRUCIBLE_NAMESPACE'."
