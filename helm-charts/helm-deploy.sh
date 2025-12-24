@@ -16,8 +16,13 @@ UPDATE_CHARTS=false
 PURGE_CLUSTER=false
 DELETE_CLUSTER=false
 NO_INSTALL=false
-CHARTS_DIR=/workspaces/crucible-development/helm-charts
-CRUCIBLE_RELEASE=crucible
+INFRA_ONLY=false
+APPS_ONLY=false
+MONITORING_ONLY=false
+CHARTS_DIR=/mnt/data/crucible/helm-charts/charts
+INFRA_RELEASE=crucible-infra
+APPS_RELEASE=crucible
+MONITORING_RELEASE=crucible-monitoring
 CRUCIBLE_DOMAIN=${CRUCIBLE_DOMAIN:-crucible}
 PGADMIN_EMAIL=${PGADMIN_EMAIL:-pgadmin@crucible.dev}
 
@@ -32,12 +37,21 @@ refresh_current_namespace() {
 }
 
 show_usage() {
-  echo "Usage: $0 [--uninstall] [--update-charts] [--purge] [--delete] [--no-install] [--cache-images]"
-  echo "  --uninstall       Removes the Helm releases and CRDs installed by this script."
-  echo "  --update-charts   Forces rebuilding Helm chart dependencies even if they already exist."
-  echo "  --purge           Deletes and recreates the local minikube cluster before deploying."
-  echo "  --delete          Deletes and restarts minikube using cached artifacts (no purge)."
-  echo "  --no-install      Skips the install phase (useful with --purge/--delete for cleanup only)."
+  echo "Usage: $0 [OPTIONS]"
+  echo ""
+  echo "Options:"
+  echo "  --uninstall        Removes the Helm releases installed by this script"
+  echo "  --update-charts    Forces rebuilding Helm chart dependencies"
+  echo "  --purge            Deletes and recreates the minikube cluster before deploying"
+  echo "  --delete           Deletes and restarts minikube using cached artifacts"
+  echo "  --no-install       Skips the install phase"
+  echo "  --infra            Select crucible-infra chart (can be combined)"
+  echo "  --apps             Select crucible (apps) chart (can be combined)"
+  echo "  --monitoring       Select crucible-monitoring chart (can be combined)"
+  echo ""
+  echo "Chart deployment order: infra -> apps -> monitoring"
+  echo "By default, all three charts are selected."
+  echo "Example: --infra --apps selects infra + apps without monitoring."
 }
 
 helm_uninstall_if_exists() {
@@ -119,7 +133,7 @@ stage_custom_ca_certs() {
 }
 
 ensure_nodehosts_entry() {
-  local ingress_service="${INGRESS_SERVICE:-${CRUCIBLE_RELEASE}-ingress-nginx-controller}"
+  local ingress_service="${INGRESS_SERVICE:-${INFRA_RELEASE}-ingress-nginx-controller}"
   local ingress_namespace="${INGRESS_NAMESPACE:-$CURRENT_NAMESPACE}"
   local dns_namespace="kube-system"
   local dns_configmap="coredns"
@@ -215,7 +229,8 @@ print_web_app_urls() {
   echo -e "\n${BLUE}${BOLD}# Web application endpoints${RESET}\n"
 
   local ingress_json
-  if ! ingress_json=$(kubectl get ingress -n "$CURRENT_NAMESPACE" -l "app.kubernetes.io/instance=${CRUCIBLE_RELEASE}" -o json 2>/dev/null); then
+  # Get ingress from all releases
+  if ! ingress_json=$(kubectl get ingress -n "$CURRENT_NAMESPACE" -o json 2>/dev/null); then
     echo "Unable to query ingress resources in namespace ${CURRENT_NAMESPACE}."
     return
   fi
@@ -246,7 +261,7 @@ print_web_app_urls() {
   ' 2>/dev/null)
 
   if [[ -z "${urls//[[:space:]]/}" ]]; then
-    echo "No ingress endpoints were found for release ${CRUCIBLE_RELEASE}."
+    echo "No ingress endpoints were found."
     return
   fi
 
@@ -254,12 +269,12 @@ print_web_app_urls() {
 }
 
 print_keycloak_admin_credentials() {
-  echo -e "\n${BLUE}${BOLD}# Keycloak master realm credentials${RESET}\n"
+  echo -e "\n${BLUE}${BOLD}# Keycloak admin credentials${RESET}\n"
 
-  local secret_name="${CRUCIBLE_RELEASE}-keycloak-auth"
+  local secret_name="${APPS_RELEASE}-keycloak-auth"
   local encoded_password
   if ! encoded_password=$(kubectl get secret "$secret_name" -n "$CURRENT_NAMESPACE" -o jsonpath='{.data.admin-password}' 2>/dev/null); then
-    echo "Unable to read secret ${secret_name} in namespace ${CURRENT_NAMESPACE}."
+    echo "Keycloak not deployed or secret not found."
     return
   fi
 
@@ -281,10 +296,10 @@ print_keycloak_admin_credentials() {
 print_pgadmin_credentials() {
   echo -e "\n${BLUE}${BOLD}# pgAdmin credentials${RESET}\n"
 
-  local secret_name="crucible-pgadmin"
+  local secret_name="${INFRA_RELEASE}-pgadmin"
   local encoded_password
   if ! encoded_password=$(kubectl get secret "$secret_name" -n "$CURRENT_NAMESPACE" -o jsonpath='{.data.password}' 2>/dev/null); then
-    echo "Unable to read secret ${secret_name} in namespace ${CURRENT_NAMESPACE}."
+    echo "pgAdmin not deployed or secret not found."
     return
   fi
 
@@ -400,6 +415,33 @@ while [[ $# -gt 0 ]]; do
       NO_INSTALL=true
       shift
       ;;
+    --infra)
+      INFRA_ONLY=true
+      shift
+      ;;
+    --apps)
+      APPS_ONLY=true
+      shift
+      ;;
+    --monitoring)
+      MONITORING_ONLY=true
+      shift
+      ;;
+    --infra-only)
+      echo -e "${YELLOW}Deprecated: use --infra instead of --infra-only.${RESET}"
+      INFRA_ONLY=true
+      shift
+      ;;
+    --apps-only)
+      echo -e "${YELLOW}Deprecated: use --apps instead of --apps-only.${RESET}"
+      APPS_ONLY=true
+      shift
+      ;;
+    --monitoring-only)
+      echo -e "${YELLOW}Deprecated: use --monitoring instead of --monitoring-only.${RESET}"
+      MONITORING_ONLY=true
+      shift
+      ;;
     -h|--help)
       show_usage
       exit 0
@@ -417,6 +459,17 @@ if $PURGE_CLUSTER && $DELETE_CLUSTER; then
   exit 1
 fi
 
+# Determine which charts to operate on
+CHARTS=()
+if $INFRA_ONLY || $APPS_ONLY || $MONITORING_ONLY; then
+  $INFRA_ONLY && CHARTS+=("crucible-infra")
+  $APPS_ONLY && CHARTS+=("crucible")
+  $MONITORING_ONLY && CHARTS+=("crucible-monitoring")
+else
+  # Default: operate on all charts
+  CHARTS=("crucible-infra" "crucible" "crucible-monitoring")
+fi
+
 # Delete or Purge cluster if requested
 if $PURGE_CLUSTER; then
   purge_minikube_cluster
@@ -426,15 +479,52 @@ elif $DELETE_CLUSTER; then
   refresh_current_namespace
 fi
 
-# Uninstall release if requested
+# Uninstall releases if requested
 if $UNINSTALL; then
-  helm_uninstall_if_exists "$CRUCIBLE_RELEASE"
+  # Uninstall in reverse order: monitoring -> apps -> infra
+  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
+    case "${CHARTS[i]}" in
+      "crucible-monitoring")
+        helm_uninstall_if_exists "$MONITORING_RELEASE"
+        ;;
+      "crucible")
+        helm_uninstall_if_exists "$APPS_RELEASE"
+        ;;
+      "crucible-infra")
+        helm_uninstall_if_exists "$INFRA_RELEASE"
+        ;;
+    esac
+  done
 
-  echo -e "\n${BLUE}${BOLD}# Deleting completed/failed pods for ${CRUCIBLE_RELEASE}${RESET}\n"
-  delete_finished_pods_for_release "$CRUCIBLE_RELEASE"
+  echo -e "\n${BLUE}${BOLD}# Deleting completed/failed pods${RESET}\n"
+  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
+    case "${CHARTS[i]}" in
+      "crucible-monitoring")
+        delete_finished_pods_for_release "$MONITORING_RELEASE"
+        ;;
+      "crucible")
+        delete_finished_pods_for_release "$APPS_RELEASE"
+        ;;
+      "crucible-infra")
+        delete_finished_pods_for_release "$INFRA_RELEASE"
+        ;;
+    esac
+  done
 
-  echo -e "\n${BLUE}${BOLD}# Deleting PVCs/PVs for ${CRUCIBLE_RELEASE}${RESET}\n"
-  delete_pvcs_for_release "$CRUCIBLE_RELEASE"
+  echo -e "\n${BLUE}${BOLD}# Deleting PVCs/PVs${RESET}\n"
+  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
+    case "${CHARTS[i]}" in
+      "crucible-monitoring")
+        delete_pvcs_for_release "$MONITORING_RELEASE"
+        ;;
+      "crucible")
+        delete_pvcs_for_release "$APPS_RELEASE"
+        ;;
+      "crucible-infra")
+        delete_pvcs_for_release "$INFRA_RELEASE"
+        ;;
+    esac
+  done
 
   echo -e "\n${GREEN}${BOLD}# Uninstall complete${RESET}\n"
   exit 0
@@ -446,8 +536,7 @@ if $NO_INSTALL; then
   exit 0
 fi
 
-# Build dependencies for Helm charts
-CHARTS=("crucible")
+# Build dependencies for selected charts
 for chart in "${CHARTS[@]}"; do
   ensure_chart_dependencies "$chart"
 done
@@ -460,27 +549,61 @@ if ! kk get node > /dev/null 2>&1 ; then
   start_minikube_cluster
 fi
 
-# Install or upgrade Crucible Helm releae
-echo -e "\n${BLUE}${BOLD}# Helm installing ${CHARTS_DIR}/crucible${RESET}\n"
-if helm status "$CRUCIBLE_RELEASE" &>/dev/null; then
-  echo "Existing release detected; running helm upgrade"
-  helm upgrade "$CRUCIBLE_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS}
-else
-  echo "Release not found; running helm install"
-  helm install "$CRUCIBLE_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS}
-fi
+# Install or upgrade Helm releases
+# Deploy in correct order: infra -> apps -> monitoring
+
+for chart in "${CHARTS[@]}"; do
+  case "$chart" in
+    "crucible-infra")
+      echo -e "\n${BLUE}${BOLD}# Deploying crucible-infra chart${RESET}\n"
+      if helm status "$INFRA_RELEASE" &>/dev/null; then
+        echo "Existing release detected; running helm upgrade"
+        helm upgrade "$INFRA_RELEASE" "$CHARTS_DIR/crucible-infra" ${HELM_UPGRADE_FLAGS}
+      else
+        echo "Release not found; running helm install"
+        helm install "$INFRA_RELEASE" "$CHARTS_DIR/crucible-infra" ${HELM_UPGRADE_FLAGS}
+      fi
+      ;;
+
+    "crucible")
+      echo -e "\n${BLUE}${BOLD}# Deploying crucible (apps) chart${RESET}\n"
+      if helm status "$APPS_RELEASE" &>/dev/null; then
+        echo "Existing release detected; running helm upgrade"
+        helm upgrade "$APPS_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS}
+      else
+        echo "Release not found; running helm install"
+        helm install "$APPS_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS}
+      fi
+      ;;
+
+    "crucible-monitoring")
+      echo -e "\n${BLUE}${BOLD}# Deploying crucible-monitoring chart${RESET}\n"
+      if helm status "$MONITORING_RELEASE" &>/dev/null; then
+        echo "Existing release detected; running helm upgrade"
+        helm upgrade "$MONITORING_RELEASE" "$CHARTS_DIR/crucible-monitoring" ${HELM_UPGRADE_FLAGS}
+      else
+        echo "Release not found; running helm install"
+        helm install "$MONITORING_RELEASE" "$CHARTS_DIR/crucible-monitoring" ${HELM_UPGRADE_FLAGS}
+      fi
+      ;;
+  esac
+done
 
 # Configure CoreDNS to resolve Crucible hostname
 ensure_nodehosts_entry
 
 # Enable K8s port forwarding to allow connection to web apps from host
-echo -e "\n${BLUE}${BOLD}# Enabling port-forwarding${RESET}\n"
-nohup kk port-forward -n default "service/crucible-ingress-nginx-controller" "443:443" > /dev/null 2>&1 &
+if [[ " ${CHARTS[@]} " =~ " crucible-infra " ]] || [[ ${#CHARTS[@]} -eq 0 ]]; then
+  echo -e "\n${BLUE}${BOLD}# Enabling port-forwarding${RESET}\n"
+  # Kill any existing port-forward on 443
+  pkill -f "port-forward.*443:443" 2>/dev/null || true
+  nohup kk port-forward -n default "service/${INFRA_RELEASE}-ingress-nginx-controller" "443:443" > /dev/null 2>&1 &
+fi
 
-# Print URLs and Creds
+# Print URLs and credentials
 print_web_app_urls
 print_keycloak_admin_credentials
 print_pgadmin_credentials
 
 # Done
-echo -e "\n${GREEN}${BOLD}Crucible has been deployed${RESET}\n"
+echo -e "\n${GREEN}${BOLD}Crucible deployment complete${RESET}\n"
