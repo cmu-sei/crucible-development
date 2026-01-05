@@ -12,11 +12,13 @@ var builder = DistributedApplication.CreateBuilder(args);
 LaunchOptions launchOptions = new();
 builder.Configuration.GetSection("Launch").Bind(launchOptions);
 bool addAllApplications = builder.Configuration.GetSection("Options").GetValue<bool>("addAllApplications");
+int postgresPort = builder.Configuration.GetValue<int>("PostgresPort", 5432);
 
 var postgres = builder.AddPostgres("postgres")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
     .WithContainerName("crucible-postgres")
+    .WithEndpoint("tcp", endpoint => endpoint.Port = postgresPort)
     .WithPgAdmin(pgAdmin =>
     {
         pgAdmin.WithEndpoint("http", endpoint => endpoint.Port = 33000);
@@ -28,17 +30,17 @@ var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithArgs("serve", "-a", "0.0.0.0:8000");
 
 var keycloak = builder.AddKeycloak(postgres);
-builder.AddPlayer(postgres, keycloak, launchOptions, addAllApplications);
-builder.AddCaster(postgres, keycloak, launchOptions, addAllApplications);
-builder.AddAlloy(postgres, keycloak, launchOptions, addAllApplications);
-builder.AddTopoMojo(postgres, keycloak, launchOptions, addAllApplications);
-builder.AddSteamfitter(postgres, keycloak, launchOptions, addAllApplications);
-builder.AddCite(postgres, keycloak, launchOptions, addAllApplications);
-builder.AddGallery(postgres, keycloak, launchOptions, addAllApplications);
-builder.AddBlueprint(postgres, keycloak, launchOptions, addAllApplications);
-builder.AddGameboard(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddPlayer(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
+builder.AddCaster(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
+builder.AddAlloy(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
+builder.AddTopoMojo(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
+builder.AddSteamfitter(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
+builder.AddCite(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
+builder.AddGallery(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
+builder.AddBlueprint(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
+builder.AddGameboard(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
 builder.AddMoodle(postgres, keycloak, launchOptions);
-builder.AddLrsql(postgres, keycloak, launchOptions);
+builder.AddLrsql(postgres, keycloak, launchOptions, postgresPort);
 
 builder.Build().Run();
 
@@ -78,12 +80,18 @@ public static class BuilderExtensions
         return keycloak;
     }
 
-    public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
     {
         if (!addAll && !options.Player)
             return;
 
         var playerDb = postgres.AddDatabase("playerDb", "player");
+
+        var playerConnectionString = BuildConnectionString(builder, postgresPort, "player");
+        WriteApiDevelopmentSettings(
+            "/mnt/data/crucible/player/player.api/Player.Api",
+            "cmu-sei-crucible-player-api",
+            playerConnectionString);
 
         var playerApi = builder.AddProject<Projects.Player_Api>("player-api", launchProfileName: "Player.Api")
             .WaitFor(postgres)
@@ -158,12 +166,18 @@ public static class BuilderExtensions
 
     }
 
-    public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
     {
         if (!addAll && !options.Caster)
             return;
 
         var casterDb = postgres.AddDatabase("casterDb", "caster");
+
+        var casterConnectionString = BuildConnectionString(builder, postgresPort, "caster");
+        WriteApiDevelopmentSettings(
+            "/mnt/data/crucible/caster/caster.api/src/Caster.Api",
+            "cmu-sei-crucible-caster-api",
+            casterConnectionString);
 
         var casterApi = builder.AddProject<Projects.Caster_Api>("caster-api", launchProfileName: "Caster.Api")
             .WaitFor(postgres)
@@ -192,12 +206,18 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
     {
         if (!addAll && !options.Alloy)
             return;
 
         var alloyDb = postgres.AddDatabase("alloyDb", "alloy");
+
+        var alloyConnectionString = BuildConnectionString(builder, postgresPort, "alloy");
+        WriteApiDevelopmentSettings(
+            "/mnt/data/crucible/alloy/alloy.api/Alloy.Api",
+            "cmu-sei-crucible-alloy-api",
+            alloyConnectionString);
 
         var alloyApi = builder.AddProject<Projects.Alloy_Api>("alloy-api", launchProfileName: "Alloy.Api")
             .WaitFor(postgres)
@@ -235,12 +255,18 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
     {
         if (!addAll && !options.TopoMojo)
             return;
 
         var topoDb = postgres.AddDatabase("topoDb", "topomojo");
+
+        var topoConnectionString = BuildConnectionString(builder, postgresPort, "topomojo");
+        WriteApiDevelopmentSettings(
+            "/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api",
+            "cmu-sei-crucible-topomojo-api",
+            topoConnectionString);
 
         var topoApi = builder.AddProject<Projects.TopoMojo_Api>("topomojo")
             .WaitFor(postgres)
@@ -282,12 +308,18 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
     {
         if (!addAll && !options.Steamfitter)
             return;
 
         var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter");
+
+        var steamfitterConnectionString = BuildConnectionString(builder, postgresPort, "steamfitter");
+        WriteApiDevelopmentSettings(
+            "/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api",
+            "cmu-sei-crucible-steamfitter-api",
+            steamfitterConnectionString);
 
         var steamfitterApi = builder.AddProject<Projects.Steamfitter_Api>("steamfitter-api", launchProfileName: "Steamfitter.Api")
             .WaitFor(postgres)
@@ -323,12 +355,18 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
     {
         if (!addAll && !options.Cite)
             return;
 
         var citeDb = postgres.AddDatabase("citeDb", "cite");
+
+        var citeConnectionString = BuildConnectionString(builder, postgresPort, "cite");
+        WriteApiDevelopmentSettings(
+            "/mnt/data/crucible/cite/cite.api/Cite.Api",
+            "cmu-sei-crucible-cite-api",
+            citeConnectionString);
 
         var citeApi = builder.AddProject<Projects.Cite_Api>("cite-api", launchProfileName: "Cite.Api")
             .WaitFor(postgres)
@@ -363,12 +401,18 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
     {
         if (!addAll && !options.Gallery)
             return;
 
         var galleryDb = postgres.AddDatabase("galleryDb", "gallery");
+
+        var galleryConnectionString = BuildConnectionString(builder, postgresPort, "gallery");
+        WriteApiDevelopmentSettings(
+            "/mnt/data/crucible/gallery/gallery.api/Gallery.Api",
+            "cmu-sei-crucible-gallery-api",
+            galleryConnectionString);
 
         var galleryApi = builder.AddProject<Projects.Gallery_Api>("gallery-api", launchProfileName: "Api")
             .WaitFor(postgres)
@@ -404,12 +448,18 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
     {
         if (!addAll && !options.Blueprint)
             return;
 
         var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint");
+
+        var blueprintConnectionString = BuildConnectionString(builder, postgresPort, "blueprint");
+        WriteApiDevelopmentSettings(
+            "/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api",
+            "cmu-sei-crucible-blueprint-api",
+            blueprintConnectionString);
 
         var blueprintApi = builder.AddProject<Projects.Blueprint_Api>("blueprint-api", launchProfileName: "Blueprint.Api")
             .WaitFor(postgres)
@@ -444,12 +494,18 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
+    public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
     {
         if (!addAll && !options.Gameboard)
             return;
 
         var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard");
+
+        var gameboardConnectionString = BuildConnectionString(builder, postgresPort, "gameboard");
+        WriteApiDevelopmentSettings(
+            "/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api",
+            "cmu-sei-crucible-gameboard-api",
+            gameboardConnectionString);
 
         var gameboardApi = builder.AddProject<Projects.Gameboard_Api>("gameboard", launchProfileName: "Project")
             .WaitFor(postgres)
@@ -531,7 +587,7 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true);
     }
 
-    public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, int postgresPort)
     {
         if (!options.Lrsql) return;
 
@@ -553,7 +609,94 @@ public static class BuilderExtensions
             .WithEnvironment("LRSQL_DB_USER", postgres.Resource.UserNameReference)
             .WithEnvironment("LRSQL_DB_PASSWORD", postgres.Resource.PasswordParameter)
             .WithEnvironment("LRSQL_DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
-            .WithEnvironment("LRSQL_DB_PORT", "5432")
+            .WithEnvironment("LRSQL_DB_PORT", postgresPort.ToString())
             .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
+    }
+
+    private static string BuildConnectionString(IDistributedApplicationBuilder builder, int postgresPort, string databaseName)
+    {
+        var postgresPassword = builder.Configuration["Parameters:postgres-password"] ?? "this-should-never-get-used";
+        return $"Server=localhost;Port={postgresPort};Database={databaseName};Username=postgres;Password={postgresPassword};Keepalive=1;";
+    }
+
+    private static void WriteApiDevelopmentSettings(
+        string apiProjectPath,
+        string userSecretsId,
+        string connectionString)
+    {
+        AddUserSecretsIdToProject(apiProjectPath, userSecretsId);
+        try
+        {
+            // Set user secrets using dotnet user-secrets
+            SetUserSecret(apiProjectPath, "ConnectionStrings:PostgreSQL", connectionString);
+            SetUserSecret(apiProjectPath, "Database:Provider", "PostgreSQL");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to create configuration for {apiProjectPath}: {ex.Message}");
+        }
+    }
+
+    private static void AddUserSecretsIdToProject(string projectPath, string userSecretsId)
+    {
+        // Find the .csproj file in the project directory
+        var projectFiles = Directory.GetFiles(projectPath, "*.csproj");
+        if (projectFiles.Length == 0)
+        {
+            Console.WriteLine($"Warning: No .csproj file found in {projectPath}");
+            return;
+        }
+
+        var projectFile = projectFiles[0];
+        var doc = System.Xml.Linq.XDocument.Load(projectFile);
+        var ns = doc.Root?.Name.Namespace ?? System.Xml.Linq.XNamespace.None;
+
+        // Check if UserSecretsId already exists
+        var existingUserSecretsId = doc.Descendants(ns + "UserSecretsId").FirstOrDefault();
+        if (existingUserSecretsId == null)
+        {
+            // Find or create a PropertyGroup to add UserSecretsId
+            var propertyGroup = doc.Descendants(ns + "PropertyGroup").FirstOrDefault();
+            if (propertyGroup == null)
+            {
+                // Create a new PropertyGroup
+                propertyGroup = new System.Xml.Linq.XElement(ns + "PropertyGroup");
+                doc.Root?.Add(propertyGroup);
+            }
+
+            // Add UserSecretsId to the PropertyGroup
+            propertyGroup.Add(new System.Xml.Linq.XElement(ns + "UserSecretsId", userSecretsId));
+        }
+
+        doc.Save(projectFile);
+    }
+
+    private static void SetUserSecret(string projectPath, string key, string value)
+    {
+        try
+        {
+            var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = $"user-secrets set \"{key}\" \"{value}\"",
+                WorkingDirectory = projectPath,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+
+            process?.WaitForExit();
+
+            if (process?.ExitCode != 0 && process is not null)
+            {
+                var error = process.StandardError.ReadToEnd();
+                Console.WriteLine($"Warning: Failed to set user secret {key} for {projectPath}: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to set user secret {key} for {projectPath}: {ex.Message}");
+        }
     }
 }
