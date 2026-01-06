@@ -2,9 +2,7 @@
   "name": "Crucible Development",
   "runArgs": [
     "--name",
-    "crucible-dev",
-    "--env-file",
-    ".devcontainer/devcontainer.env"
+    "crucible-dev"
   ],
   "build": {
     "dockerfile": "Dockerfile"
@@ -27,7 +25,10 @@
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
   "containerEnv": {
-    "NUGET_PACKAGES": "/home/vscode/.nuget/packages" // this might not be needed. will try removing later.
+    "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.
+    "CLAUDE_CODE_USE_BEDROCK": "1", // vars for Claude Code using Amazon Bedrock
+    "AWS_REGION": "us-east-1",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
   },
   "mounts": [
     // crucible repo data
@@ -35,7 +36,9 @@
     // Usersecrets
     "source=crucible-dev-microsoft,target=/home/vscode/.microsoft,type=volume",
     // Shell history
-    "source=crucible-dev-shell-history,target=/home/vscode/.history,type=volume"
+    "source=crucible-dev-shell-history,target=/home/vscode/.history,type=volume",
+    // AWS credentials for Claude Code (optional)
+    "source=${localWorkspaceFolder}/.devcontainer/.aws,target=/home/vscode/.aws,type=bind,readonly"
   ],
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
