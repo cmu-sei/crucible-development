@@ -5,6 +5,7 @@ git config devcontainers-theme.show-dirty 1
 
 sudo chown -R $(whoami): /home/vscode/.microsoft
 sudo chown -R $(whoami): /mnt/data/
+sudo chown -R $(whoami): /home/vscode/.claude
 
 scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
