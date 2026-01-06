@@ -29,25 +29,25 @@ For details on how to add root CA certificates (including Zscaler and any develo
 
 ## Claude Code
 
-The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for Claude, configured to use AWS Bedrock.
+The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for Claude, configured to use AWS Bedrock via the official [Claude Code devcontainer feature](https://github.com/anthropics/devcontainer-features).
 
 ### Setup
 
-1. Copy the example environment file:
+1. Copy the example credentials file:
    ```bash
-   cp .devcontainer/devcontainer.env.example .devcontainer/devcontainer.env
+   cp .devcontainer/.aws/credentials.example .devcontainer/.aws/credentials
    ```
 
-2. Edit `.devcontainer/devcontainer.env` and add your AWS credentials:
-   ```
-   CLAUDE_CODE_USE_BEDROCK=1
-   AWS_REGION=us-east-1
-   ANTHROPIC_DEFAULT_HAIKU_MODEL=us.anthropic.claude-haiku-4-5-20251001-v1:0
-   AWS_ACCESS_KEY_ID=<your-aws-access-key>
-   AWS_SECRET_ACCESS_KEY=<your-aws-secret-key>
+2. Edit `.devcontainer/.aws/credentials` and add your AWS credentials:
+   ```ini
+   [default]
+   aws_access_key_id = <AWS Access Key for Bedrock>
+   aws_secret_access_key = <AWS Secret Key for Bedrock>
    ```
 
-3. Rebuild the dev container (required after any changes to `devcontainer.env`)
+3. Build or rebuild the dev container
+
+The credentials file is mounted to `/home/vscode/.aws/credentials` inside the container and is excluded from git via `.devcontainer/.gitignore`.
 
 ### Usage
 
