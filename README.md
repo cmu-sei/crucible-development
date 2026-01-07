@@ -27,6 +27,32 @@ The dev container is designed to work with Zscaler. You will need to copy the re
 
 For details on how to add root CA certificates (including Zscaler and any development CAs), see the [Custom Certs Docs](.devcontainer/certs/README.md).
 
+## Claude Code
+
+The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for Claude, configured to use AWS Bedrock via the official [Claude Code devcontainer feature](https://github.com/anthropics/devcontainer-features).
+
+### Setup
+
+1. Copy the example credentials file:
+   ```bash
+   cp .devcontainer/.aws/credentials.example .devcontainer/.aws/credentials
+   ```
+
+2. Edit `.devcontainer/.aws/credentials` and add your AWS credentials:
+   ```ini
+   [default]
+   aws_access_key_id = <AWS Access Key for Bedrock>
+   aws_secret_access_key = <AWS Secret Key for Bedrock>
+   ```
+
+3. Build or rebuild the dev container
+
+The credentials file is mounted to `/home/vscode/.aws/credentials` inside the container and is excluded from git via `.devcontainer/.gitignore`.
+
+### Usage
+
+Once the container is running with valid credentials, run `claude` in the terminal to start Claude Code.
+
 ## Troubleshooting
 
 This repo is still under construction, so you may run into the occasional challenge or oddity. From our lessons learned:
