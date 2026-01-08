@@ -563,6 +563,10 @@ for chart in "${CHARTS[@]}"; do
         echo "Release not found; running helm install"
         helm install "$INFRA_RELEASE" "$CHARTS_DIR/crucible-infra" ${HELM_UPGRADE_FLAGS}
       fi
+
+      # Configure CoreDNS immediately after infra deployment to ensure correct ingress IP resolution
+      echo -e "\n${BLUE}${BOLD}# Updating CoreDNS with current ingress controller IP${RESET}\n"
+      ensure_nodehosts_entry
       ;;
 
     "crucible")
@@ -590,15 +594,19 @@ for chart in "${CHARTS[@]}"; do
 done
 
 # Configure CoreDNS to resolve Crucible hostname
-ensure_nodehosts_entry
+# (This is a fallback for when crucible-infra is not in the deployment list,
+# or when deploying monitoring/other charts that also need DNS resolution)
+if [[ ! " ${CHARTS[@]} " =~ " crucible-infra " ]]; then
+  echo -e "\n${BLUE}${BOLD}# Ensuring CoreDNS has correct ingress controller IP${RESET}\n"
+  ensure_nodehosts_entry
+fi
 
 # Enable K8s port forwarding to allow connection to web apps from host
-if [[ " ${CHARTS[@]} " =~ " crucible-infra " ]] || [[ ${#CHARTS[@]} -eq 0 ]]; then
-  echo -e "\n${BLUE}${BOLD}# Enabling port-forwarding${RESET}\n"
-  # Kill any existing port-forward on 443
-  pkill -f "port-forward.*443:443" 2>/dev/null || true
-  nohup kk port-forward -n default "service/${INFRA_RELEASE}-ingress-nginx-controller" "443:443" > /dev/null 2>&1 &
-fi
+echo -e "\n${BLUE}${BOLD}# Enabling port-forwarding${RESET}\n"
+# Kill any existing port-forward on 443
+pkill -f "port-forward.*443:443" 2>/dev/null || true
+nohup kk port-forward -n default "service/${INFRA_RELEASE}-ingress-nginx-controller" "443:443" > /dev/null 2>&1 &
+
 
 # Print URLs and credentials
 print_web_app_urls
