@@ -10,4 +10,5 @@
   <Project Path="/mnt/data/crucible/gallery/gallery.api/Gallery.Api/Gallery.Api.csproj" />
   <Project Path="/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api/Blueprint.Api.csproj" />
   <Project Path="/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api/Gameboard.Api.csproj" />
+  <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.ServiceDefaults/Crucible.Common.ServiceDefaults.csproj" />
 </Solution>
