@@ -19,9 +19,39 @@ If you're on a Windows machine, Docker's consumption of your host machine's memo
 - Memory Limit: 16GB
 - Disk Usage Limit: 120GB
 
-### zscalar
+### Zscaler
 
-The dev container is designed to work with zscalar.  You will need to copy the required certs into the **.devcontainer/certs** folder.
+The dev container is designed to work with Zscaler. You will need to copy the required certs into the **.devcontainer/certs** folder.
+
+### Custom Certificates
+
+For details on how to add root CA certificates (including Zscaler and any development CAs), see the [Custom Certs Docs](.devcontainer/certs/README.md).
+
+## Claude Code
+
+The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for Claude, configured to use AWS Bedrock via the official [Claude Code devcontainer feature](https://github.com/anthropics/devcontainer-features).
+
+### Setup
+
+1. Copy the example credentials file:
+   ```bash
+   cp .devcontainer/.aws/credentials.example .devcontainer/.aws/credentials
+   ```
+
+2. Edit `.devcontainer/.aws/credentials` and add your AWS credentials:
+   ```ini
+   [default]
+   aws_access_key_id = <AWS Access Key for Bedrock>
+   aws_secret_access_key = <AWS Secret Key for Bedrock>
+   ```
+
+3. Build or rebuild the dev container
+
+The credentials file is mounted to `/home/vscode/.aws/credentials` inside the container and is excluded from git via `.devcontainer/.gitignore`.
+
+### Usage
+
+Once the container is running with valid credentials, run `claude` in the terminal to start Claude Code.
 
 ## Troubleshooting
 
@@ -34,14 +64,16 @@ This repo is still under construction, so you may run into the occasional challe
 
 - Some extensions (e.g. C#) very rarely seem to fail to install in the container's VS Code environment. If you see weird intellisense behavior or have compilation/debugging problems, ensure all extensions in the `devcontainers.json` file are installed in your container.
 
-
 # Database seeding and backup
+
 ## setup
+
 ... using blueprint as the example
 create a db-dumps folder under crucible-dev
 copy your blueprint.dump file into the db-dumps folder
 
 ## seed/restore a database
+
 navigate to the db-dumps folder in the integrated terminal
 drop the blueprint database using pgadmin
 create a new blueprint database using pgadmin
@@ -52,7 +84,82 @@ docker exec -it crucible-postgres /bin/bash
 exit
 
 ## backup/dump a database
+
 docker exec -it crucible-postgres /bin/bash
 pg_dump -U postgres blueprint > /tmp/blueprint.dump
 exit
 docker cp crucible-postgres:/tmp/blueprint.dump blueprint.dump
+
+## Moodle configuration
+
+Moodle will be configured using files located in `scripts/` and `resources/moodle/`.
+When starting for the first time, Moodle will make a copy of some core files that will
+be copied into mounts on the dev container's file system so that they are accessible for
+debugging with xdebug. These files will be mounted alongside our repos under the folder
+`/mnt/data/crucible/moodle/moodle-core/`. The xAPI logstore plugin will also be configured
+automatically as will one default Moodle course with no activities within it.
+
+### OAUTH
+
+Moodle will be configured for oauth automatically. The oauth admin user has an email
+address set and the Moodle client has a hard-coded secret.
+
+After Moodle starts for the first time, login using the oauth admin user account and
+it will than have an account on Moodle. Make the oauth admin account a site admin by
+either logging in as local admin and using the Site Administration menu, or, simply
+restart the Moodle container via the Aspire dashboard and when the container restarts,
+the oauth admin user will be added to the list of site admins. Please note that every
+time the container restarts the list of site admins will be reset to the local admin
+and the oauth admin account. When the oauth admin account has been made a site admin,
+login with it and navigate to the oauth server settings under Site Administration,
+Server, and connect the system account. This will enable our plugins to communicate with
+the various Crucible applications.
+
+### Crucible Plugin
+
+To configure Moodle to work with Crucible, oauth must be configured on Moodle, the service
+account must be connected, and the user must be logged an with oauth.
+
+### TopoMojo Plugin
+
+To configure Moodle to work with TopoMojo, login to TopoMojo, generate an API key, and
+add that API key to the Moodle crucible plugin's configuration in the Moodle UI or in the
+script `post_configure.sh`.
+
+### Developing New Moodle Plugins
+
+To add new Moodle plugin repositories, add them to `scripts/repos.json`, `launch.json`,
+`AppHost.cs`, and the `xdebug_filter.sh` files.
+
+### Adding Additional Official Plugins for Moodle
+
+To add additional plugins, add them to the `PLUGINS` environment variable in `AppHost.cs`.
+
+### Moodle PHP Debugging with xdebug
+
+If you do not wish to debug Moodle, simply run Moodle via the `Moodle` task. Id you do wish
+to debug Mooodle, run Moodle via the `Moodle Debug` composite task. This task will start
+both the Moodle and Xdebug tasks. The specific setting to control the xdebug mode is set
+inside the `moodle.env` file or the `moodle-xdebug.env` file. Update the `XdebugMode` to
+the type of xdebug feature(s) you wish to use.
+
+The xdebug configuration is set to `off` in its configuration file, `xdebug.ini`, however
+the `AppHost.cs` file sets the `XDEBUG_MODE` environment variable to enable it.
+
+**PHP on the Moodle container will pause execution after the line `Upgrading config.php...`
+if xdebug is enabled and the remote debugger in the devcontainer is not running.** To prevent
+this from happening, ensure that the Xdebug task is running in vscode when `XDEBUG_MODE` is
+enabled via the `AppHost.cs` file. An additional configuration for xdebug is enabled when the
+mode includes `coverage`: `xdebug_filter.php`. This script is meant to limit the scope of the
+code being analyzed by xdebug.
+
+To make additional paths available for debugging, add the paths to `Dockerfile.MoodleCustom`,
+`add-moodle-mounts.sh`, `AppHost.cs`, `pre_configure.sh` and `launch.json`.
+
+### Moodle UI Debug Display
+
+The standard Moodle debugging level and display via the UI can be set under the normal Site
+Administration, Development, menu. The install process for this container installs the plugin
+`tool_userdebug` which allows site admins to easily toggle debug display via an icon added
+to the header just to the left of the user avatar in the upper right corner of the screen.
+This is the preferred method to enable display of debug messages inside of the browser.
