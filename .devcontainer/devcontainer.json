@@ -2,9 +2,7 @@
   "name": "Crucible Development",
   "runArgs": [
     "--name",
-    "crucible-dev",
-    "--env-file",
-    ".devcontainer/devcontainer.env"
+    "crucible-dev"
   ],
   "build": {
     "dockerfile": "Dockerfile"
