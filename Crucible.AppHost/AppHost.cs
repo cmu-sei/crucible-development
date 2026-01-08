@@ -1,24 +1,25 @@
 // Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
-using System;
-using Aspire.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Crucible.AppHost;
+using System.Diagnostics;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
 LaunchOptions launchOptions = new();
 builder.Configuration.GetSection("Launch").Bind(launchOptions);
 bool addAllApplications = builder.Configuration.GetSection("Options").GetValue<bool>("addAllApplications");
-int postgresPort = builder.Configuration.GetValue<int>("PostgresPort", 5432);
 
 var postgres = builder.AddPostgres("postgres")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
     .WithContainerName("crucible-postgres")
-    .WithEndpoint("tcp", endpoint => endpoint.Port = postgresPort)
+    .WithEndpoint("tcp", endpoint =>
+    {
+        endpoint.IsProxied = false; // so tools (e.g. dotnet ef migrations) can connect to db when apphost is off
+    })
     .WithPgAdmin(pgAdmin =>
     {
         pgAdmin.WithEndpoint("http", endpoint => endpoint.Port = 33000);
@@ -30,17 +31,17 @@ var mkdocs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
     .WithArgs("serve", "-a", "0.0.0.0:8000");
 
 var keycloak = builder.AddKeycloak(postgres);
-builder.AddPlayer(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
-builder.AddCaster(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
-builder.AddAlloy(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
-builder.AddTopoMojo(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
-builder.AddSteamfitter(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
-builder.AddCite(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
-builder.AddGallery(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
-builder.AddBlueprint(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
-builder.AddGameboard(postgres, keycloak, launchOptions, addAllApplications, postgresPort);
+builder.AddPlayer(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddCaster(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddAlloy(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddTopoMojo(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddSteamfitter(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddCite(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddGallery(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddBlueprint(postgres, keycloak, launchOptions, addAllApplications);
+builder.AddGameboard(postgres, keycloak, launchOptions, addAllApplications);
 builder.AddMoodle(postgres, keycloak, launchOptions);
-builder.AddLrsql(postgres, keycloak, launchOptions, postgresPort);
+builder.AddLrsql(postgres, keycloak, launchOptions);
 
 builder.Build().Run();
 
@@ -80,18 +81,17 @@ public static class BuilderExtensions
         return keycloak;
     }
 
-    public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
+    public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
         if (!addAll && !options.Player)
             return;
 
         var playerDb = postgres.AddDatabase("playerDb", "player");
 
-        var playerConnectionString = BuildConnectionString(builder, postgresPort, "player");
-        WriteApiDevelopmentSettings(
-            "/mnt/data/crucible/player/player.api/Player.Api",
+        builder.ConfigureApiSecrets(
+            new Projects.Player_Api().ProjectPath,
             "cmu-sei-crucible-player-api",
-            playerConnectionString);
+            playerDb.Resource.ConnectionStringExpression);
 
         var playerApi = builder.AddProject<Projects.Player_Api>("player-api", launchProfileName: "Player.Api")
             .WaitFor(postgres)
@@ -126,6 +126,15 @@ public static class BuilderExtensions
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm");
         var vmLoggingDb = postgres.AddDatabase("vmLoggingDb", "player_vm_logging");
+
+        builder.ConfigureApiSecrets(
+            new Projects.Player_Vm_Api().ProjectPath,
+            "cmu-sei-crucible-vm-api",
+            vmDb.Resource.ConnectionStringExpression,
+            new Dictionary<string, ReferenceExpression>
+            {
+                ["VmUsageLogging:PostgreSQL"] = vmLoggingDb.Resource.ConnectionStringExpression
+            });
 
         var vmApi = builder.AddProject<Projects.Player_Vm_Api>("player-vm-api", launchProfileName: "Player.Vm.Api")
             .WaitFor(postgres)
@@ -166,18 +175,17 @@ public static class BuilderExtensions
 
     }
 
-    public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
+    public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
         if (!addAll && !options.Caster)
             return;
 
         var casterDb = postgres.AddDatabase("casterDb", "caster");
 
-        var casterConnectionString = BuildConnectionString(builder, postgresPort, "caster");
-        WriteApiDevelopmentSettings(
-            "/mnt/data/crucible/caster/caster.api/src/Caster.Api",
+        builder.ConfigureApiSecrets(
+            new Projects.Caster_Api().ProjectPath,
             "cmu-sei-crucible-caster-api",
-            casterConnectionString);
+            casterDb.Resource.ConnectionStringExpression);
 
         var casterApi = builder.AddProject<Projects.Caster_Api>("caster-api", launchProfileName: "Caster.Api")
             .WaitFor(postgres)
@@ -206,18 +214,17 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
+    public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
         if (!addAll && !options.Alloy)
             return;
 
         var alloyDb = postgres.AddDatabase("alloyDb", "alloy");
 
-        var alloyConnectionString = BuildConnectionString(builder, postgresPort, "alloy");
-        WriteApiDevelopmentSettings(
-            "/mnt/data/crucible/alloy/alloy.api/Alloy.Api",
+        builder.ConfigureApiSecrets(
+            new Projects.Alloy_Api().ProjectPath,
             "cmu-sei-crucible-alloy-api",
-            alloyConnectionString);
+            alloyDb.Resource.ConnectionStringExpression);
 
         var alloyApi = builder.AddProject<Projects.Alloy_Api>("alloy-api", launchProfileName: "Alloy.Api")
             .WaitFor(postgres)
@@ -255,18 +262,17 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
+    public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
         if (!addAll && !options.TopoMojo)
             return;
 
         var topoDb = postgres.AddDatabase("topoDb", "topomojo");
 
-        var topoConnectionString = BuildConnectionString(builder, postgresPort, "topomojo");
-        WriteApiDevelopmentSettings(
-            "/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api",
+        builder.ConfigureApiSecrets(
+            new Projects.TopoMojo_Api().ProjectPath,
             "cmu-sei-crucible-topomojo-api",
-            topoConnectionString);
+            topoDb.Resource.ConnectionStringExpression);
 
         var topoApi = builder.AddProject<Projects.TopoMojo_Api>("topomojo")
             .WaitFor(postgres)
@@ -308,18 +314,17 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
+    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
         if (!addAll && !options.Steamfitter)
             return;
 
         var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter");
 
-        var steamfitterConnectionString = BuildConnectionString(builder, postgresPort, "steamfitter");
-        WriteApiDevelopmentSettings(
-            "/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api",
+        builder.ConfigureApiSecrets(
+            new Projects.Steamfitter_Api().ProjectPath,
             "cmu-sei-crucible-steamfitter-api",
-            steamfitterConnectionString);
+            steamfitterDb.Resource.ConnectionStringExpression);
 
         var steamfitterApi = builder.AddProject<Projects.Steamfitter_Api>("steamfitter-api", launchProfileName: "Steamfitter.Api")
             .WaitFor(postgres)
@@ -355,18 +360,17 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
+    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
         if (!addAll && !options.Cite)
             return;
 
         var citeDb = postgres.AddDatabase("citeDb", "cite");
 
-        var citeConnectionString = BuildConnectionString(builder, postgresPort, "cite");
-        WriteApiDevelopmentSettings(
-            "/mnt/data/crucible/cite/cite.api/Cite.Api",
+        builder.ConfigureApiSecrets(
+            new Projects.Cite_Api().ProjectPath,
             "cmu-sei-crucible-cite-api",
-            citeConnectionString);
+            citeDb.Resource.ConnectionStringExpression);
 
         var citeApi = builder.AddProject<Projects.Cite_Api>("cite-api", launchProfileName: "Cite.Api")
             .WaitFor(postgres)
@@ -401,18 +405,17 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
+    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
         if (!addAll && !options.Gallery)
             return;
 
         var galleryDb = postgres.AddDatabase("galleryDb", "gallery");
 
-        var galleryConnectionString = BuildConnectionString(builder, postgresPort, "gallery");
-        WriteApiDevelopmentSettings(
-            "/mnt/data/crucible/gallery/gallery.api/Gallery.Api",
+        builder.ConfigureApiSecrets(
+            new Projects.Gallery_Api().ProjectPath,
             "cmu-sei-crucible-gallery-api",
-            galleryConnectionString);
+            galleryDb.Resource.ConnectionStringExpression);
 
         var galleryApi = builder.AddProject<Projects.Gallery_Api>("gallery-api", launchProfileName: "Api")
             .WaitFor(postgres)
@@ -448,18 +451,17 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
+    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
         if (!addAll && !options.Blueprint)
             return;
 
         var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint");
 
-        var blueprintConnectionString = BuildConnectionString(builder, postgresPort, "blueprint");
-        WriteApiDevelopmentSettings(
-            "/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api",
+        builder.ConfigureApiSecrets(
+            new Projects.Blueprint_Api().ProjectPath,
             "cmu-sei-crucible-blueprint-api",
-            blueprintConnectionString);
+            blueprintDb.Resource.ConnectionStringExpression);
 
         var blueprintApi = builder.AddProject<Projects.Blueprint_Api>("blueprint-api", launchProfileName: "Blueprint.Api")
             .WaitFor(postgres)
@@ -494,18 +496,17 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll, int postgresPort)
+    public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, bool addAll)
     {
         if (!addAll && !options.Gameboard)
             return;
 
         var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard");
 
-        var gameboardConnectionString = BuildConnectionString(builder, postgresPort, "gameboard");
-        WriteApiDevelopmentSettings(
-            "/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api",
+        builder.ConfigureApiSecrets(
+            new Projects.Gameboard_Api().ProjectPath,
             "cmu-sei-crucible-gameboard-api",
-            gameboardConnectionString);
+            gameboardDb.Resource.ConnectionStringExpression);
 
         var gameboardApi = builder.AddProject<Projects.Gameboard_Api>("gameboard", launchProfileName: "Project")
             .WaitFor(postgres)
@@ -587,7 +588,7 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true);
     }
 
-    public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, int postgresPort)
+    public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
         if (!options.Lrsql) return;
 
@@ -609,77 +610,88 @@ public static class BuilderExtensions
             .WithEnvironment("LRSQL_DB_USER", postgres.Resource.UserNameReference)
             .WithEnvironment("LRSQL_DB_PASSWORD", postgres.Resource.PasswordParameter)
             .WithEnvironment("LRSQL_DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
-            .WithEnvironment("LRSQL_DB_PORT", postgresPort.ToString())
+            .WithEnvironment("LRSQL_DB_PORT", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
             .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
     }
 
-    private static string BuildConnectionString(IDistributedApplicationBuilder builder, int postgresPort, string databaseName)
-    {
-        var postgresPassword = builder.Configuration["Parameters:postgres-password"] ?? "this-should-never-get-used";
-        return $"Server=localhost;Port={postgresPort};Database={databaseName};Username=postgres;Password={postgresPassword};Keepalive=1;";
-    }
-
-    private static void WriteApiDevelopmentSettings(
+    private static void ConfigureApiSecrets(
+        this IDistributedApplicationBuilder builder,
         string apiProjectPath,
         string userSecretsId,
-        string connectionString)
+        ReferenceExpression connectionStringExpression,
+        Dictionary<string, ReferenceExpression>? extraSecrets = null)
     {
-        AddUserSecretsIdToProject(apiProjectPath, userSecretsId);
+        builder.Eventing.Subscribe<AfterResourcesCreatedEvent>(async (@event, cancellationToken) =>
+        {
+            await WriteApiDevelopmentSettingsAsync(apiProjectPath, userSecretsId, connectionStringExpression, extraSecrets, cancellationToken);
+        });
+    }
+
+    private static async Task WriteApiDevelopmentSettingsAsync(
+        string apiProjectFilePath,
+        string userSecretsId,
+        ReferenceExpression connectionStringExpression,
+        Dictionary<string, ReferenceExpression>? extraSecrets,
+        CancellationToken cancellationToken = default)
+    {
+        InitUserSecrets(apiProjectFilePath, userSecretsId);
         try
         {
+            var connectionString = await connectionStringExpression.GetValueAsync(cancellationToken);
+
             // Set user secrets using dotnet user-secrets
-            SetUserSecret(apiProjectPath, "ConnectionStrings:PostgreSQL", connectionString);
-            SetUserSecret(apiProjectPath, "Database:Provider", "PostgreSQL");
+            if (connectionString is not null)
+            {
+                SetUserSecret(apiProjectFilePath, "ConnectionStrings:PostgreSQL", connectionString);
+                SetUserSecret(apiProjectFilePath, "Database:Provider", "PostgreSQL");
+                SetUserSecret(apiProjectFilePath, "Database:ConnectionString", connectionString);
+            }
+
+            if (extraSecrets is not null)
+            {
+                foreach (var secret in extraSecrets)
+                {
+                    var expressionVal = await secret.Value.GetValueAsync(cancellationToken);
+
+                    if (expressionVal is not null)
+                    {
+                        SetUserSecret(apiProjectFilePath, secret.Key, expressionVal);
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Warning: Failed to create configuration for {apiProjectPath}: {ex.Message}");
+            Console.WriteLine($"Warning: Failed to create configuration for {apiProjectFilePath}: {ex.Message}");
         }
     }
 
-    private static void AddUserSecretsIdToProject(string projectPath, string userSecretsId)
+    private static void InitUserSecrets(string projecFilePath, string userSecretsId)
     {
-        // Find the .csproj file in the project directory
-        var projectFiles = Directory.GetFiles(projectPath, "*.csproj");
-        if (projectFiles.Length == 0)
-        {
-            Console.WriteLine($"Warning: No .csproj file found in {projectPath}");
-            return;
-        }
-
-        var projectFile = projectFiles[0];
-        var doc = System.Xml.Linq.XDocument.Load(projectFile);
+        var doc = System.Xml.Linq.XDocument.Load(projecFilePath);
         var ns = doc.Root?.Name.Namespace ?? System.Xml.Linq.XNamespace.None;
 
         // Check if UserSecretsId already exists
         var existingUserSecretsId = doc.Descendants(ns + "UserSecretsId").FirstOrDefault();
         if (existingUserSecretsId == null)
         {
-            // Find or create a PropertyGroup to add UserSecretsId
-            var propertyGroup = doc.Descendants(ns + "PropertyGroup").FirstOrDefault();
-            if (propertyGroup == null)
-            {
-                // Create a new PropertyGroup
-                propertyGroup = new System.Xml.Linq.XElement(ns + "PropertyGroup");
-                doc.Root?.Add(propertyGroup);
-            }
-
-            // Add UserSecretsId to the PropertyGroup
-            propertyGroup.Add(new System.Xml.Linq.XElement(ns + "UserSecretsId", userSecretsId));
+            RunProcess("dotnet", $"user-secrets init --id {userSecretsId} --project {projecFilePath}");
         }
-
-        doc.Save(projectFile);
     }
 
-    private static void SetUserSecret(string projectPath, string key, string value)
+    private static void SetUserSecret(string projectFilePath, string key, string value)
+    {
+        RunProcess("dotnet", $"user-secrets set \"{key}\" \"{value}\" --project {projectFilePath}");
+    }
+
+    private static int? RunProcess(string fileName, string arguments)
     {
         try
         {
-            var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            var process = Process.Start(new ProcessStartInfo
             {
-                FileName = "dotnet",
-                Arguments = $"user-secrets set \"{key}\" \"{value}\"",
-                WorkingDirectory = projectPath,
+                FileName = fileName,
+                Arguments = arguments,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -691,12 +703,15 @@ public static class BuilderExtensions
             if (process?.ExitCode != 0 && process is not null)
             {
                 var error = process.StandardError.ReadToEnd();
-                Console.WriteLine($"Warning: Failed to set user secret {key} for {projectPath}: {error}");
+                Console.WriteLine($"Warning: Failed to run {fileName} with {arguments}: {error}");
             }
+
+            return process?.ExitCode;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Warning: Failed to set user secret {key} for {projectPath}: {ex.Message}");
+            Console.WriteLine($"Warning: Failed to run {fileName} with {arguments}: {ex.Message}");
+            return -1;
         }
     }
 }
