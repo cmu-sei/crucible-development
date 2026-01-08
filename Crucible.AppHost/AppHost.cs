@@ -1,11 +1,10 @@
 // Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
-using System;
-using Aspire.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Crucible.AppHost;
+using System.Diagnostics;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -17,6 +16,10 @@ var postgres = builder.AddPostgres("postgres")
     .WithDataVolume()
     .WithLifetime(ContainerLifetime.Persistent)
     .WithContainerName("crucible-postgres")
+    .WithEndpoint("tcp", endpoint =>
+    {
+        endpoint.IsProxied = false; // so tools (e.g. dotnet ef migrations) can connect to db when apphost is off
+    })
     .WithPgAdmin(pgAdmin =>
     {
         pgAdmin.WithEndpoint("http", endpoint => endpoint.Port = 33000);
@@ -85,6 +88,11 @@ public static class BuilderExtensions
 
         var playerDb = postgres.AddDatabase("playerDb", "player");
 
+        builder.ConfigureApiSecrets(
+            new Projects.Player_Api().ProjectPath,
+            "cmu-sei-crucible-player-api",
+            playerDb.Resource.ConnectionStringExpression);
+
         var playerApi = builder.AddProject<Projects.Player_Api>("player-api", launchProfileName: "Player.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
@@ -118,6 +126,15 @@ public static class BuilderExtensions
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm");
         var vmLoggingDb = postgres.AddDatabase("vmLoggingDb", "player_vm_logging");
+
+        builder.ConfigureApiSecrets(
+            new Projects.Player_Vm_Api().ProjectPath,
+            "cmu-sei-crucible-vm-api",
+            vmDb.Resource.ConnectionStringExpression,
+            new Dictionary<string, ReferenceExpression>
+            {
+                ["VmUsageLogging:PostgreSQL"] = vmLoggingDb.Resource.ConnectionStringExpression
+            });
 
         var vmApi = builder.AddProject<Projects.Player_Vm_Api>("player-vm-api", launchProfileName: "Player.Vm.Api")
             .WaitFor(postgres)
@@ -165,6 +182,11 @@ public static class BuilderExtensions
 
         var casterDb = postgres.AddDatabase("casterDb", "caster");
 
+        builder.ConfigureApiSecrets(
+            new Projects.Caster_Api().ProjectPath,
+            "cmu-sei-crucible-caster-api",
+            casterDb.Resource.ConnectionStringExpression);
+
         var casterApi = builder.AddProject<Projects.Caster_Api>("caster-api", launchProfileName: "Caster.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
@@ -198,6 +220,11 @@ public static class BuilderExtensions
             return;
 
         var alloyDb = postgres.AddDatabase("alloyDb", "alloy");
+
+        builder.ConfigureApiSecrets(
+            new Projects.Alloy_Api().ProjectPath,
+            "cmu-sei-crucible-alloy-api",
+            alloyDb.Resource.ConnectionStringExpression);
 
         var alloyApi = builder.AddProject<Projects.Alloy_Api>("alloy-api", launchProfileName: "Alloy.Api")
             .WaitFor(postgres)
@@ -241,6 +268,11 @@ public static class BuilderExtensions
             return;
 
         var topoDb = postgres.AddDatabase("topoDb", "topomojo");
+
+        builder.ConfigureApiSecrets(
+            new Projects.TopoMojo_Api().ProjectPath,
+            "cmu-sei-crucible-topomojo-api",
+            topoDb.Resource.ConnectionStringExpression);
 
         var topoApi = builder.AddProject<Projects.TopoMojo_Api>("topomojo")
             .WaitFor(postgres)
@@ -289,6 +321,11 @@ public static class BuilderExtensions
 
         var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter");
 
+        builder.ConfigureApiSecrets(
+            new Projects.Steamfitter_Api().ProjectPath,
+            "cmu-sei-crucible-steamfitter-api",
+            steamfitterDb.Resource.ConnectionStringExpression);
+
         var steamfitterApi = builder.AddProject<Projects.Steamfitter_Api>("steamfitter-api", launchProfileName: "Steamfitter.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
@@ -330,6 +367,11 @@ public static class BuilderExtensions
 
         var citeDb = postgres.AddDatabase("citeDb", "cite");
 
+        builder.ConfigureApiSecrets(
+            new Projects.Cite_Api().ProjectPath,
+            "cmu-sei-crucible-cite-api",
+            citeDb.Resource.ConnectionStringExpression);
+
         var citeApi = builder.AddProject<Projects.Cite_Api>("cite-api", launchProfileName: "Cite.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
@@ -369,6 +411,11 @@ public static class BuilderExtensions
             return;
 
         var galleryDb = postgres.AddDatabase("galleryDb", "gallery");
+
+        builder.ConfigureApiSecrets(
+            new Projects.Gallery_Api().ProjectPath,
+            "cmu-sei-crucible-gallery-api",
+            galleryDb.Resource.ConnectionStringExpression);
 
         var galleryApi = builder.AddProject<Projects.Gallery_Api>("gallery-api", launchProfileName: "Api")
             .WaitFor(postgres)
@@ -411,6 +458,11 @@ public static class BuilderExtensions
 
         var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint");
 
+        builder.ConfigureApiSecrets(
+            new Projects.Blueprint_Api().ProjectPath,
+            "cmu-sei-crucible-blueprint-api",
+            blueprintDb.Resource.ConnectionStringExpression);
+
         var blueprintApi = builder.AddProject<Projects.Blueprint_Api>("blueprint-api", launchProfileName: "Blueprint.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
@@ -450,6 +502,11 @@ public static class BuilderExtensions
             return;
 
         var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard");
+
+        builder.ConfigureApiSecrets(
+            new Projects.Gameboard_Api().ProjectPath,
+            "cmu-sei-crucible-gameboard-api",
+            gameboardDb.Resource.ConnectionStringExpression);
 
         var gameboardApi = builder.AddProject<Projects.Gameboard_Api>("gameboard", launchProfileName: "Project")
             .WaitFor(postgres)
@@ -553,7 +610,108 @@ public static class BuilderExtensions
             .WithEnvironment("LRSQL_DB_USER", postgres.Resource.UserNameReference)
             .WithEnvironment("LRSQL_DB_PASSWORD", postgres.Resource.PasswordParameter)
             .WithEnvironment("LRSQL_DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
-            .WithEnvironment("LRSQL_DB_PORT", "5432")
+            .WithEnvironment("LRSQL_DB_PORT", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
             .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
+    }
+
+    private static void ConfigureApiSecrets(
+        this IDistributedApplicationBuilder builder,
+        string apiProjectPath,
+        string userSecretsId,
+        ReferenceExpression connectionStringExpression,
+        Dictionary<string, ReferenceExpression>? extraSecrets = null)
+    {
+        builder.Eventing.Subscribe<AfterResourcesCreatedEvent>(async (@event, cancellationToken) =>
+        {
+            await WriteApiDevelopmentSettingsAsync(apiProjectPath, userSecretsId, connectionStringExpression, extraSecrets, cancellationToken);
+        });
+    }
+
+    private static async Task WriteApiDevelopmentSettingsAsync(
+        string apiProjectFilePath,
+        string userSecretsId,
+        ReferenceExpression connectionStringExpression,
+        Dictionary<string, ReferenceExpression>? extraSecrets,
+        CancellationToken cancellationToken = default)
+    {
+        InitUserSecrets(apiProjectFilePath, userSecretsId);
+        try
+        {
+            var connectionString = await connectionStringExpression.GetValueAsync(cancellationToken);
+
+            // Set user secrets using dotnet user-secrets
+            if (connectionString is not null)
+            {
+                SetUserSecret(apiProjectFilePath, "ConnectionStrings:PostgreSQL", connectionString);
+                SetUserSecret(apiProjectFilePath, "Database:Provider", "PostgreSQL");
+                SetUserSecret(apiProjectFilePath, "Database:ConnectionString", connectionString);
+            }
+
+            if (extraSecrets is not null)
+            {
+                foreach (var secret in extraSecrets)
+                {
+                    var expressionVal = await secret.Value.GetValueAsync(cancellationToken);
+
+                    if (expressionVal is not null)
+                    {
+                        SetUserSecret(apiProjectFilePath, secret.Key, expressionVal);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to create configuration for {apiProjectFilePath}: {ex.Message}");
+        }
+    }
+
+    private static void InitUserSecrets(string projecFilePath, string userSecretsId)
+    {
+        var doc = System.Xml.Linq.XDocument.Load(projecFilePath);
+        var ns = doc.Root?.Name.Namespace ?? System.Xml.Linq.XNamespace.None;
+
+        // Check if UserSecretsId already exists
+        var existingUserSecretsId = doc.Descendants(ns + "UserSecretsId").FirstOrDefault();
+        if (existingUserSecretsId == null)
+        {
+            RunProcess("dotnet", $"user-secrets init --id {userSecretsId} --project {projecFilePath}");
+        }
+    }
+
+    private static void SetUserSecret(string projectFilePath, string key, string value)
+    {
+        RunProcess("dotnet", $"user-secrets set \"{key}\" \"{value}\" --project {projectFilePath}");
+    }
+
+    private static int? RunProcess(string fileName, string arguments)
+    {
+        try
+        {
+            var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+
+            process?.WaitForExit();
+
+            if (process?.ExitCode != 0 && process is not null)
+            {
+                var error = process.StandardError.ReadToEnd();
+                Console.WriteLine($"Warning: Failed to run {fileName} with {arguments}: {error}");
+            }
+
+            return process?.ExitCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to run {fileName} with {arguments}: {ex.Message}");
+            return -1;
+        }
     }
 }
