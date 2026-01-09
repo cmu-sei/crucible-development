@@ -1,0 +1,17 @@
+# Ignore all certificate and key files
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Ignore realm configurations
+*realm*.json
+
+# Ignore environment-specific files
+*.env
+*.local
+
+# But allow README
+!README.md
+!.gitignore

@@ -526,6 +526,19 @@ if $UNINSTALL; then
     esac
   done
 
+  # Clean up manually created secrets and configmaps for crucible-infra
+  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
+    case "${CHARTS[i]}" in
+      "crucible-infra")
+        echo -e "\n${BLUE}${BOLD}# Deleting certificate secrets and ConfigMaps${RESET}\n"
+        echo "Deleting TLS secret crucible-cert..."
+        kubectl delete secret crucible-cert -n "$CURRENT_NAMESPACE" --ignore-not-found
+        echo "Deleting CA ConfigMap crucible-ca-cert..."
+        kubectl delete configmap crucible-ca-cert -n "$CURRENT_NAMESPACE" --ignore-not-found
+        ;;
+    esac
+  done
+
   echo -e "\n${GREEN}${BOLD}# Uninstall complete${RESET}\n"
   exit 0
 fi
@@ -556,12 +569,74 @@ for chart in "${CHARTS[@]}"; do
   case "$chart" in
     "crucible-infra")
       echo -e "\n${BLUE}${BOLD}# Deploying crucible-infra chart${RESET}\n"
+
+      # Create TLS secret from local certificate files if they exist
+      # Check both possible locations: workspace certs/ or chart files/
+      cert_source="/workspaces/crucible-development/helm-charts/certs"
+      chart_files="${CHARTS_DIR}/crucible-infra/files"
+      tls_secret="crucible-cert"
+      ca_configmap="crucible-ca-cert"
+
+      # Use chart files as fallback if certs/ doesn't have the files
+      if [[ ! -f "${cert_source}/crucible-dev.crt" ]] && [[ -f "${chart_files}/crucible-dev.crt" ]]; then
+        cert_source="$chart_files"
+        echo "Using certificates from chart directory: ${cert_source}"
+      fi
+
+      if [[ -f "${cert_source}/crucible-dev.crt" ]] && [[ -f "${cert_source}/crucible-dev.key" ]]; then
+        echo "Creating TLS secret ${tls_secret} from local certificates..."
+        kubectl create secret tls "${tls_secret}" \
+          --cert="${cert_source}/crucible-dev.crt" \
+          --key="${cert_source}/crucible-dev.key" \
+          --dry-run=client -o yaml | kubectl apply -f -
+        echo "TLS secret created/updated successfully"
+      else
+        echo -e "${YELLOW}TLS certificate files not found in ${cert_source}, skipping TLS secret creation${RESET}"
+      fi
+
+      # Create CA ConfigMap from local CA certificate files if they exist
+      if [[ -f "${cert_source}/crucible-dev.crt" ]] || [[ -f "${cert_source}/zscaler-ca.crt" ]]; then
+        echo "Creating CA certificates ConfigMap ${ca_configmap}..."
+
+        temp_dir=$(mktemp -d)
+        has_certs=false
+
+        if [[ -f "${cert_source}/crucible-dev.crt" ]]; then
+          cp "${cert_source}/crucible-dev.crt" "${temp_dir}/crucible-dev.crt"
+          has_certs=true
+        fi
+
+        if [[ -f "${cert_source}/zscaler-ca.crt" ]]; then
+          cp "${cert_source}/zscaler-ca.crt" "${temp_dir}/zscaler-ca.crt"
+          has_certs=true
+        fi
+
+        if $has_certs; then
+          kubectl create configmap "${ca_configmap}" \
+            --from-file="${temp_dir}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          echo "CA ConfigMap created/updated successfully"
+        fi
+
+        rm -rf "${temp_dir}"
+      else
+        echo -e "${YELLOW}CA certificate files not found in ${cert_source}, skipping CA ConfigMap creation${RESET}"
+      fi
+
+      # Use local values file if it exists
+      values_file="/workspaces/crucible-development/helm-charts/crucible-infra.values.yaml"
+      values_flag=""
+      if [[ -f "$values_file" ]]; then
+        echo "Using local values file: ${values_file}"
+        values_flag="-f ${values_file}"
+      fi
+
       if helm status "$INFRA_RELEASE" &>/dev/null; then
         echo "Existing release detected; running helm upgrade"
-        helm upgrade "$INFRA_RELEASE" "$CHARTS_DIR/crucible-infra" ${HELM_UPGRADE_FLAGS}
+        helm upgrade "$INFRA_RELEASE" "$CHARTS_DIR/crucible-infra" ${HELM_UPGRADE_FLAGS} ${values_flag}
       else
         echo "Release not found; running helm install"
-        helm install "$INFRA_RELEASE" "$CHARTS_DIR/crucible-infra" ${HELM_UPGRADE_FLAGS}
+        helm install "$INFRA_RELEASE" "$CHARTS_DIR/crucible-infra" ${HELM_UPGRADE_FLAGS} ${values_flag}
       fi
 
       # Configure CoreDNS immediately after infra deployment to ensure correct ingress IP resolution
