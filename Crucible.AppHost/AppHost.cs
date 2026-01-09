@@ -187,7 +187,7 @@ public static class BuilderExtensions
             "cmu-sei-crucible-caster-api",
             casterDb.Resource.ConnectionStringExpression);
 
-        var minikubeStart = builder.AddExecutable("minikube", "bash", "/workspaces/crucible-development/scripts/", [
+        var minikubeStart = builder.AddExecutable("minikube", "bash", $"{builder.AppHostDirectory}/../scripts/", [
             "-c",
             "./start-minikube.sh"
         ]);
