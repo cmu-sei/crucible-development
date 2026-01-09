@@ -187,9 +187,29 @@ public static class BuilderExtensions
             "cmu-sei-crucible-caster-api",
             casterDb.Resource.ConnectionStringExpression);
 
+        var minikubeStart = builder.AddExecutable("minikube", "bash", $"{builder.AppHostDirectory}/../scripts/", [
+            "-c",
+            "./start-minikube.sh"
+        ]);
+
+        var minikubeStop = builder.AddExecutable("stop-minikube", "minikube", "",
+        [
+            "stop",
+        ])
+        .WithExplicitStart()
+        .WithParentRelationship(minikubeStart);
+
+        var minikubeDelete = builder.AddExecutable("delete-minikube", "minikube", "",
+        [
+            "delete",
+        ])
+        .WithExplicitStart()
+        .WithParentRelationship(minikubeStart); ;
+
         var casterApi = builder.AddProject<Projects.Caster_Api>("caster-api", launchProfileName: "Caster.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
+            .WaitForCompletion(minikubeStart)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(casterDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -197,7 +217,10 @@ public static class BuilderExtensions
             .WithEnvironment("Authorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
-            .WithEnvironment("Authorization__ClientId", "caster.api");
+            .WithEnvironment("Authorization__ClientId", "caster.api")
+            .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
+            .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
+            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
