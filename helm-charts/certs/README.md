@@ -11,14 +11,18 @@ When you run `./helm-charts/helm-deploy.sh --infra`, the script automatically:
 
 ## Certificate Files
 
-Place certificate files here:
+Place certificate files here. You can add any number of CA certificate files with any names:
 
 ```
 /workspaces/crucible-development/helm-charts/certs/
 ├── crucible-dev.crt      # Development TLS certificate
 ├── crucible-dev.key      # Development TLS private key
-└── zscaler-ca.crt        # Corporate proxy CA certificate (if needed)
+├── proxy-ca.crt          # Corporate proxy CA certificate (if needed)
+├── internal-ca.pem       # Additional CA certificate (optional)
+└── ...                   # Any other CA certificates (.crt, .pem, .cer)
 ```
+
+**Note**: The CA ConfigMap will include ALL `.crt`, `.pem`, and `.cer` files from this directory.
 
 ## If You Need to Generate New Certificates
 

@@ -657,12 +657,21 @@ for chart in "${CHARTS[@]}"; do
 
     "crucible-monitoring")
       echo -e "\n${BLUE}${BOLD}# Deploying crucible-monitoring chart${RESET}\n"
+
+      # Use local values file if it exists
+      values_file="/workspaces/crucible-development/helm-charts/crucible-monitoring.values.yaml"
+      values_flag=""
+      if [[ -f "$values_file" ]]; then
+        echo "Using local values file: ${values_file}"
+        values_flag="-f ${values_file}"
+      fi
+
       if helm status "$MONITORING_RELEASE" &>/dev/null; then
         echo "Existing release detected; running helm upgrade"
-        helm upgrade "$MONITORING_RELEASE" "$CHARTS_DIR/crucible-monitoring" ${HELM_UPGRADE_FLAGS}
+        helm upgrade "$MONITORING_RELEASE" "$CHARTS_DIR/crucible-monitoring" ${HELM_UPGRADE_FLAGS} ${values_flag}
       else
         echo "Release not found; running helm install"
-        helm install "$MONITORING_RELEASE" "$CHARTS_DIR/crucible-monitoring" ${HELM_UPGRADE_FLAGS}
+        helm install "$MONITORING_RELEASE" "$CHARTS_DIR/crucible-monitoring" ${HELM_UPGRADE_FLAGS} ${values_flag}
       fi
       ;;
   esac
