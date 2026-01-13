@@ -29,7 +29,6 @@ PGADMIN_EMAIL=pgadmin@crucible.dev
 # Disable Helm 4's server-side apply by default because several upstream charts
 # still rely on client-side merge semantics (SSA triggers managedFields errors).
 HELM_UPGRADE_FLAGS=${HELM_UPGRADE_FLAGS:---wait --timeout 15m --server-side=false}
-MINIKUBE_FLAGS=${MINIKUBE_FLAGS:---mount-string=/mnt/data/terraform/root:/terraform/root --embed-certs}
 
 refresh_current_namespace() {
   CURRENT_NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}' 2>/dev/null || true)
@@ -321,8 +320,9 @@ print_pgadmin_credentials() {
 start_minikube_cluster() {
   stage_custom_ca_certs
 
-  echo -e "\n${BLUE}${BOLD}# Starting minikube cluster${RESET}\n"
-  minikube start $MINIKUBE_FLAGS
+  echo -e "\n${BLUE}${BOLD}# Checking minikube cluster status${RESET}\n"
+  # Use the centralized start-minikube.sh script
+  /workspaces/crucible-development/scripts/start-minikube.sh
 }
 
 purge_minikube_cluster() {
@@ -564,10 +564,8 @@ done
 ## Logic to install / upgrade starts here
 
 # Ensure minikube cluster is running
-if ! kk get node > /dev/null 2>&1 ; then
-  echo -e "\n${BLUE}${BOLD}# Minikube cluster not running. Starting it now.${RESET}\n"
-  start_minikube_cluster
-fi
+echo -e "\n${BLUE}${BOLD}# Ensuring minikube cluster is running${RESET}\n"
+start_minikube_cluster
 
 # Install or upgrade Helm releases
 # Deploy in correct order: infra -> apps -> monitoring
