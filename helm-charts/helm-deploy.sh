@@ -23,8 +23,8 @@ CHARTS_DIR=/mnt/data/crucible/helm-charts/charts
 INFRA_RELEASE=crucible-infra
 APPS_RELEASE=crucible
 MONITORING_RELEASE=crucible-monitoring
-CRUCIBLE_DOMAIN=${CRUCIBLE_DOMAIN:-crucible}
-PGADMIN_EMAIL=${PGADMIN_EMAIL:-pgadmin@crucible.dev}
+CRUCIBLE_DOMAIN=crucible
+PGADMIN_EMAIL=pgadmin@crucible.dev
 
 # Disable Helm 4's server-side apply by default because several upstream charts
 # still rely on client-side merge semantics (SSA triggers managedFields errors).
