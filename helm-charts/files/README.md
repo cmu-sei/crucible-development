@@ -1,32 +1,40 @@
-# Local Certificates Directory
+# Local Files Directory
 
-This directory stores certificate files for local development deployments of the crucible-infra chart.
+This directory stores configuration files and certificates for local development deployments of the Crucible stack.
 
 ## How It Works
 
-When you run `./helm-charts/helm-deploy.sh --infra`, the script automatically:
-1. Checks if this `certs/` directory exists and contains certificate files
+When you run `./helm-charts/helm-deploy.sh`, the script automatically:
+1. Checks if this `files/` directory exists and contains certificate files
 2. **Creates Kubernetes secrets** from your certificate files using `kubectl`
 3. Deploys the chart which references these pre-created secrets
 
-## Certificate Files
+## Files in This Directory
 
-Place certificate files here. You can add any number of CA certificate files with any names:
+### Certificate Files
+
+Place certificate files here for TLS and CA trust:
 
 ```
-/workspaces/crucible-development/helm-charts/certs/
+/workspaces/crucible-development/helm-charts/files/
 ├── crucible-dev.crt      # Development TLS certificate
 ├── crucible-dev.key      # Development TLS private key
-├── proxy-ca.crt          # Corporate proxy CA certificate (if needed)
-├── internal-ca.pem       # Additional CA certificate (optional)
+├── zscaler-ca.crt        # Corporate proxy CA certificate (if needed)
 └── ...                   # Any other CA certificates (.crt, .pem, .cer)
 ```
 
 **Note**: The CA ConfigMap will include ALL `.crt`, `.pem`, and `.cer` files from this directory.
 
-## If You Need to Generate New Certificates
+### Configuration Files
 
-For development/testing with self-signed certificates:
+```
+/workspaces/crucible-development/helm-charts/files/
+└── crucible-realm.json   # Keycloak realm configuration for Crucible
+```
+
+## Certificate Generation
+
+### For Self-Signed Development Certificates
 
 ```bash
 # Generate a self-signed certificate
@@ -40,14 +48,16 @@ chmod 600 crucible-dev.key
 chmod 644 crucible-dev.crt
 ```
 
-## For Corporate Proxy CA Certificates
+### For Corporate Proxy CA Certificates
 
-If you're behind a corporate proxy (like Zscaler):
+If you're behind a corporate proxy:
 
 ```bash
 # Copy your corporate CA certificate
-cp /path/to/corporate-ca.crt zscaler-ca.crt
+cp /path/to/corporate-ca.crt proxy-ca.crt
 ```
+
+**Note:** All certificates other than `crucible-dev` are gitignored and will not be committed to the repo
 
 ## Values File Configuration
 
@@ -71,7 +81,7 @@ caCerts:
 
 Check if the directory exists and contains files:
 ```bash
-ls -la /workspaces/crucible-development/helm-charts/certs/
+ls -la /workspaces/crucible-development/helm-charts/files/
 ```
 
 ### Verify Secrets Were Created
@@ -94,13 +104,13 @@ If needed, you can manually create the secrets:
 ```bash
 # TLS secret
 kubectl create secret tls crucible-cert \
-  --cert=certs/crucible-dev.crt \
-  --key=certs/crucible-dev.key \
+  --cert=files/crucible-dev.crt \
+  --key=files/crucible-dev.key \
   --dry-run=client -o yaml | kubectl apply -f -
 
 # CA ConfigMap
 kubectl create configmap crucible-ca-cert \
-  --from-file=crucible-dev.crt=certs/crucible-dev.crt \
-  --from-file=zscaler-ca.crt=certs/zscaler-ca.crt \
+  --from-file=crucible-dev.crt=files/crucible-dev.crt \
+  --from-file=zscaler-ca.crt=files/zscaler-ca.crt \
   --dry-run=client -o yaml | kubectl apply -f -
 ```

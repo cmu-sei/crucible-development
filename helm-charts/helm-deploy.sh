@@ -578,17 +578,10 @@ for chart in "${CHARTS[@]}"; do
       echo -e "\n${BLUE}${BOLD}# Deploying crucible-infra chart${RESET}\n"
 
       # Create TLS secret from local certificate files if they exist
-      # Check both possible locations: workspace certs/ or chart files/
-      cert_source="/workspaces/crucible-development/helm-charts/certs"
-      chart_files="${CHARTS_DIR}/crucible-infra/files"
+      # Check both possible locations: workspace files/ or chart files/
+      cert_source="/workspaces/crucible-development/helm-charts/files"
       tls_secret="crucible-cert"
       ca_configmap="crucible-ca-cert"
-
-      # Use chart files as fallback if certs/ doesn't have the files
-      if [[ ! -f "${cert_source}/crucible-dev.crt" ]] && [[ -f "${chart_files}/crucible-dev.crt" ]]; then
-        cert_source="$chart_files"
-        echo "Using certificates from chart directory: ${cert_source}"
-      fi
 
       if [[ -f "${cert_source}/crucible-dev.crt" ]] && [[ -f "${cert_source}/crucible-dev.key" ]]; then
         echo "Creating TLS secret ${tls_secret} from local certificates..."
