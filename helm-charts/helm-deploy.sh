@@ -526,15 +526,22 @@ if $UNINSTALL; then
     esac
   done
 
-  # Clean up manually created secrets and configmaps for crucible-infra
+  # Clean up manually created secrets and configmaps
   for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
     case "${CHARTS[i]}" in
       "crucible-infra")
-        echo -e "\n${BLUE}${BOLD}# Deleting certificate secrets and ConfigMaps${RESET}\n"
+        echo -e "\n${BLUE}${BOLD}# Deleting secrets and ConfigMaps created by deployment script (infra)${RESET}\n"
         echo "Deleting TLS secret crucible-cert..."
         kubectl delete secret crucible-cert -n "$CURRENT_NAMESPACE" --ignore-not-found
         echo "Deleting CA ConfigMap crucible-ca-cert..."
         kubectl delete configmap crucible-ca-cert -n "$CURRENT_NAMESPACE" --ignore-not-found
+        echo "Deleting PostgreSQL credentials secret ${INFRA_RELEASE}-postgresql..."
+        kubectl delete secret "${INFRA_RELEASE}-postgresql" -n "$CURRENT_NAMESPACE" --ignore-not-found
+        ;;
+      "crucible")
+        echo -e "\n${BLUE}${BOLD}# Deleting secrets and ConfigMaps created by deployment script (apps)${RESET}\n"
+        echo "Deleting Keycloak realm ConfigMap ${APPS_RELEASE}-keycloak-config-cli..."
+        kubectl delete configmap "${APPS_RELEASE}-keycloak-config-cli" -n "$CURRENT_NAMESPACE" --ignore-not-found
         ;;
     esac
   done
@@ -642,16 +649,69 @@ for chart in "${CHARTS[@]}"; do
       # Configure CoreDNS immediately after infra deployment to ensure correct ingress IP resolution
       echo -e "\n${BLUE}${BOLD}# Updating CoreDNS with current ingress controller IP${RESET}\n"
       ensure_nodehosts_entry
+
+      # Create PostgreSQL credentials secret with both username and password keys
+      # This secret is used by the crucible chart for database connections
+      echo -e "\n${BLUE}${BOLD}# Creating PostgreSQL credentials secret for crucible chart${RESET}\n"
+      postgres_secret="${INFRA_RELEASE}-postgresql"
+
+      # Get password from infra chart's PostgreSQL secret
+      infra_postgres_password=$(kubectl get secret "${INFRA_RELEASE}-postgresql" -n "$CURRENT_NAMESPACE" -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 --decode || echo "")
+
+      if [[ -z "$infra_postgres_password" ]]; then
+        echo -e "${YELLOW}Could not retrieve PostgreSQL password from ${INFRA_RELEASE}-postgresql secret${RESET}"
+        echo "Ensure the infra chart has deployed successfully before continuing."
+      else
+        # Create/update secret with both username and postgres-password keys
+        kubectl create secret generic "$postgres_secret" \
+          --from-literal=username=postgres \
+          --from-literal=postgres-password="$infra_postgres_password" \
+          --dry-run=client -o yaml | kubectl apply -f -
+        echo "PostgreSQL credentials secret created/updated successfully"
+
+        # Ensure PostgreSQL user password is set correctly in the database
+        # This is necessary because if the data directory already exists, PostgreSQL won't reinitialize the password
+        echo "Ensuring PostgreSQL user password is set correctly..."
+        if kubectl exec -n "$CURRENT_NAMESPACE" statefulset/"${INFRA_RELEASE}-postgresql" -- \
+          sh -c "PGPASSWORD=\"\$POSTGRES_PASSWORD\" psql -U postgres -c \"ALTER USER postgres WITH PASSWORD '\$POSTGRES_PASSWORD';\"" &>/dev/null; then
+          echo "PostgreSQL user password verified/updated successfully"
+        else
+          echo -e "${YELLOW}Could not update PostgreSQL password - database may not be ready yet${RESET}"
+        fi
+      fi
       ;;
 
     "crucible")
       echo -e "\n${BLUE}${BOLD}# Deploying crucible (apps) chart${RESET}\n"
+
+      # Create Keycloak realm import ConfigMap if realm file exists
+      realm_file="/workspaces/crucible-development/helm-charts/files/crucible-realm.json"
+      realm_configmap="${APPS_RELEASE}-keycloak-config-cli"
+
+      if [[ -f "$realm_file" ]]; then
+        echo "Creating Keycloak realm import ConfigMap ${realm_configmap}..."
+        kubectl create configmap "${realm_configmap}" \
+          --from-file=realm.json="${realm_file}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+        echo "Keycloak realm ConfigMap created/updated successfully"
+      else
+        echo -e "${YELLOW}Keycloak realm file not found at ${realm_file}, skipping realm import ConfigMap creation${RESET}"
+      fi
+
+      # Use local values file if it exists
+      values_file="/workspaces/crucible-development/helm-charts/crucible.values.yaml"
+      values_flag=""
+      if [[ -f "$values_file" ]]; then
+        echo "Using local values file: ${values_file}"
+        values_flag="-f ${values_file}"
+      fi
+
       if helm status "$APPS_RELEASE" &>/dev/null; then
         echo "Existing release detected; running helm upgrade"
-        helm upgrade "$APPS_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS}
+        helm upgrade "$APPS_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS} ${values_flag}
       else
         echo "Release not found; running helm install"
-        helm install "$APPS_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS}
+        helm install "$APPS_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS} ${values_flag}
       fi
       ;;
 

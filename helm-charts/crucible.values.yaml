@@ -7,22 +7,18 @@
 global:
   domain: crucible
   namespace: default
-  version: "0.0.0"
   security:
     allowInsecureImages: true
+
+  # This secret must already exist
+  # The helm-deply.sh script will create this secret before it is needed by the deployment
   tls:
     secretName: crucible-cert
-  # PostgreSQL connection settings (from crucible-infra chart)
-  # By default, assumes infra chart was deployed with same release name prefix
-  postgresql:
-    # Name of the PostgreSQL service from crucible-infra chart
-    # Override if using a different infra release name or external database
-    serviceName: "crucible-infra-postgresql"
-    port: 5432
-    user: "postgres"
-    # Secret containing PostgreSQL password (from crucible-infra)
-    secretName: "crucible-infra-postgresql"
-    secretKey: "postgres-password"
+  keycloak:
+    # Base path for Keycloak (relative to global.domain)
+    basePath: "/keycloak"
+    # Keycloak realm name
+    realm: "crucible"
 
 # Deploy Keycloak IdP
 # https://artifacthub.io/packages/helm/bitnami/keycloak
@@ -36,11 +32,12 @@ keycloak:
     adminUser: "keycloak-admin"
     existingSecret: "{{ .Release.Name }}-keycloak-auth"
   proxyHeaders: xforwarded
-  httpRelativePath: /keycloak/
+  httpRelativePath: "/keycloak/"
   ingress:
     enabled: true
     ingressClassName: nginx
     hostname: "{{ .Values.global.domain }}"
+    path: "/keycloak/"
     annotations:
       nginx.ingress.kubernetes.io/server-snippet: |
         location ~ ^/keycloak/?$ {
@@ -50,10 +47,9 @@ keycloak:
     extraTls:
       - hosts:
           - "{{ .Values.global.domain }}"
-        secretName: crucible-cert
-  # import realm on startup
-  # If the realm already exists, keycloak will not overwrite it
-  #    (even if the realm.json is different than keycloak's config)
+        secretName: "{{ .Values.global.tlsSecretName }}"
+  # Realm import configuration - enabled for local development
+  # Import realm on startup (if the realm already exists, keycloak will not overwrite it)
   extraEnvVars:
     - name: KEYCLOAK_EXTRA_ARGS
       value: "--import-realm"
@@ -69,15 +65,22 @@ keycloak:
   postgresql:
     enabled: false
   externalDatabase:
-    host: "{{ .Values.global.postgresql.serviceName }}"
-    user: postgres
+    host: "crucible-infra-postgresql"
+    user: "postgres"
     database: keycloak
-    existingSecret: "{{ .Values.global.postgresql.secretName }}"
-    existingSecretPasswordKey: postgres-password
+    existingSecret: "crucible-infra-postgresql"
+    existingSecretPasswordKey: "postgres-password"
 
-crucible-alloy:
+alloy:
   enabled: true
   alloy-api:
+    database:
+      host: "crucible-infra-postgresql"
+      port: 5432
+      name: "alloy"
+      existingSecret: "crucible-infra-postgresql"
+      usernameKey: "username"
+      passwordKey: "postgres-password"
     ingress:
       className: "nginx"
       hosts:
@@ -156,7 +159,16 @@ crucible-alloy:
 blueprint:
   enabled: true
   blueprint-api:
-    # use a configmap to define the custom ca cert
+    database:
+      host: "crucible-infra-postgresql"
+      port: 5432
+      name: "blueprint"
+      existingSecret: "crucible-infra-postgresql"
+      usernameKey: "username"
+      passwordKey: "postgres-password"
+    # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
+    # Only needed if you use self-signed certificates or corporate proxies (e.g., Zscaler)
+    # You must create the ConfigMap separately before enabling this
     certificateMap: "crucible-ca-cert"
     ingress:
       className: nginx
@@ -194,7 +206,7 @@ blueprint:
       # Database settings
       Database__AutoMigrate: true
       Database__DevModeRecreate: false
-      # Trust the custom ca-cert
+      # Optional: Trust a custom CA certificate (enabled for local development)
       SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   blueprint-ui:
@@ -234,7 +246,14 @@ blueprint:
 caster:
   enabled: true
   caster-api:
-    # use a configmap to define the custom ca cert
+    database:
+      host: "crucible-infra-postgresql"
+      port: 5432
+      name: "caster"
+      existingSecret: "crucible-infra-postgresql"
+      usernameKey: "username"
+      passwordKey: "postgres-password"
+    # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     # Git credentials - placeholder for local development
     gitcredentials: ""
@@ -269,7 +288,7 @@ caster:
       # Crucible Player URLs
       Player__VmApiUrl: https://{{ .Values.global.domain }}/vm
       Player__VmConsoleUrl: https://{{ .Values.global.domain }}/console/vm/{id}/console
-      # Trust the custom ca-cert
+      # Optional: Trust a custom CA certificate (enabled for local development)
       SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   caster-ui:
@@ -304,7 +323,14 @@ caster:
 cite:
   enabled: true
   cite-api:
-    # use a configmap to define the custom ca cert
+    database:
+      host: "crucible-infra-postgresql"
+      port: 5432
+      name: "cite"
+      existingSecret: "crucible-infra-postgresql"
+      usernameKey: "username"
+      passwordKey: "postgres-password"
+    # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
       className: nginx
@@ -330,7 +356,7 @@ cite:
       Authorization__AuthorizationScope: "openid cite"
       Authorization__ClientId: cite.api
       Authorization__ClientName: "CITE API"
-      # Trust the custom ca-cert
+      # Optional: Trust a custom CA certificate (enabled for local development)
       SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   cite-ui:
@@ -368,7 +394,14 @@ cite:
 gallery:
   enabled: true
   gallery-api:
-    # use a configmap to define the custom ca cert
+    database:
+      host: "crucible-infra-postgresql"
+      port: 5432
+      name: "gallery"
+      existingSecret: "crucible-infra-postgresql"
+      usernameKey: "username"
+      passwordKey: "postgres-password"
+    # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
       className: nginx
@@ -394,7 +427,7 @@ gallery:
       Authorization__AuthorizationScope: "openid gallery"
       Authorization__ClientId: gallery.api
       Authorization__ClientName: "Gallery API"
-      # Trust the custom ca-cert
+      # Optional: Trust a custom CA certificate (enabled for local development)
       SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   gallery-ui:
@@ -432,6 +465,14 @@ gallery:
 gameboard:
   enabled: true
   gameboard-api:
+    database:
+      host: "crucible-infra-postgresql"
+      port: 5432
+      name: "gameboard"
+      existingSecret: "crucible-infra-postgresql"
+      usernameKey: "username"
+      passwordKey: "postgres-password"
+    # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
       enabled: true
@@ -459,8 +500,8 @@ gameboard:
       PathBase: /gameboard
       # Game Engine (TopoMojo) configuration
       # Use K8s service addresses here to keep traffic between GB and TM in-cluster
-      Core__GameEngineUrl: http://crucible-topomojo-api
-      Core__ChallengeDocUrl: http://crucible-topomojo-api
+      Core__GameEngineUrl: http://{{ .Release.Name }}-topomojo-api
+      Core__ChallengeDocUrl: http://{{ .Release.Name }}-topomojo-api
       Core__GameEngineDeployBatchSize: "6"
       # OAuth Client Credentials configuration for TopoMojo access
       GameEngine__ClientId: gameboard.api
@@ -518,7 +559,14 @@ gameboard:
 player:
   enabled: true
   player-api:
-    # use a configmap to define the custom ca cert
+    database:
+      host: "crucible-infra-postgresql"
+      port: 5432
+      name: "player"
+      existingSecret: "crucible-infra-postgresql"
+      usernameKey: "username"
+      passwordKey: "postgres-password"
+    # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
       className: nginx
@@ -550,12 +598,11 @@ player:
       Authorization__ClientId: player.api
       Authorization__RequireHttpsMetadata: "false"
       CorsPolicy__Origins__0: https://{{ .Values.global.domain }}
-      # Trust the custom ca-cert
+      # Optional: Trust a custom CA certificate (enabled for local development)
       SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
       SSL_CERT_DIR: /usr/local/share/ca-certificates
-      # Configure OpenTelemetry to send metrics, logs, and traces to Grafana Alloy via gRPC
-      # Alloy will then forward to Prometheus, Loki, and Tempo
-      # Note: Endpoint must include http:// prefix for gRPC (not https)
+      # Optional: Configure OpenTelemetry (enabled for local development with monitoring stack)
+      # Only needed if you have deployed the crucible-monitoring chart
       OTEL_EXPORTER_OTLP_ENDPOINT: http://crucible-monitoring-grafana-alloy:4317
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
   player-ui:
@@ -586,7 +633,14 @@ player:
       NotificationsSettings:
         url: https://{{ .Values.global.domain }}/player/hubs
   vm-api:
-    # use a configmap to define the custom ca cert
+    database:
+      host: "crucible-infra-postgresql"
+      port: 5432
+      name: "player_vm"
+      existingSecret: "crucible-infra-postgresql"
+      usernameKey: "username"
+      passwordKey: "postgres-password"
+    # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
       className: nginx
@@ -668,7 +722,14 @@ player:
 steamfitter:
   enabled: true
   steamfitter-api:
-    # use a configmap to define the custom ca cert
+    database:
+      host: "crucible-infra-postgresql"
+      port: 5432
+      name: "steamfitter"
+      existingSecret: "crucible-infra-postgresql"
+      usernameKey: "username"
+      passwordKey: "postgres-password"
+    # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
       className: nginx
@@ -705,7 +766,7 @@ steamfitter:
       VmTaskProcessing__ApiType: st2
       VmTaskProcessing__ApiUsername: "st2admin"
       VmTaskProcessing__ApiBaseUrl: "https://stackstorm.local"
-      # Trust the custom ca-cert
+      # Optional: Trust a custom CA certificate (enabled for local development)
       SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
       SSL_CERT_DIR: /usr/local/share/ca-certificates
   steamfitter-ui:
@@ -742,6 +803,14 @@ steamfitter:
 topomojo:
   enabled: true
   topomojo-api:
+    database:
+      host: "crucible-infra-postgresql"
+      port: 5432
+      name: "topomojo"
+      existingSecret: "crucible-infra-postgresql"
+      usernameKey: "username"
+      passwordKey: "postgres-password"
+    # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
       enabled: true
@@ -819,7 +888,7 @@ moodle:
   enabled: true
   moodle:
     admin:
-      # Admin username=
+      # Admin username
       username: "moodle-local-admin"
       # Admin email (defaults to "moodle-local-admin@example.com" if not set)
       # email: "moodle-local-admin@example.com"
@@ -832,21 +901,22 @@ moodle:
     site:
       url: "https://{{ .Values.global.domain }}"
     database:
-      host: "{{ .Values.global.postgresql.serviceName }}"
+      host: "crucible-infra-postgresql"
       name: "moodle"
-      user: "postgres"
-      existingSecret: "{{ .Values.global.postgresql.secretName }}"
-      existingSecretKey: "postgres-password"
+      user: "postgres" # Fallback if existingSecretUserKey is not set
+      existingSecret: "crucible-infra-postgresql"
+      existingSecretUserKey: "username"
+      existingSecretPasswordKey: "postgres-password"
     ## Keycloak OAuth2 Configuration
     keycloak:
       enabled: true
-      url: "https://crucible/keycloak"
+      url: "https://{{ .Values.global.domain }}/keycloak"
       realm: "crucible"
       clientId: "moodle-client"
       existingSecret: "crucible-moodle"
       existingSecretKey: "client-secret"
       name: "Crucible Keycloak"
-      icon: "https://crucible/keycloak/resources/awfhy/login/keycloak/img/keycloak-logo.png"
+      icon: "https://{{ .Values.global.domain }}/keycloak/resources/awfhy/login/keycloak/img/keycloak-logo.png"
       loginScopes: "openid profile email"
       loginScopesOffline: "openid profile email offline_access"
       requireConfirmation: false
@@ -861,11 +931,11 @@ moodle:
       ## Site configuration for internal Keycloak communication
       disableCurlSecurityBlockedHosts: true
       disableCurlSecurityAllowedPorts: true
-      ## Custom CA certificate for Keycloak HTTPS
+      ## Optional: Custom CA certificate for Keycloak HTTPS (enabled for local development)
       caCert:
         key: "crucible-dev.crt"
         path: "/opt/sei/certs/crucible-dev.crt"
-  ## Extra environment variables to trust the Crucible CA certificate system-wide
+  ## Optional: Extra environment variables to trust a custom CA certificate (enabled for local development)
   extraEnvVars:
     - name: SSL_CERT_FILE
       value: /opt/sei/certs/crucible-dev.crt
@@ -873,7 +943,7 @@ moodle:
       value: /opt/sei/certs
     - name: CURL_CA_BUNDLE
       value: /opt/sei/certs/crucible-dev.crt
-  ## Mount the crucible CA certificate ConfigMap
+  ## Optional: Mount a custom CA certificate ConfigMap (enabled for local development)
   extraVolumes:
     - name: crucible-ca-cert
       configMap:
