@@ -1,13 +1,10 @@
-# Ignore all certificate and key files
+# Ignore all certificate and key files in this directory
+# (Certificates are now accessed via the certs/ symlink)
 *.crt
 *.key
 *.pem
 *.p12
 *.pfx
-
-# Allow crucible dev certs
-!crucible-dev.crt
-!crucible-dev.key
 
 # Ignore realm configurations except the default crucible realm
 *realm*.json
@@ -16,7 +13,3 @@
 # Ignore environment-specific files
 *.env
 *.local
-
-# But allow README
-!README.md
-!.gitignore

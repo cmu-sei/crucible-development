@@ -15,6 +15,33 @@ dotnet tool install -g Aspire.Cli
 dotnet tool install --global dotnet-ef --version 10
 dotnet dev-certs https --trust
 
+# Generate crucible-dev certificates
+CERT_DIR="/workspaces/crucible-development/.devcontainer/certs"
+CERT_FILE="${CERT_DIR}/crucible-dev.crt"
+KEY_FILE="${CERT_DIR}/crucible-dev.key"
+
+echo "Generating crucible-dev certificates..."
+mkdir -p "${CERT_DIR}"
+
+# Generate self-signed certificate (valid for 365 days)
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout "${KEY_FILE}" \
+  -out "${CERT_FILE}" \
+  -days 365 \
+  -subj "/CN=localhost" \
+  -addext "subjectAltName=DNS:localhost,DNS:crucible,DNS:keycloak,DNS:host.docker.internal,DNS:host.minikube.internal" \
+  -addext "basicConstraints=critical,CA:TRUE"
+
+# Set appropriate permissions
+chmod 644 "${CERT_FILE}"
+chmod 600 "${KEY_FILE}"
+
+# Trust the generated certificate
+sudo cp "${CERT_FILE}" /usr/local/share/ca-certificates/custom/crucible-dev.crt
+sudo update-ca-certificates
+
+echo "Crucible-dev certificates generated and trusted."
+
 npm config -g set fund false
 npm install -g @angular/cli@latest
 
