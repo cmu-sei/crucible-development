@@ -576,8 +576,8 @@ for chart in "${CHARTS[@]}"; do
       echo -e "\n${BLUE}${BOLD}# Deploying crucible-infra chart${RESET}\n"
 
       # Create TLS secret from local certificate files if they exist
-      # Check both possible locations: workspace files/ or chart files/
-      cert_source="/workspaces/crucible-development/helm-charts/files"
+      # Certificates are symlinked from .devcontainer/certs
+      cert_source="/workspaces/crucible-development/helm-charts/files/certs"
       tls_secret="crucible-cert"
       ca_configmap="crucible-ca-cert"
 

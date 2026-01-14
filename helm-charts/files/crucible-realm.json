@@ -2640,12 +2640,8 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "super-safe-secret",
-      "redirectUris": [
-        "https://crucible/admin/oauth2callback.php"
-      ],
-      "webOrigins": [
-        "https://crucible"
-      ],
+      "redirectUris": ["https://crucible/admin/oauth2callback.php"],
+      "webOrigins": ["https://crucible"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
