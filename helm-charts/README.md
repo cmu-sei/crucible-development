@@ -102,7 +102,7 @@ Builds a Docker image locally and loads it into the Minikube cache.
 
 **Environment Variables**:
 - `MINIKUBE_PROFILE` - Minikube profile name (default: `minikube`)
-- `CA_CERT_PATH` - Path to custom CA certificate to trust during build (default: `/workspaces/crucible-development/.devcontainer/certs/crucible-dev.crt`)
+- ``CA_CERT_PATHS` - Comma-separated paths to custom CA certificates to trust during build (default: all .crt files from both .devcontainer/certs and .devcontainer/dev-certs)
 
 **What It Does**:
 1. Validates that the repository path exists and contains a Dockerfile

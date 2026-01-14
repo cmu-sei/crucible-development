@@ -57,7 +57,9 @@ nunit-*.xml
 **/appsettings.[Ss]taging.json
 **/appsettings.[Pp]roduction.json
 
-# devcontainer certs (crucible-dev certificates are generated at runtime)
+# devcontainer certs
+.devcontainer/dev-certs/*.crt
+.devcontainer/dev-certs/*.key
 .devcontainer/certs/*.crt
 .devcontainer/certs/*.key
 

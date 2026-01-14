@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+
+# Get script and repo directories
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"
 # Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -322,7 +326,7 @@ start_minikube_cluster() {
 
   echo -e "\n${BLUE}${BOLD}# Checking minikube cluster status${RESET}\n"
   # Use the centralized start-minikube.sh script
-  /workspaces/crucible-development/scripts/start-minikube.sh
+  ${REPO_ROOT}/scripts/start-minikube.sh
 }
 
 purge_minikube_cluster() {
@@ -576,53 +580,94 @@ for chart in "${CHARTS[@]}"; do
       echo -e "\n${BLUE}${BOLD}# Deploying crucible-infra chart${RESET}\n"
 
       # Create TLS secret from local certificate files if they exist
-      # Certificates are symlinked from .devcontainer/certs
-      cert_source="/workspaces/crucible-development/helm-charts/files/certs"
+      # Check both .devcontainer/certs (proxy/custom CAs) and .devcontainer/dev-certs (generated dev certs)
+      cert_source_legacy="${REPO_ROOT}/.devcontainer/certs"
+      cert_source_dev="${REPO_ROOT}/.devcontainer/dev-certs"
       tls_secret="crucible-cert"
       ca_configmap="crucible-ca-cert"
 
-      if [[ -f "${cert_source}/crucible-dev.crt" ]] && [[ -f "${cert_source}/crucible-dev.key" ]]; then
+      # Look for crucible-dev cert/key in dev-certs directory first, then fallback to legacy location
+      crucible_dev_crt=""
+      crucible_dev_key=""
+      
+      if [[ -f "${cert_source_dev}/crucible-dev.crt" ]]; then
+        crucible_dev_crt="${cert_source_dev}/crucible-dev.crt"
+      elif [[ -f "${cert_source_legacy}/crucible-dev.crt" ]]; then
+        crucible_dev_crt="${cert_source_legacy}/crucible-dev.crt"
+      fi
+      
+      if [[ -f "${cert_source_dev}/crucible-dev.key" ]]; then
+        crucible_dev_key="${cert_source_dev}/crucible-dev.key"
+      elif [[ -f "${cert_source_legacy}/crucible-dev.key" ]]; then
+        crucible_dev_key="${cert_source_legacy}/crucible-dev.key"
+      fi
+
+      if [[ -n "${crucible_dev_crt}" ]] && [[ -n "${crucible_dev_key}" ]]; then
         echo "Creating TLS secret ${tls_secret} from local certificates..."
         kubectl create secret tls "${tls_secret}" \
-          --cert="${cert_source}/crucible-dev.crt" \
-          --key="${cert_source}/crucible-dev.key" \
+          --cert="${crucible_dev_crt}" \
+          --key="${crucible_dev_key}" \
           --dry-run=client -o yaml | kubectl apply -f -
         echo "TLS secret created/updated successfully"
       else
-        echo -e "${YELLOW}TLS certificate files not found in ${cert_source}, skipping TLS secret creation${RESET}"
+        echo -e "${YELLOW}TLS certificate files not found in ${cert_source_dev} or ${cert_source_legacy}, skipping TLS secret creation${RESET}"
       fi
 
       # Create CA ConfigMap from local CA certificate files if they exist
-      if [[ -f "${cert_source}/crucible-dev.crt" ]] || [[ -f "${cert_source}/zscaler-ca.crt" ]]; then
-        echo "Creating CA certificates ConfigMap ${ca_configmap}..."
+      # Combine certificates from both directories
+      temp_dir=$(mktemp -d)
+      has_certs=false
 
-        temp_dir=$(mktemp -d)
-        has_certs=false
-
-        if [[ -f "${cert_source}/crucible-dev.crt" ]]; then
-          cp "${cert_source}/crucible-dev.crt" "${temp_dir}/crucible-dev.crt"
-          has_certs=true
-        fi
-
-        if [[ -f "${cert_source}/zscaler-ca.crt" ]]; then
-          cp "${cert_source}/zscaler-ca.crt" "${temp_dir}/zscaler-ca.crt"
-          has_certs=true
-        fi
-
-        if $has_certs; then
-          kubectl create configmap "${ca_configmap}" \
-            --from-file="${temp_dir}" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          echo "CA ConfigMap created/updated successfully"
-        fi
-
-        rm -rf "${temp_dir}"
-      else
-        echo -e "${YELLOW}CA certificate files not found in ${cert_source}, skipping CA ConfigMap creation${RESET}"
+      # Copy crucible-dev.crt from either directory
+      if [[ -n "${crucible_dev_crt}" ]]; then
+        cp "${crucible_dev_crt}" "${temp_dir}/crucible-dev.crt"
+        has_certs=true
       fi
 
+      # Copy any other .crt files from legacy certs directory (e.g., zscaler-ca.crt)
+      if [[ -d "${cert_source_legacy}" ]]; then
+        for cert_file in "${cert_source_legacy}"/*.crt; do
+          if [[ -f "${cert_file}" ]]; then
+            cert_basename=$(basename "${cert_file}")
+            # Skip crucible-dev.crt if we already got it from dev-certs
+            if [[ "${cert_basename}" != "crucible-dev.crt" ]] || [[ -z "${crucible_dev_crt}" ]]; then
+              cp "${cert_file}" "${temp_dir}/${cert_basename}"
+              has_certs=true
+            fi
+          fi
+        done
+      fi
+
+      # Copy any additional .crt files from dev-certs directory
+      if [[ -d "${cert_source_dev}" ]]; then
+        for cert_file in "${cert_source_dev}"/*.crt; do
+          if [[ -f "${cert_file}" ]]; then
+            cert_basename=$(basename "${cert_file}")
+            # Only copy if not already present in temp_dir
+            if [[ ! -f "${temp_dir}/${cert_basename}" ]]; then
+              cp "${cert_file}" "${temp_dir}/${cert_basename}"
+              has_certs=true
+            fi
+          fi
+        done
+      fi
+
+      if $has_certs; then
+        echo "Creating CA certificates ConfigMap ${ca_configmap} from certificates in ${cert_source_legacy} and ${cert_source_dev}..."
+        kubectl create configmap "${ca_configmap}" \
+          --from-file="${temp_dir}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+        echo "CA ConfigMap created/updated successfully"
+      else
+        echo -e "${YELLOW}CA certificate files not found in ${cert_source_dev} or ${cert_source_legacy}, skipping CA ConfigMap creation${RESET}"
+      fi
+
+      rm -rf "${temp_dir}"
+
       # Use local values file if it exists
-      values_file="/workspaces/crucible-development/helm-charts/crucible-infra.values.yaml"
+      values_file="${SCRIPT_DIR}/crucible-infra.values.yaml"
+
+      values_file="${SCRIPT_DIR}/crucible-infra.values.yaml"
       values_flag=""
       if [[ -f "$values_file" ]]; then
         echo "Using local values file: ${values_file}"
@@ -676,7 +721,7 @@ for chart in "${CHARTS[@]}"; do
       echo -e "\n${BLUE}${BOLD}# Deploying crucible (apps) chart${RESET}\n"
 
       # Create Keycloak realm import ConfigMap if realm file exists
-      realm_file="/workspaces/crucible-development/helm-charts/files/crucible-realm.json"
+      realm_file="${SCRIPT_DIR}/files/crucible-realm.json"
       realm_configmap="${APPS_RELEASE}-keycloak-config-cli"
 
       if [[ -f "$realm_file" ]]; then
@@ -690,7 +735,7 @@ for chart in "${CHARTS[@]}"; do
       fi
 
       # Use local values file if it exists
-      values_file="/workspaces/crucible-development/helm-charts/crucible.values.yaml"
+      values_file="${SCRIPT_DIR}/crucible.values.yaml"
       values_flag=""
       if [[ -f "$values_file" ]]; then
         echo "Using local values file: ${values_file}"
@@ -710,7 +755,7 @@ for chart in "${CHARTS[@]}"; do
       echo -e "\n${BLUE}${BOLD}# Deploying crucible-monitoring chart${RESET}\n"
 
       # Use local values file if it exists
-      values_file="/workspaces/crucible-development/helm-charts/crucible-monitoring.values.yaml"
+      values_file="${SCRIPT_DIR}/crucible-monitoring.values.yaml"
       values_flag=""
       if [[ -f "$values_file" ]]; then
         echo "Using local values file: ${values_file}"

@@ -12,7 +12,8 @@ Arguments:
 
 Environment:
   MINIKUBE_PROFILE  Optional. Defaults to "minikube".
-  CA_CERT_PATH      Optional. Path to a custom CA cert (PEM) to trust only for this build. Defaults to /workspaces/crucible-development/.devcontainer/certs/crucible-dev.crt.
+  CA_CERT_PATHS     Optional. Comma-separated paths to custom CA certs (PEM) to trust only for this build.
+                    Defaults to checking both .devcontainer/certs and .devcontainer/dev-certs directories.
 EOF
     exit 1
 }
@@ -23,9 +24,30 @@ fi
 
 REPO_PATH="$1"
 PROFILE="${MINIKUBE_PROFILE:-minikube}"
-CA_CERT_PATH="${CA_CERT_PATH:-/workspaces/crucible-development/.devcontainer/certs/crucible-dev.crt}"
 DOCKERFILE_PATH="$REPO_PATH/Dockerfile"
 TEMP_FILES=()
+
+# Default CA cert paths - check both directories
+REPO_ROOT="/workspaces/crucible-development"
+DEFAULT_CERT_PATHS=""
+if [ -d "${REPO_ROOT}/.devcontainer/dev-certs" ]; then
+    for cert in "${REPO_ROOT}/.devcontainer/dev-certs"/*.crt; do
+        if [ -f "$cert" ]; then
+            DEFAULT_CERT_PATHS="${DEFAULT_CERT_PATHS}${cert},"
+        fi
+    done
+fi
+if [ -d "${REPO_ROOT}/.devcontainer/certs" ]; then
+    for cert in "${REPO_ROOT}/.devcontainer/certs"/*.crt; do
+        if [ -f "$cert" ]; then
+            DEFAULT_CERT_PATHS="${DEFAULT_CERT_PATHS}${cert},"
+        fi
+    done
+fi
+# Remove trailing comma
+DEFAULT_CERT_PATHS="${DEFAULT_CERT_PATHS%,}"
+
+CA_CERT_PATHS="${CA_CERT_PATHS:-$DEFAULT_CERT_PATHS}"
 
 cleanup() {
     for f in "${TEMP_FILES[@]:-}"; do
@@ -51,35 +73,57 @@ DEFAULT_IMAGE_TAG="${REPO_BASENAME}:local-dev"
 IMAGE_TAG="${2:-$DEFAULT_IMAGE_TAG}"
 BUILD_DOCKERFILE="$DOCKERFILE_PATH"
 
-if [ -n "$CA_CERT_PATH" ]; then
-    if [ ! -f "$CA_CERT_PATH" ]; then
-        echo "Custom CA certificate not found: $CA_CERT_PATH" >&2
-        exit 1
-    fi
+if [ -n "$CA_CERT_PATHS" ]; then
+    # Split comma-separated paths and copy all certs into build context
+    IFS=',' read -ra CERT_ARRAY <<< "$CA_CERT_PATHS"
+    CA_BASENAMES=()
 
-    # Copy CA into build context and append a one-off trust step without editing the real Dockerfile.
-    TEMP_CA_FILE="$(mktemp "$REPO_PATH/.tmp-ca-XXXXXX.crt")"
-    cp "$CA_CERT_PATH" "$TEMP_CA_FILE"
-    TEMP_FILES+=("$TEMP_CA_FILE")
-    CA_BASENAME="$(basename "$TEMP_CA_FILE")"
+    for cert_path in "${CERT_ARRAY[@]}"; do
+        if [ ! -f "$cert_path" ]; then
+            echo "Custom CA certificate not found: $cert_path" >&2
+            continue
+        fi
 
-    TEMP_DOCKERFILE="$(mktemp)"
-    cat "$DOCKERFILE_PATH" > "$TEMP_DOCKERFILE"
-    cat >> "$TEMP_DOCKERFILE" <<EOF
+        # Copy CA into build context
+        TEMP_CA_FILE="$(mktemp "$REPO_PATH/.tmp-ca-XXXXXX.crt")"
+        cp "$cert_path" "$TEMP_CA_FILE"
+        TEMP_FILES+=("$TEMP_CA_FILE")
+        CA_BASENAMES+=("$(basename "$TEMP_CA_FILE")")
+        echo "Including CA cert: $cert_path"
+    done
+
+    if [ ${#CA_BASENAMES[@]} -gt 0 ]; then
+        # Build Dockerfile with all CA certs
+        TEMP_DOCKERFILE="$(mktemp)"
+        cat "$DOCKERFILE_PATH" > "$TEMP_DOCKERFILE"
+        cat >> "$TEMP_DOCKERFILE" <<'DOCKEREOF'
 
 # Append trust setup just for this build (assumes stages named 'build' and 'prod')
 FROM build AS build-with-ca
-COPY $CA_BASENAME /usr/local/share/ca-certificates/extra-ca.crt
+DOCKEREOF
+
+        # Copy all certs
+        for ca_name in "${CA_BASENAMES[@]}"; do
+            echo "COPY ${ca_name} /usr/local/share/ca-certificates/${ca_name}" >> "$TEMP_DOCKERFILE"
+        done
+
+        cat >> "$TEMP_DOCKERFILE" <<'DOCKEREOF'
 RUN apt-get update && apt-get install -y ca-certificates && update-ca-certificates
 
 FROM prod AS prod-with-ca
 COPY --from=build-with-ca /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=build-with-ca /usr/local/share/ca-certificates/extra-ca.crt /usr/local/share/ca-certificates/extra-ca.crt
-EOF
-    TEMP_FILES+=("$TEMP_DOCKERFILE")
-    BUILD_DOCKERFILE="$TEMP_DOCKERFILE"
+DOCKEREOF
 
-    echo "Using custom CA cert '$CA_CERT_PATH' for this build (not persisted to Dockerfile)."
+        # Copy all certs to prod stage
+        for ca_name in "${CA_BASENAMES[@]}"; do
+            echo "COPY --from=build-with-ca /usr/local/share/ca-certificates/${ca_name} /usr/local/share/ca-certificates/${ca_name}" >> "$TEMP_DOCKERFILE"
+        done
+
+        TEMP_FILES+=("$TEMP_DOCKERFILE")
+        BUILD_DOCKERFILE="$TEMP_DOCKERFILE"
+
+        echo "Using custom CA certificates for this build (not persisted to Dockerfile)."
+    fi
 fi
 
 echo "Building image '$IMAGE_TAG' from '$REPO_PATH'..."

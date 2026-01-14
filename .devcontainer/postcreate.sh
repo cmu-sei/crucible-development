@@ -16,12 +16,23 @@ dotnet tool install --global dotnet-ef --version 10
 dotnet dev-certs https --trust
 
 # Generate crucible-dev certificates
-CERT_DIR="/workspaces/crucible-development/.devcontainer/certs"
+CERT_DIR=".devcontainer/dev-certs"
 CERT_FILE="${CERT_DIR}/crucible-dev.crt"
 KEY_FILE="${CERT_DIR}/crucible-dev.key"
 
 echo "Generating crucible-dev certificates..."
 mkdir -p "${CERT_DIR}"
+
+# Remove any existing files
+if [ -e "${CERT_FILE}" ]; then
+  echo "Overwriting existing certificate at ${CERT_FILE}..."
+  rm -rf "${CERT_FILE}"
+fi
+
+if [ -e "${KEY_FILE}" ]; then
+  echo "Overwriting existing key at ${KEY_FILE}..."
+  rm -rf "${KEY_FILE}"
+fi
 
 # Generate self-signed certificate (valid for 365 days)
 openssl req -x509 -newkey rsa:2048 -nodes \
@@ -48,7 +59,7 @@ npm install -g @angular/cli@latest
 # Stage custom CA certs so Minikube trusts them
 CUSTOM_CERT_SOURCE="/usr/local/share/ca-certificates/custom"
 MINIKUBE_CERT_DEST="${HOME}/.minikube/files/etc/ssl/certs/custom"
-MOODLE_CERT_DEST="/workspaces/crucible-development/Crucible.AppHost/resources/moodle/certs"
+MOODLE_CERT_DEST="Crucible.AppHost/resources/moodle/certs"
 if compgen -G "${CUSTOM_CERT_SOURCE}"'/*.crt' > /dev/null; then
   mkdir -p "${MINIKUBE_CERT_DEST}"
   cp "${CUSTOM_CERT_SOURCE}"/*.crt "${MINIKUBE_CERT_DEST}/"
