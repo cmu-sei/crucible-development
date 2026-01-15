@@ -40,8 +40,7 @@ openssl req -x509 -newkey rsa:2048 -nodes \
   -out "${CERT_FILE}" \
   -days 365 \
   -subj "/CN=localhost" \
-  -addext "subjectAltName=DNS:localhost,DNS:crucible,DNS:keycloak,DNS:host.docker.internal,DNS:host.minikube.internal" \
-  -addext "basicConstraints=critical,CA:TRUE"
+  -addext "subjectAltName=DNS:localhost,DNS:crucible,DNS:keycloak,DNS:host.docker.internal,DNS:host.minikube.internal"
 
 # Set appropriate permissions
 chmod 644 "${CERT_FILE}"

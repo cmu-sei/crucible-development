@@ -10,10 +10,6 @@ global:
   security:
     allowInsecureImages: true
 
-  # This secret must already exist
-  # The helm-deply.sh script will create this secret before it is needed by the deployment
-  tls:
-    secretName: crucible-cert
   keycloak:
     # Base path for Keycloak (relative to global.domain)
     basePath: "/keycloak"
@@ -47,7 +43,7 @@ keycloak:
     extraTls:
       - hosts:
           - "{{ .Values.global.domain }}"
-        secretName: "{{ .Values.global.tlsSecretName }}"
+        secretName: crucible-cert
   # Realm import configuration - enabled for local development
   # Import realm on startup (if the realm already exists, keycloak will not overwrite it)
   extraEnvVars:
