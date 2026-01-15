@@ -45,8 +45,9 @@
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
   "forwardPorts": [
-    9003
-  ], // ✅ Added this line for Xdebug
+    9003, // Xdebug
+    443 // Minikube ingress
+  ],
   "customizations": {
     "vscode": {
       "extensions": [

@@ -63,8 +63,8 @@ public static class BuilderExtensions
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             .WithEnvironment("KC_HTTPS_CERTIFICATE_FILE", "/opt/keycloak/conf/crucible-dev.crt")
             .WithEnvironment("KC_HTTPS_CERTIFICATE_KEY_FILE", "/opt/keycloak/conf/crucible-dev.key")
-            .WithBindMount("../.devcontainer/certs/crucible-dev.crt", "/opt/keycloak/conf/crucible-dev.crt", isReadOnly: true)
-            .WithBindMount("../.devcontainer/certs/crucible-dev.key", "/opt/keycloak/conf/crucible-dev.key", isReadOnly: true)
+            .WithBindMount("../.devcontainer/dev-certs/crucible-dev.crt", "/opt/keycloak/conf/crucible-dev.crt", isReadOnly: true)
+            .WithBindMount("../.devcontainer/dev-certs/crucible-dev.key", "/opt/keycloak/conf/crucible-dev.key", isReadOnly: true)
             .WithHttpsEndpoint(8443, 8443)
             .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
 
