@@ -4,29 +4,44 @@ set -euo pipefail
 
 ROOT_DIR="/mnt/data/crucible"
 MAX_DEPTH=2
-FETCH_ARGS=("$@")
+USE_PULL=false
+GIT_ARGS=()
+
+# Parse arguments
+for arg in "$@"; do
+    if [[ "$arg" == "--pull" ]]; then
+        USE_PULL=true
+    else
+        GIT_ARGS+=("$arg")
+    fi
+done
 
 if [[ ! -d "$ROOT_DIR" ]]; then
     echo "Directory not found: $ROOT_DIR" >&2
     exit 1
 fi
 
-fetch_repository() {
+sync_repository() {
     local dir=$1
     if git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        echo "Fetching updates in $dir"
-        git -C "$dir" fetch "${FETCH_ARGS[@]}"
+        if [[ "$USE_PULL" == true ]]; then
+            echo "Pulling updates in $dir"
+            git -C "$dir" pull "${GIT_ARGS[@]}"
+        else
+            echo "Fetching updates in $dir"
+            git -C "$dir" fetch "${GIT_ARGS[@]}"
+        fi
         return 0
     fi
     return 1
 }
 
-# Traverse directories up to MAX_DEPTH and stop descending once a repo is fetched.
+# Traverse directories up to MAX_DEPTH and stop descending once a repo is synced.
 traverse_directory() {
     local dir=$1
     local depth=$2
 
-    if fetch_repository "$dir"; then
+    if sync_repository "$dir"; then
         return 0
     fi
 

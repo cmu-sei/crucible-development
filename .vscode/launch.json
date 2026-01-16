@@ -1,149 +1,539 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Default",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/default.env"
-        },
-        {
-            "name": "Exercise",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/exercise.env"
-        },
-        {
-            "name": "TTX",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/ttx.env"
-        },
-        {
-            "name": "Alloy",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/alloy.env"
-        },
-        {
-            "name": "Blueprint",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/blueprint.env"
-        },
-        {
-            "name": "Caster",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/caster.env"
-        },
-        {
-            "name": "CITE",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/cite.env"
-        },
-        {
-            "name": "Gallery",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/gallery.env"
-        },
-        {
-            "name": "Player",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/player.env"
-        },
-        {
-            "name": "Steamfitter",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/steamfitter.env"
-        },
-        {
-            "name": "TopoMojo",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/topomojo.env"
-        },
-        {
-            "name": "Gameboard",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/gameboard.env"
-        },
-        {
-            "name": "Lrsql",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/lrsql.env"
-        },
-        {
-            "name": "Moodle",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/moodle.env"
-        },
-        {
-            "name": "Moodle-Xdebug",
-            "type": "dotnet",
-            "request": "launch",
-            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
-            "envFile": "${workspaceFolder}/.env/moodle-xdebug.env",
-                "presentation": {
-                    "hidden": true
-                }
-        },
-        {
-            "name": "Xdebug",
-            "type": "php",
-            "request": "launch",
-            "port": 9003,
-            // prevent VS Code from stepping into core files - only works for stepping
-            "skipFiles": [
-                //"/var/www/html/theme/**",       // Skip all files in theme directory
-                //"/var/www/html/lib/**"          // Skip Moodle core lib files
-            ],
-            "pathMappings": {
-                // Map the remote path (inside the container) to the local path (on your host machine)
-                "/var/www/html/theme": "/mnt/data/crucible/moodle/moodle-core/theme",
-                "/var/www/html/lib": "/mnt/data/crucible/moodle/moodle-core/lib",
-                "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/moodle-core/admin/cli",
-                "/var/www/html/mod/crucible": "/mnt/data/crucible/moodle/mod_crucible",
-                "/var/www/html/mod/topomojo": "/mnt/data/crucible/moodle/mod_topomojo",
-                "/var/www/html/mod/groupquiz": "/mnt/data/crucible/moodle/mod_groupquiz",
-                "/var/www/html/blocks/crucible": "/mnt/data/crucible/moodle/block_crucible",
-                "/var/www/html/admin/tool/lptmanager": "/mnt/data/crucible/moodle/tool_lptmanager",
-                "/var/www/html/question/type/crucible": "/mnt/data/crucible/moodle/qtype_mojomatch",
-                "/var/www/html/question/behaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch"
-            },
-                "presentation": {
-                    "hidden": true
-                }
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    // ========== dotnet Configurations ==========
+    {
+      "name": "Default ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/default.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Exercise ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/exercise.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "TTX ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/ttx.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Alloy ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/alloy.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Blueprint ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/blueprint.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Caster ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/caster.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "CITE ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/cite.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Gallery ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/gallery.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Player ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/player.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Steamfitter ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/steamfitter.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "TopoMojo ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/topomojo.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Gameboard ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/gameboard.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Lrsql ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/lrsql.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Moodle ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/moodle.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Moodle-Xdebug",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/moodle-xdebug.env",
+      "presentation": {
+        "hidden": true
+      }
+    },
+
+    // ========== Aspire Configurations ==========
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Default (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/default.env"
         }
-    ],
-    "compounds": [
-        {
-            "name": "Moodle Debug",
-            "configurations": ["Moodle-Xdebug", "Xdebug"]
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Exercise (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/exercise.env"
         }
-    ]
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "TTX (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/ttx.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Alloy (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/alloy.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Blueprint (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/blueprint.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Caster (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/caster.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "CITE (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/cite.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Gallery (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/gallery.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Player (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/player.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Steamfitter (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/steamfitter.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "TopoMojo (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/topomojo.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Gameboard (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/gameboard.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Lrsql (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/lrsql.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Moodle (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/moodle.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Moodle-Xdebug (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/moodle-xdebug.env"
+        }
+      },
+      "presentation": {
+        "hidden": true
+      }
+    },
+
+    // PHP
+    {
+      "name": "Xdebug",
+      "type": "php",
+      "request": "launch",
+      "port": 9003,
+      // prevent VS Code from stepping into core files - only works for stepping
+      "skipFiles": [
+        //"/var/www/html/theme/**",       // Skip all files in theme directory
+        //"/var/www/html/lib/**"          // Skip Moodle core lib files
+      ],
+      "pathMappings": {
+        // Map the remote path (inside the container) to the local path (on your host machine)
+        "/var/www/html/theme": "/mnt/data/crucible/moodle/moodle-core/theme",
+        "/var/www/html/lib": "/mnt/data/crucible/moodle/moodle-core/lib",
+        "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/moodle-core/admin/cli",
+        "/var/www/html/mod/crucible": "/mnt/data/crucible/moodle/mod_crucible",
+        "/var/www/html/mod/topomojo": "/mnt/data/crucible/moodle/mod_topomojo",
+        "/var/www/html/mod/groupquiz": "/mnt/data/crucible/moodle/mod_groupquiz",
+        "/var/www/html/blocks/crucible": "/mnt/data/crucible/moodle/block_crucible",
+        "/var/www/html/admin/tool/lptmanager": "/mnt/data/crucible/moodle/tool_lptmanager",
+        "/var/www/html/question/type/crucible": "/mnt/data/crucible/moodle/qtype_mojomatch",
+        "/var/www/html/question/behaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch"
+      },
+      "presentation": {
+        "hidden": true
+      }
+    },
+
+    // ========== ui debug Configurations ==========
+    {
+      "name": "Debug alloy-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4403",
+      "webRoot": "/mnt/data/crucible/alloy/alloy.ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    },
+    {
+      "name": "Debug blueprint-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4725",
+      "webRoot": "/mnt/data/crucible/blueprint/blueprint.ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    },
+    {
+      "name": "Debug caster-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4310",
+      "webRoot": "/mnt/data/crucible/caster/caster.ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    },
+    {
+      "name": "Debug cite-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4721",
+      "webRoot": "/mnt/data/crucible/cite/cite.ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    },
+    {
+      "name": "Debug gallery-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4723",
+      "webRoot": "/mnt/data/crucible/gallery/gallery.ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    },
+    {
+      "name": "Debug gameboard-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4202",
+      "webRoot": "/mnt/data/crucible/gameboard/gameboard-ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    },
+    {
+      "name": "Debug player-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4301",
+      "webRoot": "/mnt/data/crucible/player/player.ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    },
+    {
+      "name": "Debug player-vm-console-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4305",
+      "webRoot": "/mnt/data/crucible/player/console.ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    },
+    {
+      "name": "Debug player-vm-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4303",
+      "webRoot": "/mnt/data/crucible/player/vm.ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    },
+    {
+      "name": "Debug steamfitter-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4401",
+      "webRoot": "/mnt/data/crucible/steamfitter/steamfitter.ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    },
+    {
+      "name": "Debug topomojo-ui",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:4201",
+      "webRoot": "/mnt/data/crucible/topomojo/topomojo-ui",
+      "trace": true,
+      "presentation": {
+        "group": "c"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Moodle Debug",
+      "configurations": ["Moodle-Xdebug", "Xdebug"],
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "name": "Moodle Debug (aspire)",
+      "configurations": ["Moodle-Xdebug (aspire)", "Xdebug"],
+      "presentation": {
+        "group": "b"
+      }
+    }
+  ]
 }
