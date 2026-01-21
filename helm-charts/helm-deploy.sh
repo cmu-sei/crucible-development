@@ -23,7 +23,10 @@ NO_INSTALL=false
 INFRA_ONLY=false
 APPS_ONLY=false
 MONITORING_ONLY=false
+USE_LOCAL_CHARTS=false
 CHARTS_DIR=/mnt/data/crucible/helm-charts/charts
+SEI_HELM_REPO_URL=https://cmusei.github.io/helm-charts
+SEI_HELM_REPO_NAME=cmusei
 INFRA_RELEASE=crucible-infra
 APPS_RELEASE=crucible
 MONITORING_RELEASE=crucible-monitoring
@@ -44,10 +47,11 @@ show_usage() {
   echo ""
   echo "Options:"
   echo "  --uninstall        Removes the Helm releases installed by this script"
-  echo "  --update-charts    Forces rebuilding Helm chart dependencies"
+  echo "  --update-charts    Forces rebuilding Helm chart dependencies (local mode only)"
   echo "  --purge            Deletes and recreates the minikube cluster before deploying"
   echo "  --delete           Deletes and restarts minikube using cached artifacts"
   echo "  --no-install       Skips the install phase"
+  echo "  --local            Use local chart files instead of the SEI Helm repository"
   echo "  --infra            Select crucible-infra chart (can be combined)"
   echo "  --apps             Select crucible (apps) chart (can be combined)"
   echo "  --monitoring       Select crucible-monitoring chart (can be combined)"
@@ -391,6 +395,19 @@ ensure_chart_dependencies() {
   fi
 }
 
+ensure_sei_helm_repo() {
+  echo -e "\n${BLUE}${BOLD}# Ensuring SEI Helm repository is configured${RESET}\n"
+
+  if helm repo list | grep -q "^${SEI_HELM_REPO_NAME}[[:space:]]"; then
+    echo "SEI Helm repository already configured, updating..."
+    helm repo update "${SEI_HELM_REPO_NAME}"
+  else
+    echo "Adding SEI Helm repository..."
+    helm repo add "${SEI_HELM_REPO_NAME}" "${SEI_HELM_REPO_URL}"
+    helm repo update "${SEI_HELM_REPO_NAME}"
+  fi
+}
+
 #### Script start
 
 # Update kubeconfig
@@ -417,6 +434,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-install)
       NO_INSTALL=true
+      shift
+      ;;
+    --local)
+      USE_LOCAL_CHARTS=true
       shift
       ;;
     --infra)
@@ -560,10 +581,17 @@ if $NO_INSTALL; then
   exit 0
 fi
 
-# Build dependencies for selected charts
-for chart in "${CHARTS[@]}"; do
-  ensure_chart_dependencies "$chart"
-done
+# Prepare chart sources based on mode
+if $USE_LOCAL_CHARTS; then
+  echo -e "\n${BLUE}${BOLD}# Using local chart files from ${CHARTS_DIR}${RESET}\n"
+  # Build dependencies for selected charts
+  for chart in "${CHARTS[@]}"; do
+    ensure_chart_dependencies "$chart"
+  done
+else
+  echo -e "\n${BLUE}${BOLD}# Using charts from SEI Helm repository${RESET}\n"
+  ensure_sei_helm_repo
+fi
 
 ## Logic to install / upgrade starts here
 
@@ -666,20 +694,25 @@ for chart in "${CHARTS[@]}"; do
 
       # Use local values file if it exists
       values_file="${SCRIPT_DIR}/crucible-infra.values.yaml"
-
-      values_file="${SCRIPT_DIR}/crucible-infra.values.yaml"
       values_flag=""
       if [[ -f "$values_file" ]]; then
         echo "Using local values file: ${values_file}"
         values_flag="-f ${values_file}"
       fi
 
+      # Determine chart source
+      if $USE_LOCAL_CHARTS; then
+        chart_ref="$CHARTS_DIR/crucible-infra"
+      else
+        chart_ref="${SEI_HELM_REPO_NAME}/crucible-infra"
+      fi
+
       if helm status "$INFRA_RELEASE" &>/dev/null; then
         echo "Existing release detected; running helm upgrade"
-        helm upgrade "$INFRA_RELEASE" "$CHARTS_DIR/crucible-infra" ${HELM_UPGRADE_FLAGS} ${values_flag}
+        helm upgrade "$INFRA_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
       else
         echo "Release not found; running helm install"
-        helm install "$INFRA_RELEASE" "$CHARTS_DIR/crucible-infra" ${HELM_UPGRADE_FLAGS} ${values_flag}
+        helm install "$INFRA_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
       fi
 
       # Configure CoreDNS immediately after infra deployment to ensure correct ingress IP resolution
@@ -742,12 +775,19 @@ for chart in "${CHARTS[@]}"; do
         values_flag="-f ${values_file}"
       fi
 
+      # Determine chart source
+      if $USE_LOCAL_CHARTS; then
+        chart_ref="$CHARTS_DIR/crucible"
+      else
+        chart_ref="${SEI_HELM_REPO_NAME}/crucible"
+      fi
+
       if helm status "$APPS_RELEASE" &>/dev/null; then
         echo "Existing release detected; running helm upgrade"
-        helm upgrade "$APPS_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS} ${values_flag}
+        helm upgrade "$APPS_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
       else
         echo "Release not found; running helm install"
-        helm install "$APPS_RELEASE" "$CHARTS_DIR/crucible" ${HELM_UPGRADE_FLAGS} ${values_flag}
+        helm install "$APPS_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
       fi
       ;;
 
@@ -762,12 +802,19 @@ for chart in "${CHARTS[@]}"; do
         values_flag="-f ${values_file}"
       fi
 
+      # Determine chart source
+      if $USE_LOCAL_CHARTS; then
+        chart_ref="$CHARTS_DIR/crucible-monitoring"
+      else
+        chart_ref="${SEI_HELM_REPO_NAME}/crucible-monitoring"
+      fi
+
       if helm status "$MONITORING_RELEASE" &>/dev/null; then
         echo "Existing release detected; running helm upgrade"
-        helm upgrade "$MONITORING_RELEASE" "$CHARTS_DIR/crucible-monitoring" ${HELM_UPGRADE_FLAGS} ${values_flag}
+        helm upgrade "$MONITORING_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
       else
         echo "Release not found; running helm install"
-        helm install "$MONITORING_RELEASE" "$CHARTS_DIR/crucible-monitoring" ${HELM_UPGRADE_FLAGS} ${values_flag}
+        helm install "$MONITORING_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
       fi
       ;;
   esac
