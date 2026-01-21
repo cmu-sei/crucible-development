@@ -179,6 +179,13 @@ blueprint:
           secretName: crucible-cert
     # This secret contains the postgres connection string
     existingSecret: "{{ .Release.Name }}-blueprint-api-custom"
+    # Values placed into the {{ .Release.Name }}-blueprint-api-custom secret
+    resourceOwnerAuthorization:
+      authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
+      clientId: "blueprint.admin"
+      clientSecret: "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW"
+      userName: "admin"
+      password: "admin"
     env:
       PathBase: /blueprint
       # CORS policy settings
@@ -268,6 +275,10 @@ caster:
       existing: "{{ .Release.Name }}-caster-api-nfs"
     # This secret contains the postgres connection string
     existingSecret: "{{ .Release.Name }}-caster-api-custom"
+    # Values placed into the {{ .Release.Name }}-caster-api-custom secret
+    client:
+      userName: "admin"
+      password: "admin"
     env:
       PathBase: /caster
       # Use Keycloak client configurations
@@ -740,6 +751,13 @@ steamfitter:
           secretName: crucible-cert
     # This secret contains the postgres connection string
     existingSecret: "{{ .Release.Name }}-steamfitter-api-custom"
+    # Values placed into the {{ .Release.Name }}-steamfitter-api-custom secret
+    resourceOwnerAuthorization:
+      authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
+      clientId: "steamfitter.admin"
+      clientSecret: "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW"
+      userName: "admin"
+      password: "admin"
     env:
       PathBase: /steamfitter
       # CORS policy settings
