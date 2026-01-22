@@ -2,10 +2,10 @@
 
 set -euo pipefail
 
-
 # Get script and repo directories
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"
+
 # Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -20,16 +20,13 @@ UPDATE_CHARTS=false
 PURGE_CLUSTER=false
 DELETE_CLUSTER=false
 NO_INSTALL=false
-INFRA_ONLY=false
-APPS_ONLY=false
-MONITORING_ONLY=false
+SELECT_INFRA=false
+SELECT_APPS=false
+SELECT_MONITORING=false
 USE_LOCAL_CHARTS=false
+
 CHARTS_DIR=/mnt/data/crucible/helm-charts/charts
-SEI_HELM_REPO_URL=https://cmusei.github.io/helm-charts
 SEI_HELM_REPO_NAME=cmusei
-INFRA_RELEASE=crucible-infra
-APPS_RELEASE=crucible
-MONITORING_RELEASE=crucible-monitoring
 CRUCIBLE_DOMAIN=crucible
 PGADMIN_EMAIL=pgadmin@crucible.dev
 
@@ -37,51 +34,87 @@ PGADMIN_EMAIL=pgadmin@crucible.dev
 # still rely on client-side merge semantics (SSA triggers managedFields errors).
 HELM_UPGRADE_FLAGS=${HELM_UPGRADE_FLAGS:---wait --timeout 15m --server-side=false}
 
+# -----------------------------------------------------------------------------
+# Utility Functions
+# -----------------------------------------------------------------------------
+
+log_header() { echo -e "\n${BLUE}${BOLD}# $1${RESET}\n"; }
+log_warn() { echo -e "${YELLOW}$1${RESET}"; }
+log_error() { echo -e "${RED}$1${RESET}"; }
+
 refresh_current_namespace() {
   CURRENT_NAMESPACE=$(kubectl config view --minify -o jsonpath='{..namespace}' 2>/dev/null || true)
   CURRENT_NAMESPACE=${CURRENT_NAMESPACE:-default}
 }
 
 show_usage() {
-  echo "Usage: $0 [OPTIONS]"
-  echo ""
-  echo "Options:"
-  echo "  --uninstall        Removes the Helm releases installed by this script"
-  echo "  --update-charts    Forces rebuilding Helm chart dependencies (local mode only)"
-  echo "  --purge            Deletes and recreates the minikube cluster before deploying"
-  echo "  --delete           Deletes and restarts minikube using cached artifacts"
-  echo "  --no-install       Skips the install phase"
-  echo "  --local            Use local chart files instead of the SEI Helm repository"
-  echo "  --infra            Select crucible-infra chart (can be combined)"
-  echo "  --apps             Select crucible (apps) chart (can be combined)"
-  echo "  --monitoring       Select crucible-monitoring chart (can be combined)"
-  echo ""
-  echo "Chart deployment order: infra -> apps -> monitoring"
-  echo "By default, all three charts are selected."
-  echo "Example: --infra --apps selects infra + apps without monitoring."
+  cat <<EOF
+Usage: $0 [OPTIONS]
+
+Options:
+  --uninstall        Removes the Helm releases installed by this script
+  --update-charts    Rebuild local chart dependencies or update remote repo
+  --purge            Deletes and recreates the minikube cluster before deploying
+  --delete           Deletes and restarts minikube using cached artifacts
+  --no-install       Skips the install phase
+  --local            Use local chart files instead of the SEI Helm repository
+  --infra            Select crucible-infra chart (can be combined)
+  --apps             Select crucible (apps) chart (can be combined)
+  --monitoring       Select crucible-monitoring chart (can be combined)
+
+Chart deployment order: infra -> apps -> monitoring
+By default, all three charts are selected.
+Example: --infra --apps selects infra + apps without monitoring.
+EOF
 }
+
+# -----------------------------------------------------------------------------
+# Helm Operations
+# -----------------------------------------------------------------------------
 
 helm_uninstall_if_exists() {
-  local release_name=$1
-  if helm status "$release_name" &>/dev/null; then
-    echo -e "\n${BLUE}${BOLD}# Uninstalling Helm release ${release_name}${RESET}\n"
-    helm uninstall "$release_name" --wait --timeout 300s
+  local release=$1
+  if helm status "$release" &>/dev/null; then
+    log_header "Uninstalling Helm release ${release}"
+    helm uninstall "$release" --wait --timeout 300s
   else
-    echo "Helm release ${release_name} not found, skipping uninstall"
+    echo "Helm release ${release} not found, skipping uninstall"
   fi
 }
 
-delete_finished_pods_for_release() {
-  local release_name=$1
-  local selector="app.kubernetes.io/instance=${release_name}"
-  local pod_list
-  local deleted=false
+helm_deploy() {
+  local chart=$1 values_file=$2 chart_ref
 
-  pod_list=$(kubectl get pods -n "$CURRENT_NAMESPACE" -l "$selector" -o jsonpath='{range .items[*]}{.metadata.name} {.status.phase}{"\n"}{end}' 2>/dev/null || true)
-  if [[ -z "$pod_list" ]]; then
-    echo "No pods found for release ${release_name}"
-    return
+  if $USE_LOCAL_CHARTS; then
+    chart_ref="${CHARTS_DIR}/${chart}"
+  else
+    chart_ref="${SEI_HELM_REPO_NAME}/${chart}"
   fi
+
+  local values_flag=""
+  [[ -f "$values_file" ]] && values_flag="-f ${values_file}" && echo "Using local values file: ${values_file}"
+
+  if helm status "$chart" &>/dev/null; then
+    echo "Existing release detected; running helm upgrade"
+    helm upgrade "$chart" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
+  else
+    echo "Release not found; running helm install"
+    helm install "$chart" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
+  fi
+}
+
+# -----------------------------------------------------------------------------
+# Cleanup Functions
+# -----------------------------------------------------------------------------
+
+delete_finished_pods_for_release() {
+  local release=$1 selector="app.kubernetes.io/instance=${1}"
+  local pod_list deleted=false
+
+  pod_list=$(kubectl get pods -n "$CURRENT_NAMESPACE" -l "$selector" \
+    -o jsonpath='{range .items[*]}{.metadata.name} {.status.phase}{"\n"}{end}' 2>/dev/null || true)
+
+  [[ -z "$pod_list" ]] && { echo "No pods found for release ${release}"; return; }
 
   while read -r pod_name pod_phase; do
     [[ -z "$pod_name" ]] && continue
@@ -92,27 +125,23 @@ delete_finished_pods_for_release() {
     fi
   done <<< "$pod_list"
 
-  if ! $deleted; then
-    echo "No Completed/Failed pods for release ${release_name}"
-  fi
+  $deleted || echo "No Completed/Failed pods for release ${release}"
 }
 
 delete_pvcs_for_release() {
-  local release_name=$1
-  local ns="$CURRENT_NAMESPACE"
-  # Target PVCs bound to the NFS provisioner and TopoMojo API storage.
+  local release=$1 ns="$CURRENT_NAMESPACE"
   local pvcs=(
-    "data-${release_name}-nfs-server-provisioner-0"
-    "${release_name}-topomojo-api-nfs"
-    "${release_name}-gameboard-api-nfs"
-    "${release_name}-caster-api-nfs"
+    "data-${release}-nfs-server-provisioner-0"
+    "${release}-topomojo-api-nfs"
+    "${release}-gameboard-api-nfs"
+    "${release}-caster-api-nfs"
   )
 
   for pvc in "${pvcs[@]}"; do
     echo "Deleting PVC ${ns}/${pvc} (if present)"
     kubectl delete pvc "$pvc" -n "$ns" --ignore-not-found
 
-    # Find and delete the PV bound to this PVC to avoid orphaned volumes.
+    # Find and delete the PV bound to this PVC to avoid orphaned volumes
     local pv_name
     pv_name=$(kubectl get pv -o json | jq -r --arg ns "$ns" --arg claim "$pvc" \
       '.items[] | select(.spec.claimRef.namespace==$ns and .spec.claimRef.name==$claim) | .metadata.name' | head -n1)
@@ -125,47 +154,120 @@ delete_pvcs_for_release() {
   done
 }
 
+# -----------------------------------------------------------------------------
+# Certificate Handling
+# -----------------------------------------------------------------------------
+
 stage_custom_ca_certs() {
   local src="/usr/local/share/ca-certificates/custom"
   local dest="${HOME}/.minikube/files/etc/ssl/certs/custom"
 
   if compgen -G "${src}"'/*.crt' > /dev/null; then
-    echo -e "\n${BLUE}${BOLD}# Staging custom CA certificates for minikube${RESET}\n"
+    log_header "Staging custom CA certificates for minikube"
     mkdir -p "$dest"
     cp "${src}"/*.crt "$dest"/
     echo "Copied custom CA certificates to ${dest}"
   else
-    echo -e "\n${YELLOW}${BOLD}# No custom CA certificates found in ${src}; skipping copy${RESET}\n"
+    log_warn "No custom CA certificates found in ${src}; skipping copy"
   fi
 }
 
+# Find a certificate file in dev-certs first, then legacy certs directory
+find_cert_file() {
+  local filename=$1
+  local cert_dev="${REPO_ROOT}/.devcontainer/dev-certs/${filename}"
+  local cert_legacy="${REPO_ROOT}/.devcontainer/certs/${filename}"
+
+  if [[ -f "$cert_dev" ]]; then
+    echo "$cert_dev"
+  elif [[ -f "$cert_legacy" ]]; then
+    echo "$cert_legacy"
+  fi
+}
+
+setup_tls_and_ca_secrets() {
+  local cert_source_legacy="${REPO_ROOT}/.devcontainer/certs"
+  local cert_source_dev="${REPO_ROOT}/.devcontainer/dev-certs"
+  local tls_secret="crucible-cert"
+  local ca_configmap="crucible-ca-cert"
+
+  # Find TLS certificate and key
+  local crucible_dev_crt crucible_dev_key
+  crucible_dev_crt=$(find_cert_file "crucible-dev.crt")
+  crucible_dev_key=$(find_cert_file "crucible-dev.key")
+
+  # Create TLS secret if both cert and key exist
+  if [[ -n "$crucible_dev_crt" && -n "$crucible_dev_key" ]]; then
+    echo "Creating TLS secret ${tls_secret} from local certificates..."
+    kubectl create secret tls "${tls_secret}" \
+      --cert="${crucible_dev_crt}" --key="${crucible_dev_key}" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    echo "TLS secret created/updated successfully"
+  else
+    log_warn "TLS certificate files not found, skipping TLS secret creation"
+  fi
+
+  # Create CA ConfigMap from all available certificates
+  local temp_dir
+  temp_dir=$(mktemp -d)
+  local has_certs=false
+
+  # Copy crucible-dev.crt if found
+  [[ -n "$crucible_dev_crt" ]] && cp "$crucible_dev_crt" "${temp_dir}/" && has_certs=true
+
+  # Copy other certificates from both directories
+  for dir in "$cert_source_legacy" "$cert_source_dev"; do
+    [[ -d "$dir" ]] || continue
+    for cert_file in "$dir"/*.crt; do
+      [[ -f "$cert_file" ]] || continue
+      local basename
+      basename=$(basename "$cert_file")
+      [[ ! -f "${temp_dir}/${basename}" ]] && cp "$cert_file" "${temp_dir}/" && has_certs=true
+    done
+  done
+
+  if $has_certs; then
+    echo "Creating CA certificates ConfigMap ${ca_configmap}..."
+    kubectl create configmap "${ca_configmap}" --from-file="${temp_dir}" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    echo "CA ConfigMap created/updated successfully"
+  else
+    log_warn "No CA certificate files found, skipping CA ConfigMap creation"
+  fi
+
+  rm -rf "${temp_dir}"
+}
+
+# -----------------------------------------------------------------------------
+# CoreDNS Configuration
+# -----------------------------------------------------------------------------
+
 ensure_nodehosts_entry() {
-  local ingress_service="${INGRESS_SERVICE:-${INFRA_RELEASE}-ingress-nginx-controller}"
+  local ingress_service="${INGRESS_SERVICE:-crucible-infra-ingress-nginx-controller}"
   local ingress_namespace="${INGRESS_NAMESPACE:-$CURRENT_NAMESPACE}"
   local dns_namespace="kube-system"
   local dns_configmap="coredns"
 
-  echo -e "\n${BLUE}${BOLD}# Ensuring NodeHosts contains ${CRUCIBLE_DOMAIN}${RESET}\n"
+  log_header "Ensuring CoreDNS NodeHosts contains ${CRUCIBLE_DOMAIN}"
 
-  local ingress_ip=""
-  local waited=0
+  # Wait for ingress controller IP
+  local ingress_ip="" waited=0
   while [[ $waited -lt 60 ]]; do
-    ingress_ip=$(kubectl -n "$ingress_namespace" get svc "$ingress_service" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)
-    if [[ -n "$ingress_ip" && "$ingress_ip" != "<no value>" ]]; then
-      break
-    fi
-    waited=$((waited + 1))
-    sleep 1
+    ingress_ip=$(kubectl -n "$ingress_namespace" get svc "$ingress_service" \
+      -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)
+    [[ -n "$ingress_ip" && "$ingress_ip" != "<no value>" ]] && break
+    ((waited++)) && sleep 1
   done
 
   if [[ -z "$ingress_ip" || "$ingress_ip" == "<no value>" ]]; then
-    echo -e "${YELLOW}Unable to determine ClusterIP for ${ingress_service}; skipping NodeHosts update${RESET}"
+    log_warn "Unable to determine ClusterIP for ${ingress_service}; skipping NodeHosts update"
     return
   fi
 
+  # Patch CoreDNS ConfigMap
   local cm_patch
   cm_patch=$(mktemp)
-  cat <<EOF > "$cm_patch"
+  cat > "$cm_patch" <<EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -176,9 +278,7 @@ data:
     .:53 {
         log
         errors
-        health {
-           lameduck 5s
-        }
+        health { lameduck 5s }
         ready
         kubernetes cluster.local in-addr.arpa ip6.arpa {
            pods insecure
@@ -186,16 +286,9 @@ data:
            ttl 30
         }
         prometheus :9153
-        hosts /etc/coredns/NodeHosts {
-           fallthrough
-        }
-        forward . /etc/resolv.conf {
-           max_concurrent 1000
-        }
-        cache 30 {
-           disable success cluster.local
-           disable denial cluster.local
-        }
+        hosts /etc/coredns/NodeHosts { fallthrough }
+        forward . /etc/resolv.conf { max_concurrent 1000 }
+        cache 30 { disable success cluster.local; disable denial cluster.local }
         loop
         reload
         loadbalance
@@ -207,9 +300,10 @@ EOF
 
   kubectl -n "$dns_namespace" patch configmap "$dns_configmap" --type merge --patch-file "$cm_patch"
 
+  # Patch deployment to mount NodeHosts
   local deploy_patch
   deploy_patch=$(mktemp)
-  cat <<EOF > "$deploy_patch"
+  cat > "$deploy_patch" <<EOF
 spec:
   template:
     spec:
@@ -224,278 +318,275 @@ spec:
             path: NodeHosts
 EOF
   kubectl -n "$dns_namespace" patch deployment coredns --patch-file "$deploy_patch"
-
   kubectl -n "$dns_namespace" rollout restart deployment/coredns
   kubectl -n "$dns_namespace" rollout status deployment/coredns --timeout=120s || true
 
   rm -f "$cm_patch" "$deploy_patch"
 }
 
+# -----------------------------------------------------------------------------
+# Output Functions
+# -----------------------------------------------------------------------------
 
 print_web_app_urls() {
-  echo -e "\n${BLUE}${BOLD}# Web application endpoints${RESET}\n"
+  log_header "Web application endpoints"
 
-  local ingress_json
-  # Get ingress from all releases
-  if ! ingress_json=$(kubectl get ingress -n "$CURRENT_NAMESPACE" -o json 2>/dev/null); then
-    echo "Unable to query ingress resources in namespace ${CURRENT_NAMESPACE}."
-    return
-  fi
+  local output=""
+  local service_filter="-ui|keycloak|pgadmin|grafana|prometheus|moodle"
 
-  local urls
-  urls=$(echo "$ingress_json" | jq -r '
-    [
-      .items[]? as $ingress |
-      ([$ingress.spec.tls[]?.hosts[]?] | unique) as $tlsHosts |
-      $ingress.spec.rules[]? as $rule |
-      $rule.http.paths[]? as $path |
-      ($path.path // "/") as $rawPath |
-      ($rawPath | if startswith("/") then . else "/" + . end) as $normalizedPath |
-      {
-        scheme: (if ($tlsHosts | index($rule.host)) then "https" else "http" end),
-        host: ($rule.host // ""),
-        path: $normalizedPath,
-        service: ($path.backend.service.name // $ingress.metadata.name)
-      }
-    ]
-    | map(select(.host != ""))
-    | map(select((.service // "") | test("(?:-ui|keycloak|pgadmin|grafana|prometheus(?:-server)?|moodle)$")))
-    | sort_by([.scheme, .host, .service])
-    | group_by({scheme: .scheme, host: .host, service: .service})
-    | map(min_by(.path | length))
-    | .[]
-    | "- \(.scheme)://\(.host)\(.path) (service: \(.service))"
-  ' 2>/dev/null)
+  while IFS='|' read -r host path service tls_hosts; do
+    [[ -z "$host" ]] && continue
+    [[ ! "$service" =~ (${service_filter})$ ]] && continue
 
-  if [[ -z "${urls//[[:space:]]/}" ]]; then
+    local scheme="http"
+    [[ "$tls_hosts" == *"$host"* ]] && scheme="https"
+    output+="- ${scheme}://${host}${path} (service: ${service})"$'\n'
+  done < <(kubectl get ingress -n "$CURRENT_NAMESPACE" -o json 2>/dev/null | jq -r '
+    .items[]? | . as $ing |
+    ([.spec.tls[]?.hosts[]?] | join(",")) as $tls |
+    .spec.rules[]? | .host as $host |
+    .http.paths[]? | "\($host)|\(.path // "/")|\(.backend.service.name // $ing.metadata.name)|\($tls)"
+  ')
+
+  if [[ -z "$output" ]]; then
     echo "No ingress endpoints were found."
-    return
+  else
+    echo "$output" | sort -u
   fi
-
-  echo "$urls"
 }
 
-print_keycloak_admin_credentials() {
-  echo -e "\n${BLUE}${BOLD}# Keycloak admin credentials${RESET}\n"
+print_secret_credentials() {
+  local header=$1 secret_name=$2 password_key=$3 username=$4
 
-  local secret_name="${APPS_RELEASE}-keycloak-auth"
+  log_header "$header"
+
   local encoded_password
-  if ! encoded_password=$(kubectl get secret "$secret_name" -n "$CURRENT_NAMESPACE" -o jsonpath='{.data.admin-password}' 2>/dev/null); then
-    echo "Keycloak not deployed or secret not found."
-    return
-  fi
-
-  if [[ -z "$encoded_password" ]]; then
-    echo "Secret ${secret_name} does not contain an admin-password key."
+  if ! encoded_password=$(kubectl get secret "$secret_name" -n "$CURRENT_NAMESPACE" \
+      -o jsonpath="{.data.${password_key}}" 2>/dev/null) || [[ -z "$encoded_password" ]]; then
+    echo "Secret ${secret_name} not found or missing ${password_key} key."
     return
   fi
 
   local decoded_password
   if ! decoded_password=$(echo "$encoded_password" | base64 --decode 2>/dev/null); then
-    echo "Failed to decode the Keycloak admin password from secret ${secret_name}."
+    echo "Failed to decode password from secret ${secret_name}."
     return
   fi
 
-  echo "  Username: keycloak-admin"
+  echo "  Username: $username"
   echo "  Password: $decoded_password"
 }
 
-print_pgadmin_credentials() {
-  echo -e "\n${BLUE}${BOLD}# pgAdmin credentials${RESET}\n"
-
-  local secret_name="${INFRA_RELEASE}-pgadmin"
-  local encoded_password
-  if ! encoded_password=$(kubectl get secret "$secret_name" -n "$CURRENT_NAMESPACE" -o jsonpath='{.data.password}' 2>/dev/null); then
-    echo "pgAdmin not deployed or secret not found."
-    return
-  fi
-
-  if [[ -z "$encoded_password" ]]; then
-    echo "Secret ${secret_name} does not contain a password key."
-    return
-  fi
-
-  local decoded_password
-  if ! decoded_password=$(echo "$encoded_password" | base64 --decode 2>/dev/null); then
-    echo "Failed to decode the pgAdmin password from secret ${secret_name}."
-    return
-  fi
-
-  echo "  Email: ${PGADMIN_EMAIL}"
-  echo "  Password: $decoded_password"
-}
+# -----------------------------------------------------------------------------
+# Minikube Cluster Management
+# -----------------------------------------------------------------------------
 
 start_minikube_cluster() {
   stage_custom_ca_certs
-
-  echo -e "\n${BLUE}${BOLD}# Checking minikube cluster status${RESET}\n"
-  # Use the centralized start-minikube.sh script
-  ${REPO_ROOT}/scripts/start-minikube.sh
+  log_header "Checking minikube cluster status"
+  "${REPO_ROOT}/scripts/start-minikube.sh"
 }
 
 purge_minikube_cluster() {
-  echo -e "\n${BLUE}${BOLD}# Purging minikube cluster${RESET}\n"
+  log_header "Purging minikube cluster"
   echo "Attempting sudo umount of ~/.minikube to release mounts (may prompt for sudo)"
-  if ! sudo umount "${HOME}/.minikube"; then
-    echo -e "${YELLOW}sudo umount ~/.minikube did not succeed; continuing${RESET}"
-  fi
+  sudo umount "${HOME}/.minikube" 2>/dev/null || log_warn "sudo umount ~/.minikube did not succeed; continuing"
   minikube delete --all --purge
-
   start_minikube_cluster
 }
 
 delete_minikube_cluster() {
-  echo -e "\n${BLUE}${BOLD}# Deleting minikube cluster (preserving cache)${RESET}\n"
+  log_header "Deleting minikube cluster (preserving cache)"
   minikube delete --all
-
   start_minikube_cluster
 }
+
+# -----------------------------------------------------------------------------
+# Chart Dependency Management
+# -----------------------------------------------------------------------------
 
 chart_dependencies_ready() {
   local chart_path=$1
   [[ -f "${chart_path}/Chart.lock" ]] || return 1
-  if [[ "${chart_path}/Chart.yaml" -nt "${chart_path}/Chart.lock" ]]; then
-    return 1
-  fi
+  [[ "${chart_path}/Chart.yaml" -nt "${chart_path}/Chart.lock" ]] && return 1
   [[ -d "${chart_path}/charts" ]] || return 1
-  if helm dependency list "$chart_path" 2>/dev/null | grep -qE '[[:space:]]missing$'; then
-    return 1
-  fi
+  helm dependency list "$chart_path" 2>/dev/null | grep -qE '[[:space:]]missing$' && return 1
   return 0
 }
 
 build_chart_dependencies() {
-  local chart_name=$1
-  local chart_path="${CHARTS_DIR}/${chart_name}"
+  local chart_path="${CHARTS_DIR}/${1}"
   echo "Building dependencies for chart ${chart_path}"
-  if helm dependency build "$chart_path"; then
-    return
+  if ! helm dependency build "$chart_path"; then
+    echo "Dependency build failed; refreshing lockfile and fetching missing charts"
+    helm dependency update "$chart_path"
+    helm dependency build "$chart_path"
   fi
-
-  echo "Dependency build failed for ${chart_path}; refreshing lockfile and fetching missing charts"
-  helm dependency update "$chart_path"
-  helm dependency build "$chart_path"
 }
 
 ensure_chart_dependencies() {
-  local chart=$1
-  local chart_path="${CHARTS_DIR}/${chart}"
+  local chart=$1 chart_path="${CHARTS_DIR}/${1}"
 
   if $UPDATE_CHARTS; then
-    echo -e "\n${BLUE}${BOLD}# Forcing dependency rebuild for ${chart_path}${RESET}\n"
+    log_header "Forcing dependency rebuild for ${chart_path}"
     build_chart_dependencies "$chart"
-    return
-  fi
-
-  if chart_dependencies_ready "$chart_path"; then
-    echo -e "\n${BLUE}${BOLD}# Dependencies for ${chart_path} already present, skipping rebuild${RESET}\n"
+  elif chart_dependencies_ready "$chart_path"; then
+    log_header "Dependencies for ${chart_path} already present, skipping rebuild"
   else
-    echo -e "\n${BLUE}${BOLD}# Dependencies missing for ${chart_path}, rebuilding${RESET}\n"
+    log_header "Dependencies missing for ${chart_path}, rebuilding"
     build_chart_dependencies "$chart"
   fi
 }
 
-ensure_sei_helm_repo() {
-  echo -e "\n${BLUE}${BOLD}# Ensuring SEI Helm repository is configured${RESET}\n"
+# -----------------------------------------------------------------------------
+# Chart-Specific Deployment Logic
+# -----------------------------------------------------------------------------
 
-  if helm repo list | grep -q "^${SEI_HELM_REPO_NAME}[[:space:]]"; then
-    echo "SEI Helm repository already configured, updating..."
-    helm repo update "${SEI_HELM_REPO_NAME}"
+deploy_infra_chart() {
+  log_header "Deploying crucible-infra chart"
+
+  setup_tls_and_ca_secrets
+  helm_deploy "crucible-infra" "${SCRIPT_DIR}/crucible-infra.values.yaml"
+
+  # Configure CoreDNS immediately after infra deployment
+  log_header "Updating CoreDNS with current ingress controller IP"
+  ensure_nodehosts_entry
+
+  # Create PostgreSQL credentials secret for the crucible chart
+  log_header "Creating PostgreSQL credentials secret for crucible chart"
+  local postgres_secret="crucible-infra-postgresql"
+  local infra_postgres_password
+  infra_postgres_password=$(kubectl get secret "${postgres_secret}" -n "$CURRENT_NAMESPACE" \
+    -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 --decode || echo "")
+
+  if [[ -z "$infra_postgres_password" ]]; then
+    log_warn "Could not retrieve PostgreSQL password from ${postgres_secret} secret"
+    echo "Ensure the infra chart has deployed successfully before continuing."
   else
-    echo "Adding SEI Helm repository..."
-    helm repo add "${SEI_HELM_REPO_NAME}" "${SEI_HELM_REPO_URL}"
-    helm repo update "${SEI_HELM_REPO_NAME}"
+    kubectl create secret generic "$postgres_secret" \
+      --from-literal=username=postgres \
+      --from-literal=postgres-password="$infra_postgres_password" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    echo "PostgreSQL credentials secret created/updated successfully"
+
+    # Ensure PostgreSQL user password is set correctly in the database
+    echo "Ensuring PostgreSQL user password is set correctly..."
+    if kubectl exec -n "$CURRENT_NAMESPACE" "statefulset/crucible-infra-postgresql" -- \
+        sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U postgres -c "ALTER USER postgres WITH PASSWORD '\''$POSTGRES_PASSWORD'\'';"' &>/dev/null; then
+      echo "PostgreSQL user password verified/updated successfully"
+    else
+      log_warn "Could not update PostgreSQL password - database may not be ready yet"
+    fi
   fi
 }
 
-#### Script start
+deploy_apps_chart() {
+  log_header "Deploying crucible (apps) chart"
 
-# Update kubeconfig
+  # Create Keycloak realm import ConfigMap if realm file exists
+  local realm_file="${SCRIPT_DIR}/files/crucible-realm.json"
+  local realm_configmap="crucible-keycloak-config-cli"
+
+  if [[ -f "$realm_file" ]]; then
+    echo "Creating Keycloak realm import ConfigMap ${realm_configmap}..."
+    kubectl create configmap "${realm_configmap}" --from-file=realm.json="${realm_file}" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    echo "Keycloak realm ConfigMap created/updated successfully"
+  else
+    log_warn "Keycloak realm file not found at ${realm_file}, skipping realm import ConfigMap creation"
+  fi
+
+  helm_deploy "crucible" "${SCRIPT_DIR}/crucible.values.yaml"
+}
+
+deploy_monitoring_chart() {
+  log_header "Deploying crucible-monitoring chart"
+  helm_deploy "crucible-monitoring" "${SCRIPT_DIR}/crucible-monitoring.values.yaml"
+}
+
+# -----------------------------------------------------------------------------
+# Uninstall Logic
+# -----------------------------------------------------------------------------
+
+uninstall_charts() {
+  # Uninstall in reverse order: monitoring -> apps -> infra
+  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
+    helm_uninstall_if_exists "${CHARTS[i]}"
+  done
+
+  log_header "Deleting completed/failed pods"
+  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
+    delete_finished_pods_for_release "${CHARTS[i]}"
+  done
+
+  log_header "Deleting PVCs/PVs"
+  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
+    delete_pvcs_for_release "${CHARTS[i]}"
+  done
+
+  # Clean up manually created secrets and configmaps
+  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
+    case "${CHARTS[i]}" in
+      "crucible-infra")
+        log_header "Deleting secrets and ConfigMaps created by deployment script (infra)"
+        kubectl delete secret crucible-cert -n "$CURRENT_NAMESPACE" --ignore-not-found
+        kubectl delete configmap crucible-ca-cert -n "$CURRENT_NAMESPACE" --ignore-not-found
+        kubectl delete secret crucible-infra-postgresql -n "$CURRENT_NAMESPACE" --ignore-not-found
+        ;;
+      "crucible")
+        log_header "Deleting secrets and ConfigMaps created by deployment script (apps)"
+        kubectl delete configmap crucible-keycloak-config-cli -n "$CURRENT_NAMESPACE" --ignore-not-found
+        ;;
+    esac
+  done
+
+  echo -e "\n${GREEN}${BOLD}# Uninstall complete${RESET}\n"
+}
+
+# =============================================================================
+# Main Script
+# =============================================================================
+
 refresh_current_namespace
 
-# Get arguments
+# Parse arguments
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --uninstall)
-      UNINSTALL=true
-      shift
-      ;;
-    --update-charts)
-      UPDATE_CHARTS=true
-      shift
-      ;;
-    --purge)
-      PURGE_CLUSTER=true
-      shift
-      ;;
-    --delete)
-      DELETE_CLUSTER=true
-      shift
-      ;;
-    --no-install)
-      NO_INSTALL=true
-      shift
-      ;;
-    --local)
-      USE_LOCAL_CHARTS=true
-      shift
-      ;;
-    --infra)
-      INFRA_ONLY=true
-      shift
-      ;;
-    --apps)
-      APPS_ONLY=true
-      shift
-      ;;
-    --monitoring)
-      MONITORING_ONLY=true
-      shift
-      ;;
-    --infra-only)
-      echo -e "${YELLOW}Deprecated: use --infra instead of --infra-only.${RESET}"
-      INFRA_ONLY=true
-      shift
-      ;;
-    --apps-only)
-      echo -e "${YELLOW}Deprecated: use --apps instead of --apps-only.${RESET}"
-      APPS_ONLY=true
-      shift
-      ;;
-    --monitoring-only)
-      echo -e "${YELLOW}Deprecated: use --monitoring instead of --monitoring-only.${RESET}"
-      MONITORING_ONLY=true
-      shift
-      ;;
-    -h|--help)
-      show_usage
-      exit 0
-      ;;
-    *)
-      echo -e "${RED}Unknown option: $1${RESET}"
-      show_usage
-      exit 1
-      ;;
+    --uninstall)       UNINSTALL=true ;;
+    --update-charts)   UPDATE_CHARTS=true ;;
+    --purge)           PURGE_CLUSTER=true ;;
+    --delete)          DELETE_CLUSTER=true ;;
+    --no-install)      NO_INSTALL=true ;;
+    --local)           USE_LOCAL_CHARTS=true ;;
+    --infra)           SELECT_INFRA=true ;;
+    --apps)            SELECT_APPS=true ;;
+    --monitoring)      SELECT_MONITORING=true ;;
+    --infra-only)      log_warn "Deprecated: use --infra instead of --infra-only."; SELECT_INFRA=true ;;
+    --apps-only)       log_warn "Deprecated: use --apps instead of --apps-only."; SELECT_APPS=true ;;
+    --monitoring-only) log_warn "Deprecated: use --monitoring instead of --monitoring-only."; SELECT_MONITORING=true ;;
+    -h|--help)         show_usage; exit 0 ;;
+    *)                 log_error "Unknown option: $1"; show_usage; exit 1 ;;
   esac
+  shift
 done
 
+# Validate options
 if $PURGE_CLUSTER && $DELETE_CLUSTER; then
-  echo -e "${RED}Cannot specify both --purge and --delete.${RESET}"
+  log_error "Cannot specify both --purge and --delete."
   exit 1
 fi
 
 # Determine which charts to operate on
 CHARTS=()
-if $INFRA_ONLY || $APPS_ONLY || $MONITORING_ONLY; then
-  $INFRA_ONLY && CHARTS+=("crucible-infra")
-  $APPS_ONLY && CHARTS+=("crucible")
-  $MONITORING_ONLY && CHARTS+=("crucible-monitoring")
+if $SELECT_INFRA || $SELECT_APPS || $SELECT_MONITORING; then
+  $SELECT_INFRA && CHARTS+=("crucible-infra")
+  $SELECT_APPS && CHARTS+=("crucible")
+  $SELECT_MONITORING && CHARTS+=("crucible-monitoring")
 else
-  # Default: operate on all charts
   CHARTS=("crucible-infra" "crucible" "crucible-monitoring")
 fi
 
-# Delete or Purge cluster if requested
+# Handle cluster operations
 if $PURGE_CLUSTER; then
   purge_minikube_cluster
   refresh_current_namespace
@@ -504,341 +595,56 @@ elif $DELETE_CLUSTER; then
   refresh_current_namespace
 fi
 
-# Uninstall releases if requested
+# Handle uninstall
 if $UNINSTALL; then
-  # Uninstall in reverse order: monitoring -> apps -> infra
-  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
-    case "${CHARTS[i]}" in
-      "crucible-monitoring")
-        helm_uninstall_if_exists "$MONITORING_RELEASE"
-        ;;
-      "crucible")
-        helm_uninstall_if_exists "$APPS_RELEASE"
-        ;;
-      "crucible-infra")
-        helm_uninstall_if_exists "$INFRA_RELEASE"
-        ;;
-    esac
-  done
-
-  echo -e "\n${BLUE}${BOLD}# Deleting completed/failed pods${RESET}\n"
-  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
-    case "${CHARTS[i]}" in
-      "crucible-monitoring")
-        delete_finished_pods_for_release "$MONITORING_RELEASE"
-        ;;
-      "crucible")
-        delete_finished_pods_for_release "$APPS_RELEASE"
-        ;;
-      "crucible-infra")
-        delete_finished_pods_for_release "$INFRA_RELEASE"
-        ;;
-    esac
-  done
-
-  echo -e "\n${BLUE}${BOLD}# Deleting PVCs/PVs${RESET}\n"
-  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
-    case "${CHARTS[i]}" in
-      "crucible-monitoring")
-        delete_pvcs_for_release "$MONITORING_RELEASE"
-        ;;
-      "crucible")
-        delete_pvcs_for_release "$APPS_RELEASE"
-        ;;
-      "crucible-infra")
-        delete_pvcs_for_release "$INFRA_RELEASE"
-        ;;
-    esac
-  done
-
-  # Clean up manually created secrets and configmaps
-  for ((i=${#CHARTS[@]}-1; i>=0; i--)); do
-    case "${CHARTS[i]}" in
-      "crucible-infra")
-        echo -e "\n${BLUE}${BOLD}# Deleting secrets and ConfigMaps created by deployment script (infra)${RESET}\n"
-        echo "Deleting TLS secret crucible-cert..."
-        kubectl delete secret crucible-cert -n "$CURRENT_NAMESPACE" --ignore-not-found
-        echo "Deleting CA ConfigMap crucible-ca-cert..."
-        kubectl delete configmap crucible-ca-cert -n "$CURRENT_NAMESPACE" --ignore-not-found
-        echo "Deleting PostgreSQL credentials secret ${INFRA_RELEASE}-postgresql..."
-        kubectl delete secret "${INFRA_RELEASE}-postgresql" -n "$CURRENT_NAMESPACE" --ignore-not-found
-        ;;
-      "crucible")
-        echo -e "\n${BLUE}${BOLD}# Deleting secrets and ConfigMaps created by deployment script (apps)${RESET}\n"
-        echo "Deleting Keycloak realm ConfigMap ${APPS_RELEASE}-keycloak-config-cli..."
-        kubectl delete configmap "${APPS_RELEASE}-keycloak-config-cli" -n "$CURRENT_NAMESPACE" --ignore-not-found
-        ;;
-    esac
-  done
-
-  echo -e "\n${GREEN}${BOLD}# Uninstall complete${RESET}\n"
+  uninstall_charts
   exit 0
 fi
 
-# Skip install if requested
+# Handle no-install
 if $NO_INSTALL; then
-  echo -e "\n${YELLOW}${BOLD}# --no-install specified; skipping install phase${RESET}\n"
+  log_warn "--no-install specified; skipping install phase"
   exit 0
 fi
 
-# Prepare chart sources based on mode
+# Prepare chart sources
 if $USE_LOCAL_CHARTS; then
-  echo -e "\n${BLUE}${BOLD}# Using local chart files from ${CHARTS_DIR}${RESET}\n"
-  # Build dependencies for selected charts
+  log_header "Using local chart files from ${CHARTS_DIR}"
   for chart in "${CHARTS[@]}"; do
     ensure_chart_dependencies "$chart"
   done
-else
-  echo -e "\n${BLUE}${BOLD}# Using charts from SEI Helm repository${RESET}\n"
-  ensure_sei_helm_repo
+elif $UPDATE_CHARTS; then
+  log_header "Updating Helm repositories"
+  helm repo update
 fi
 
-## Logic to install / upgrade starts here
-
 # Ensure minikube cluster is running
-echo -e "\n${BLUE}${BOLD}# Ensuring minikube cluster is running${RESET}\n"
+log_header "Ensuring minikube cluster is running"
 start_minikube_cluster
 
-# Install or upgrade Helm releases
-# Deploy in correct order: infra -> apps -> monitoring
-
+# Deploy charts in order: infra -> apps -> monitoring
 for chart in "${CHARTS[@]}"; do
   case "$chart" in
-    "crucible-infra")
-      echo -e "\n${BLUE}${BOLD}# Deploying crucible-infra chart${RESET}\n"
-
-      # Create TLS secret from local certificate files if they exist
-      # Check both .devcontainer/certs (proxy/custom CAs) and .devcontainer/dev-certs (generated dev certs)
-      cert_source_legacy="${REPO_ROOT}/.devcontainer/certs"
-      cert_source_dev="${REPO_ROOT}/.devcontainer/dev-certs"
-      tls_secret="crucible-cert"
-      ca_configmap="crucible-ca-cert"
-
-      # Look for crucible-dev cert/key in dev-certs directory first, then fallback to legacy location
-      crucible_dev_crt=""
-      crucible_dev_key=""
-      
-      if [[ -f "${cert_source_dev}/crucible-dev.crt" ]]; then
-        crucible_dev_crt="${cert_source_dev}/crucible-dev.crt"
-      elif [[ -f "${cert_source_legacy}/crucible-dev.crt" ]]; then
-        crucible_dev_crt="${cert_source_legacy}/crucible-dev.crt"
-      fi
-      
-      if [[ -f "${cert_source_dev}/crucible-dev.key" ]]; then
-        crucible_dev_key="${cert_source_dev}/crucible-dev.key"
-      elif [[ -f "${cert_source_legacy}/crucible-dev.key" ]]; then
-        crucible_dev_key="${cert_source_legacy}/crucible-dev.key"
-      fi
-
-      if [[ -n "${crucible_dev_crt}" ]] && [[ -n "${crucible_dev_key}" ]]; then
-        echo "Creating TLS secret ${tls_secret} from local certificates..."
-        kubectl create secret tls "${tls_secret}" \
-          --cert="${crucible_dev_crt}" \
-          --key="${crucible_dev_key}" \
-          --dry-run=client -o yaml | kubectl apply -f -
-        echo "TLS secret created/updated successfully"
-      else
-        echo -e "${YELLOW}TLS certificate files not found in ${cert_source_dev} or ${cert_source_legacy}, skipping TLS secret creation${RESET}"
-      fi
-
-      # Create CA ConfigMap from local CA certificate files if they exist
-      # Combine certificates from both directories
-      temp_dir=$(mktemp -d)
-      has_certs=false
-
-      # Copy crucible-dev.crt from either directory
-      if [[ -n "${crucible_dev_crt}" ]]; then
-        cp "${crucible_dev_crt}" "${temp_dir}/crucible-dev.crt"
-        has_certs=true
-      fi
-
-      # Copy any other .crt files from legacy certs directory (e.g., zscaler-ca.crt)
-      if [[ -d "${cert_source_legacy}" ]]; then
-        for cert_file in "${cert_source_legacy}"/*.crt; do
-          if [[ -f "${cert_file}" ]]; then
-            cert_basename=$(basename "${cert_file}")
-            # Skip crucible-dev.crt if we already got it from dev-certs
-            if [[ "${cert_basename}" != "crucible-dev.crt" ]] || [[ -z "${crucible_dev_crt}" ]]; then
-              cp "${cert_file}" "${temp_dir}/${cert_basename}"
-              has_certs=true
-            fi
-          fi
-        done
-      fi
-
-      # Copy any additional .crt files from dev-certs directory
-      if [[ -d "${cert_source_dev}" ]]; then
-        for cert_file in "${cert_source_dev}"/*.crt; do
-          if [[ -f "${cert_file}" ]]; then
-            cert_basename=$(basename "${cert_file}")
-            # Only copy if not already present in temp_dir
-            if [[ ! -f "${temp_dir}/${cert_basename}" ]]; then
-              cp "${cert_file}" "${temp_dir}/${cert_basename}"
-              has_certs=true
-            fi
-          fi
-        done
-      fi
-
-      if $has_certs; then
-        echo "Creating CA certificates ConfigMap ${ca_configmap} from certificates in ${cert_source_legacy} and ${cert_source_dev}..."
-        kubectl create configmap "${ca_configmap}" \
-          --from-file="${temp_dir}" \
-          --dry-run=client -o yaml | kubectl apply -f -
-        echo "CA ConfigMap created/updated successfully"
-      else
-        echo -e "${YELLOW}CA certificate files not found in ${cert_source_dev} or ${cert_source_legacy}, skipping CA ConfigMap creation${RESET}"
-      fi
-
-      rm -rf "${temp_dir}"
-
-      # Use local values file if it exists
-      values_file="${SCRIPT_DIR}/crucible-infra.values.yaml"
-      values_flag=""
-      if [[ -f "$values_file" ]]; then
-        echo "Using local values file: ${values_file}"
-        values_flag="-f ${values_file}"
-      fi
-
-      # Determine chart source
-      if $USE_LOCAL_CHARTS; then
-        chart_ref="$CHARTS_DIR/crucible-infra"
-      else
-        chart_ref="${SEI_HELM_REPO_NAME}/crucible-infra"
-      fi
-
-      if helm status "$INFRA_RELEASE" &>/dev/null; then
-        echo "Existing release detected; running helm upgrade"
-        helm upgrade "$INFRA_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
-      else
-        echo "Release not found; running helm install"
-        helm install "$INFRA_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
-      fi
-
-      # Configure CoreDNS immediately after infra deployment to ensure correct ingress IP resolution
-      echo -e "\n${BLUE}${BOLD}# Updating CoreDNS with current ingress controller IP${RESET}\n"
-      ensure_nodehosts_entry
-
-      # Create PostgreSQL credentials secret with both username and password keys
-      # This secret is used by the crucible chart for database connections
-      echo -e "\n${BLUE}${BOLD}# Creating PostgreSQL credentials secret for crucible chart${RESET}\n"
-      postgres_secret="${INFRA_RELEASE}-postgresql"
-
-      # Get password from infra chart's PostgreSQL secret
-      infra_postgres_password=$(kubectl get secret "${INFRA_RELEASE}-postgresql" -n "$CURRENT_NAMESPACE" -o jsonpath='{.data.postgres-password}' 2>/dev/null | base64 --decode || echo "")
-
-      if [[ -z "$infra_postgres_password" ]]; then
-        echo -e "${YELLOW}Could not retrieve PostgreSQL password from ${INFRA_RELEASE}-postgresql secret${RESET}"
-        echo "Ensure the infra chart has deployed successfully before continuing."
-      else
-        # Create/update secret with both username and postgres-password keys
-        kubectl create secret generic "$postgres_secret" \
-          --from-literal=username=postgres \
-          --from-literal=postgres-password="$infra_postgres_password" \
-          --dry-run=client -o yaml | kubectl apply -f -
-        echo "PostgreSQL credentials secret created/updated successfully"
-
-        # Ensure PostgreSQL user password is set correctly in the database
-        # This is necessary because if the data directory already exists, PostgreSQL won't reinitialize the password
-        echo "Ensuring PostgreSQL user password is set correctly..."
-        if kubectl exec -n "$CURRENT_NAMESPACE" statefulset/"${INFRA_RELEASE}-postgresql" -- \
-          sh -c "PGPASSWORD=\"\$POSTGRES_PASSWORD\" psql -U postgres -c \"ALTER USER postgres WITH PASSWORD '\$POSTGRES_PASSWORD';\"" &>/dev/null; then
-          echo "PostgreSQL user password verified/updated successfully"
-        else
-          echo -e "${YELLOW}Could not update PostgreSQL password - database may not be ready yet${RESET}"
-        fi
-      fi
-      ;;
-
-    "crucible")
-      echo -e "\n${BLUE}${BOLD}# Deploying crucible (apps) chart${RESET}\n"
-
-      # Create Keycloak realm import ConfigMap if realm file exists
-      realm_file="${SCRIPT_DIR}/files/crucible-realm.json"
-      realm_configmap="${APPS_RELEASE}-keycloak-config-cli"
-
-      if [[ -f "$realm_file" ]]; then
-        echo "Creating Keycloak realm import ConfigMap ${realm_configmap}..."
-        kubectl create configmap "${realm_configmap}" \
-          --from-file=realm.json="${realm_file}" \
-          --dry-run=client -o yaml | kubectl apply -f -
-        echo "Keycloak realm ConfigMap created/updated successfully"
-      else
-        echo -e "${YELLOW}Keycloak realm file not found at ${realm_file}, skipping realm import ConfigMap creation${RESET}"
-      fi
-
-      # Use local values file if it exists
-      values_file="${SCRIPT_DIR}/crucible.values.yaml"
-      values_flag=""
-      if [[ -f "$values_file" ]]; then
-        echo "Using local values file: ${values_file}"
-        values_flag="-f ${values_file}"
-      fi
-
-      # Determine chart source
-      if $USE_LOCAL_CHARTS; then
-        chart_ref="$CHARTS_DIR/crucible"
-      else
-        chart_ref="${SEI_HELM_REPO_NAME}/crucible"
-      fi
-
-      if helm status "$APPS_RELEASE" &>/dev/null; then
-        echo "Existing release detected; running helm upgrade"
-        helm upgrade "$APPS_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
-      else
-        echo "Release not found; running helm install"
-        helm install "$APPS_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
-      fi
-      ;;
-
-    "crucible-monitoring")
-      echo -e "\n${BLUE}${BOLD}# Deploying crucible-monitoring chart${RESET}\n"
-
-      # Use local values file if it exists
-      values_file="${SCRIPT_DIR}/crucible-monitoring.values.yaml"
-      values_flag=""
-      if [[ -f "$values_file" ]]; then
-        echo "Using local values file: ${values_file}"
-        values_flag="-f ${values_file}"
-      fi
-
-      # Determine chart source
-      if $USE_LOCAL_CHARTS; then
-        chart_ref="$CHARTS_DIR/crucible-monitoring"
-      else
-        chart_ref="${SEI_HELM_REPO_NAME}/crucible-monitoring"
-      fi
-
-      if helm status "$MONITORING_RELEASE" &>/dev/null; then
-        echo "Existing release detected; running helm upgrade"
-        helm upgrade "$MONITORING_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
-      else
-        echo "Release not found; running helm install"
-        helm install "$MONITORING_RELEASE" "$chart_ref" ${HELM_UPGRADE_FLAGS} ${values_flag}
-      fi
-      ;;
+    "crucible-infra")      deploy_infra_chart ;;
+    "crucible")            deploy_apps_chart ;;
+    "crucible-monitoring") deploy_monitoring_chart ;;
   esac
 done
 
-# Configure CoreDNS to resolve Crucible hostname
-# (This is a fallback for when crucible-infra is not in the deployment list,
-# or when deploying monitoring/other charts that also need DNS resolution)
-if [[ ! " ${CHARTS[@]} " =~ " crucible-infra " ]]; then
-  echo -e "\n${BLUE}${BOLD}# Ensuring CoreDNS has correct ingress controller IP${RESET}\n"
+# Ensure CoreDNS is configured (fallback for non-infra deployments)
+if [[ ! " ${CHARTS[*]} " =~ " crucible-infra " ]]; then
+  log_header "Ensuring CoreDNS has correct ingress controller IP"
   ensure_nodehosts_entry
 fi
 
 # Enable K8s port forwarding to allow connection to web apps from host
-echo -e "\n${BLUE}${BOLD}# Enabling port-forwarding${RESET}\n"
-# Kill any existing port-forward on 443
+log_header "Enabling port-forwarding"
 pkill -f "port-forward.*443:443" 2>/dev/null || true
-nohup kk port-forward -n default "service/${INFRA_RELEASE}-ingress-nginx-controller" "443:443" > /dev/null 2>&1 &
-
+nohup kk port-forward -n default "service/crucible-infra-ingress-nginx-controller" "443:443" > /dev/null 2>&1 &
 
 # Print URLs and credentials
 print_web_app_urls
-print_keycloak_admin_credentials
-print_pgadmin_credentials
+print_secret_credentials "Keycloak admin credentials" "crucible-keycloak-auth" "admin-password" "keycloak-admin"
+print_secret_credentials "pgAdmin credentials" "crucible-infra-pgadmin" "password" "${PGADMIN_EMAIL}"
 
-# Done
 echo -e "\n${GREEN}${BOLD}Crucible deployment complete${RESET}\n"
