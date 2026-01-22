@@ -9,17 +9,24 @@ When you run `./helm-charts/helm-deploy.sh`, the script automatically:
 2. **Creates Kubernetes secrets** from your certificate files using `kubectl`
 3. Deploys the chart which references these pre-created secrets
 
-## Files in This Directory
+## Certificate Locations
 
-- The `certs/` directory is a symlink to `.devcontainer/certs/` for backward compatibility
-- Certificates are collected from BOTH `.devcontainer/certs` (proxy/custom CAs) and `.devcontainer/dev-certs` (generated dev certs)
-- `crucible-dev.*` certificates are automatically generated in `.devcontainer/dev-certs/` when the devcontainer is created
-- Custom CA certificates (like `zscaler-ca.crt`) should be placed in `.devcontainer/certs/`
-- The CA ConfigMap will include ALL `.crt` files from both directories
+The deployment script accesses certificates directly from the `.devcontainer` directories:
 
-### Configuration Files
+- **`.devcontainer/dev-certs/`** - Development TLS certificates (`crucible-dev.crt`, `crucible-dev.key`)
+  - Automatically generated when the devcontainer is created by `.devcontainer/postcreate.sh`
+  - Used for TLS ingress on all Crucible services
+- **`.devcontainer/certs/`** - Custom CA certificates (e.g., `zscaler-ca.crt` for corporate proxies)
+  - User-provided certificates for special environments
+  - Optional, only needed if behind a corporate proxy or using custom CAs
 
-crucible-realm.json   - Keycloak realm configuration for Crucible. This is a copy of the version from `Crucible.AppHost/resources/crucible-realm.json` because App URLs need to be different between Aspire and helm.
+The CA ConfigMap (`crucible-ca-cert`) will include ALL `.crt` files from both directories.
+
+## Configuration Files
+
+- **`crucible-realm.json`** - Keycloak realm configuration for Crucible
+  - This is a copy of the version from `Crucible.AppHost/resources/crucible-realm.json`
+  - App URLs are different between Aspire and Helm deployments
 
 ## Certificate Generation
 
@@ -36,17 +43,16 @@ If you're behind a corporate proxy, place your corporate CA certificate in `.dev
 cp /path/to/corporate-ca.crt .devcontainer/certs/zscaler-ca.crt
 ```
 
-**Note:** Certificate files with `.crt` and `.key` extensions are gitignored in both directories. The `certs` symlink in this directory IS committed to git.
+**Note:** Certificate files with `.crt` and `.key` extensions are gitignored in both `.devcontainer/certs/` and `.devcontainer/dev-certs/` directories.
 
 ## Troubleshooting
 
 ### Certificates Not Found
 
-Check if certificate files are present in either directory:
+Check if certificate files are present in the certificate directories:
 ```bash
-ls -la /workspaces/crucible-development/.devcontainer/certs/
 ls -la /workspaces/crucible-development/.devcontainer/dev-certs/
-ls -la /workspaces/crucible-development/helm-charts/files/certs/
+ls -la /workspaces/crucible-development/.devcontainer/certs/
 ```
 
 ### Verify Secrets Were Created
