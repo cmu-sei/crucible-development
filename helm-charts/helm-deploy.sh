@@ -276,9 +276,10 @@ metadata:
 data:
   Corefile: |
     .:53 {
-        log
         errors
-        health { lameduck 5s }
+        health {
+           lameduck 5s
+        }
         ready
         kubernetes cluster.local in-addr.arpa ip6.arpa {
            pods insecure
@@ -286,9 +287,13 @@ data:
            ttl 30
         }
         prometheus :9153
-        hosts /etc/coredns/NodeHosts { fallthrough }
-        forward . /etc/resolv.conf { max_concurrent 1000 }
-        cache 30 { disable success cluster.local; disable denial cluster.local }
+        hosts /etc/coredns/NodeHosts {
+           fallthrough
+        }
+        forward . /etc/resolv.conf {
+           max_concurrent 1000
+        }
+        cache 30
         loop
         reload
         loadbalance
