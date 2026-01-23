@@ -23,11 +23,7 @@ builder.AddBlueprint(postgres, keycloak, launchOptions);
 builder.AddGameboard(postgres, keycloak, launchOptions);
 builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
-<<<<<<< HEAD
 builder.AddDocs(launchOptions);
-=======
-builder.AddMisp(postgres, keycloak, launchOptions);
->>>>>>> 3e0b616 (adds proxy scripts)
 
 builder.Build().Run();
 
