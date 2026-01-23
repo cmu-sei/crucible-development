@@ -12,7 +12,7 @@ set -euo pipefail
 # -----------------------------------------------------------------------------
 
 SCRIPT_NAME="${0##*/}"
-REPO_ROOT="/workspaces/crucible-development"
+REPO_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 DEFAULT_PROFILE="minikube"
 DEFAULT_TAG_SUFFIX="local-dev"
 
