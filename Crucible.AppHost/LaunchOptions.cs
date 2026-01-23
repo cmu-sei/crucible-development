@@ -16,5 +16,6 @@ public class LaunchOptions
     public bool Gameboard { get; set; } = true;
     public bool Moodle { get; set; } = false;
     public bool Lrsql { get; set; } = false;
+    public bool Misp { get; set; } = false;
     public string XdebugMode { get; set; } = "off";
 }

@@ -103,6 +103,13 @@
             "envFile": "${workspaceFolder}/.env/moodle.env"
         },
         {
+            "name": "MISP",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+            "envFile": "${workspaceFolder}/.env/misp.env"
+        },
+        {
             "name": "Moodle-Xdebug",
             "type": "dotnet",
             "request": "launch",
@@ -130,6 +137,8 @@
                 "/var/www/html/mod/crucible": "/mnt/data/crucible/moodle/mod_crucible",
                 "/var/www/html/mod/topomojo": "/mnt/data/crucible/moodle/mod_topomojo",
                 "/var/www/html/mod/groupquiz": "/mnt/data/crucible/moodle/mod_groupquiz",
+                "/var/www/html/mod/pptbook": "/mnt/data/crucible/moodle/mod_pptbook",
+                "/var/www/html/ai/placement/competency": "/mnt/data/crucible/moodle/aiplacement_competency",
                 "/var/www/html/blocks/crucible": "/mnt/data/crucible/moodle/block_crucible",
                 "/var/www/html/admin/tool/lptmanager": "/mnt/data/crucible/moodle/tool_lptmanager",
                 "/var/www/html/question/type/crucible": "/mnt/data/crucible/moodle/qtype_mojomatch",
