@@ -6,6 +6,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Switch to root for configuring image
 USER root
 
+# Remove broken Yarn repo BEFORE any feature runs
+RUN rm -f /etc/apt/sources.list.d/yarn*.list
+
 # Install man pages
 RUN yes | unminimize
 

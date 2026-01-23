@@ -19,9 +19,6 @@
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/php:1": {
-      "version": "8.3"
-    },
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
   "containerEnv": {
@@ -59,7 +56,8 @@
         "streetsidesoftware.code-spell-checker",
         "GitHub.vscode-pull-request-github",
         "shardulm94.trailing-spaces",
-        "shd101wyy.markdown-preview-enhanced"
+        "shd101wyy.markdown-preview-enhanced",
+        "xdebug.php-debug"
       ],
       "settings": {
         "editor.formatOnSave": true,
