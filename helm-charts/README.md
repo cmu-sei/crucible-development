@@ -2,6 +2,8 @@
 
 This directory contains shell scripts for deploying and managing the Crucible stack on Minikube using Helm charts.
 
+After running this script, you will have a full Crucible deployment that uses the values files in this directory and the umbrella charts for [crucible](https://github.com/cmu-sei/helm-charts/tree/main/charts/crucible), [crucible-infra](https://github.com/cmu-sei/helm-charts/tree/main/charts/crucible-infra), and [crucible-monitoring](https://github.com/cmu-sei/helm-charts/tree/main/charts/crucible-monitoring). The script will print URLs to access all of the web applications that are running in Minikube and configure port-forwarding to support browsing those sites from your host. **You will need to configure a hosts file entry on your host in order to browse the sites - configure the `crucible` hostname to resolve to `127.0.0.1` to allow the port-forwarding to handle traffic direction to the minikube ingress.**
+
 ## Scripts Overview
 
 ### helm-deploy.sh
