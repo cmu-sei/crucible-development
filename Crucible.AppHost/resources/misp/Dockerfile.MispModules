@@ -1,22 +1,27 @@
 # Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 # Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
-FROM ghcr.io/misp/misp-modules:latest
+FROM coolacid/misp-docker:modules-latest
 
 USER root
+
+# Install custom CA certificates (for corporate proxies like Zscaler)
+COPY ZscalerRootCertificate-2048-SHA256.crt /usr/local/share/ca-certificates/
+RUN update-ca-certificates
+
+# Install OpenGL libraries required by cv2/qrcode module
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install any additional dependencies for the custom module
 COPY requirements.txt /tmp/custom-requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/custom-requirements.txt || true
 
-# Create the expansion modules directory if it doesn't exist
-RUN mkdir -p /usr/local/src/misp-modules/misp_modules/modules/expansion/moodle
-
-# Switch back to the misp user
-USER misp
-
-# The custom module will be mounted at runtime via bind mount
+# The custom moodle module will be mounted at runtime via bind mount as moodle.py
 # Expose the default misp-modules port
 EXPOSE 6666
 
-CMD ["misp-modules", "-l", "0.0.0.0"]
+# Use just the arguments, not the full command (entrypoint already has misp-modules)
+CMD ["-l", "0.0.0.0"]

@@ -640,6 +640,7 @@ public static class BuilderExtensions
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
+            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("moodle")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
             .WithHttpHealthCheck(endpointName: "http")
@@ -701,6 +702,11 @@ public static class BuilderExtensions
     {
         if (!options.Misp) return;
 
+        // Redis for MISP background jobs
+        var mispRedis = builder.AddRedis("misp-redis")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("misp-redis");
+
         // MySQL for MISP (MISP requires MySQL/MariaDB, not PostgreSQL)
         var mispMysql = builder.AddMySql("misp-mysql")
             .WithLifetime(ContainerLifetime.Persistent)
@@ -709,36 +715,40 @@ public static class BuilderExtensions
 
         var mispDb = mispMysql.AddDatabase("mispDb", "misp");
 
-        // Redis for MISP
-        var redis = builder.AddRedis("misp-redis")
+        // MISP Core application with custom fast-startup image
+        var misp = builder.AddContainer("misp", "misp-custom-image")
+            .WithDockerfile("./resources/misp", "Dockerfile.MispCustom")
             .WithLifetime(ContainerLifetime.Persistent)
-            .WithContainerName("misp-redis");
-
-        // MISP Core application
-        var misp = builder.AddContainer("misp", "coolacid/misp-docker", "core-latest")
-            .WaitFor(mispMysql)
-            .WaitFor(redis)
             .WithContainerName("misp")
-            .WithHttpEndpoint(port: 8082, targetPort: 80)
-            .WithHttpsEndpoint(port: 8443, targetPort: 443)
+            .WaitFor(mispMysql)
+            .WaitFor(mispRedis)
+            .WithHttpEndpoint(port: 8082, targetPort: 80, name: "http", isProxied: false)
+            .WithHttpHealthCheck(endpointName: "http", path: "/users/login")
+            .WithEnvironment("INIT", "true")
+            .WithEnvironment("DISABLE_SSL", "true")
             .WithEnvironment("MYSQL_HOST", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("MYSQL_DATABASE", mispDb.Resource.DatabaseName)
             .WithEnvironment("MYSQL_USER", "root")
             .WithEnvironment("MYSQL_PASSWORD", mispMysql.Resource.PasswordParameter)
             .WithEnvironment("MYSQL_PORT", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
-            .WithEnvironment("REDIS_FQDN", "misp-redis")
-            .WithEnvironment("HOSTNAME", "https://localhost:8082")
+            .WithEnvironment("REDIS_FQDN", mispRedis.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("REDIS_PW", mispRedis.Resource.PasswordParameter)
+            .WithEnvironment("HOSTNAME", "http://localhost:8082")
             .WithEnvironment("MISP_ADMIN_EMAIL", "admin@admin.test")
             .WithEnvironment("MISP_ADMIN_PASSPHRASE", "admin")
-            .WithEnvironment("MISP_BASEURL", "https://localhost:8082")
-            .WithEnvironment("TIMEZONE", "UTC");
+            .WithEnvironment("MISP_BASEURL", "http://localhost:8082")
+            .WithEnvironment("TIMEZONE", "UTC")
+            .WithEnvironment("CRON_USER_ID", "1")
+            .WithEnvironment("USERID", "33")
+            .WithEnvironment("GROUPID", "33");
 
         // MISP modules with custom module mounted
         var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
             .WithDockerfile("./resources/misp", "Dockerfile.MispModules")
+            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-modules")
-            .WithHttpEndpoint(port: 6666, targetPort: 6666)
-            .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle", "/usr/local/src/misp-modules/misp_modules/modules/expansion/moodle", isReadOnly: true);
+            .WithHttpEndpoint(port: 8666, targetPort: 6666, isProxied: false)
+            .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle/misp_module.py", "/usr/local/lib/python3.9/site-packages/misp_modules/modules/expansion/moodle.py", isReadOnly: false);
     }
 
     private static void ConfigureApiSecrets(
