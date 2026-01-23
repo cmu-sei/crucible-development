@@ -23,7 +23,11 @@ builder.AddBlueprint(postgres, keycloak, launchOptions);
 builder.AddGameboard(postgres, keycloak, launchOptions);
 builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
+<<<<<<< HEAD
 builder.AddDocs(launchOptions);
+=======
+builder.AddMisp(postgres, keycloak, launchOptions);
+>>>>>>> 3e0b616 (adds proxy scripts)
 
 builder.Build().Run();
 
@@ -663,6 +667,7 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/mod_topomojo", "/var/www/html/mod/topomojo", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/qtype_mojomatch", "/var/www/html/question/type/mojomatch", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/qbehaviour_mojomatch", "/var/www/html/question/behaviour/mojomatch", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/mod_pptbook", "/var/www/html/mod/pptbook", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true);
     }
 
@@ -690,6 +695,50 @@ public static class BuilderExtensions
             .WithEnvironment("LRSQL_DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("LRSQL_DB_PORT", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
             .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
+    }
+
+    public static void AddMisp(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        if (!options.Misp) return;
+
+        // MySQL for MISP (MISP requires MySQL/MariaDB, not PostgreSQL)
+        var mispMysql = builder.AddMySql("misp-mysql")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("misp-mysql")
+            .WithDataVolume();
+
+        var mispDb = mispMysql.AddDatabase("mispDb", "misp");
+
+        // Redis for MISP
+        var redis = builder.AddRedis("misp-redis")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("misp-redis");
+
+        // MISP Core application
+        var misp = builder.AddContainer("misp", "coolacid/misp-docker", "core-latest")
+            .WaitFor(mispMysql)
+            .WaitFor(redis)
+            .WithContainerName("misp")
+            .WithHttpEndpoint(port: 8082, targetPort: 80)
+            .WithHttpsEndpoint(port: 8443, targetPort: 443)
+            .WithEnvironment("MYSQL_HOST", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("MYSQL_DATABASE", mispDb.Resource.DatabaseName)
+            .WithEnvironment("MYSQL_USER", "root")
+            .WithEnvironment("MYSQL_PASSWORD", mispMysql.Resource.PasswordParameter)
+            .WithEnvironment("MYSQL_PORT", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
+            .WithEnvironment("REDIS_FQDN", "misp-redis")
+            .WithEnvironment("HOSTNAME", "https://localhost:8082")
+            .WithEnvironment("MISP_ADMIN_EMAIL", "admin@admin.test")
+            .WithEnvironment("MISP_ADMIN_PASSPHRASE", "admin")
+            .WithEnvironment("MISP_BASEURL", "https://localhost:8082")
+            .WithEnvironment("TIMEZONE", "UTC");
+
+        // MISP modules with custom module mounted
+        var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
+            .WithDockerfile("./resources/misp", "Dockerfile.MispModules")
+            .WithContainerName("misp-modules")
+            .WithHttpEndpoint(port: 6666, targetPort: 6666)
+            .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle", "/usr/local/src/misp-modules/misp_modules/modules/expansion/moodle", isReadOnly: true);
     }
 
     private static void ConfigureApiSecrets(
