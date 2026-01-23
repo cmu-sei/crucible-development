@@ -172,6 +172,23 @@
         {
           "name": "tool_lptmanager",
           "url": "https://github.com/cmu-sei/moodle-tool_lptmanager"
+        },
+        {
+          "name": "mod_pptbook",
+          "url": "https://github.com/sei-awelle/moodle-mod_pptbook"
+        },
+        {
+          "name": "aiplacement_competency",
+          "url": "https://github.com/sei-npacheco/moodle-aiplacement_competency"
+        }
+      ]
+    },
+    {
+      "name": "misp",
+      "repos": [
+        {
+          "name": "misp-module-moodle",
+          "url": "ssh://git@code.sei.cmu.edu:7999/~arwelle/misp-module-moodle.git"
         }
       ]
     }
