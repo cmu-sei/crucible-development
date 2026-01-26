@@ -12,4 +12,8 @@ if [[ "$HOST_STATE" == "Running" && "$KUBELET_STATE" == "Running" && "$APISERVER
 else
     echo "minikube is not running. Starting now..."
     minikube start --mount-string="/mnt/data/terraform:/mnt/data/terraform" --embed-certs
+
+    echo "Configuring kubelet for parallel image pulls..."
+    minikube ssh "sudo sed -i 's/serializeImagePulls: true/serializeImagePulls: false/' /var/lib/kubelet/config.yaml || echo 'serializeImagePulls: false' | sudo tee -a /var/lib/kubelet/config.yaml"
+    minikube ssh "sudo systemctl restart kubelet"
 fi

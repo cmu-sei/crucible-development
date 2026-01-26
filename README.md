@@ -19,13 +19,13 @@ If you're on a Windows machine, Docker's consumption of your host machine's memo
 - Memory Limit: 16GB
 - Disk Usage Limit: 120GB
 
-### Zscaler
-
-The dev container is designed to work with Zscaler. You will need to copy the required certs into the **.devcontainer/certs** folder.
-
 ### Custom Certificates
 
-For details on how to add root CA certificates (including Zscaler and any development CAs), see the [Custom Certs Docs](.devcontainer/certs/README.md).
+For details on how to add root CA certificates (including Zscaler), see the [Custom Certs Docs](.devcontainer/certs/README.md).
+
+#### Development Certificates
+
+Development certificates, including a CA, are generated at container build time via the `postcreate.sh` script. These certificates are git ignored and placed in the `.devcontainer/dev-certs` directory.
 
 ## Claude Code
 
