@@ -6,6 +6,11 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Switch to root for configuring image
 USER root
 
+# Add new Yarn GPG key
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /etc/apt/keyrings/yarn.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
+
 # Install man pages
 RUN yes | unminimize
 
