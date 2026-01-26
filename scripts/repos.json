@@ -32,6 +32,10 @@
         {
           "name": "crucible-common-dotnet",
           "url": "https://github.com/cmu-sei/crucible-common-dotnet"
+        },
+        {
+          "name": "Crucible.Common.Ui",
+          "url": "https://github.com/cmu-sei/Crucible.Common.Ui"
         }
       ]
     },
@@ -168,6 +172,10 @@
         {
           "name": "tool_lptmanager",
           "url": "https://github.com/cmu-sei/moodle-tool_lptmanager"
+        },
+        {
+          "name": "misp-module-moodle",
+          "url": "https://arwelle@code.sei.cmu.edu/bitbucket/scm/~arwelle/misp-module-moodle.git"
         }
       ]
     }

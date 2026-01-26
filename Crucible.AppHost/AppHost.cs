@@ -411,7 +411,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "cite.admin")
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
-            .WithEnvironment("ResourceOwnerAuthorization__Scope", "openid profile email cite gallery")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "openid profile email gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
