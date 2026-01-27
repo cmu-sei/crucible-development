@@ -41,8 +41,8 @@
     "source=crucible-dev-shell-history,target=/home/vscode/.history,type=volume",
     // AWS credentials for Claude Code (optional)
     "source=${localWorkspaceFolder}/.devcontainer/.aws,target=/home/vscode/.aws,type=bind,readonly",
-    // Claude Code History
-    "source=crucible-dev-claude-history,target=/home/vscode/.claude/projects/-workspaces-crucible-development,type=volume"
+    // Claude Code data (sessions, history, todos, etc.)
+    "source=crucible-dev-claude,target=/home/vscode/.claude,type=volume"
   ],
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
