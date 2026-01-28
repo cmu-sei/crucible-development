@@ -12,8 +12,7 @@ sudo chown -R $(whoami): /home/vscode/.claude
 scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
 
-dotnet tool install -g Aspire.Cli
-# Install dotnet-ef globally
+curl -sSL https://aspire.dev/install.sh | bash
 dotnet tool install --global dotnet-ef --version 10
 dotnet dev-certs https --trust
 

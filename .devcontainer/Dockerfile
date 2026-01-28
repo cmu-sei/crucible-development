@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/dotnet:10.0-noble
+FROM mcr.microsoft.com/devcontainers/dotnet:2.0.3-10.0-noble
 
 ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive

@@ -1,9 +1,6 @@
 {
   "name": "Crucible Development",
-  "runArgs": [
-    "--name",
-    "crucible-dev"
-  ],
+  "runArgs": ["--name", "crucible-dev"],
   "build": {
     "dockerfile": "Dockerfile"
   },
@@ -55,14 +52,15 @@
       "extensions": [
         "ms-dotnettools.csdevkit",
         "ms-dotnettools.csharp",
-        "microsoft-aspire.aspire-vscode@prerelease", // no official release yet, so have to specify pre-release version
+        "microsoft-aspire.aspire-vscode",
         "esbenp.prettier-vscode",
         "angular.ng-template",
         "DavidAnson.vscode-markdownlint",
         "streetsidesoftware.code-spell-checker",
         "GitHub.vscode-pull-request-github",
         "shardulm94.trailing-spaces",
-        "shd101wyy.markdown-preview-enhanced"
+        "shd101wyy.markdown-preview-enhanced",
+        "pflannery.vscode-versionlens"
       ],
       "settings": {
         "editor.formatOnSave": true,

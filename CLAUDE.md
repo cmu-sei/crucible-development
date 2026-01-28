@@ -34,47 +34,6 @@ This is a **meta-repository** that orchestrates 30+ external repositories cloned
 | Moodle | LMS integration | 8081 |
 | LRsql | Learning Record Store (xAPI) | 9274 |
 
-### Service Configuration
-Services are controlled via environment files in `.env/` directory and `LaunchOptions` class. Environment files use `Launch__<ServiceName>=true/false` pattern (e.g., `Launch__Player=true`). Each service can be individually toggled without rebuilding.
-
-## Common Commands
-
-### Building
-```bash
-dotnet build Crucible.slnx
-dotnet publish Crucible.slnx
-```
-
-### Running Services
-Use VS Code's Run and Debug panel with launch configurations. Each configuration uses a corresponding `.env/<name>.env` file:
-- **Default** - All default services (excluding Moodle/LRsql)
-- **Exercise**, **TTX** - Specific service combinations
-- **Service-specific** - Player, Caster, Alloy, TopoMojo, Steamfitter, CITE, Gallery, Blueprint, Gameboard
-- **Moodle** - Runs Moodle without xdebug
-- **Moodle Debug** - Compound task that runs Moodle with xdebug enabled (starts both Moodle-Xdebug and Xdebug configurations)
-- **Lrsql** - Runs Learning Record Store
-
-### Database Operations
-```bash
-# Seed/restore database (example: blueprint)
-docker cp blueprint.dump crucible-postgres:/tmp/blueprint.dump
-docker exec -it crucible-postgres /bin/bash
-/usr/lib/postgresql/17/bin/psql --username=postgres blueprint < /tmp/blueprint.dump
-
-# Backup database
-docker exec -it crucible-postgres /bin/bash
-pg_dump -U postgres blueprint > /tmp/blueprint.dump
-exit
-docker cp crucible-postgres:/tmp/blueprint.dump blueprint.dump
-```
-
-### Global Tools
-```bash
-dotnet tool install -g Aspire.Cli
-dotnet tool install --global dotnet-ef --version 10
-npm install -g @angular/cli@latest
-```
-
 ## Development Patterns
 
 ### Adding New Services
@@ -90,13 +49,6 @@ npm install -g @angular/cli@latest
 4. Update `scripts/xdebug_filter.sh`
 5. For additional paths: also update `Dockerfile.MoodleCustom`, `add-moodle-mounts.sh`, `pre_configure.sh`
 
-### Service Dependencies Pattern
-All services follow this pattern in `AppHost.cs`:
-- `.WaitFor(postgres)` - Wait for database
-- `.WaitFor(keycloak)` - Wait for identity provider
-- `.WithReference(db, "PostgreSQL")` - Database connection
-- `.WithExplicitStart()` - Service won't auto-start
-
 ## Key Files
 
 - `Crucible.AppHost/AppHost.cs` - Main service orchestration logic
@@ -107,44 +59,36 @@ All services follow this pattern in `AppHost.cs`:
 - `.env/*.env` - Environment configurations for different launch profiles
 - `Crucible.AppHost/resources/` - UI configuration files and Keycloak realm
 
-## Requirements
+## General recommendations for working with Aspire
 
-### License Headers
-All source files require MIT (SEI)-style copyright headers. Enforced by GitHub Actions on PRs.
+1. Before making any changes always run the apphost using `aspire run` and inspect the state of resources to make sure you are building from a known state.
+2. Changes to the _AppHost.cs_ file will require a restart of the application to take effect.
+3. Make changes incrementally and run the aspire application using the `aspire run` command to validate changes.
+4. Use the Aspire MCP tools to check the status of resources and debug issues.
 
-```csharp
-// Copyright 2025 Carnegie Mellon University. All Rights Reserved.
-// Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
-```
+## Checking resources
+To check the status of resources defined in the app model use the _list resources_ tool. This will show you the current state of each resource and if there are any issues. If a resource is not running as expected you can use the _execute resource command_ tool to restart it or perform other actions.
 
-### Docker Resources
-- Memory: 16GB minimum
-- Disk: 120GB minimum
+## Listing integrations
+IMPORTANT! When a user asks you to add a resource to the app model you should first use the _list integrations_ tool to get a list of the current versions of all the available integrations. You should try to use the version of the integration which aligns with the version of the Aspire.AppHost.Sdk. Some integration versions may have a preview suffix. Once you have identified the correct integration you should always use the _get integration docs_ tool to fetch the latest documentation for the integration and follow the links to get additional guidance.
 
-### Custom Certificates
-For corporate proxy environments (Zscaler), place certificates in `.devcontainer/certs/`. See `.devcontainer/certs/README.md`.
+## Debugging issues
+IMPORTANT! Aspire is designed to capture rich logs and telemetry for all resources defined in the app model. Use the following diagnostic tools when debugging issues with the application before making changes to make sure you are focusing on the right things.
 
-## Moodle Development
+1. _list structured logs_; use this tool to get details about structured logs.
+2. _list console logs_; use this tool to get details about console logs.
+3. _list traces_; use this tool to get details about traces.
+4. _list trace structured logs_; use this tool to get logs related to a trace
 
-### OAuth Setup
-After first Moodle start:
-1. Login with oauth admin user to create account in Moodle
-2. Make oauth admin a site admin (either via local admin UI or restart Moodle container - it auto-adds oauth admin on restart)
-3. Login as oauth admin, go to Site Administration > Server > OAuth server settings and connect the system account
+## Playwright MCP server
+The playwright MCP server has also been configured in this repository and you should use it to perform functional investigations of the resources defined in the app model as you work on the codebase. To get endpoints that can be used for navigation using the playwright MCP server use the list resources tool.
 
-### Xdebug
-- Control xdebug mode via `Launch__XdebugMode` in env files (values: `off`, `debug`, `coverage`, etc.)
-- **Warning**: PHP will pause execution after "Upgrading config.php..." if xdebug is enabled but VS Code debugger isn't running
-- Xdebug listens on port 9003; ensure the Xdebug launch config is running before starting Moodle with xdebug enabled
-- Debug display in browser: use `tool_userdebug` plugin icon (left of user avatar)
+## Aspire workload
+IMPORTANT! The aspire workload is obsolete. You should never attempt to install or use the Aspire workload.
 
-### Plugin Configuration
-- **Crucible Plugin**: Requires oauth configured, service account connected, and user logged in via oauth
-- **TopoMojo Plugin**: Generate API key in TopoMojo UI and add to Moodle plugin config or `post_configure.sh`
-- **Additional Official Plugins**: Add to `PLUGINS` environment variable in `AppHost.cs`
+## Official documentation
+IMPORTANT! Always prefer official documentation when available. The following sites contain the official documentation for Aspire and related components
 
-## Troubleshooting
-
-- **Aspire resources exit with no log**: Run `docker ps -a` to see stopped containers and error codes
-- **npm install issues on ARM**: May need additional OS packages; run `npm i` manually to see errors
-- **C# extension fails in container**: Reinstall extensions listed in `devcontainer.json`
+1. https://aspire.dev
+2. https://learn.microsoft.com/dotnet/aspire
+3. https://nuget.org (for specific integration package details)
