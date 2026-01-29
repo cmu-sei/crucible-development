@@ -67,6 +67,10 @@ nunit-*.xml
 Crucible.AppHost/resources/moodle/certs/*.crt
 Crucible.AppHost/resources/moodle/certs/*.key
 
+# misp certs
+Crucible.AppHost/resources/misp/certs/*.crt
+Crucible.AppHost/resources/misp/certs/*.key
+
 # db dumps to restore into postgres
 db-dumps/
 
