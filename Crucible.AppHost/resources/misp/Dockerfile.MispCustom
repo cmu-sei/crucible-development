@@ -6,5 +6,4 @@ FROM ghcr.io/misp/misp-docker/misp-core:v2.5.2
 
 # Add Zscaler root certificate for corporate proxy/SSL inspection
 COPY ZscalerRootCertificate-2048-SHA256.crt /usr/local/share/ca-certificates/
-RUN update-ca-certificates && \
-    cat /usr/local/share/ca-certificates/ZscalerRootCertificate-2048-SHA256.crt >> /var/www/MISP/app/Lib/cakephp/lib/Cake/Config/cacert.pem
+
