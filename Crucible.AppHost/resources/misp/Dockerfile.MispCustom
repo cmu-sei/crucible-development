@@ -1,55 +1,10 @@
 # Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 # Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
-FROM coolacid/misp-docker:core-latest
+# Use the official MISP Docker image
+FROM ghcr.io/misp/misp-docker/misp-core:v2.5.2
 
-USER root
-
-# Install custom CA certificates (for corporate proxies like Zscaler)
-# Note: Certificate file must be present in build context (resources/misp/)
+# Add Zscaler root certificate for corporate proxy/SSL inspection
 COPY ZscalerRootCertificate-2048-SHA256.crt /usr/local/share/ca-certificates/
-RUN update-ca-certificates
-
-# Append Zscaler cert to MISP's internal CA bundle (used by CakePHP HttpSocket)
-RUN cat /usr/local/share/ca-certificates/ZscalerRootCertificate-2048-SHA256.crt >> /var/www/MISP/app/Lib/cakephp/lib/Cake/Config/cacert.pem
-
-# Create symlink for PHP's default cert location
-RUN ln -sf /etc/ssl/certs/ca-certificates.crt /usr/lib/ssl/cert.pem
-
-# Pre-set ownership during build (this takes time during build, but only once)
-RUN chown -R www-data:www-data /var/www/MISP
-
-# Patch the entrypoint script to skip the slow recursive chown at runtime
-# We replace the slow "find ... -exec chown" with a fast targeted chown
-RUN sed -i 's|find /var/www/MISP -not -user www-data -exec chown www-data.www-data {} +|echo "Skipping slow chown - already done during build"|g' /entrypoint_nginx.sh || true
-
-# Also comment out the main chown line if it exists
-RUN sed -i 's|^\(\s*\)chown -R www-data.www-data /var/www/MISP|\1# Skipped: chown -R www-data.www-data /var/www/MISP (done at build time)|g' /entrypoint_nginx.sh || true
-
-# Add a targeted chown for config files right after chmod 600 to fix permissions
-# This ensures config files created during init are readable by www-data
-RUN sed -i '/chmod 600.*Config.*config\.php/a chown www-data.www-data /var/www/MISP/app/Config/config.php /var/www/MISP/app/Config/database.php /var/www/MISP/app/Config/email.php 2>/dev/null || true' /entrypoint_nginx.sh || true
-
-# Fix tmp directory permissions - add chown after the g+ws chmod commands
-# This ensures www-data can write to cache and logs
-RUN sed -i '/chmod -R g+ws \/var\/www\/MISP\/app\/tmp /a chown -R www-data.www-data /var/www/MISP/app/tmp' /entrypoint_nginx.sh || true
-
-# Create a custom entrypoint hook that disables SSL redirect
-# The entrypoint script automatically runs /custom-entrypoint.sh if it exists
-RUN echo '#!/bin/bash\nrm -f /etc/nginx/sites-enabled/misp80\nln -s /etc/nginx/sites-available/misp80-noredir /etc/nginx/sites-enabled/misp80' > /custom-entrypoint.sh && chmod +x /custom-entrypoint.sh
-
-# Add Redis password support to the entrypoint
-# This patches the setup_cake_config function to also configure Redis password
-RUN sed -i '/setup_cake_config(){/a \    if [ ! -z "$REDIS_PW" ]; then\n        sed -i "s/=> null.*Redis password/=> '"'"'$REDIS_PW'"'"'\\t\\t\\t\\/\\/ Redis password/" "/var/www/MISP/app/Plugin/CakeResque/Config/config.php"\n    fi' /entrypoint_nginx.sh || true
-
-# Add Redis password configuration to init_misp_config
-# This ensures MISP.redis_password is set if REDIS_PW is provided
-RUN sed -i '/setSetting "MISP.redis_host"/a \    [ ! -z "$REDIS_PW" ] && /var/www/MISP/app/Console/cake Admin setSetting "MISP.redis_password" "$REDIS_PW"' /entrypoint_nginx.sh || true
-
-# Copy custom MITRE ATT&CK tooltip files
-COPY custom-mitre-tooltip.js /var/www/MISP/app/webroot/js/custom-mitre-tooltip.js
-COPY custom-mitre-tooltip.css /var/www/MISP/app/webroot/css/custom-mitre-tooltip.css
-
-# Inject custom JavaScript and CSS into MISP's base layout
-# This adds our MITRE tooltip functionality to all MISP pages
-RUN sed -i '/<\/head>/i \    <!-- Custom MITRE ATT\&CK Moodle Integration -->\n    <link rel="stylesheet" href="\/js\/..\/css\/custom-mitre-tooltip.css">\n    <script src="\/js\/custom-mitre-tooltip.js"><\/script>' /var/www/MISP/app/View/Layouts/default.ctp || true
+RUN update-ca-certificates && \
+    cat /usr/local/share/ca-certificates/ZscalerRootCertificate-2048-SHA256.crt >> /var/www/MISP/app/Lib/cakephp/lib/Cake/Config/cacert.pem
