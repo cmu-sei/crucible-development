@@ -723,24 +723,29 @@ public static class BuilderExtensions
             .WaitFor(mispMysql)
             .WaitFor(mispRedis)
             .WithHttpEndpoint(port: 8082, targetPort: 80, name: "http", isProxied: false)
-            .WithHttpHealthCheck(endpointName: "http", path: "/users/login")
+            .WithHttpsEndpoint(port: 8444, targetPort: 443, name: "https", isProxied: false)
             .WithEnvironment("INIT", "true")
-            .WithEnvironment("DISABLE_SSL", "true")
             .WithEnvironment("MYSQL_HOST", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("MYSQL_DATABASE", mispDb.Resource.DatabaseName)
             .WithEnvironment("MYSQL_USER", "root")
             .WithEnvironment("MYSQL_PASSWORD", mispMysql.Resource.PasswordParameter)
             .WithEnvironment("MYSQL_PORT", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
-            .WithEnvironment("REDIS_FQDN", mispRedis.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
-            .WithEnvironment("REDIS_PW", mispRedis.Resource.PasswordParameter)
-            .WithEnvironment("HOSTNAME", "http://localhost:8082")
+            .WithEnvironment("REDIS_HOST", mispRedis.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("REDIS_PASSWORD", mispRedis.Resource.PasswordParameter)
+            .WithEnvironment("HOSTNAME", "https://localhost:8444")
             .WithEnvironment("MISP_ADMIN_EMAIL", "admin@admin.test")
             .WithEnvironment("MISP_ADMIN_PASSPHRASE", "admin")
-            .WithEnvironment("MISP_BASEURL", "http://localhost:8082")
+            .WithEnvironment("MISP_BASEURL", "https://localhost:8444")
             .WithEnvironment("TIMEZONE", "UTC")
             .WithEnvironment("CRON_USER_ID", "1")
             .WithEnvironment("USERID", "33")
             .WithEnvironment("GROUPID", "33");
+
+        // Configure MISP with Moodle URL for integration
+        // Default: http://localhost:8081 (set in Dockerfile.MispCustom)
+        // Override by setting MOODLE_URL environment variable in .env file
+        var moodleUrl = builder.Configuration["MOODLE_URL"] ?? "http://localhost:8081";
+        misp.WithEnvironment("MOODLE_URL", moodleUrl);
 
         // MISP modules with custom module mounted
         var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
