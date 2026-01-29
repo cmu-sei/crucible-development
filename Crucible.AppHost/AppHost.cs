@@ -664,7 +664,6 @@ public static class BuilderExtensions
             .WithContainerName("misp")
             .WaitFor(mispMysql)
             .WaitFor(mispRedis)
-            .WithHttpEndpoint(port: 8082, targetPort: 80, name: "http", isProxied: false)
             .WithHttpsEndpoint(port: 8444, targetPort: 443, name: "https", isProxied: false)
             .WithEnvironment("INIT", "true")
             .WithEnvironment("MYSQL_HOST", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
@@ -677,7 +676,7 @@ public static class BuilderExtensions
             .WithEnvironment("HOSTNAME", "https://localhost:8444")
             .WithEnvironment("MISP_ADMIN_EMAIL", "admin@admin.test")
             .WithEnvironment("MISP_ADMIN_PASSPHRASE", "admin")
-            .WithEnvironment("MISP_BASEURL", "https://localhost:8444")
+            .WithEnvironment("BASE_URL", "https://localhost:8444")
             .WithEnvironment("TIMEZONE", "UTC")
             .WithEnvironment("CRON_USER_ID", "1")
             .WithEnvironment("USERID", "33")
@@ -695,7 +694,7 @@ public static class BuilderExtensions
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-modules")
             .WithHttpEndpoint(port: 8666, targetPort: 6666, isProxied: false)
-            .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle/misp_module.py", "/usr/local/lib/python3.9/site-packages/misp_modules/modules/expansion/moodle.py", isReadOnly: false);
+            .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle/misp_module.py", "/usr/local/lib/python3.9/site-packages/misp_modules/modules/action_mod/moodle.py", isReadOnly: false);
     }
 
     private static void ConfigureApiSecrets(
