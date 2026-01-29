@@ -6,7 +6,7 @@ FROM coolacid/misp-docker:modules-latest
 USER root
 
 # Install custom CA certificates (for corporate proxies like Zscaler)
-COPY ZscalerRootCertificate-2048-SHA256.crt /usr/local/share/ca-certificates/
+COPY certs/ZscalerRootCertificate-2048-SHA256.crt /usr/local/share/ca-certificates/
 RUN update-ca-certificates
 
 # Install OpenGL libraries required by cv2/qrcode module

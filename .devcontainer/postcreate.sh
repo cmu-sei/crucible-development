@@ -67,6 +67,9 @@ if compgen -G "${CUSTOM_CERT_SOURCE}"'/*.crt' > /dev/null; then
   mkdir -p "${MOODLE_CERT_DEST}"
   cp "${CUSTOM_CERT_SOURCE}"/*.crt "${MOODLE_CERT_DEST}/"
   echo "Copied custom CA certificates to ${MOODLE_CERT_DEST}"
+  mkdir -p "${MISP_CERT_DEST}"
+  cp "${CUSTOM_CERT_SOURCE}"/*.crt "${MISP_CERT_DEST}/"
+  echo "Copied custom CA certificates to ${MISP_CERT_DEST}"
 else
   echo "No custom CA certificates found in ${CUSTOM_CERT_SOURCE}; skipping copy."
 fi
