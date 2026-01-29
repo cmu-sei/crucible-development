@@ -5,5 +5,5 @@
 FROM ghcr.io/misp/misp-docker/misp-core:v2.5.2
 
 # Add Zscaler root certificate for corporate proxy/SSL inspection
-COPY ZscalerRootCertificate-2048-SHA256.crt /usr/local/share/ca-certificates/
+COPY certs/ZscalerRootCertificate-2048-SHA256.crt /usr/local/share/ca-certificates/
 
