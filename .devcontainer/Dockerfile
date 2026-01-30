@@ -72,3 +72,6 @@ EOF
 
 # Switch back to vscode user
 USER vscode
+
+# Install Claude Code using native installer
+RUN curl -fsSL https://claude.ai/install.sh | bash
