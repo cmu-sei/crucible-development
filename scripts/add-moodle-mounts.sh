@@ -6,6 +6,7 @@ DIRS=(
     "/mnt/data/crucible/moodle/moodle-core/theme"
     "/mnt/data/crucible/moodle/moodle-core/lib"
     "/mnt/data/crucible/moodle/moodle-core/admin/cli"
+    "/mnt/data/crucible/moodle/moodle-core/ai/provider"
 )
 
 # Loop through the array to create directories and set permissions

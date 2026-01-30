@@ -81,6 +81,7 @@ for entry in $PLUGINS; do
     qformat) target="/var/www/html/question/format/$plugin_subdir" ;;
     editor) target="/var/www/html/lib/editor/$plugin_subdir" ;;
     atto) target="/var/www/html/lib/editor/atto/plugins/$plugin_subdir" ;;
+    tiny) target="/var/www/html/lib/editor/tiny/plugins/$plugin_subdir" ;;
     tinymce) target="/var/www/html/lib/editor/tinymce/plugins/$plugin_subdir" ;;
     availability) target="/var/www/html/availability/condition/$plugin_subdir" ;;
     datafield) target="/var/www/html/mod/data/field/$plugin_subdir" ;;
@@ -92,6 +93,7 @@ for entry in $PLUGINS; do
     customfield) target="/var/www/html/customfield/field/$plugin_subdir" ;;
     paymentgateway) target="/var/www/html/payment/gateway/$plugin_subdir" ;;
     analytics) target="/var/www/html/analytics/indicator/$plugin_subdir" ;;
+    aiprovider) target="/var/www/html/ai/provider/$plugin_subdir" ;;
     cachelock) target="/var/www/html/cache/lock/$plugin_subdir" ;;
     cachestore) target="/var/www/html/cache/stores/$plugin_subdir" ;;
     coresearch) target="/var/www/html/search/engine/$plugin_subdir" ;;
