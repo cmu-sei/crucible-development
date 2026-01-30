@@ -20,8 +20,7 @@
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/php:1": {
       "version": "8.3"
-    },
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+    }
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.
@@ -60,14 +59,18 @@
         "GitHub.vscode-pull-request-github",
         "shardulm94.trailing-spaces",
         "shd101wyy.markdown-preview-enhanced",
-        "pflannery.vscode-versionlens"
+        "pflannery.vscode-versionlens",
+        "Anthropic.claude-code"
       ],
       "settings": {
         "editor.formatOnSave": true,
         "files.insertFinalNewline": true,
         "files.eol": "\n",
         "files.trimTrailingWhitespace": true,
-        "npm.packageManager": "npm"
+        "npm.packageManager": "npm",
+        "workbench.view.showQuietly": {
+          "workbench.panel.output": true // suppress C# Dev Kit output during dev container build
+        }
       }
     }
   }
