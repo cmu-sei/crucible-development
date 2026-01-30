@@ -302,6 +302,8 @@
                 "/var/www/html/theme": "/mnt/data/crucible/moodle/moodle-core/theme",
                 "/var/www/html/lib": "/mnt/data/crucible/moodle/moodle-core/lib",
                 "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/moodle-core/admin/cli",
+                "/var/www/html/ai/provider": "/mnt/data/crucible/moodle/moodle-core/ai/provider",
+                "/var/www/html/ai/classes": "/mnt/data/crucible/moodle/moodle-core/ai/classes",
                 "/var/www/html/mod/crucible": "/mnt/data/crucible/moodle/mod_crucible",
                 "/var/www/html/mod/topomojo": "/mnt/data/crucible/moodle/mod_topomojo",
                 "/var/www/html/mod/groupquiz": "/mnt/data/crucible/moodle/mod_groupquiz",
@@ -309,13 +311,14 @@
                 "/var/www/html/ai/placement/competency": "/mnt/data/crucible/moodle/aiplacement_competency",
                 "/var/www/html/blocks/crucible": "/mnt/data/crucible/moodle/block_crucible",
                 "/var/www/html/admin/tool/lptmanager": "/mnt/data/crucible/moodle/tool_lptmanager",
+                "/var/www/html/local/tagmanager": "/mnt/data/crucible/moodle/local_tagmanager",
                 "/var/www/html/question/type/crucible": "/mnt/data/crucible/moodle/qtype_mojomatch",
                 "/var/www/html/question/behaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch"
             },
                 "presentation": {
                     "hidden": true
                 }
->>>>>>> 3e0b616 (adds proxy scripts)
+>>>>>>> 633e803 (adds more moodle mounts)
         }
       },
       "presentation": {

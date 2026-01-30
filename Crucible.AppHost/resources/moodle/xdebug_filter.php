@@ -14,6 +14,7 @@ $includePaths = [
     "/var/www/html/ai/placement/competency",
     "/var/www/html/blocks/crucible",
     "/var/www/html/admin/tool/lptmanager",
+    "/var/www/html/local/tagmanager",
     "/var/www/html/admin/tool/userdebug",
     "/var/www/html/question/type/mojomatch",
     "/var/www/html/question/behaviour/mojomatch"
