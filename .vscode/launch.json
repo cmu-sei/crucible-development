@@ -9,7 +9,7 @@
       "name": "Default ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/default.env",
       "presentation": {
         "group": "a"
@@ -19,7 +19,7 @@
       "name": "Exercise ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/exercise.env",
       "presentation": {
         "group": "a"
@@ -29,7 +29,7 @@
       "name": "TTX ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/ttx.env",
       "presentation": {
         "group": "a"
@@ -39,7 +39,7 @@
       "name": "Alloy ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/alloy.env",
       "presentation": {
         "group": "a"
@@ -49,7 +49,7 @@
       "name": "Blueprint ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/blueprint.env",
       "presentation": {
         "group": "a"
@@ -59,7 +59,7 @@
       "name": "Caster ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/caster.env",
       "presentation": {
         "group": "a"
@@ -69,7 +69,7 @@
       "name": "CITE ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/cite.env",
       "presentation": {
         "group": "a"
@@ -79,7 +79,7 @@
       "name": "Gallery ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/gallery.env",
       "presentation": {
         "group": "a"
@@ -89,7 +89,7 @@
       "name": "Player ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/player.env",
       "presentation": {
         "group": "a"
@@ -99,7 +99,7 @@
       "name": "Steamfitter ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/steamfitter.env",
       "presentation": {
         "group": "a"
@@ -109,7 +109,7 @@
       "name": "TopoMojo ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/topomojo.env",
       "presentation": {
         "group": "a"
@@ -119,7 +119,7 @@
       "name": "Gameboard ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/gameboard.env",
       "presentation": {
         "group": "a"
@@ -129,7 +129,7 @@
       "name": "Lrsql ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/lrsql.env",
       "presentation": {
         "group": "a"
@@ -139,7 +139,7 @@
       "name": "Moodle ",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/moodle.env",
       "presentation": {
         "group": "a"
@@ -149,7 +149,7 @@
       "name": "Moodle-Xdebug",
       "type": "dotnet",
       "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.Apphost/Crucible.AppHost.csproj",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
       "envFile": "${workspaceFolder}/.env/moodle-xdebug.env",
       "presentation": {
         "hidden": true
