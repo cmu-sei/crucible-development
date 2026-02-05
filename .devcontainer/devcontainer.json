@@ -15,7 +15,11 @@
     "ghcr.io/devcontainers/features/node:1": {
       "installYarnUsingApt": false
     },
-    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1.2.2": {
+      "version": "1.34.0",
+      "helm": "latest",
+      "minikube": "latest"
+    },
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/php:1": {
