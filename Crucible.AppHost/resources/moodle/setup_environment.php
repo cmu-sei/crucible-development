@@ -302,7 +302,9 @@ function configure_ai_bedrock(array $options): void {
         ],
         'core_ai\\aiactions\\generate_image' => [
             'enabled' => true,
-            'settings' => []
+            'settings' => [
+                'model' => 'amazon.nova-canvas-v1:0'
+            ]
         ]
     ];
 
