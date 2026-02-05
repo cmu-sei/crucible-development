@@ -414,7 +414,8 @@
         "/var/www/html/blocks/crucible": "/mnt/data/crucible/moodle/block_crucible",
         "/var/www/html/admin/tool/lptmanager": "/mnt/data/crucible/moodle/tool_lptmanager",
         "/var/www/html/question/type/crucible": "/mnt/data/crucible/moodle/qtype_mojomatch",
-        "/var/www/html/question/behaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch"
+        "/var/www/html/question/behaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch",
+        "/usr/local/bin/setup_environment.php": "/workspaces/crucible-development/Crucible.AppHost/resources/moodle/setup_environment.php"
       },
       "presentation": {
         "hidden": true

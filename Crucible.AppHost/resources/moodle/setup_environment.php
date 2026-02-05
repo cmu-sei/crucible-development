@@ -35,6 +35,7 @@ list($options, $unrecognized) = cli_get_params([
     'userinfoendpoint' => '',
     'accesskeyid'     => '',
     'secretaccesskey' => '',
+    'sessiontoken' => '',
     'region'          => '',
     'modelid'         => '',
 ]);
@@ -49,9 +50,14 @@ switch ($options['step']) {
         enable_auth_oauth2();
         break;
     case 'configure_ai_bedrock':
-        if (empty($options['accesskeyid']) || empty($options['secretaccesskey']) ||
-            empty($options['region']) || empty($options['modelid'])) {
-            cli_error("Usage: --step=configure_ai_bedrock --accesskeyid=KEY --secretaccesskey=SECRET --region=REGION --modelid=MODEL");
+        if (empty($options['accesskeyid']) || empty($options['secretaccesskey']) || empty($options['sessiontoken'] ||
+            empty($options['region']) || empty($options['modelid']))) {
+            cli_error("Missing required parameters. Current values:\n" .
+                      "  --accesskeyid={$options['accesskeyid']}\n" .
+                      "  --secretaccesskey={$options['secretaccesskey']}\n" .
+                      "  --sessiontoken={$options['sessiontoken']}\n" .
+                      "  --region={$options['region']}\n" .
+                      "  --modelid={$options['modelid']}");
         }
         configure_ai_bedrock($options);
         break;
@@ -250,6 +256,7 @@ function configure_ai_bedrock(array $options): void {
     // Get credentials from CLI arguments
     $accessKeyId = $options['accesskeyid'];
     $secretAccessKey = $options['secretaccesskey'];
+    $sessionToken = $options['sessiontoken'];
     $region = $options['region'];
     $modelId = $options['modelid'];
     $providerName = 'IMCITE Bedrock';
@@ -268,6 +275,7 @@ function configure_ai_bedrock(array $options): void {
         'name' => $providerName,
         'accesskeyid' => $accessKeyId,
         'secretaccesskey' => $secretAccessKey,
+        'sessiontoken' => $sessionToken,
         'region' => $region,
     ];
 
