@@ -23,6 +23,7 @@ builder.AddBlueprint(postgres, keycloak, launchOptions);
 builder.AddGameboard(postgres, keycloak, launchOptions);
 builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
+builder.AddMisp(postgres, keycloak, launchOptions);
 builder.AddDocs(launchOptions);
 
 builder.Build().Run();
@@ -727,13 +728,8 @@ public static class BuilderExtensions
             .WithEnvironment("TIMEZONE", "UTC")
             .WithEnvironment("CRON_USER_ID", "1")
             .WithEnvironment("USERID", "33")
-            .WithEnvironment("GROUPID", "33");
-
-        // Configure MISP with Moodle URL for integration
-        // Default: http://localhost:8081 (set in Dockerfile.MispCustom)
-        // Override by setting MOODLE_URL environment variable in .env file
-        var moodleUrl = builder.Configuration["MOODLE_URL"] ?? "http://localhost:8081";
-        misp.WithEnvironment("MOODLE_URL", moodleUrl);
+            .WithEnvironment("GROUPID", "33")
+            .WithEnvironment("MOODLE_URL", "http://localhost:8081");
 
         // MISP modules with custom module mounted
         var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
