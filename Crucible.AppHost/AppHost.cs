@@ -633,6 +633,9 @@ public static class BuilderExtensions
 
         var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
 
+        // Read AWS credentials from ~/.aws/credentials file
+        var awsCreds = ReadAwsCredentials();
+
         var moodle = builder.AddContainer("moodle", "moodle-custom-image")
             .WaitFor(postgres)
             .WaitFor(keycloak)
@@ -652,6 +655,10 @@ public static class BuilderExtensions
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
+            .WithEnvironment("AWS_ACCESS_KEY_ID", awsCreds["aws_access_key_id"])
+            .WithEnvironment("AWS_SECRET_ACCESS_KEY", awsCreds["aws_secret_access_key"])
+            .WithEnvironment("AWS_SESSION_TOKEN", awsCreds["aws_session_token"])
+            .WithEnvironment("AWS_REGION", awsCreds["region"])
             .WithEnvironment("PLUGINS", @"logstore_xapi=https://moodle.org/plugins/download.php/34860/logstore_xapi_2025021100.zip
                     tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
@@ -852,4 +859,44 @@ public static class BuilderExtensions
         }
     }
 
+    private static Dictionary<string, string> ReadAwsCredentials()
+    {
+        var creds = new Dictionary<string, string>
+        {
+            ["aws_access_key_id"] = "",
+            ["aws_secret_access_key"] = "",
+            ["aws_session_token"] = "",
+            ["region"] = "us-east-1"
+        };
+
+        var homeDir = Environment.GetEnvironmentVariable("HOME") ?? "";
+        var credentialsPath = Path.Combine(homeDir, ".aws", "credentials");
+
+        if (!File.Exists(credentialsPath)) return creds;
+
+        var inDefaultProfile = false;
+        foreach (var line in File.ReadAllLines(credentialsPath))
+        {
+            var trimmed = line.Trim();
+            if (trimmed == "[default]")
+            {
+                inDefaultProfile = true;
+            }
+            else if (trimmed.StartsWith("["))
+            {
+                inDefaultProfile = false;
+            }
+            else if (inDefaultProfile && trimmed.Contains("="))
+            {
+                var parts = trimmed.Split('=', 2);
+                var key = parts[0].Trim();
+                if (creds.ContainsKey(key))
+                {
+                    creds[key] = parts[1].Trim();
+                }
+            }
+        }
+
+        return creds;
+    }
 }

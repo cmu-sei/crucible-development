@@ -6,8 +6,7 @@ LOG_FILE="/tmp/moodle_script.log"
 MOODLE_DIR="/var/www/html"
 MOODLE_CLI="$MOODLE_DIR/admin/cli"
 OAUTH2_ISSUER_ID=""
-AWS_ACCESS_KEY_ID=""
-AWS_SECRET_ACCESS_KEY=""
+BEDROCK_MODEL_ID="us.anthropic.claude-3-5-sonnet-20241022-v2:0"
 
 # Function to log messages
 log() {
@@ -228,7 +227,8 @@ configure_ai_bedrock() {
       --step=configure_ai_bedrock \
       --accesskeyid="$AWS_ACCESS_KEY_ID" \
       --secretaccesskey="$AWS_SECRET_ACCESS_KEY" \
-      --region="us-east-1" \
+      --sessiontoken="$AWS_SESSION_TOKEN" \
+      --region="$AWS_REGION" \
       --modelid="$BEDROCK_MODEL_ID" 2>&1); then
     error "Configure AI Bedrock" "Failed to configure AWS Bedrock AI provider: $out"
     return 1
