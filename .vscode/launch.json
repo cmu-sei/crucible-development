@@ -155,6 +155,16 @@
         "hidden": true
       }
     },
+    {
+      "name": "MISP ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/misp.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
 
     // ========== Aspire Configurations ==========
     {
@@ -365,6 +375,20 @@
       },
       "presentation": {
         "hidden": true
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "MISP (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/misp.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
       }
     },
 
