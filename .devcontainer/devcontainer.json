@@ -1,6 +1,9 @@
 {
   "name": "Crucible Development",
-  "runArgs": ["--name", "crucible-dev"],
+  "runArgs": [
+    "--name",
+    "crucible-dev"
+  ],
   "build": {
     "dockerfile": "Dockerfile"
   },
@@ -15,7 +18,11 @@
     "ghcr.io/devcontainers/features/node:1": {
       "installYarnUsingApt": false
     },
-    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "version": "latest",
+      "kubectl": "latest",
+      "helm": "latest"
+    },
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/php:1": {
@@ -36,7 +43,7 @@
     // Shell history
     "source=crucible-dev-shell-history,target=/home/vscode/.history,type=volume",
     // AWS credentials for Claude Code (optional)
-    "source=${localWorkspaceFolder}/.devcontainer/.aws,target=/home/vscode/.aws,type=bind,readonly",
+    "source=${localWorkspaceFolder}/.devcontainer/.aws,target=/home/vscode/.aws,type=bind",
     // Claude Code data (sessions, history, todos, etc.)
     "source=crucible-dev-claude,target=/home/vscode/.claude,type=volume"
   ],
@@ -60,7 +67,8 @@
         "shardulm94.trailing-spaces",
         "shd101wyy.markdown-preview-enhanced",
         "pflannery.vscode-versionlens",
-        "Anthropic.claude-code"
+        "Anthropic.claude-code",
+        "AmazonWebServices.aws-toolkit-vscode"
       ],
       "settings": {
         "editor.formatOnSave": true,

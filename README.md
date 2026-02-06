@@ -29,9 +29,9 @@ Development certificates, including a CA, are generated at container build time 
 
 ## Claude Code
 
-The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for Claude, configured to use AWS Bedrock via the official [Claude Code devcontainer feature](https://github.com/anthropics/devcontainer-features).
+The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for Claude, configured to use AWS Bedrock via the official [Claude Code devcontainer feature](https://github.com/anthropics/devcontainer-features).  There are two setup methods that can be used to authenticate to AWS.  Select the one that fits your use case.
 
-### Setup
+### Setup option 1 - credential authentication
 
 1. Copy the example credentials file:
    ```bash
@@ -48,6 +48,36 @@ The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/clau
 3. Build or rebuild the dev container
 
 The credentials file is mounted to `/home/vscode/.aws/credentials` inside the container and is excluded from git via `.devcontainer/.gitignore`.
+
+### Setup option 2 - sso login authentication
+
+1. Copy the example config file:
+   ```bash
+   cp .devcontainer/.aws/config.example .devcontainer/.aws/config
+   ```
+
+2. Edit `.devcontainer/.aws/config` and add your AWS account information:
+   ```ini
+   [sso-session crucible-sso]
+   sso_start_url = https://<YOUR-ORG>.awsapps.com/start
+   sso_region = <your-region>
+   sso_registration_scopes = sso:account:access
+
+   [profile default]
+   sso_session = crucible-sso
+   sso_account_id = <your-account-id>
+   sso_role_name = <your-role>
+   region = <your-region>
+   output = json
+   ```
+
+3. Build or rebuild the dev container
+4. Run the aws-sso-login.sh script
+   ```ini
+   scripts/aws-sso-login.sh
+   ```
+
+The config file is mounted to `/home/vscode/.aws/config` inside the container and is excluded from git via `.devcontainer/.gitignore`.
 
 ### Usage
 
