@@ -1,7 +1,12 @@
 {
+  "env": {
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "AWS_REGION": "us-east-1",
+    "AWS_PROFILE": "default"
+  },
   "permissions": {
     "additionalDirectories": [
-        "/mnt/data/crucible"
+      "/mnt/data/crucible"
     ]
   }
 }

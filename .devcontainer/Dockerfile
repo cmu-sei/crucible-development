@@ -2,6 +2,7 @@ FROM mcr.microsoft.com/devcontainers/dotnet:2.0.5-10.0-noble
 
 ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
+ARG AWS_CLI_VERSION="2.32.9"
 
 # Switch to root for configuring image
 USER root
@@ -47,6 +48,20 @@ RUN set -eux; \
 # Install k-alias
 RUN git clone https://github.com/jaggedmountain/k-alias.git /tmp/k-alias && \
     cp /tmp/k-alias/[h,k]* /usr/local/bin
+
+# Install AWS CLI with Session Manager Plugin
+RUN case "${TARGETARCH}" in \
+    amd64)  AWSCLI_PKG="awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip" \
+    SSM_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" ;; \
+    arm64)  AWSCLI_PKG="awscli-exe-linux-aarch64-${AWS_CLI_VERSION}.zip" \
+    SSM_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_arm64/session-manager-plugin.deb" ;; \
+    *)      echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac && \
+    curl "https://awscli.amazonaws.com/${AWSCLI_PKG}" -o /tmp/awscliv2.zip && \
+    unzip -q /tmp/awscliv2.zip -d /tmp && \
+    /tmp/aws/install --update && \
+    curl "${SSM_URL}" -o /tmp/session-manager-plugin.deb && \
+    dpkg -i /tmp/session-manager-plugin.deb
 
 # Configure ZSH History
 RUN mkdir -p "/home/vscode/.history" && touch "/home/vscode/.history/zsh_history" && \
