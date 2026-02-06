@@ -710,10 +710,15 @@ public static class BuilderExtensions
     {
         if (!options.Misp) return;
 
-        // Redis for MISP background jobs
-        var mispRedis = builder.AddRedis("misp-redis")
+        // Redis for MISP background jobs (without TLS for dev environment)
+        var mispRedisPassword = builder.AddParameter("misp-redis-password", secret: true);
+
+        var mispRedis = builder.AddContainer("misp-redis", "redis", "8.2")
             .WithLifetime(ContainerLifetime.Persistent)
-            .WithContainerName("misp-redis");
+            .WithContainerName("misp-redis")
+            .WithEndpoint(port: 6379, targetPort: 6379, name: "tcp", scheme: "tcp")
+            .WithArgs("redis-server", "--requirepass", mispRedisPassword)
+            .WithEnvironment("REDIS_PASSWORD", mispRedisPassword);
 
         // MySQL for MISP (MISP requires MySQL/MariaDB, not PostgreSQL)
         var mispMysql = builder.AddMySql("misp-mysql")
@@ -737,8 +742,8 @@ public static class BuilderExtensions
             .WithEnvironment("MYSQL_USER", "root")
             .WithEnvironment("MYSQL_PASSWORD", mispMysql.Resource.PasswordParameter)
             .WithEnvironment("MYSQL_PORT", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
-            .WithEnvironment("REDIS_HOST", mispRedis.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
-            .WithEnvironment("REDIS_PASSWORD", mispRedis.Resource.PasswordParameter)
+            .WithEnvironment("REDIS_HOST", mispRedis.Resource.GetEndpoint("tcp").Property(EndpointProperty.Host))
+            .WithEnvironment("REDIS_PASSWORD", mispRedisPassword)
             .WithEnvironment("HOSTNAME", "https://localhost:8444")
             .WithEnvironment("MISP_ADMIN_EMAIL", "admin@admin.test")
             .WithEnvironment("MISP_ADMIN_PASSPHRASE", "admin")
