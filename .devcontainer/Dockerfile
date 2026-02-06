@@ -63,6 +63,18 @@ RUN case "${TARGETARCH}" in \
     curl "${SSM_URL}" -o /tmp/session-manager-plugin.deb && \
     dpkg -i /tmp/session-manager-plugin.deb
 
+# Configure AWS CLI bash completion
+RUN echo '' >> /home/vscode/.bashrc && \
+    echo '# AWS CLI completion' >> /home/vscode/.bashrc && \
+    echo 'bind "set show-all-if-ambiguous on"' >> /home/vscode/.bashrc && \
+    echo 'complete -C /usr/local/bin/aws_completer aws' >> /home/vscode/.bashrc
+
+# Configure AWS CLI zsh completion (using bashcompinit for AWS CLI v2 compatibility)
+RUN echo '' >> /home/vscode/.zshrc && \
+    echo '# AWS CLI completion' >> /home/vscode/.zshrc && \
+    echo 'autoload -Uz bashcompinit && bashcompinit' >> /home/vscode/.zshrc && \
+    echo 'complete -C /usr/local/bin/aws_completer aws' >> /home/vscode/.zshrc
+
 # Configure ZSH History
 RUN mkdir -p "/home/vscode/.history" && touch "/home/vscode/.history/zsh_history" && \
     chown -R vscode:vscode /home/vscode/.history && \
