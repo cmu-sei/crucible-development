@@ -875,31 +875,28 @@ public static class BuilderExtensions
         };
 
         var homeDir = Environment.GetEnvironmentVariable("HOME") ?? "";
-        var credentialsPath = Path.Combine(homeDir, ".aws", "credentials");
+        var credentialsPath = Path.Combine(homeDir, ".aws", "sso-credentials");
 
         if (!File.Exists(credentialsPath)) return creds;
 
-        var inDefaultProfile = false;
-        foreach (var line in File.ReadAllLines(credentialsPath))
+        try
         {
-            var trimmed = line.Trim();
-            if (trimmed == "[default]")
-            {
-                inDefaultProfile = true;
-            }
-            else if (trimmed.StartsWith("["))
-            {
-                inDefaultProfile = false;
-            }
-            else if (inDefaultProfile && trimmed.Contains("="))
-            {
-                var parts = trimmed.Split('=', 2);
-                var key = parts[0].Trim();
-                if (creds.ContainsKey(key))
-                {
-                    creds[key] = parts[1].Trim();
-                }
-            }
+            var json = File.ReadAllText(credentialsPath);
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("AccessKeyId", out var accessKeyId))
+                creds["aws_access_key_id"] = accessKeyId.GetString() ?? "";
+
+            if (root.TryGetProperty("SecretAccessKey", out var secretAccessKey))
+                creds["aws_secret_access_key"] = secretAccessKey.GetString() ?? "";
+
+            if (root.TryGetProperty("SessionToken", out var sessionToken))
+                creds["aws_session_token"] = sessionToken.GetString() ?? "";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to parse AWS credentials from {credentialsPath}: {ex.Message}");
         }
 
         return creds;
