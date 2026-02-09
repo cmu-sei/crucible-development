@@ -1,1 +1,4 @@
 .aws/credentials
+.aws/config
+.aws/sso*
+.aws/cli
