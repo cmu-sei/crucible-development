@@ -1,9 +1,6 @@
 {
   "name": "Crucible Development",
-  "runArgs": [
-    "--name",
-    "crucible-dev"
-  ],
+  "runArgs": ["--name", "crucible-dev"],
   "build": {
     "dockerfile": "Dockerfile"
   },
@@ -19,7 +16,7 @@
       "installYarnUsingApt": false
     },
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
-      "version": "latest",
+      "version": "1.35",
       "kubectl": "latest",
       "helm": "latest"
     },
