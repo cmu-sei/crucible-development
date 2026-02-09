@@ -21,10 +21,7 @@
       "minikube": "latest"
     },
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/php:1": {
-      "version": "8.3"
-    }
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.
@@ -42,7 +39,9 @@
     // AWS credentials for Claude Code (optional)
     "source=${localWorkspaceFolder}/.devcontainer/.aws,target=/home/vscode/.aws,type=bind",
     // Claude Code data (sessions, history, todos, etc.)
-    "source=crucible-dev-claude,target=/home/vscode/.claude,type=volume"
+    "source=crucible-dev-claude,target=/home/vscode/.claude,type=volume",
+    // SSH keys and config
+    "source=crucible-dev-ssh,target=/home/vscode/.ssh,type=volume"
   ],
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
@@ -65,7 +64,9 @@
         "shd101wyy.markdown-preview-enhanced",
         "pflannery.vscode-versionlens",
         "Anthropic.claude-code",
-        "AmazonWebServices.aws-toolkit-vscode"
+        "AmazonWebServices.aws-toolkit-vscode",
+        "bmewburn.vscode-intelephense-client",
+        "xdebug.php-debug"
       ],
       "settings": {
         "editor.formatOnSave": true,
