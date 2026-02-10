@@ -180,10 +180,6 @@
         {
           "name": "local_tagmanager",
           "url": "https://github.com/cmu-sei/moodle-local_tagmanager"
-        },
-        {
-          "name": "mod_pptbook",
-          "url": "https://github.com/sei-awelle/moodle-mod_pptbook"
         }
       ]
     },

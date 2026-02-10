@@ -466,6 +466,20 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "openid profile email gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
+        // Configure xAPI if LRS is enabled
+        if (options.Lrsql)
+        {
+            citeApi
+                .WithEnvironment("XApiOptions__Endpoint", "http://localhost:9274/xapi")
+                .WithEnvironment("XApiOptions__Username", "defaultkey")
+                .WithEnvironment("XApiOptions__Password", "defaultsecret")
+                .WithEnvironment("XApiOptions__IssuerUrl", "https://localhost:8443/realms/crucible")
+                .WithEnvironment("XApiOptions__ApiUrl", "http://localhost:4720/api/")
+                .WithEnvironment("XApiOptions__UiUrl", "http://localhost:4721/")
+                .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
+                .WithEnvironment("XApiOptions__Platform", "cite");
+        }
+
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
@@ -512,6 +526,20 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm steamfitter")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+
+        // Configure xAPI if LRS is enabled
+        if (options.Lrsql)
+        {
+            galleryApi
+                .WithEnvironment("XApiOptions__Endpoint", "http://localhost:9274/xapi")
+                .WithEnvironment("XApiOptions__Username", "defaultkey")
+                .WithEnvironment("XApiOptions__Password", "defaultsecret")
+                .WithEnvironment("XApiOptions__IssuerUrl", "https://localhost:8443/realms/crucible")
+                .WithEnvironment("XApiOptions__ApiUrl", "http://localhost:4722/api/")
+                .WithEnvironment("XApiOptions__UiUrl", "http://localhost:4723/")
+                .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
+                .WithEnvironment("XApiOptions__Platform", "gallery");
+        }
 
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
 
@@ -674,7 +702,6 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/mod_topomojo", "/var/www/html/mod/topomojo", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/qtype_mojomatch", "/var/www/html/question/type/mojomatch", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/qbehaviour_mojomatch", "/var/www/html/question/behaviour/mojomatch", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/mod_pptbook", "/var/www/html/mod/pptbook", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/local_tagmanager", "/var/www/html/local/tagmanager", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/aiplacement_competency", "/var/www/html/ai/placement/competency", isReadOnly: true);

@@ -10,7 +10,6 @@ $includePaths = [
     "/var/www/html/mod/crucible",
     "/var/www/html/mod/topomojo",
     "/var/www/html/mod/groupquiz",
-    "/var/www/html/mod/pptbook",
     "/var/www/html/ai/placement/competency",
     "/var/www/html/blocks/crucible",
     "/var/www/html/admin/tool/lptmanager",
