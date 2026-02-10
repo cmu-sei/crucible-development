@@ -111,7 +111,8 @@ public static class BuilderExtensions
         if (!options.AddAllApplications && !options.Player)
             return;
 
-        var playerDb = postgres.AddDatabase("playerDb", "player");
+        var playerDb = postgres.AddDatabase("playerDb", "player")
+            .WithDevSettings();
 
         builder.ConfigureApiSecrets(
             new Projects.Player_Api().ProjectPath,
@@ -149,8 +150,10 @@ public static class BuilderExtensions
 
     private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, bool startByDefault)
     {
-        var vmDb = postgres.AddDatabase("vmDb", "player_vm");
-        var vmLoggingDb = postgres.AddDatabase("vmLoggingDb", "player_vm_logging");
+        var vmDb = postgres.AddDatabase("vmDb", "player_vm")
+            .WithDevSettings();
+        var vmLoggingDb = postgres.AddDatabase("vmLoggingDb", "player_vm_logging")
+            .WithDevSettings();
 
         builder.ConfigureApiSecrets(
             new Projects.Player_Vm_Api().ProjectPath,
@@ -205,7 +208,8 @@ public static class BuilderExtensions
         if (!options.AddAllApplications && !options.Caster)
             return;
 
-        var casterDb = postgres.AddDatabase("casterDb", "caster");
+        var casterDb = postgres.AddDatabase("casterDb", "caster")
+            .WithDevSettings();
 
         builder.ConfigureApiSecrets(
             new Projects.Caster_Api().ProjectPath,
@@ -268,7 +272,8 @@ public static class BuilderExtensions
         if (!options.AddAllApplications && !options.Alloy)
             return;
 
-        var alloyDb = postgres.AddDatabase("alloyDb", "alloy");
+        var alloyDb = postgres.AddDatabase("alloyDb", "alloy")
+            .WithDevSettings();
 
         builder.ConfigureApiSecrets(
             new Projects.Alloy_Api().ProjectPath,
@@ -316,7 +321,8 @@ public static class BuilderExtensions
         if (!options.AddAllApplications && !options.TopoMojo)
             return;
 
-        var topoDb = postgres.AddDatabase("topoDb", "topomojo");
+        var topoDb = postgres.AddDatabase("topoDb", "topomojo")
+            .WithDevSettings();
 
         builder.ConfigureApiSecrets(
             new Projects.TopoMojo_Api().ProjectPath,
@@ -385,7 +391,8 @@ public static class BuilderExtensions
         if (!options.AddAllApplications && !options.Steamfitter)
             return;
 
-        var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter");
+        var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter")
+            .WithDevSettings();
 
         builder.ConfigureApiSecrets(
             new Projects.Steamfitter_Api().ProjectPath,
@@ -431,7 +438,8 @@ public static class BuilderExtensions
         if (!options.AddAllApplications && !options.Cite)
             return;
 
-        var citeDb = postgres.AddDatabase("citeDb", "cite");
+        var citeDb = postgres.AddDatabase("citeDb", "cite")
+            .WithDevSettings();
 
         builder.ConfigureApiSecrets(
             new Projects.Cite_Api().ProjectPath,
@@ -477,7 +485,8 @@ public static class BuilderExtensions
         if (!options.AddAllApplications && !options.Gallery)
             return;
 
-        var galleryDb = postgres.AddDatabase("galleryDb", "gallery");
+        var galleryDb = postgres.AddDatabase("galleryDb", "gallery")
+            .WithDevSettings();
 
         builder.ConfigureApiSecrets(
             new Projects.Gallery_Api().ProjectPath,
@@ -523,7 +532,8 @@ public static class BuilderExtensions
         if (!options.AddAllApplications && !options.Blueprint)
             return;
 
-        var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint");
+        var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint")
+            .WithDevSettings();
 
         builder.ConfigureApiSecrets(
             new Projects.Blueprint_Api().ProjectPath,
@@ -568,7 +578,8 @@ public static class BuilderExtensions
         if (!options.AddAllApplications && !options.Gameboard)
             return;
 
-        var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard");
+        var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard")
+            .WithDevSettings();
 
         builder.ConfigureApiSecrets(
             new Projects.Gameboard_Api().ProjectPath,
@@ -781,4 +792,5 @@ public static class BuilderExtensions
             return -1;
         }
     }
+
 }
