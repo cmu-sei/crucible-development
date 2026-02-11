@@ -186,10 +186,6 @@
     {
       "name": "misp",
       "repos": [
-        {
-          "name": "misp-module-moodle",
-          "url": "ssh://git@code.sei.cmu.edu:7999/~arwelle/misp-module-moodle.git"
-        }
       ]
     }
   ],
