@@ -120,7 +120,7 @@ pg_dump -U postgres blueprint > /tmp/blueprint.dump
 exit
 docker cp crucible-postgres:/tmp/blueprint.dump blueprint.dump
 
-## Moodle configuration
+# Moodle configuration
 
 Moodle will be configured using files located in `scripts/` and `resources/moodle/`.
 When starting for the first time, Moodle will make a copy of some core files that will
@@ -129,7 +129,7 @@ debugging with xdebug. These files will be mounted alongside our repos under the
 `/mnt/data/crucible/moodle/moodle-core/`. The xAPI logstore plugin will also be configured
 automatically as will one default Moodle course with no activities within it.
 
-### OAUTH
+## OAUTH
 
 Moodle will be configured for oauth automatically. The oauth admin user has an email
 address set and the Moodle client has a hard-coded secret.
@@ -145,27 +145,27 @@ login with it and navigate to the oauth server settings under Site Administratio
 Server, and connect the system account. This will enable our plugins to communicate with
 the various Crucible applications.
 
-### Crucible Plugin
+## Crucible Plugin
 
 To configure Moodle to work with Crucible, oauth must be configured on Moodle, the service
 account must be connected, and the user must be logged an with oauth.
 
-### TopoMojo Plugin
+## TopoMojo Plugin
 
 To configure Moodle to work with TopoMojo, login to TopoMojo, generate an API key, and
 add that API key to the Moodle crucible plugin's configuration in the Moodle UI or in the
 script `post_configure.sh`.
 
-### Developing New Moodle Plugins
+## Developing New Moodle Plugins
 
 To add new Moodle plugin repositories, add them to `scripts/repos.json`, `launch.json`,
 `AppHost.cs`, and the `xdebug_filter.sh` files.
 
-### Adding Additional Official Plugins for Moodle
+## Adding Additional Official Plugins for Moodle
 
 To add additional plugins, add them to the `PLUGINS` environment variable in `AppHost.cs`.
 
-### Moodle PHP Debugging with xdebug
+## Moodle PHP Debugging with xdebug
 
 If you do not wish to debug Moodle, simply run Moodle via the `Moodle` task. Id you do wish
 to debug Mooodle, run Moodle via the `Moodle Debug` composite task. This task will start
@@ -186,10 +186,16 @@ code being analyzed by xdebug.
 To make additional paths available for debugging, add the paths to `Dockerfile.MoodleCustom`,
 `add-moodle-mounts.sh`, `AppHost.cs`, `pre_configure.sh` and `launch.json`.
 
-### Moodle UI Debug Display
+## Moodle UI Debug Display
 
 The standard Moodle debugging level and display via the UI can be set under the normal Site
 Administration, Development, menu. The install process for this container installs the plugin
 `tool_userdebug` which allows site admins to easily toggle debug display via an icon added
 to the header just to the left of the user avatar in the upper right corner of the screen.
 This is the preferred method to enable display of debug messages inside of the browser.
+
+# Library Development
+
+The crucible-common-dotnet shared library is cloned into the `/mnt/data.crucible/libraries` directory. By default, APIs that use these libraries pull the published packages from NuGet. When developing or debugging these libraries, it is convenient to point the APIs to the local copy of the library. To make this easier, a Directory.Build.props file is mounted to `/mnt/data`. This file defines a variable `<UseLocalEntityEvents>false</UseLocalEntityEvents>`. If you want to use the local version of the Crucible.Common.EntityEvents library, copy this file to `/mnt/data/crucible` and set `<UseLocalEntityEvents>true</UseLocalEntityEvents>`. This will tell MSBuild to use a local project reference instead of the NuGet package and this file will not get checked into git.
+
+This pattern should be extended to the other libraries in crucible-common-dotnet as necessary in the future.
