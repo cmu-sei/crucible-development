@@ -690,6 +690,11 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/local_tagmanager", "/var/www/html/local/tagmanager", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/aiplacement_competency", "/var/www/html/ai/placement/competency", isReadOnly: true);
+
+        if (!options.Moodle)
+        {
+            moodle.WithExplicitStart();
+        }
     }
 
     public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
@@ -699,7 +704,7 @@ public static class BuilderExtensions
 
         var lrsqlDb = postgres.AddDatabase("lrsqlDb", "lrsql");
 
-        var moodle = builder.AddContainer("lrsql", "yetanalytics/lrsql")
+        var lrsql = builder.AddContainer("lrsql", "yetanalytics/lrsql")
             .WaitFor(postgres)
             .WithContainerName("lrsql")
             .WithHttpEndpoint(port: 9274, targetPort: 8080)
@@ -717,6 +722,11 @@ public static class BuilderExtensions
             .WithEnvironment("LRSQL_DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("LRSQL_DB_PORT", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
             .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
+
+        if (!options.Lrsql)
+        {
+            lrsql.WithExplicitStart();
+        }
     }
 
     public static void AddMisp(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
@@ -775,6 +785,12 @@ public static class BuilderExtensions
             .WithContainerName("misp-modules")
             .WithHttpEndpoint(port: 8666, targetPort: 6666, isProxied: false)
             .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle/misp_module.py", "/usr/local/lib/python3.12/site-packages/misp_modules/modules/action_mod/moodle.py", isReadOnly: false);
+
+        if (!options.Misp)
+        {
+            misp.WithExplicitStart();
+            mispModules.WithExplicitStart();
+        }
     }
 
     private static void ConfigureApiSecrets(
