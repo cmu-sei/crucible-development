@@ -60,6 +60,7 @@ npm install -g @angular/cli@latest
 CUSTOM_CERT_SOURCE="/usr/local/share/ca-certificates/custom"
 MINIKUBE_CERT_DEST="${HOME}/.minikube/files/etc/ssl/certs/custom"
 MOODLE_CERT_DEST="Crucible.AppHost/resources/moodle/certs"
+MISP_CERT_DEST="Crucible.AppHost/resources/misp/certs"
 if compgen -G "${CUSTOM_CERT_SOURCE}"'/*.crt' > /dev/null; then
   mkdir -p "${MINIKUBE_CERT_DEST}"
   cp "${CUSTOM_CERT_SOURCE}"/*.crt "${MINIKUBE_CERT_DEST}/"
@@ -67,6 +68,9 @@ if compgen -G "${CUSTOM_CERT_SOURCE}"'/*.crt' > /dev/null; then
   mkdir -p "${MOODLE_CERT_DEST}"
   cp "${CUSTOM_CERT_SOURCE}"/*.crt "${MOODLE_CERT_DEST}/"
   echo "Copied custom CA certificates to ${MOODLE_CERT_DEST}"
+  mkdir -p "${MISP_CERT_DEST}"
+  cp "${CUSTOM_CERT_SOURCE}"/*.crt "${MISP_CERT_DEST}/"
+  echo "Copied custom CA certificates to ${MISP_CERT_DEST}"
 else
   echo "No custom CA certificates found in ${CUSTOM_CERT_SOURCE}; skipping copy."
 fi

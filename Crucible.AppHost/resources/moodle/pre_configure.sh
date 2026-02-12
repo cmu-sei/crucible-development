@@ -5,7 +5,7 @@
 BASE="/var/www/html"
 
 # Emulate array with space-separated values
-MOUNTPATHS="/var/www/html/theme /var/www/html/lib /var/www/html/admin/cli"
+MOUNTPATHS="/var/www/html/theme /var/www/html/lib /var/www/html/admin/cli /var/www/html/ai/provider /var/www/html/ai/classes"
 
 for MOUNTPATH in $MOUNTPATHS; do
     RELATIVE_PATH="${MOUNTPATH#$BASE/}"

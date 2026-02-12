@@ -23,6 +23,7 @@ builder.AddBlueprint(postgres, keycloak, launchOptions);
 builder.AddGameboard(postgres, keycloak, launchOptions);
 builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
+builder.AddMisp(postgres, keycloak, launchOptions);
 builder.AddDocs(launchOptions);
 
 builder.Build().Run();
@@ -465,6 +466,12 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "openid profile email gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
+        // Configure xAPI if LRS is enabled
+        if (options.Lrsql)
+        {
+            ConfigureXApi(citeApi, "cite", "http://localhost:4720/api/", "http://localhost:4721/");
+        }
+
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
@@ -511,6 +518,12 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm steamfitter")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+
+        // Configure xAPI if LRS is enabled
+        if (options.Lrsql)
+        {
+            ConfigureXApi(galleryApi, "gallery", "http://localhost:4722/api/", "http://localhost:4723/");
+        }
 
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
 
@@ -628,14 +641,19 @@ public static class BuilderExtensions
 
     public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.Moodle) return;
+        if (!options.AddAllApplications && !options.Moodle)
+            return;
 
         var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
+
+        // Read AWS credentials from ~/.aws/credentials file
+        var awsCreds = ReadAwsCredentials();
 
         var moodle = builder.AddContainer("moodle", "moodle-custom-image")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
+            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("moodle")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
             .WithHttpHealthCheck(endpointName: "http")
@@ -650,6 +668,10 @@ public static class BuilderExtensions
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
+            .WithEnvironment("AWS_ACCESS_KEY_ID", awsCreds["aws_access_key_id"])
+            .WithEnvironment("AWS_SECRET_ACCESS_KEY", awsCreds["aws_secret_access_key"])
+            .WithEnvironment("AWS_SESSION_TOKEN", awsCreds["aws_session_token"])
+            .WithEnvironment("AWS_REGION", awsCreds["region"])
             .WithEnvironment("PLUGINS", @"logstore_xapi=https://moodle.org/plugins/download.php/34860/logstore_xapi_2025021100.zip
                     tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
@@ -657,22 +679,32 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/theme", "/var/www/html/theme", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/lib", "/var/www/html/lib", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
+            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/provider", "/var/www/html/ai/provider", isReadOnly: false)
+            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/block_crucible", "/var/www/html/blocks/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/mod/crucible", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_groupquiz", "/var/www/html/mod/groupquiz", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/mod_topomojo", "/var/www/html/mod/topomojo", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/qtype_mojomatch", "/var/www/html/question/type/mojomatch", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/qbehaviour_mojomatch", "/var/www/html/question/behaviour/mojomatch", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true);
+            .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/local_tagmanager", "/var/www/html/local/tagmanager", isReadOnly: true)
+            .WithBindMount("/mnt/data/crucible/moodle/aiplacement_competency", "/var/www/html/ai/placement/competency", isReadOnly: true);
+
+        if (!options.Moodle)
+        {
+            moodle.WithExplicitStart();
+        }
     }
 
     public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.Lrsql) return;
+        if (!options.AddAllApplications && !options.Lrsql)
+            return;
 
         var lrsqlDb = postgres.AddDatabase("lrsqlDb", "lrsql");
 
-        var moodle = builder.AddContainer("lrsql", "yetanalytics/lrsql")
+        var lrsql = builder.AddContainer("lrsql", "yetanalytics/lrsql")
             .WaitFor(postgres)
             .WithContainerName("lrsql")
             .WithHttpEndpoint(port: 9274, targetPort: 8080)
@@ -690,6 +722,73 @@ public static class BuilderExtensions
             .WithEnvironment("LRSQL_DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("LRSQL_DB_PORT", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
             .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
+
+        if (!options.Lrsql)
+        {
+            lrsql.WithExplicitStart();
+        }
+    }
+
+    public static void AddMisp(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        if (!options.AddAllApplications && !options.Misp)
+            return;
+
+        // Redis for MISP background jobs (without TLS for dev environment)
+        var mispRedisPassword = builder.AddParameter("misp-redis-password", secret: true);
+
+        var mispRedis = builder.AddRedis("misp-redis", password: mispRedisPassword)
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("misp-redis");
+
+        // MySQL for MISP (MISP requires MySQL/MariaDB, not PostgreSQL)
+        var mispMysql = builder.AddMySql("misp-mysql")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("misp-mysql")
+            .WithDataVolume();
+
+        var mispDb = mispMysql.AddDatabase("mispDb", "misp");
+
+        // MISP Core application with custom fast-startup image
+        var misp = builder.AddContainer("misp", "misp-custom-image")
+            .WithDockerfile("./resources/misp", "Dockerfile.MispCustom")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("misp")
+            .WaitFor(mispMysql)
+            .WaitFor(mispRedis)
+            .WithHttpsEndpoint(port: 8444, targetPort: 443, name: "https", isProxied: false)
+            .WithEnvironment("INIT", "true")
+            .WithEnvironment("MYSQL_HOST", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("MYSQL_DATABASE", mispDb.Resource.DatabaseName)
+            .WithEnvironment("MYSQL_USER", "root")
+            .WithEnvironment("MYSQL_PASSWORD", mispMysql.Resource.PasswordParameter)
+            .WithEnvironment("MYSQL_PORT", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
+            .WithEnvironment("REDIS_HOST", mispRedis.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("REDIS_PORT", "6380") // Use non-TLS port for dev environment
+            .WithEnvironment("REDIS_PASSWORD", mispRedisPassword)
+            .WithEnvironment("HOSTNAME", "https://localhost:8444")
+            .WithEnvironment("MISP_ADMIN_EMAIL", "admin@admin.test")
+            .WithEnvironment("MISP_ADMIN_PASSPHRASE", "admin")
+            .WithEnvironment("BASE_URL", "https://localhost:8444")
+            .WithEnvironment("TIMEZONE", "UTC")
+            .WithEnvironment("CRON_USER_ID", "1")
+            .WithEnvironment("USERID", "33")
+            .WithEnvironment("GROUPID", "33")
+            .WithEnvironment("MOODLE_URL", "http://localhost:8081");
+
+        // MISP modules with custom module mounted
+        var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
+            .WithDockerfile("./resources/misp", "Dockerfile.MispModules")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("misp-modules")
+            .WithHttpEndpoint(port: 8666, targetPort: 6666, isProxied: false)
+            .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle/misp_module.py", "/usr/local/lib/python3.12/site-packages/misp_modules/modules/action_mod/moodle.py", isReadOnly: false);
+
+        if (!options.Misp)
+        {
+            misp.WithExplicitStart();
+            mispModules.WithExplicitStart();
+        }
     }
 
     private static void ConfigureApiSecrets(
@@ -793,4 +892,57 @@ public static class BuilderExtensions
         }
     }
 
+    private static void ConfigureXApi<T>(IResourceBuilder<T> resource, string platform, string apiUrl, string uiUrl) where T : IResourceWithEnvironment
+    {
+        resource
+            .WithEnvironment("XApiOptions__Endpoint", "http://localhost:9274/xapi")
+            .WithEnvironment("XApiOptions__Username", "defaultkey")
+            .WithEnvironment("XApiOptions__Password", "defaultsecret")
+            .WithEnvironment("XApiOptions__IssuerUrl", "https://localhost:8443/realms/crucible")
+            .WithEnvironment("XApiOptions__ApiUrl", apiUrl)
+            .WithEnvironment("XApiOptions__UiUrl", uiUrl)
+            .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
+            .WithEnvironment("XApiOptions__Platform", platform);
+    }
+
+    private static Dictionary<string, string> ReadAwsCredentials()
+    {
+        var creds = new Dictionary<string, string>
+        {
+            ["aws_access_key_id"] = "",
+            ["aws_secret_access_key"] = "",
+            ["aws_session_token"] = "",
+            ["region"] = "us-east-1"
+        };
+
+        var homeDir = Environment.GetEnvironmentVariable("HOME") ?? "";
+        var credentialsPath = Path.Combine(homeDir, ".aws", "sso-credentials");
+
+        if (!File.Exists(credentialsPath)) return creds;
+
+        try
+        {
+            var json = File.ReadAllText(credentialsPath);
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("AccessKeyId", out var accessKeyId))
+                creds["aws_access_key_id"] = accessKeyId.GetString() ?? "";
+
+            if (root.TryGetProperty("SecretAccessKey", out var secretAccessKey))
+                creds["aws_secret_access_key"] = secretAccessKey.GetString() ?? "";
+
+            if (root.TryGetProperty("SessionToken", out var sessionToken))
+                creds["aws_session_token"] = sessionToken.GetString() ?? "";
+
+            if (root.TryGetProperty("Region", out var region))
+                creds["region"] = region.GetString() ?? "us-east-1";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to parse AWS credentials from {credentialsPath}: {ex.Message}");
+        }
+
+        return creds;
+    }
 }

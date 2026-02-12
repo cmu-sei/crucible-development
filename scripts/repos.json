@@ -172,7 +172,20 @@
         {
           "name": "tool_lptmanager",
           "url": "https://github.com/cmu-sei/moodle-tool_lptmanager"
+        },
+        {
+          "name": "aiplacement_competency",
+          "url": "https://github.com/cmu-sei/moodle-aiplacement_competency"
+        },
+        {
+          "name": "local_tagmanager",
+          "url": "https://github.com/cmu-sei/moodle-local_tagmanager"
         }
+      ]
+    },
+    {
+      "name": "misp",
+      "repos": [
       ]
     }
   ],

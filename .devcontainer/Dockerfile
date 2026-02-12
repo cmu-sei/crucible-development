@@ -30,6 +30,10 @@ ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt \
 # required for those running ARM builds, possibly confined only to Angular 16. Try back later.
 RUN apt update && apt install -y python3-dev
 
+RUN apt install -y \
+    php \
+    php-cli
+
 # Install Vale
 ARG VALE_VERSION=3.12.0
 RUN set -eux; \

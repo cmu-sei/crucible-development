@@ -6,6 +6,7 @@ LOG_FILE="/tmp/moodle_script.log"
 MOODLE_DIR="/var/www/html"
 MOODLE_CLI="$MOODLE_DIR/admin/cli"
 OAUTH2_ISSUER_ID=""
+BEDROCK_MODEL_ID="us.anthropic.claude-3-5-sonnet-20241022-v2:0"
 
 # Function to log messages
 log() {
@@ -218,6 +219,24 @@ configure_topomojo() {
   #php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
 }
 
+
+configure_ai_bedrock() {
+  log "Configuring AWS Bedrock AI provider..."
+  local out
+  if ! out=$(php /usr/local/bin/setup_environment.php \
+      --step=configure_ai_bedrock \
+      --accesskeyid="$AWS_ACCESS_KEY_ID" \
+      --secretaccesskey="$AWS_SECRET_ACCESS_KEY" \
+      --sessiontoken="$AWS_SESSION_TOKEN" \
+      --region="$AWS_REGION" \
+      --modelid="$BEDROCK_MODEL_ID" 2>&1); then
+    error "Configure AI Bedrock" "Failed to configure AWS Bedrock AI provider: $out"
+    return 1
+  fi
+  log "$out"
+}
+
+
 create_course() {
   echo "Creating course"
   moosh course-list | grep -q 'Test Course' || moosh course-create 'Test Course';
@@ -237,6 +256,7 @@ execute_section "xAPI Configuration" configure_xapi
 execute_section "Crucible Configuration" configure_crucible
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
+execute_section "Configure AWS Bedrock AI Provider" configure_ai_bedrock
 
 # On subsequent runs add admin user to the list of site admins
 ADMINUSERID=$(moosh user-list | grep admin@localhost | sed -e "s/admin.*(\([0-9]\)),.*/\1/")

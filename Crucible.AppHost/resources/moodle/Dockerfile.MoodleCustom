@@ -1,3 +1,6 @@
+# Copyright 2026 Carnegie Mellon University. All Rights Reserved.
+# Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
+
 FROM erseco/alpine-moodle:v5.0.0
 
 USER root
@@ -5,7 +8,7 @@ USER root
 # Install Xdebug cleanly without apk update
 RUN apk add --no-cache php83-pecl-xdebug ca-certificates
 
-# Copy certs
+# Copy custom CA certificates
 COPY certs/ /usr/local/share/ca-certificates/custom/
 
 # Only run update-ca-certificates if any .crt exists
@@ -18,9 +21,12 @@ RUN sh -c 'if ls /usr/local/share/ca-certificates/custom/*.crt >/dev/null 2>&1; 
 
 # Copy files for debugging
 RUN mkdir -p /moodle/admin && \
+    mkdir -p /moodle/ai && \
     cp -pr /var/www/html/theme /moodle/ && \
     cp -pr /var/www/html/lib /moodle/ && \
     cp -pr /var/www/html/admin/cli /moodle/admin/ && \
+    cp -pr /var/www/html/ai/provider /moodle/ai/ && \
+    cp -pr /var/www/html/ai/classes /moodle/ai/ && \
     chown -R nobody:nobody /moodle
 
 # Copy Xdebug configuration

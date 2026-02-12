@@ -1,0 +1,24 @@
+# Copyright 2026 Carnegie Mellon University. All Rights Reserved.
+# Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
+
+FROM ghcr.io/misp/misp-docker/misp-modules:v3.0.5
+
+USER root
+
+# Copy custom CA certificates
+COPY certs/ /usr/local/share/ca-certificates/custom/
+
+# Only run update-ca-certificates if any .crt exists
+RUN sh -c 'if ls /usr/local/share/ca-certificates/custom/*.crt >/dev/null 2>&1; then \
+    cp /usr/local/share/ca-certificates/custom/*.crt /usr/local/share/ca-certificates/ && \
+    update-ca-certificates; \
+    else \
+    echo "No extra CA certificates found, skipping update-ca-certificates"; \
+    fi'
+
+# The custom moodle module will be mounted at runtime via bind mount as moodle.py
+# Expose the default misp-modules port
+EXPOSE 6666
+
+# Use just the arguments, not the full command (entrypoint already has misp-modules)
+CMD ["-l", "0.0.0.0"]

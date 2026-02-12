@@ -33,6 +33,11 @@ list($options, $unrecognized) = cli_get_params([
     'requireconfirmation' => false,
     'tokenendpoint' => '',
     'userinfoendpoint' => '',
+    'accesskeyid'     => '',
+    'secretaccesskey' => '',
+    'sessiontoken' => '',
+    'region'          => '',
+    'modelid'         => '',
 ]);
 
 // Step dispatcher
@@ -44,9 +49,21 @@ switch ($options['step']) {
     case 'enable_auth_oauth2':
         enable_auth_oauth2();
         break;
+    case 'configure_ai_bedrock':
+        if (empty($options['accesskeyid']) || empty($options['secretaccesskey']) || empty($options['sessiontoken'] ||
+            empty($options['region']) || empty($options['modelid']))) {
+            cli_error("Missing required parameters. Current values:\n" .
+                      "  --accesskeyid={$options['accesskeyid']}\n" .
+                      "  --secretaccesskey={$options['secretaccesskey']}\n" .
+                      "  --sessiontoken={$options['sessiontoken']}\n" .
+                      "  --region={$options['region']}\n" .
+                      "  --modelid={$options['modelid']}");
+        }
+        configure_ai_bedrock($options);
+        break;
 
     default:
-        cli_error("Unknown step");
+        cli_error("Unknown step: {$options['step']}");
 }
 
 function manage_oauth($options) {
@@ -227,4 +244,128 @@ function output_results($options, $results) {
         print_r($results);
     }
 }
+
+function configure_ai_bedrock(array $options): void {
+    global $CFG, $DB;
+
+    require_once($CFG->libdir . '/adminlib.php');
+    require_once($CFG->dirroot . '/user/lib.php');
+
+    \core\session\manager::set_user(get_admin());
+
+    // Get credentials from CLI arguments
+    $accessKeyId = $options['accesskeyid'];
+    $secretAccessKey = $options['secretaccesskey'];
+    $sessionToken = $options['sessiontoken'];
+    $region = $options['region'];
+    $modelId = $options['modelid'];
+    $providerName = 'IMCITE Bedrock';
+
+    cli_writeln("Configuring AWS Bedrock AI provider: {$providerName}");
+
+    // Check if provider already exists
+    $existingProvider = $DB->get_record('ai_providers', [
+        'provider' => 'aiprovider_bedrock\\provider',
+        'name' => $providerName
+    ]);
+
+    // Build config JSON
+    $config = [
+        'aiprovider' => 'aiprovider_bedrock',
+        'name' => $providerName,
+        'accesskeyid' => $accessKeyId,
+        'secretaccesskey' => $secretAccessKey,
+        'sessiontoken' => $sessionToken,
+        'region' => $region,
+    ];
+
+    // Build actionconfig JSON with all AI actions
+    // Only set model - Moodle will use default system instructions
+    $actionconfig = [
+        'core_ai\\aiactions\\generate_text' => [
+            'enabled' => true,
+            'settings' => [
+                'model' => $modelId
+            ]
+        ],
+        'core_ai\\aiactions\\summarise_text' => [
+            'enabled' => true,
+            'settings' => [
+                'model' => $modelId
+            ]
+        ],
+        'core_ai\\aiactions\\explain_text' => [
+            'enabled' => true,
+            'settings' => [
+                'model' => $modelId
+            ]
+        ],
+        'core_ai\\aiactions\\generate_image' => [
+            'enabled' => true,
+            'settings' => [
+                'model' => 'amazon.nova-canvas-v1:0'
+            ]
+        ]
+    ];
+
+    if ($existingProvider) {
+        // Update existing provider
+        $config['updateandreturn'] = 'Update instance';
+        $config['returnurl'] = 'https://' . $_SERVER['HTTP_HOST'] . '/admin/settings.php?section=aiprovider';
+        $config['id'] = $existingProvider->id;
+
+        // Add providerid to actionconfig settings
+        foreach ($actionconfig as $action => &$actiondata) {
+            if (isset($actiondata['settings'])) {
+                $actiondata['settings']['providerid'] = $existingProvider->id;
+            }
+        }
+
+        $existingProvider->config = json_encode($config);
+        $existingProvider->actionconfig = json_encode($actionconfig);
+        $existingProvider->enabled = 1;
+
+        $DB->update_record('ai_providers', $existingProvider);
+        cli_writeln("Updated existing AI provider (ID: {$existingProvider->id})");
+    } else {
+        // Create new provider
+        $config['createandreturn'] = 'Create instance';
+        $config['returnurl'] = 'https://' . $_SERVER['HTTP_HOST'] . '/admin/settings.php?section=aiprovider';
+
+        $record = new stdClass();
+        $record->name = $providerName;
+        $record->provider = 'aiprovider_bedrock\\provider';
+        $record->enabled = 1;
+        $record->config = json_encode($config);
+        $record->actionconfig = json_encode($actionconfig);
+
+        $newid = $DB->insert_record('ai_providers', $record);
+
+        // Update actionconfig with providerid
+        foreach ($actionconfig as $action => &$actiondata) {
+            if (isset($actiondata['settings'])) {
+                $actiondata['settings']['providerid'] = $newid;
+            }
+        }
+        $record->id = $newid;
+        $record->actionconfig = json_encode($actionconfig);
+        $DB->update_record('ai_providers', $record);
+
+        cli_writeln("Created new AI provider (ID: {$newid})");
+    }
+
+    cli_writeln("AWS Bedrock AI provider configured successfully:");
+    cli_writeln("  - Provider Name: {$providerName}");
+    cli_writeln("  - Region: {$region}");
+    cli_writeln("  - Model: {$modelId}");
+    cli_writeln("  - Access Key ID: " . substr($accessKeyId, 0, 8) . "...");
+    cli_writeln("  - Actions configured: generate_text, summarise_text, explain_text, generate_image");
+
+    // Purge caches
+    if (class_exists('\\cache_helper')) {
+        \cache_helper::purge_all();
+        cli_writeln("Purged caches.");
+    }
+}
+
 ?>

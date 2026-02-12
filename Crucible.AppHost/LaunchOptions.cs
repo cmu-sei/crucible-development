@@ -18,6 +18,7 @@ public class LaunchOptions
     public bool Lrsql { get; set; }
     public bool PGAdmin { get; set; }
     public bool Docs { get; set; }
+    public bool Misp { get; set; }
     public string XdebugMode { get; set; } = "off";
     public bool AddAllApplications { get; set; }
 }
