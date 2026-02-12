@@ -920,6 +920,9 @@ public static class BuilderExtensions
 
             if (root.TryGetProperty("SessionToken", out var sessionToken))
                 creds["aws_session_token"] = sessionToken.GetString() ?? "";
+
+            if (root.TryGetProperty("Region", out var region))
+                creds["region"] = region.GetString() ?? "us-east-1";
         }
         catch (Exception ex)
         {
