@@ -469,15 +469,7 @@ public static class BuilderExtensions
         // Configure xAPI if LRS is enabled
         if (options.Lrsql)
         {
-            citeApi
-                .WithEnvironment("XApiOptions__Endpoint", "http://localhost:9274/xapi")
-                .WithEnvironment("XApiOptions__Username", "defaultkey")
-                .WithEnvironment("XApiOptions__Password", "defaultsecret")
-                .WithEnvironment("XApiOptions__IssuerUrl", "https://localhost:8443/realms/crucible")
-                .WithEnvironment("XApiOptions__ApiUrl", "http://localhost:4720/api/")
-                .WithEnvironment("XApiOptions__UiUrl", "http://localhost:4721/")
-                .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
-                .WithEnvironment("XApiOptions__Platform", "cite");
+            ConfigureXApi(citeApi, "cite", "http://localhost:4720/api/", "http://localhost:4721/");
         }
 
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
@@ -530,15 +522,7 @@ public static class BuilderExtensions
         // Configure xAPI if LRS is enabled
         if (options.Lrsql)
         {
-            galleryApi
-                .WithEnvironment("XApiOptions__Endpoint", "http://localhost:9274/xapi")
-                .WithEnvironment("XApiOptions__Username", "defaultkey")
-                .WithEnvironment("XApiOptions__Password", "defaultsecret")
-                .WithEnvironment("XApiOptions__IssuerUrl", "https://localhost:8443/realms/crucible")
-                .WithEnvironment("XApiOptions__ApiUrl", "http://localhost:4722/api/")
-                .WithEnvironment("XApiOptions__UiUrl", "http://localhost:4723/")
-                .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
-                .WithEnvironment("XApiOptions__Platform", "gallery");
+            ConfigureXApi(galleryApi, "gallery", "http://localhost:4722/api/", "http://localhost:4723/");
         }
 
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
@@ -657,7 +641,8 @@ public static class BuilderExtensions
 
     public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.Moodle) return;
+        if (!options.AddAllApplications && !options.Moodle)
+            return;
 
         var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
 
@@ -709,7 +694,8 @@ public static class BuilderExtensions
 
     public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.Lrsql) return;
+        if (!options.AddAllApplications && !options.Lrsql)
+            return;
 
         var lrsqlDb = postgres.AddDatabase("lrsqlDb", "lrsql");
 
@@ -735,7 +721,8 @@ public static class BuilderExtensions
 
     public static void AddMisp(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.Misp) return;
+        if (!options.AddAllApplications && !options.Misp)
+            return;
 
         // Redis for MISP background jobs (without TLS for dev environment)
         var mispRedisPassword = builder.AddParameter("misp-redis-password", secret: true);
@@ -889,6 +876,19 @@ public static class BuilderExtensions
             Console.WriteLine($"Warning: Failed to run {fileName} with {arguments}: {ex.Message}");
             return -1;
         }
+    }
+
+    private static void ConfigureXApi<T>(IResourceBuilder<T> resource, string platform, string apiUrl, string uiUrl) where T : IResourceWithEnvironment
+    {
+        resource
+            .WithEnvironment("XApiOptions__Endpoint", "http://localhost:9274/xapi")
+            .WithEnvironment("XApiOptions__Username", "defaultkey")
+            .WithEnvironment("XApiOptions__Password", "defaultsecret")
+            .WithEnvironment("XApiOptions__IssuerUrl", "https://localhost:8443/realms/crucible")
+            .WithEnvironment("XApiOptions__ApiUrl", apiUrl)
+            .WithEnvironment("XApiOptions__UiUrl", uiUrl)
+            .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
+            .WithEnvironment("XApiOptions__Platform", platform);
     }
 
     private static Dictionary<string, string> ReadAwsCredentials()
