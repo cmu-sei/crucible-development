@@ -2,15 +2,15 @@
 
 Development Environment for Crucible
 
-# Getting Started
+## Getting Started
 
 `crucible-development` is a [Development-Containers](https://containers.dev/)-based solution that uses .NET Aspire to orchestrate the various components of Crucible, along with supporting resources like an identity provider (Keycloak), a Postgres database server, and PGAdmin.
 
-## Setting up Docker
+### Setting up Docker
 
 To use any dev container, you'll need to run Docker on your machine. [Docker Desktop](https://www.docker.com/) is a great way to get started if you're not confident administering Docker from the command line.
 
-### Setting memory and storage limits
+#### Setting memory and storage limits
 
 If you're on a Windows machine, Docker's consumption of your host machine's memory and storage is managed by [WSL2](https://learn.microsoft.com/en-us/windows/wsl/about). These will automatically scale to a percentage of your system's available resources, so you typically don't need to do any additional configuration.
 
@@ -94,15 +94,15 @@ This repo is still under construction, so you may run into the occasional challe
 
 - Some extensions (e.g. C#) very rarely seem to fail to install in the container's VS Code environment. If you see weird intellisense behavior or have compilation/debugging problems, ensure all extensions in the `devcontainers.json` file are installed in your container.
 
-# Database seeding and backup
+## Database seeding and backup
 
-## setup
+### Setup
 
 ... using blueprint as the example
 create a db-dumps folder under crucible-dev
 copy your blueprint.dump file into the db-dumps folder
 
-## seed/restore a database
+### Seed/Restore a database
 
 navigate to the db-dumps folder in the integrated terminal
 drop the blueprint database using pgadmin
@@ -113,14 +113,14 @@ docker exec -it crucible-postgres /bin/bash
 /usr/lib/postgresql/17/bin/psql --username=postgres blueprint < /tmp/blueprint.dump
 exit
 
-## backup/dump a database
+### Backup/Dump a database
 
 docker exec -it crucible-postgres /bin/bash
 pg_dump -U postgres blueprint > /tmp/blueprint.dump
 exit
 docker cp crucible-postgres:/tmp/blueprint.dump blueprint.dump
 
-# Moodle configuration
+## Moodle configuration
 
 Moodle will be configured using files located in `scripts/` and `resources/moodle/`.
 When starting for the first time, Moodle will make a copy of some core files that will
@@ -129,7 +129,7 @@ debugging with xdebug. These files will be mounted alongside our repos under the
 `/mnt/data/crucible/moodle/moodle-core/`. The xAPI logstore plugin will also be configured
 automatically as will one default Moodle course with no activities within it.
 
-## OAUTH
+### OAUTH
 
 Moodle will be configured for oauth automatically. The oauth admin user has an email
 address set and the Moodle client has a hard-coded secret.
@@ -145,27 +145,27 @@ login with it and navigate to the oauth server settings under Site Administratio
 Server, and connect the system account. This will enable our plugins to communicate with
 the various Crucible applications.
 
-## Crucible Plugin
+### Crucible Plugin
 
 To configure Moodle to work with Crucible, oauth must be configured on Moodle, the service
 account must be connected, and the user must be logged an with oauth.
 
-## TopoMojo Plugin
+### TopoMojo Plugin
 
 To configure Moodle to work with TopoMojo, login to TopoMojo, generate an API key, and
 add that API key to the Moodle crucible plugin's configuration in the Moodle UI or in the
 script `post_configure.sh`.
 
-## Developing New Moodle Plugins
+### Developing New Moodle Plugins
 
 To add new Moodle plugin repositories, add them to `scripts/repos.json`, `launch.json`,
 `AppHost.cs`, and the `xdebug_filter.sh` files.
 
-## Adding Additional Official Plugins for Moodle
+### Adding Additional Official Plugins for Moodle
 
 To add additional plugins, add them to the `PLUGINS` environment variable in `AppHost.cs`.
 
-## Moodle PHP Debugging with xdebug
+### Moodle PHP Debugging with xdebug
 
 If you do not wish to debug Moodle, simply run Moodle via the `Moodle` task. Id you do wish
 to debug Mooodle, run Moodle via the `Moodle Debug` composite task. This task will start
@@ -186,7 +186,7 @@ code being analyzed by xdebug.
 To make additional paths available for debugging, add the paths to `Dockerfile.MoodleCustom`,
 `add-moodle-mounts.sh`, `AppHost.cs`, `pre_configure.sh` and `launch.json`.
 
-## Moodle UI Debug Display
+### Moodle UI Debug Display
 
 The standard Moodle debugging level and display via the UI can be set under the normal Site
 Administration, Development, menu. The install process for this container installs the plugin
@@ -194,8 +194,10 @@ Administration, Development, menu. The install process for this container instal
 to the header just to the left of the user avatar in the upper right corner of the screen.
 This is the preferred method to enable display of debug messages inside of the browser.
 
-# Library Development
+## Library Development
 
-The crucible-common-dotnet shared library is cloned into the `/mnt/data.crucible/libraries` directory. By default, APIs that use these libraries pull the published packages from NuGet. When developing or debugging these libraries, it is convenient to point the APIs to the local copy of the library. To make this easier, a Directory.Build.props file is mounted to `/mnt/data`. This file defines a variable `<UseLocalEntityEvents>false</UseLocalEntityEvents>`. If you want to use the local version of the Crucible.Common.EntityEvents library, copy this file to `/mnt/data/crucible` and set `<UseLocalEntityEvents>true</UseLocalEntityEvents>`. This will tell MSBuild to use a local project reference instead of the NuGet package and this file will not get checked into git.
+The crucible-common-dotnet shared library is cloned into the `/mnt/data.crucible/libraries` directory. By default, APIs that use these libraries pull the published packages from NuGet. When developing or debugging these libraries, it is convenient to point the APIs to the local copy of the library. Developers can use the `scripts/toggle-local-library.sh` script to easily toggle between the default published NuGet packages and local Project References.
+
+A Directory.Build.props file is mounted to `/mnt/data`. This file defines a variable `<UseLocalEntityEvents>false</UseLocalEntityEvents>`. If you want to use the local version of the Crucible.Common.EntityEvents library, copy this file to `/mnt/data/crucible` and set `<UseLocalEntityEvents>true</UseLocalEntityEvents>`. This will tell MSBuild to use a local project reference instead of the NuGet package and this file will not get checked into git. The script automates this process for you.
 
 This pattern should be extended to the other libraries in crucible-common-dotnet as necessary in the future.
