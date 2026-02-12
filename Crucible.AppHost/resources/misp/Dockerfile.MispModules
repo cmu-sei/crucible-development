@@ -5,9 +5,16 @@ FROM ghcr.io/misp/misp-docker/misp-modules:v3.0.5
 
 USER root
 
-# Install custom CA certificates (for corporate proxies like Zscaler)
-COPY certs/ZscalerRootCertificate-2048-SHA256.crt /usr/local/share/ca-certificates/
-RUN update-ca-certificates
+# Copy custom CA certificates
+COPY certs/ /usr/local/share/ca-certificates/custom/
+
+# Only run update-ca-certificates if any .crt exists
+RUN sh -c 'if ls /usr/local/share/ca-certificates/custom/*.crt >/dev/null 2>&1; then \
+    cp /usr/local/share/ca-certificates/custom/*.crt /usr/local/share/ca-certificates/ && \
+    update-ca-certificates; \
+    else \
+    echo "No extra CA certificates found, skipping update-ca-certificates"; \
+    fi'
 
 # The custom moodle module will be mounted at runtime via bind mount as moodle.py
 # Expose the default misp-modules port

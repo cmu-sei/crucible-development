@@ -4,6 +4,14 @@
 # Use the official MISP Docker image
 FROM ghcr.io/misp/misp-docker/misp-core:v2.5.32
 
-# Add Zscaler root certificate for corporate proxy/SSL inspection
-COPY certs/ZscalerRootCertificate-2048-SHA256.crt /usr/local/share/ca-certificates/
+# Copy custom CA certificates
+COPY certs/ /usr/local/share/ca-certificates/custom/
+
+# Only run update-ca-certificates if any .crt exists
+RUN sh -c 'if ls /usr/local/share/ca-certificates/custom/*.crt >/dev/null 2>&1; then \
+    cp /usr/local/share/ca-certificates/custom/*.crt /usr/local/share/ca-certificates/ && \
+    update-ca-certificates; \
+    else \
+    echo "No extra CA certificates found, skipping update-ca-certificates"; \
+    fi'
 
