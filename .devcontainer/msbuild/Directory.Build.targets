@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!-- When using local: add source files and generator (only if project references the package) -->
+  <ItemGroup Condition="'$(UseLocalEntityEvents)' == 'true' AND '$(IsEntityEventsLibrary)' != 'true' AND '@(PackageReference->WithMetadataValue('Identity', 'Crucible.Common.EntityEvents'))' != ''">
+    <Compile Include="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.EntityEvents/src/**/*.cs"
+             Link="EntityEvents/%(RecursiveDir)%(Filename)%(Extension)" />
+    <ProjectReference Include="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.EntityEvents.Generators/Crucible.Common.EntityEvents.Generators.csproj"
+                      OutputItemType="Analyzer" />
+  </ItemGroup>
+
+  <!-- When using local: exclude contentFiles from the package -->
+  <ItemGroup Condition="'$(UseLocalEntityEvents)' == 'true' AND '$(IsEntityEventsLibrary)' != 'true'">
+    <PackageReference Update="Crucible.Common.EntityEvents" ExcludeAssets="contentFiles;build" />
+  </ItemGroup>
+</Project>

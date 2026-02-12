@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <!-- Set to true to debug EntityEvents library locally -->
+    <UseLocalEntityEvents>false</UseLocalEntityEvents>
+    <!-- Detect if this is a library project (exclude from local source injection) -->
+    <IsEntityEventsLibrary Condition="$(MSBuildProjectFullPath.Contains('crucible-common-dotnet'))">true</IsEntityEventsLibrary>
+  </PropertyGroup>
+</Project>
