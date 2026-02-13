@@ -83,6 +83,33 @@ The config file is mounted to `/home/vscode/.aws/config` inside the container an
 
 Once the container is running with valid credentials, run `claude` in the terminal to start Claude Code.
 
+## Memory Optimization
+
+The Crucible development environment includes 30+ microservices and can be memory-intensive. Several optimizations are configured in `.vscode/settings.json` to reduce memory usage:
+
+### Intelephense PHP Extension
+
+The Intelephense PHP language server is **disabled by default** to save approximately 333MB of memory.
+
+**When to enable:** Set `"intelephense.enable": true` in `.vscode/settings.json` when working on:
+- Moodle core PHP code
+- Moodle plugins (mod_crucible, mod_topomojo, etc.)
+- Any other PHP development
+
+**After enabling:** Reload VS Code window (Ctrl+Shift+P → "Reload Window") for the change to take effect.
+
+### Node.js Memory Management
+
+Angular development servers (`ng serve`) can consume 1.2-1.5GB of memory each. To limit Node.js memory usage, add `.WithEnvironment("NODE_OPTIONS", "--max-old-space-size=1024")` in `AppHost.cs`:
+
+```csharp
+var blueprintUi = builder.AddJavaScriptApp("blueprint-ui", blueprintUiRoot, "start")
+    .WithEnvironment("NODE_OPTIONS", "--max-old-space-size=1024")
+    .WithHttpEndpoint(port: 4725, env: "PORT", isProxied: false);
+```
+
+The value is in MB. Common settings: `768` (minimal), `1024` (recommended), `1536` (generous).
+
 ## Troubleshooting
 
 This repo is still under construction, so you may run into the occasional challenge or oddity. From our lessons learned:

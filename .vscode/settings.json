@@ -20,5 +20,9 @@
   "files.exclude": {
     "**/bin": false,
     "**/obj": false
-  }
+  },
+
+  // Disable Intelephense PHP extension by default to save memory (~333MB)
+  // Set to true when working on Moodle/PHP code
+  "intelephense.enable": false
 }
