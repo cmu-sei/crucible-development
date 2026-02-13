@@ -117,6 +117,55 @@ var blueprintUi = builder.AddJavaScriptApp("blueprint-ui", blueprintUiRoot, "sta
 
 The value is in MB. Common settings: `768` (minimal), `1024` (recommended), `1536` (generous).
 
+### UI Development vs Production Mode
+
+The Crucible AppHost supports running Angular UIs in two modes to optimize memory usage during development:
+
+**Dev Mode** (`dev`): Full `ng serve` with hot reload (~1.5GB per UI)
+- Use for your primary development app
+- Instant code changes without rebuild
+- Full debugging capabilities
+
+**Production Mode** (`prod`): Lightweight production build server (~90MB per UI)
+- Use for supporting apps during integration testing
+- Saves ~1.4GB per UI compared to dev mode
+- Requires manual rebuild when code changes
+
+#### Configuration
+
+Set UI launch modes in `.env/*.env` files using a single variable per app:
+
+```bash
+# TTX Task - Blueprint as primary development app
+Launch__Player=prod        # Production build (~90MB)
+Launch__Steamfitter=prod   # Production build (~90MB)
+Launch__Cite=prod          # Production build (~90MB)
+Launch__Gallery=prod       # Production build (~90MB)
+Launch__Blueprint=dev      # Dev mode with hot reload (~1.5GB)
+```
+
+**Available values:**
+- `off` (default) - Don't launch the application
+- `prod` - Launch with production build
+- `dev` - Launch with ng serve (hot reload)
+
+#### Memory Savings
+
+Running 5 UIs in production mode instead of dev mode saves approximately **6-8GB** of memory, allowing you to run comprehensive integration tests while actively developing on a single primary application.
+
+#### Supported Applications
+
+All Angular UIs support dev/prod modes:
+- Player (player-ui, player-vm-ui, player-vm-console-ui)
+- Caster (caster-ui)
+- Alloy (alloy-ui)
+- TopoMojo (topomojo-ui)
+- Steamfitter (steamfitter-ui)
+- CITE (cite-ui)
+- Gallery (gallery-ui)
+- Blueprint (blueprint-ui)
+- Gameboard (gameboard-ui)
+
 ## Troubleshooting
 
 This repo is still under construction, so you may run into the occasional challenge or oddity. From our lessons learned:

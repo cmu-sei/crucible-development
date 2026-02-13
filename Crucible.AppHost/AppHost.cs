@@ -10,6 +10,13 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 LaunchOptions launchOptions = builder.Configuration.GetSection("Launch").Get<LaunchOptions>() ?? new();
 
+// Debug: Log launch options
+Console.WriteLine($"LaunchOptions:");
+Console.WriteLine($"  Player: '{launchOptions.Player}', Caster: '{launchOptions.Caster}', Alloy: '{launchOptions.Alloy}'");
+Console.WriteLine($"  TopoMojo: '{launchOptions.TopoMojo}', Steamfitter: '{launchOptions.Steamfitter}', Cite: '{launchOptions.Cite}'");
+Console.WriteLine($"  Gallery: '{launchOptions.Gallery}', Blueprint: '{launchOptions.Blueprint}', Gameboard: '{launchOptions.Gameboard}'");
+Console.WriteLine($"  AddAllApplications: {launchOptions.AddAllApplications}");
+
 var postgres = builder.AddPostgres(launchOptions);
 var keycloak = builder.AddKeycloak(postgres);
 builder.AddPlayer(postgres, keycloak, launchOptions);
@@ -111,7 +118,7 @@ public static class BuilderExtensions
 
     public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Player)
+        if (!options.AddAllApplications && options.Player == "off")
             return;
 
         var playerDb = postgres.AddDatabase("playerDb", "player")
@@ -138,20 +145,26 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var playerUi = builder.AddJavaScriptApp("player-ui", playerUiRoot, "start")
-            .WithHttpEndpoint(port: 4301, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
-
-        if (!options.Player)
+        // Use full ng serve in dev mode, or lightweight production server otherwise
+        IResourceBuilder<ExecutableResource> playerUi;
+        if (options.Player == "dev")
         {
-            playerApi.WithExplicitStart();
-            playerUi.WithExplicitStart();
+            playerUi = builder.AddJavaScriptApp("player-ui", playerUiRoot, "start")
+                .WithHttpEndpoint(port: 4301, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist -l 4301";
+            playerUi = builder.AddExecutable("player-ui", "bash", playerUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4301, isProxied: false);
         }
 
-        builder.AddPlayerVm(postgres, keycloak, options.Player);
+        playerUi = playerUi.WithHttpHealthCheck();
+
+        builder.AddPlayerVm(postgres, keycloak, options);
     }
 
-    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, bool startByDefault)
+    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm")
             .WithDevSettings();
@@ -185,30 +198,45 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var vmUi = builder.AddJavaScriptApp("player-vm-ui", vmUiRoot, "start")
-            .WithHttpEndpoint(port: 4303, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck(); ;
+        IResourceBuilder<ExecutableResource> vmUi;
+        if (options.Player == "dev")
+        {
+            vmUi = builder.AddJavaScriptApp("player-vm-ui", vmUiRoot, "start")
+                .WithHttpEndpoint(port: 4303, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist/browser -l 4303";
+            vmUi = builder.AddExecutable("player-vm-ui", "bash", vmUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4303, isProxied: false);
+        }
+
+        vmUi = vmUi.WithHttpHealthCheck();
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var consoleUi = builder.AddJavaScriptApp("player-vm-console-ui", consoleUiRoot, "start")
-            .WithHttpEndpoint(port: 4305, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
-
-        if (!startByDefault)
+        IResourceBuilder<ExecutableResource> consoleUi;
+        if (options.Player == "dev")
         {
-            vmApi.WithExplicitStart();
-            vmUi.WithExplicitStart();
-            consoleUi.WithExplicitStart();
+            consoleUi = builder.AddJavaScriptApp("player-vm-console-ui", consoleUiRoot, "start")
+                .WithHttpEndpoint(port: 4305, env: "PORT", isProxied: false);
         }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist/browser -l 4305";
+            consoleUi = builder.AddExecutable("player-vm-console-ui", "bash", consoleUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4305, isProxied: false);
+        }
+
+        consoleUi = consoleUi.WithHttpHealthCheck();
 
     }
 
     public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Caster)
+        if (!options.AddAllApplications && options.Caster == "off")
             return;
 
         var casterDb = postgres.AddDatabase("casterDb", "caster")
@@ -258,11 +286,22 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var casterUi = builder.AddJavaScriptApp("caster-ui", casterUiRoot, "start")
-            .WithHttpEndpoint(port: 4310, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        IResourceBuilder<ExecutableResource> casterUi;
+        if (options.Caster == "dev")
+        {
+            casterUi = builder.AddJavaScriptApp("caster-ui", casterUiRoot, "start")
+                .WithHttpEndpoint(port: 4310, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist -l 4310";
+            casterUi = builder.AddExecutable("caster-ui", "bash", casterUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4310, isProxied: false);
+        }
 
-        if (!options.Caster)
+        casterUi = casterUi.WithHttpHealthCheck();
+
+        if (options.Caster == "off")
         {
             casterApi.WithExplicitStart();
             casterUi.WithExplicitStart();
@@ -272,7 +311,7 @@ public static class BuilderExtensions
 
     public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Alloy)
+        if (!options.AddAllApplications && options.Alloy == "off")
             return;
 
         var alloyDb = postgres.AddDatabase("alloyDb", "alloy")
@@ -308,11 +347,22 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var alloyUi = builder.AddJavaScriptApp("alloy-ui", alloyUiRoot, "start")
-            .WithHttpEndpoint(port: 4403, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        IResourceBuilder<ExecutableResource> alloyUi;
+        if (options.Alloy == "dev")
+        {
+            alloyUi = builder.AddJavaScriptApp("alloy-ui", alloyUiRoot, "start")
+                .WithHttpEndpoint(port: 4403, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist -l 4403";
+            alloyUi = builder.AddExecutable("alloy-ui", "bash", alloyUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4403, isProxied: false);
+        }
 
-        if (!options.Alloy)
+        alloyUi = alloyUi.WithHttpHealthCheck();
+
+        if (options.Alloy == "off")
         {
             alloyApi.WithExplicitStart();
             alloyUi.WithExplicitStart();
@@ -321,7 +371,7 @@ public static class BuilderExtensions
 
     public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.TopoMojo)
+        if (!options.AddAllApplications && options.TopoMojo == "off")
             return;
 
         var topoDb = postgres.AddDatabase("topoDb", "topomojo")
@@ -361,28 +411,39 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
 
-        var topoUi = builder.AddJavaScriptApp("topomojo-ui", topoUiRoot, "start")
-            .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck()
-            .WithArgs("topomojo-work");
-
-        var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
-            .FirstOrDefault(r => r.Name == "topomojo-ui-installer");
-
-        // Add script that runs after npm install but before the UI starts
-        if (installerResource != null)
+        IResourceBuilder<ExecutableResource> topoUi;
+        if (options.TopoMojo == "dev")
         {
-            var script = builder.AddExecutable("fixup-wmks", "bash", topoUiRoot, [
-                "-c",
-                "tools/fixup-wmks.sh"
-            ])
-            .WithParentRelationship(installerResource);
+            topoUi = builder.AddJavaScriptApp("topomojo-ui", topoUiRoot, "start")
+                .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
+                .WithArgs("topomojo-work");
 
-            script.Resource.Annotations.Add(new WaitAnnotation(installerResource, WaitType.WaitForCompletion));
-            topoUi.WaitForCompletion(script);
+            var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
+                .FirstOrDefault(r => r.Name == "topomojo-ui-installer");
+
+            // Add script that runs after npm install but before the UI starts
+            if (installerResource != null)
+            {
+                var script = builder.AddExecutable("fixup-wmks", "bash", topoUiRoot, [
+                    "-c",
+                    "tools/fixup-wmks.sh"
+                ])
+                .WithParentRelationship(installerResource);
+
+                script.Resource.Annotations.Add(new WaitAnnotation(installerResource, WaitType.WaitForCompletion));
+                topoUi.WaitForCompletion(script);
+            }
+        }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build topomojo-work; npx serve -s dist/topomojo-work -l 4201";
+            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4201, isProxied: false);
         }
 
-        if (!options.TopoMojo)
+        topoUi = topoUi.WithHttpHealthCheck();
+
+        if (options.TopoMojo == "off")
         {
             topoApi.WithExplicitStart();
             topoUi.WithExplicitStart();
@@ -391,7 +452,7 @@ public static class BuilderExtensions
 
     public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Steamfitter)
+        if (!options.AddAllApplications && options.Steamfitter == "off")
             return;
 
         var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter")
@@ -425,11 +486,22 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var steamfitterUi = builder.AddJavaScriptApp("steamfitter-ui", steamfitterUiRoot, "start")
-            .WithHttpEndpoint(port: 4401, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        IResourceBuilder<ExecutableResource> steamfitterUi;
+        if (options.Steamfitter == "dev")
+        {
+            steamfitterUi = builder.AddJavaScriptApp("steamfitter-ui", steamfitterUiRoot, "start")
+                .WithHttpEndpoint(port: 4401, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist -l 4401";
+            steamfitterUi = builder.AddExecutable("steamfitter-ui", "bash", steamfitterUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4401, isProxied: false);
+        }
 
-        if (!options.Steamfitter)
+        steamfitterUi = steamfitterUi.WithHttpHealthCheck();
+
+        if (options.Steamfitter == "off")
         {
             steamfitterApi.WithExplicitStart();
             steamfitterUi.WithExplicitStart();
@@ -438,7 +510,7 @@ public static class BuilderExtensions
 
     public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Cite)
+        if (!options.AddAllApplications && options.Cite == "off")
             return;
 
         var citeDb = postgres.AddDatabase("citeDb", "cite")
@@ -478,11 +550,22 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var citeUi = builder.AddJavaScriptApp("cite-ui", citeUiRoot, "start")
-            .WithHttpEndpoint(port: 4721, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        IResourceBuilder<ExecutableResource> citeUi;
+        if (options.Cite == "dev")
+        {
+            citeUi = builder.AddJavaScriptApp("cite-ui", citeUiRoot, "start")
+                .WithHttpEndpoint(port: 4721, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist/browser -l 4721";
+            citeUi = builder.AddExecutable("cite-ui", "bash", citeUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4721, isProxied: false);
+        }
 
-        if (!options.Cite)
+        citeUi = citeUi.WithHttpHealthCheck();
+
+        if (options.Cite == "off")
         {
             citeApi.WithExplicitStart();
             citeUi.WithExplicitStart();
@@ -491,7 +574,7 @@ public static class BuilderExtensions
 
     public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Gallery)
+        if (!options.AddAllApplications && options.Gallery == "off")
             return;
 
         var galleryDb = postgres.AddDatabase("galleryDb", "gallery")
@@ -531,11 +614,22 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var galleryUi = builder.AddJavaScriptApp("gallery-ui", galleryUiRoot, "start")
-            .WithHttpEndpoint(port: 4723, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        IResourceBuilder<ExecutableResource> galleryUi;
+        if (options.Gallery == "dev")
+        {
+            galleryUi = builder.AddJavaScriptApp("gallery-ui", galleryUiRoot, "start")
+                .WithHttpEndpoint(port: 4723, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist/browser -l 4723";
+            galleryUi = builder.AddExecutable("gallery-ui", "bash", galleryUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4723, isProxied: false);
+        }
 
-        if (!options.Gallery)
+        galleryUi = galleryUi.WithHttpHealthCheck();
+
+        if (options.Gallery == "off")
         {
             galleryApi.WithExplicitStart();
             galleryUi.WithExplicitStart();
@@ -544,7 +638,7 @@ public static class BuilderExtensions
 
     public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Blueprint)
+        if (!options.AddAllApplications && options.Blueprint == "off")
             return;
 
         var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint")
@@ -577,11 +671,22 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var blueprintUi = builder.AddJavaScriptApp("blueprint-ui", blueprintUiRoot, "start")
-            .WithHttpEndpoint(port: 4725, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        IResourceBuilder<ExecutableResource> blueprintUi;
+        if (options.Blueprint == "dev")
+        {
+            blueprintUi = builder.AddJavaScriptApp("blueprint-ui", blueprintUiRoot, "start")
+                .WithHttpEndpoint(port: 4725, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist/browser -l 4725";
+            blueprintUi = builder.AddExecutable("blueprint-ui", "bash", blueprintUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4725, isProxied: false);
+        }
 
-        if (!options.Blueprint)
+        blueprintUi = blueprintUi.WithHttpHealthCheck();
+
+        if (options.Blueprint == "off")
         {
             blueprintApi.WithExplicitStart();
             blueprintUi.WithExplicitStart();
@@ -590,7 +695,7 @@ public static class BuilderExtensions
 
     public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Gameboard)
+        if (!options.AddAllApplications && options.Gameboard == "off")
             return;
 
         var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard")
@@ -630,11 +735,22 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
 
-        var gameboardUi = builder.AddJavaScriptApp("gameboard-ui", gameboardUiRoot, "start")
-            .WithHttpEndpoint(port: 4202, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        IResourceBuilder<ExecutableResource> gameboardUi;
+        if (options.Gameboard == "dev")
+        {
+            gameboardUi = builder.AddJavaScriptApp("gameboard-ui", gameboardUiRoot, "start")
+                .WithHttpEndpoint(port: 4202, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var serveProd = $"[ ! -d dist ] && npm run build gameboard-ui; npx serve -s dist/gameboard-ui -l 4202";
+            gameboardUi = builder.AddExecutable("gameboard-ui", "bash", gameboardUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4202, isProxied: false);
+        }
 
-        if (!options.Gameboard)
+        gameboardUi = gameboardUi.WithHttpHealthCheck();
+
+        if (options.Gameboard == "off")
         {
             gameboardApi.WithExplicitStart();
             gameboardUi.WithExplicitStart();
