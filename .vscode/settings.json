@@ -24,5 +24,8 @@
 
   // Disable Intelephense PHP extension by default to save memory (~333MB)
   // Set to true when working on Moodle/PHP code
-  "intelephense.enable": false
+  "intelephense.enable": false,
+
+  // Disable CloudFormation language server (not used in this project, saves ~163MB)
+  "aws.cloudFormation.enable": false
 }

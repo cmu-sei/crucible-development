@@ -85,18 +85,25 @@ Once the container is running with valid credentials, run `claude` in the termin
 
 ## Memory Optimization
 
-The Crucible development environment includes 30+ microservices and can be memory-intensive. Several optimizations are configured in `.vscode/settings.json` to reduce memory usage:
+The Crucible development environment includes 30+ microservices and can be memory-intensive. Several optimizations are configured to reduce memory usage:
 
 ### Intelephense PHP Extension
 
-The Intelephense PHP language server is **disabled by default** to save approximately 333MB of memory.
+The Intelephense PHP language server is **disabled by default** (configured in `.devcontainer/devcontainer.json`) to save approximately 337MB of memory.
 
-**When to enable:** Set `"intelephense.enable": true` in `.vscode/settings.json` when working on:
-- Moodle core PHP code
-- Moodle plugins (mod_crucible, mod_topomojo, etc.)
-- Any other PHP development
+**When to enable:** When working on Moodle/PHP code:
+1. Open Extensions panel (Ctrl+Shift+X)
+2. Search for "Intelephense"
+3. Click the gear icon → "Enable (Workspace)"
+4. Reload VS Code window (Ctrl+Shift+P → "Reload Window")
 
-**After enabling:** Reload VS Code window (Ctrl+Shift+P → "Reload Window") for the change to take effect.
+**To disable again:** Follow the same steps but select "Disable (Workspace)"
+
+### AWS Toolkit CloudFormation
+
+The AWS Toolkit is installed to support Claude Code with AWS Bedrock. However, the CloudFormation language server (~163MB) may run unnecessarily since this project uses Helm charts instead. If you experience CloudFormation errors:
+
+**To disable CloudFormation features:** The setting `"aws.cloudFormation.enable": false` is configured in `.devcontainer/devcontainer.json`, but may require a container rebuild to take effect. Alternatively, you can ignore the errors if not working with CloudFormation files.
 
 ### Node.js Memory Management
 
