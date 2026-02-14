@@ -77,3 +77,6 @@ db-dumps/
 # helm charts
 helm-charts/*/charts/*
 helm-charts/crucible/files/*.crt
+
+# playwright mcp logs
+.playwright-mcp/

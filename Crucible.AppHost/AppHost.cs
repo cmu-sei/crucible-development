@@ -482,6 +482,12 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "steamfitter player player-vm cite gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
+        // Configure xAPI if LRS is enabled
+        if (options.Lrsql)
+        {
+            ConfigureXApi(steamfitterApi, "steamfitter", "http://localhost:4400/api/", "http://localhost:4401/");
+        }
+
         var steamfitterUiRoot = "/mnt/data/crucible/steamfitter/steamfitter.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
