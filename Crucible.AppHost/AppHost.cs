@@ -39,29 +39,6 @@ builder.Build().Run();
 public static class BuilderExtensions
 {
     /// <summary>
-    /// Normalizes an option value, treating "dev" as "prod" if dev mode is not supported.
-    /// </summary>
-    /// <param name="value">The option value</param>
-    /// <param name="serviceName">The service name for logging</param>
-    /// <param name="supportsDevMode">Whether the service supports dev mode</param>
-    /// <returns>Normalized value: "off", "prod", or "dev"</returns>
-    private static string NormalizeOption(string value, string serviceName, bool supportsDevMode = false)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return "off";
-
-        var normalized = value.ToLower();
-
-        if (normalized == "dev" && !supportsDevMode)
-        {
-            Console.WriteLine($"Warning: {serviceName} does not support 'dev' mode. Treating as 'prod'.");
-            return "prod";
-        }
-
-        return normalized;
-    }
-
-    /// <summary>
     /// Checks if an option is enabled (not "off")
     /// </summary>
     private static bool IsEnabled(string value)
