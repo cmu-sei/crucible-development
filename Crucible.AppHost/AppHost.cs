@@ -15,7 +15,8 @@ Console.WriteLine($"LaunchOptions:");
 Console.WriteLine($"  Player: '{launchOptions.Player}', Caster: '{launchOptions.Caster}', Alloy: '{launchOptions.Alloy}'");
 Console.WriteLine($"  TopoMojo: '{launchOptions.TopoMojo}', Steamfitter: '{launchOptions.Steamfitter}', Cite: '{launchOptions.Cite}'");
 Console.WriteLine($"  Gallery: '{launchOptions.Gallery}', Blueprint: '{launchOptions.Blueprint}', Gameboard: '{launchOptions.Gameboard}'");
-Console.WriteLine($"  AddAllApplications: {launchOptions.AddAllApplications}");
+Console.WriteLine($"  Moodle: '{launchOptions.Moodle}', Lrsql: '{launchOptions.Lrsql}', Misp: '{launchOptions.Misp}'");
+Console.WriteLine($"  PGAdmin: '{launchOptions.PGAdmin}', Docs: '{launchOptions.Docs}', AddAllApplications: '{launchOptions.AddAllApplications}'");
 
 var postgres = builder.AddPostgres(launchOptions);
 var keycloak = builder.AddKeycloak(postgres);
@@ -37,6 +38,37 @@ builder.Build().Run();
 
 public static class BuilderExtensions
 {
+    /// <summary>
+    /// Normalizes an option value, treating "dev" as "prod" if dev mode is not supported.
+    /// </summary>
+    /// <param name="value">The option value</param>
+    /// <param name="serviceName">The service name for logging</param>
+    /// <param name="supportsDevMode">Whether the service supports dev mode</param>
+    /// <returns>Normalized value: "off", "prod", or "dev"</returns>
+    private static string NormalizeOption(string value, string serviceName, bool supportsDevMode = false)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "off";
+
+        var normalized = value.ToLower();
+
+        if (normalized == "dev" && !supportsDevMode)
+        {
+            Console.WriteLine($"Warning: {serviceName} does not support 'dev' mode. Treating as 'prod'.");
+            return "prod";
+        }
+
+        return normalized;
+    }
+
+    /// <summary>
+    /// Checks if an option is enabled (not "off")
+    /// </summary>
+    private static bool IsEnabled(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value) && value.ToLower() != "off";
+    }
+
     public static IResourceBuilder<PostgresServerResource> AddPostgres(this IDistributedApplicationBuilder builder, LaunchOptions options)
     {
         var postgres = builder.AddPostgres("postgres")
@@ -48,7 +80,7 @@ public static class BuilderExtensions
                 endpoint.IsProxied = false; // so tools (e.g. dotnet ef migrations) can connect to db when apphost is off
             });
 
-        if (options.PGAdmin || options.AddAllApplications)
+        if (IsEnabled(options.PGAdmin) || IsEnabled(options.AddAllApplications))
         {
             postgres.WithPgAdmin(pgAdmin =>
             {
@@ -59,7 +91,7 @@ public static class BuilderExtensions
                 });
                 pgAdmin.WithLifetime(ContainerLifetime.Persistent);
 
-                if (!options.PGAdmin)
+                if (!IsEnabled(options.PGAdmin))
                 {
                     pgAdmin.WithExplicitStart();
                 }
@@ -71,7 +103,7 @@ public static class BuilderExtensions
 
     public static void AddDocs(this IDistributedApplicationBuilder builder, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Docs)
+        if (!IsEnabled(options.AddAllApplications) && !IsEnabled(options.Docs))
             return;
 
         var docs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
@@ -79,7 +111,7 @@ public static class BuilderExtensions
             .WithHttpEndpoint(port: 8000, targetPort: 8000)
             .WithArgs("serve", "-a", "0.0.0.0:8000");
 
-        if (!options.Docs)
+        if (!IsEnabled(options.Docs))
         {
             docs.WithExplicitStart();
         }
@@ -118,7 +150,7 @@ public static class BuilderExtensions
 
     public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && options.Player == "off")
+        if (!IsEnabled(options.AddAllApplications) && options.Player == "off")
             return;
 
         var playerDb = postgres.AddDatabase("playerDb", "player")
@@ -236,7 +268,7 @@ public static class BuilderExtensions
 
     public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && options.Caster == "off")
+        if (!IsEnabled(options.AddAllApplications) && options.Caster == "off")
             return;
 
         var casterDb = postgres.AddDatabase("casterDb", "caster")
@@ -311,7 +343,7 @@ public static class BuilderExtensions
 
     public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && options.Alloy == "off")
+        if (!IsEnabled(options.AddAllApplications) && options.Alloy == "off")
             return;
 
         var alloyDb = postgres.AddDatabase("alloyDb", "alloy")
@@ -371,7 +403,7 @@ public static class BuilderExtensions
 
     public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && options.TopoMojo == "off")
+        if (!IsEnabled(options.AddAllApplications) && options.TopoMojo == "off")
             return;
 
         var topoDb = postgres.AddDatabase("topoDb", "topomojo")
@@ -452,7 +484,7 @@ public static class BuilderExtensions
 
     public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && options.Steamfitter == "off")
+        if (!IsEnabled(options.AddAllApplications) && options.Steamfitter == "off")
             return;
 
         var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter")
@@ -483,7 +515,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         // Configure xAPI if LRS is enabled
-        if (options.Lrsql)
+        if (IsEnabled(options.Lrsql))
         {
             ConfigureXApi(steamfitterApi, "steamfitter", "http://localhost:4400/api/", "http://localhost:4401/");
         }
@@ -516,7 +548,7 @@ public static class BuilderExtensions
 
     public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && options.Cite == "off")
+        if (!IsEnabled(options.AddAllApplications) && options.Cite == "off")
             return;
 
         var citeDb = postgres.AddDatabase("citeDb", "cite")
@@ -547,7 +579,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         // Configure xAPI if LRS is enabled
-        if (options.Lrsql)
+        if (IsEnabled(options.Lrsql))
         {
             ConfigureXApi(citeApi, "cite", "http://localhost:4720/api/", "http://localhost:4721/");
         }
@@ -580,7 +612,7 @@ public static class BuilderExtensions
 
     public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && options.Gallery == "off")
+        if (!IsEnabled(options.AddAllApplications) && options.Gallery == "off")
             return;
 
         var galleryDb = postgres.AddDatabase("galleryDb", "gallery")
@@ -611,7 +643,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         // Configure xAPI if LRS is enabled
-        if (options.Lrsql)
+        if (IsEnabled(options.Lrsql))
         {
             ConfigureXApi(galleryApi, "gallery", "http://localhost:4722/api/", "http://localhost:4723/");
         }
@@ -644,7 +676,7 @@ public static class BuilderExtensions
 
     public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && options.Blueprint == "off")
+        if (!IsEnabled(options.AddAllApplications) && options.Blueprint == "off")
             return;
 
         var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint")
@@ -673,7 +705,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
-        if (options.Lrsql)
+        if (IsEnabled(options.Lrsql))
         {
             ConfigureXApi(blueprintApi, "blueprint", "http://localhost:4724/api/", "http://localhost:4725/");
         }
@@ -706,7 +738,7 @@ public static class BuilderExtensions
 
     public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && options.Gameboard == "off")
+        if (!IsEnabled(options.AddAllApplications) && options.Gameboard == "off")
             return;
 
         var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard")
@@ -770,7 +802,7 @@ public static class BuilderExtensions
 
     public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Moodle)
+        if (!IsEnabled(options.AddAllApplications) && !IsEnabled(options.Moodle))
             return;
 
         var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
@@ -820,7 +852,7 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/local_tagmanager", "/var/www/html/local/tagmanager", isReadOnly: true)
             .WithBindMount("/mnt/data/crucible/moodle/aiplacement_competency", "/var/www/html/ai/placement/competency", isReadOnly: true);
 
-        if (!options.Moodle)
+        if (!IsEnabled(options.Moodle))
         {
             moodle.WithExplicitStart();
         }
@@ -828,7 +860,7 @@ public static class BuilderExtensions
 
     public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Lrsql)
+        if (!IsEnabled(options.AddAllApplications) && !IsEnabled(options.Lrsql))
             return;
 
         var lrsqlDb = postgres.AddDatabase("lrsqlDb", "lrsql");
@@ -852,7 +884,7 @@ public static class BuilderExtensions
             .WithEnvironment("LRSQL_DB_PORT", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
             .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
 
-        if (!options.Lrsql)
+        if (!IsEnabled(options.Lrsql))
         {
             lrsql.WithExplicitStart();
         }
@@ -860,7 +892,7 @@ public static class BuilderExtensions
 
     public static void AddMisp(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Misp)
+        if (!IsEnabled(options.AddAllApplications) && !IsEnabled(options.Misp))
             return;
 
         // Redis for MISP background jobs (without TLS for dev environment)
@@ -913,7 +945,7 @@ public static class BuilderExtensions
             .WithHttpEndpoint(port: 8666, targetPort: 6666, isProxied: false)
             .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle/misp_module.py", "/usr/local/lib/python3.12/site-packages/misp_modules/modules/action_mod/moodle.py", isReadOnly: false);
 
-        if (!options.Misp)
+        if (!IsEnabled(options.Misp))
         {
             misp.WithExplicitStart();
             mispModules.WithExplicitStart();
