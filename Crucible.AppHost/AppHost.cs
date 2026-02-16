@@ -673,6 +673,11 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
+        if (options.Lrsql)
+        {
+            ConfigureXApi(blueprintApi, "blueprint", "http://localhost:4724/api/", "http://localhost:4725/");
+        }
+
         var blueprintUiRoot = "/mnt/data/crucible/blueprint/blueprint.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
