@@ -163,7 +163,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist -l 4301";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist -l 4301";
             playerUi = builder.AddExecutable("player-ui", "bash", playerUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4301, isProxied: false);
         }
@@ -215,7 +215,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist/browser -l 4303";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist/browser -l 4303";
             vmUi = builder.AddExecutable("player-vm-ui", "bash", vmUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4303, isProxied: false);
         }
@@ -234,7 +234,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist/browser -l 4305";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist/browser -l 4305";
             consoleUi = builder.AddExecutable("player-vm-console-ui", "bash", consoleUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4305, isProxied: false);
         }
@@ -303,7 +303,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist -l 4310";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist -l 4310";
             casterUi = builder.AddExecutable("caster-ui", "bash", casterUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4310, isProxied: false);
         }
@@ -364,7 +364,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist -l 4403";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist -l 4403";
             alloyUi = builder.AddExecutable("alloy-ui", "bash", alloyUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4403, isProxied: false);
         }
@@ -445,7 +445,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build topomojo-work; npx serve -s dist/topomojo-work -l 4201";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build topomojo-work; fi; npx serve -s dist/topomojo-work -l 4201";
             topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4201, isProxied: false);
         }
@@ -509,7 +509,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist -l 4401";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist -l 4401";
             steamfitterUi = builder.AddExecutable("steamfitter-ui", "bash", steamfitterUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4401, isProxied: false);
         }
@@ -573,7 +573,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist/browser -l 4721";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist/browser -l 4721";
             citeUi = builder.AddExecutable("cite-ui", "bash", citeUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4721, isProxied: false);
         }
@@ -637,7 +637,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist/browser -l 4723";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist/browser -l 4723";
             galleryUi = builder.AddExecutable("gallery-ui", "bash", galleryUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4723, isProxied: false);
         }
@@ -699,7 +699,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build; npx serve -s dist/browser -l 4725";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist/browser -l 4725";
             blueprintUi = builder.AddExecutable("blueprint-ui", "bash", blueprintUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4725, isProxied: false);
         }
@@ -763,7 +763,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"[ ! -d dist ] && npm run build gameboard-ui; npx serve -s dist/gameboard-ui -l 4202";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build gameboard-ui; fi; npx serve -s dist/gameboard-ui -l 4202";
             gameboardUi = builder.AddExecutable("gameboard-ui", "bash", gameboardUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4202, isProxied: false);
         }

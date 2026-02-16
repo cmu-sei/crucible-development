@@ -18,7 +18,7 @@ public class LaunchOptions
     public string Gameboard { get; set; } = "off";
     public string Moodle { get; set; } = "off";
     public string Lrsql { get; set; } = "off";
-    public string PGAdmin { get; set; } = "prod";
+    public string PGAdmin { get; set; } = "off";
     public string Docs { get; set; } = "off";
     public string Misp { get; set; } = "off";
     public string XdebugMode { get; set; } = "off";
