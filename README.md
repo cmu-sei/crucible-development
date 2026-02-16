@@ -99,12 +99,6 @@ The Intelephense PHP language server is **disabled by default** (configured in `
 
 **To disable again:** Follow the same steps but select "Disable (Workspace)"
 
-### AWS Toolkit CloudFormation
-
-The AWS Toolkit is installed to support Claude Code with AWS Bedrock. However, the CloudFormation language server (~163MB) may run unnecessarily since this project uses Helm charts instead. If you experience CloudFormation errors:
-
-**To disable CloudFormation features:** The setting `"aws.cloudFormation.enable": false` is configured in `.devcontainer/devcontainer.json`, but may require a container rebuild to take effect. Alternatively, you can ignore the errors if not working with CloudFormation files.
-
 ### Node.js Memory Management
 
 Angular development servers (`ng serve`) can consume 1.2-1.5GB of memory each. To limit Node.js memory usage, add `.WithEnvironment("NODE_OPTIONS", "--max-old-space-size=1024")` in `AppHost.cs`:
@@ -247,6 +241,18 @@ To add new Moodle plugin repositories, add them to `scripts/repos.json`, `launch
 ### Adding Additional Official Plugins for Moodle
 
 To add additional plugins, add them to the `PLUGINS` environment variable in `AppHost.cs`.
+
+### Moodle PHP IntelliSense
+
+The Intelephense PHP language server is disabled by default to save approximately 337MB of memory. When working on Moodle/PHP code, you'll want to enable it for code completion, go-to-definition, and other IntelliSense features.
+
+**To enable Intelephense:**
+1. Open VS Code Settings: `Ctrl+,` (or `Cmd+,` on Mac)
+2. Search for: `intelephense enable`
+3. Check the box for **"Intelephense: Enable"** (make sure you're in the **Workspace** tab)
+4. Reload VS Code window: `Ctrl+Shift+P` → "Reload Window"
+
+**To disable when done:** Follow the same steps but uncheck the box to free up the memory.
 
 ### Moodle PHP Debugging with xdebug
 
