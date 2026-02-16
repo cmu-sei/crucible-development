@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM mcr.microsoft.com/devcontainers/dotnet:2.0.5-10.0-noble
 
 ARG TARGETARCH
@@ -12,9 +13,6 @@ RUN mkdir -p /etc/apt/keyrings && \
     curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor -o /etc/apt/keyrings/yarn.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
 
-# Install man pages
-RUN yes | unminimize
-
 # Custom Cert Support
 COPY ./certs /usr/local/share/ca-certificates/custom/
 RUN find /usr/local/share/ca-certificates/custom -type f ! -name '*.crt' -delete \
@@ -27,13 +25,15 @@ ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt \
     REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
     PIP_CERT=/etc/ssl/certs/ca-certificates.crt
 
-# required for those running ARM builds, possibly confined only to Angular 16. Try back later.
-RUN apt update && apt install -y python3-dev
-
-RUN apt install -y \
+# Install man pages and additional packages
+# unminimize runs apt-get update internally, so the index is fresh for the install that follows
+# Use a docker cache mount to increase rebuild speed
+RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    yes | unminimize && \
+    apt-get install -y --no-install-recommends \
     php \
     php-cli
-
 # Install Vale
 ARG VALE_VERSION=3.12.0
 RUN set -eux; \
@@ -51,7 +51,8 @@ RUN set -eux; \
 
 # Install k-alias
 RUN git clone https://github.com/jaggedmountain/k-alias.git /tmp/k-alias && \
-    cp /tmp/k-alias/[h,k]* /usr/local/bin
+    cp /tmp/k-alias/[h,k]* /usr/local/bin && \
+    rm -rf /tmp/k-alias
 
 # Install AWS CLI with Session Manager Plugin
 RUN case "${TARGETARCH}" in \
@@ -65,7 +66,8 @@ RUN case "${TARGETARCH}" in \
     unzip -q /tmp/awscliv2.zip -d /tmp && \
     /tmp/aws/install --update && \
     curl "${SSM_URL}" -o /tmp/session-manager-plugin.deb && \
-    dpkg -i /tmp/session-manager-plugin.deb
+    dpkg -i /tmp/session-manager-plugin.deb && \
+    rm -rf /tmp/awscliv2.zip /tmp/aws /tmp/session-manager-plugin.deb
 
 # Configure AWS CLI bash completion
 RUN echo '' >> /home/vscode/.bashrc && \
