@@ -1,0 +1,4 @@
+# Prevent sensitive files from entering build context
+.aws/
+dev-certs/
+msbuild/
