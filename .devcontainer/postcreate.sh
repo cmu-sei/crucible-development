@@ -12,8 +12,20 @@ sudo chown -R $(whoami): /home/vscode/.claude
 scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
 
-curl -sSL https://aspire.dev/install.sh | bash
-dotnet tool install --global dotnet-ef --version 10
+echo "Installing tools..."
+
+(curl -sSL https://aspire.dev/install.sh | bash) &
+ASPIRE_PID=$!
+
+(dotnet tool install --global dotnet-ef --version 10) &
+DOTNET_EF_PID=$!
+
+(npm config -g set fund false && npm install -g @angular/cli@latest) &
+ANGULAR_PID=$!
+
+wait $ASPIRE_PID $DOTNET_EF_PID $ANGULAR_PID
+echo "Tool installs complete."
+
 dotnet dev-certs https --trust
 
 # Generate crucible-dev certificates
@@ -52,9 +64,6 @@ sudo cp "${CERT_FILE}" /usr/local/share/ca-certificates/custom/crucible-dev.crt
 sudo update-ca-certificates
 
 echo "Crucible-dev certificates generated and trusted."
-
-npm config -g set fund false
-npm install -g @angular/cli@latest
 
 # Stage custom CA certs so Minikube trusts them
 CUSTOM_CERT_SOURCE="/usr/local/share/ca-certificates/custom"
