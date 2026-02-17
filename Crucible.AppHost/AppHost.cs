@@ -46,6 +46,36 @@ public static class BuilderExtensions
         return !string.IsNullOrWhiteSpace(value) && value.ToLower() != "off";
     }
 
+    /// <summary>
+    /// Adds an Angular UI with dev mode (ng serve) or production mode (build + serve)
+    /// </summary>
+    private static IResourceBuilder<ExecutableResource> AddAngularUI(
+        this IDistributedApplicationBuilder builder,
+        string name,
+        string appRoot,
+        int port,
+        string mode,
+        string distPath = "dist",
+        string buildArgs = "")
+    {
+        IResourceBuilder<ExecutableResource> ui;
+
+        if (mode == "dev")
+        {
+            ui = builder.AddJavaScriptApp(name, appRoot, "start")
+                .WithHttpEndpoint(port: port, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var buildCommand = string.IsNullOrEmpty(buildArgs) ? "npm run build" : $"npm run build {buildArgs}";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then {buildCommand}; fi; npx serve -s {distPath} -l {port}";
+            ui = builder.AddExecutable(name, "bash", appRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: port, isProxied: false);
+        }
+
+        return ui.WithHttpHealthCheck();
+    }
+
     public static IResourceBuilder<PostgresServerResource> AddPostgres(this IDistributedApplicationBuilder builder, LaunchOptions options)
     {
         var postgres = builder.AddPostgres("postgres")
@@ -154,21 +184,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        // Use full ng serve in dev mode, or lightweight production server otherwise
-        IResourceBuilder<ExecutableResource> playerUi;
-        if (options.Player == "dev")
-        {
-            playerUi = builder.AddJavaScriptApp("player-ui", playerUiRoot, "start")
-                .WithHttpEndpoint(port: 4301, env: "PORT", isProxied: false);
-        }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist -l 4301";
-            playerUi = builder.AddExecutable("player-ui", "bash", playerUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4301, isProxied: false);
-        }
-
-        playerUi = playerUi.WithHttpHealthCheck();
+        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, options.Player);
 
         builder.AddPlayerVm(postgres, keycloak, options);
     }
@@ -207,39 +223,13 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        IResourceBuilder<ExecutableResource> vmUi;
-        if (options.Player == "dev")
-        {
-            vmUi = builder.AddJavaScriptApp("player-vm-ui", vmUiRoot, "start")
-                .WithHttpEndpoint(port: 4303, env: "PORT", isProxied: false);
-        }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist/browser -l 4303";
-            vmUi = builder.AddExecutable("player-vm-ui", "bash", vmUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4303, isProxied: false);
-        }
-
-        vmUi = vmUi.WithHttpHealthCheck();
+        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, options.Player, distPath: "dist/browser");
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        IResourceBuilder<ExecutableResource> consoleUi;
-        if (options.Player == "dev")
-        {
-            consoleUi = builder.AddJavaScriptApp("player-vm-console-ui", consoleUiRoot, "start")
-                .WithHttpEndpoint(port: 4305, env: "PORT", isProxied: false);
-        }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist/browser -l 4305";
-            consoleUi = builder.AddExecutable("player-vm-console-ui", "bash", consoleUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4305, isProxied: false);
-        }
-
-        consoleUi = consoleUi.WithHttpHealthCheck();
+        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, options.Player, distPath: "dist/browser");
 
     }
 
@@ -295,20 +285,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        IResourceBuilder<ExecutableResource> casterUi;
-        if (options.Caster == "dev")
-        {
-            casterUi = builder.AddJavaScriptApp("caster-ui", casterUiRoot, "start")
-                .WithHttpEndpoint(port: 4310, env: "PORT", isProxied: false);
-        }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist -l 4310";
-            casterUi = builder.AddExecutable("caster-ui", "bash", casterUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4310, isProxied: false);
-        }
-
-        casterUi = casterUi.WithHttpHealthCheck();
+        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, options.Caster);
 
         if (options.Caster == "off")
         {
@@ -356,20 +333,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        IResourceBuilder<ExecutableResource> alloyUi;
-        if (options.Alloy == "dev")
-        {
-            alloyUi = builder.AddJavaScriptApp("alloy-ui", alloyUiRoot, "start")
-                .WithHttpEndpoint(port: 4403, env: "PORT", isProxied: false);
-        }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist -l 4403";
-            alloyUi = builder.AddExecutable("alloy-ui", "bash", alloyUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4403, isProxied: false);
-        }
-
-        alloyUi = alloyUi.WithHttpHealthCheck();
+        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, options.Alloy);
 
         if (options.Alloy == "off")
         {
@@ -501,20 +465,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        IResourceBuilder<ExecutableResource> steamfitterUi;
-        if (options.Steamfitter == "dev")
-        {
-            steamfitterUi = builder.AddJavaScriptApp("steamfitter-ui", steamfitterUiRoot, "start")
-                .WithHttpEndpoint(port: 4401, env: "PORT", isProxied: false);
-        }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist -l 4401";
-            steamfitterUi = builder.AddExecutable("steamfitter-ui", "bash", steamfitterUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4401, isProxied: false);
-        }
-
-        steamfitterUi = steamfitterUi.WithHttpHealthCheck();
+        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, options.Steamfitter);
 
         if (options.Steamfitter == "off")
         {
@@ -565,20 +516,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        IResourceBuilder<ExecutableResource> citeUi;
-        if (options.Cite == "dev")
-        {
-            citeUi = builder.AddJavaScriptApp("cite-ui", citeUiRoot, "start")
-                .WithHttpEndpoint(port: 4721, env: "PORT", isProxied: false);
-        }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist/browser -l 4721";
-            citeUi = builder.AddExecutable("cite-ui", "bash", citeUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4721, isProxied: false);
-        }
-
-        citeUi = citeUi.WithHttpHealthCheck();
+        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, options.Cite, distPath: "dist/browser");
 
         if (options.Cite == "off")
         {
@@ -629,20 +567,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        IResourceBuilder<ExecutableResource> galleryUi;
-        if (options.Gallery == "dev")
-        {
-            galleryUi = builder.AddJavaScriptApp("gallery-ui", galleryUiRoot, "start")
-                .WithHttpEndpoint(port: 4723, env: "PORT", isProxied: false);
-        }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist/browser -l 4723";
-            galleryUi = builder.AddExecutable("gallery-ui", "bash", galleryUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4723, isProxied: false);
-        }
-
-        galleryUi = galleryUi.WithHttpHealthCheck();
+        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, options.Gallery, distPath: "dist/browser");
 
         if (options.Gallery == "off")
         {
@@ -691,20 +616,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        IResourceBuilder<ExecutableResource> blueprintUi;
-        if (options.Blueprint == "dev")
-        {
-            blueprintUi = builder.AddJavaScriptApp("blueprint-ui", blueprintUiRoot, "start")
-                .WithHttpEndpoint(port: 4725, env: "PORT", isProxied: false);
-        }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build; fi; npx serve -s dist/browser -l 4725";
-            blueprintUi = builder.AddExecutable("blueprint-ui", "bash", blueprintUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4725, isProxied: false);
-        }
-
-        blueprintUi = blueprintUi.WithHttpHealthCheck();
+        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, options.Blueprint, distPath: "dist/browser");
 
         if (options.Blueprint == "off")
         {
@@ -755,20 +667,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
 
-        IResourceBuilder<ExecutableResource> gameboardUi;
-        if (options.Gameboard == "dev")
-        {
-            gameboardUi = builder.AddJavaScriptApp("gameboard-ui", gameboardUiRoot, "start")
-                .WithHttpEndpoint(port: 4202, env: "PORT", isProxied: false);
-        }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build gameboard-ui; fi; npx serve -s dist/gameboard-ui -l 4202";
-            gameboardUi = builder.AddExecutable("gameboard-ui", "bash", gameboardUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4202, isProxied: false);
-        }
-
-        gameboardUi = gameboardUi.WithHttpHealthCheck();
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, options.Gameboard, distPath: "dist/gameboard-ui", buildArgs: "gameboard-ui");
 
         if (options.Gameboard == "off")
         {
