@@ -127,7 +127,7 @@ The Crucible AppHost supports running Angular UIs in two modes to optimize memor
 
 #### Configuration
 
-Set UI launch modes in `.env/*.env` files using a single variable per app:
+**For team-shared configurations**, UI launch modes are defined in `.env/*.env` files:
 
 ```bash
 # TTX Task - Blueprint as primary development app
@@ -137,6 +137,20 @@ Launch__Cite=prod          # Production build (~90MB)
 Launch__Gallery=prod       # Production build (~90MB)
 Launch__Blueprint=dev      # Dev mode with hot reload (~1.5GB)
 ```
+
+**For local development overrides**, use `Crucible.AppHost/appsettings.Development.json` (git-ignored) to customize settings without committing changes:
+
+```json
+{
+  "Launch": {
+    "Player": "dev",
+    "Blueprint": "off",
+    "PGAdmin": "prod"
+  }
+}
+```
+
+Settings in `appsettings.Development.json` override values from `.env` files and `appsettings.json`, allowing you to customize your local environment without affecting team configurations.
 
 **Available values:**
 - `off` (default) - Don't launch the application
