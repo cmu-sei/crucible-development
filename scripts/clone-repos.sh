@@ -2,8 +2,24 @@
 set -euo pipefail
 
 MANIFEST=scripts/repos.json
+LOCAL_MANIFEST=scripts/repos.local.json
 
-jq -c '.groups[]' $MANIFEST | while read group; do
+# Merge repos.json and repos.local.json if local exists
+if [ -f "$LOCAL_MANIFEST" ]; then
+    echo "Merging local repository configuration..."
+    MERGED=$(jq -s '
+        .[0] as $base | .[1] as $local |
+        {
+            groups: ($base.groups + ($local.groups // [])),
+            repos: ($base.repos + ($local.repos // []))
+        }
+    ' "$MANIFEST" "$LOCAL_MANIFEST")
+    MANIFEST_DATA="$MERGED"
+else
+    MANIFEST_DATA=$(cat "$MANIFEST")
+fi
+
+echo "$MANIFEST_DATA" | jq -c '.groups[]' | while read group; do
     GROUP=$(echo $group | jq -r .name)
 
     echo "$group" | jq -c '.repos[]' | while read -r repo; do
@@ -20,7 +36,7 @@ jq -c '.groups[]' $MANIFEST | while read group; do
     done
 done
 
-jq -c '.repos[]' "$MANIFEST" | while read -r repo; do
+echo "$MANIFEST_DATA" | jq -c '.repos[]' | while read -r repo; do
     NAME=$(echo "$repo" | jq -r .name)
     URL=$(echo "$repo" | jq -r .url)
     TARGET="/mnt/data/crucible/$NAME"

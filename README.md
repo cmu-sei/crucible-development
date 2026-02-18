@@ -252,6 +252,49 @@ script `post_configure.sh`.
 To add new Moodle plugin repositories, add them to `scripts/repos.json`, `launch.json`,
 `AppHost.cs`, and the `xdebug_filter.sh` files.
 
+#### Adding Private/Internal Repositories
+
+For private repositories (internal Bitbucket servers, private GitHub repos, or third-party plugins that shouldn't be committed to this public repo), use the **local repository configuration** pattern:
+
+1. Create `scripts/repos.local.json` from the example template:
+   ```bash
+   cp scripts/repos.local.json.example scripts/repos.local.json
+   ```
+
+2. Add your private repositories to `scripts/repos.local.json`:
+   ```json
+   {
+     "groups": [
+       {
+         "name": "moodle",
+         "repos": [
+           {
+             "name": "logstore_xapi",
+             "url": "https://github.com/xAPI-vle/moodle-logstore_xapi"
+           },
+           {
+             "name": "prototype_plugin",
+             "url": "https://bitbucket.inernal.org/scm/moodle/prototype_plugin.git"
+           }
+         ]
+       }
+     ]
+   }
+   ```
+
+3. Run the clone script:
+   ```bash
+   ./scripts/clone-repos.sh
+   ```
+
+The `repos.local.json` file is git-ignored, so your private repository URLs remain private. The clone script automatically merges this with the public `repos.json` configuration.
+
+**Supported URL formats:**
+- HTTPS: `https://github.com/org/repo.git`
+- SSH: `git@github.com:org/repo.git`
+- Internal Bitbucket: `https://bitbucket.internal.org/scm/project/repo.git`
+- Personal access tokens: `https://token@github.com/org/repo.git`
+
 ### Adding Additional Official Plugins for Moodle
 
 To add additional plugins, add them to the `PLUGINS` environment variable in `AppHost.cs`.
