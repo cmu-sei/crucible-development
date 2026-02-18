@@ -68,7 +68,7 @@ public static class BuilderExtensions
         else
         {
             var buildCommand = string.IsNullOrEmpty(buildArgs) ? "npm run build" : $"npm run build {buildArgs}";
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then {buildCommand}; fi; npx serve -s {distPath} -l {port}";
+            var serveProd = $"if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then {buildCommand}; fi; npx serve -s {distPath} -l {port}";
             ui = builder.AddExecutable(name, "bash", appRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: port, isProxied: false);
         }
