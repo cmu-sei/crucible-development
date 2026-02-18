@@ -29,6 +29,7 @@ map_plugin_to_container_path() {
         qbehaviour) echo "/var/www/html/question/behaviour/$plugin_subdir" ;;
         aiplacement) echo "/var/www/html/ai/placement/$plugin_subdir" ;;
         aiprovider) echo "/var/www/html/ai/provider/$plugin_subdir" ;;
+        gradereport) echo "/var/www/html/grade/report/$plugin_subdir" ;;
         qformat) echo "/var/www/html/question/format/$plugin_subdir" ;;
         theme) echo "/var/www/html/theme/$plugin_subdir" ;;
         *) echo "/var/www/html/$plugin_type/$plugin_subdir" ;;

@@ -22,6 +22,7 @@ map_moodle_plugin_path() {
         qformat) echo "$base_path/question/format/$plugin_subdir" ;;
         aiplacement) echo "$base_path/ai/placement/$plugin_subdir" ;;
         aiprovider) echo "$base_path/ai/provider/$plugin_subdir" ;;
+        gradereport) echo "$base_path/grade/report/$plugin_subdir" ;;
         theme) echo "$base_path/theme/$plugin_subdir" ;;
         # Default: use flat structure for non-Moodle plugins or unknown types
         *) echo "$base_path/$plugin_name" ;;
