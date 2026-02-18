@@ -262,10 +262,10 @@ Moodle plugins are stored in a hierarchical directory structure that mirrors the
 
 To add new Moodle plugin repositories, add them to `scripts/repos.json` or `scripts/repos.local.json`. The clone script automatically maps plugin names to the correct hierarchical paths. **Everything else is automatic:**
 
-- ✅ **Clone script** creates hierarchical directory structure
-- ✅ **AppHost.cs** dynamically reads repos.json + repos.local.json and creates bind mounts
-- ✅ **xdebug_filter.php** is auto-generated during devcontainer setup
-- ✅ **launch.json** uses a general pathMapping that covers all plugins automatically
+- **Clone script** creates hierarchical directory structure
+- **AppHost.cs** dynamically reads repos.json + repos.local.json and creates bind mounts
+- **xdebug_filter.php** is auto-generated during devcontainer setup
+- **launch.json** uses a general pathMapping that covers all plugins automatically
 
 **No manual configuration needed!** Just add the plugin to repos.json or repos.local.json and rebuild.
 
@@ -311,6 +311,126 @@ The `repos.local.json` file is git-ignored, so your private repository URLs rema
 - SSH: `git@github.com:org/repo.git`
 - Internal Bitbucket: `https://bitbucket.internal.org/scm/project/repo.git`
 - Personal access tokens: `https://token@github.com/org/repo.git`
+
+#### Creating a Private Mirror for Custom Development
+
+If you need to customize a public plugin (like `logstore_xapi`) that can't be forked privately on GitHub, create a private mirror on your internal Bitbucket server:
+
+**Initial Setup:**
+
+1. **Clone the upstream repository:**
+   ```bash
+   cd /tmp
+   git clone https://github.com/xAPI-vle/moodle-logstore_xapi.git
+   cd moodle-logstore_xapi
+   ```
+
+2. **Create an empty private repo on Bitbucket** (via web UI)
+   - Repository name: `moodle-logstore_xapi`
+   - Do NOT initialize with README/gitignore
+
+3. **Configure remotes:**
+   ```bash
+   # Rename GitHub remote to upstream
+   git remote rename origin upstream
+
+   # Add your Bitbucket as origin
+   git remote add origin ssh://git@your-bitbucket-server:7999/~youruser/moodle-logstore_xapi.git
+
+   # Verify remotes
+   git remote -v
+   # Should show:
+   #   origin    ssh://git@your-bitbucket-server:7999/~youruser/... (your Bitbucket)
+   #   upstream  https://github.com/xAPI-vle/... (original GitHub)
+   ```
+
+4. **Push to your private Bitbucket:**
+   ```bash
+   # Rename master to main (modern convention)
+   git branch -m master main
+
+   # Push all branches and tags
+   git push -u origin main
+   git push origin --all
+   git push origin --tags
+   ```
+
+5. **Update `repos.local.json`** to use your Bitbucket URL:
+   ```json
+   {
+     "groups": [{
+       "name": "moodle",
+       "repos": [{
+         "name": "logstore_xapi",
+         "url": "ssh://git@your-bitbucket-server:7999/~youruser/moodle-logstore_xapi.git"
+       }]
+     }]
+   }
+   ```
+
+6. **Clone into development environment:**
+   ```bash
+   cd /workspaces/crucible-development
+   ./scripts/clone-repos.sh
+   ```
+
+**Daily Workflow:**
+
+```bash
+cd /mnt/data/crucible/moodle/admin/tool/log/store/xapi
+
+# Create feature branch for custom work
+git checkout -b feature/branch-name
+
+# Make your changes
+# ... edit files ...
+
+# Commit and push to your Bitbucket
+git add .
+git commit -m "commit message"
+git push -u origin feature/branch-name
+
+# Merge to main when ready
+git checkout main
+git merge feature/branch-name
+git push origin main
+```
+
+**Syncing with Upstream (pull latest from GitHub):**
+
+```bash
+# Fetch latest from upstream GitHub
+git fetch upstream
+
+# Switch to your main branch
+git checkout main
+
+# Merge upstream changes
+git merge upstream/master
+# Note: Many GitHub repos still use 'master' (not 'main')
+
+# Resolve any conflicts with your customizations
+
+# Push updated main to your Bitbucket
+git push origin main
+
+# Update your feature branch
+git checkout feature/branch-name
+git rebase main  # or: git merge main
+```
+
+**Quick Commands:**
+
+```bash
+# See what's new on upstream before merging
+git fetch upstream
+git log main..upstream/master --oneline
+
+# Pull and merge in one step
+git checkout main
+git pull upstream master
+git push origin main
+```
 
 #### Automatic Xdebug Configuration
 
