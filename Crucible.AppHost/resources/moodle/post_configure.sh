@@ -216,7 +216,7 @@ configure_crucible() {
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=citeappurl --set=http://localhost:4721;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryapiurl --set=http://host.docker.internal:4723/api;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryappurl --set=http://localhost:4723;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardapiurl --set=http://host.docker.internal:4202/api;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardapiurl --set=http://host.docker.internal:5002/api;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardappurl --set=http://localhost:4202;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=topomojoapiurl --set=http://host.docker.internal:5000/api;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=topomojoappurl --set=http://localhost:4201;
