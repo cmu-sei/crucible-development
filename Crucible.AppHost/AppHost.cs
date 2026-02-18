@@ -409,7 +409,7 @@ public static class BuilderExtensions
         }
         else
         {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build topomojo-work; fi; npx serve -s dist/topomojo-work -l 4201";
+            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build topomojo-work; fi; npx serve -s dist/topomojo-work/browser -l 4201";
             topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4201, isProxied: false);
         }
