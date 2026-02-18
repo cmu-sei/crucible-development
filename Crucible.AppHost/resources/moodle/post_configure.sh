@@ -207,19 +207,26 @@ configure_crucible() {
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=steamfitterapiurl --set=http://host.docker.internal:4400/api
 
   # Configure block_crucible
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=enabled --set=1;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=issuerid --set=$OAUTH2_ISSUER_ID;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=playerapiurl --set=http://host.docker.internal:4300/api;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=playerappurl --set=http://localhost:4301;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=blueprintapiurl --set=http://host.docker.internal:4725/api;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showplayer --set=1;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=blueprintapiurl --set=http://host.docker.internal:4724/api;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=blueprintappurl --set=http://localhost:4725;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=citeapiurl --set=http://host.docker.internal:4721/api;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showblueprint --set=1;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=citeapiurl --set=http://host.docker.internal:4720/api;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=citeappurl --set=http://localhost:4721;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryapiurl --set=http://host.docker.internal:4723/api;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showcite --set=1;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryapiurl --set=http://host.docker.internal:4722/api;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryappurl --set=http://localhost:4723;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showgallery --set=1;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardapiurl --set=http://host.docker.internal:5002/api;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardappurl --set=http://localhost:4202;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showgameboard --set=1;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=topomojoapiurl --set=http://host.docker.internal:5000/api;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=topomojoappurl --set=http://localhost:4201;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showtopomojo --set=1;
 }
 
 configure_topomojo() {
