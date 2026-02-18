@@ -14,6 +14,7 @@ $includePaths = [
     "/var/www/html/ai/provider",
     "/var/www/html/ai/classes",
     "/var/www/html/ai/placement/competency",
+    "/var/www/html/ai/provider/bedrock",
     "/var/www/html/blocks/crucible",
     "/var/www/html/local/tagmanager",
     "/var/www/html/admin/tool/log/store/xapi",

@@ -1008,6 +1008,7 @@ public static class BuilderExtensions
             "qbehaviour" => $"/var/www/html/question/behaviour/{pluginSubdir}",
             "qformat" => $"/var/www/html/question/format/{pluginSubdir}",
             "aiplacement" => $"/var/www/html/ai/placement/{pluginSubdir}",
+            "aiprovider" => $"/var/www/html/ai/provider/{pluginSubdir}",
             "theme" => $"/var/www/html/theme/{pluginSubdir}",
             _ => $"/var/www/html/{pluginType}/{pluginSubdir}"
         };
@@ -1032,6 +1033,7 @@ public static class BuilderExtensions
             "qbehaviour" => Path.Combine(moodleBasePath, "question", "behaviour", pluginSubdir),
             "qformat" => Path.Combine(moodleBasePath, "question", "format", pluginSubdir),
             "aiplacement" => Path.Combine(moodleBasePath, "ai", "placement", pluginSubdir),
+            "aiprovider" => Path.Combine(moodleBasePath, "ai", "provider", pluginSubdir),
             "theme" => Path.Combine(moodleBasePath, "theme", pluginSubdir),
             _ => Path.Combine(moodleBasePath, pluginType, pluginSubdir)
         };
