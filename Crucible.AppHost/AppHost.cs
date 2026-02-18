@@ -709,24 +709,23 @@ public static class BuilderExtensions
             .WithEnvironment("AWS_SECRET_ACCESS_KEY", awsCreds["aws_secret_access_key"])
             .WithEnvironment("AWS_SESSION_TOKEN", awsCreds["aws_session_token"])
             .WithEnvironment("AWS_REGION", awsCreds["region"])
-            .WithEnvironment("PLUGINS", @"logstore_xapi=https://moodle.org/plugins/download.php/34860/logstore_xapi_2025021100.zip
-                    tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
+            .WithEnvironment("PLUGINS", @"tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"/usr/local/bin/post_configure.sh")
+            // Bind mount moodle-core directories (writable for xdebug)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/theme", "/var/www/html/theme", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/lib", "/var/www/html/lib", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/provider", "/var/www/html/ai/provider", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/block_crucible", "/var/www/html/blocks/crucible", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/mod/crucible", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/mod_groupquiz", "/var/www/html/mod/groupquiz", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/mod_topomojo", "/var/www/html/mod/topomojo", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/qtype_mojomatch", "/var/www/html/question/type/mojomatch", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/qbehaviour_mojomatch", "/var/www/html/question/behaviour/mojomatch", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/local_tagmanager", "/var/www/html/local/tagmanager", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/aiplacement_competency", "/var/www/html/ai/placement/competency", isReadOnly: true);
+            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false);
+
+        // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
+        var moodlePlugins = ReadMoodlePlugins();
+        foreach (var plugin in moodlePlugins)
+        {
+            moodle.WithBindMount(plugin.HostPath, plugin.ContainerPath, isReadOnly: true);
+            Console.WriteLine($"  Mounting Moodle plugin: {plugin.Name} -> {plugin.ContainerPath}");
+        }
 
         if (!IsEnabled(options.Moodle))
         {
@@ -981,5 +980,145 @@ public static class BuilderExtensions
         }
 
         return creds;
+    }
+
+    private class MoodlePlugin
+    {
+        public string Name { get; set; } = "";
+        public string HostPath { get; set; } = "";
+        public string ContainerPath { get; set; } = "";
+    }
+
+    private static string MapPluginToContainerPath(string pluginName)
+    {
+        var parts = pluginName.Split('_', 2);
+        if (parts.Length < 2) return $"/var/www/html/{pluginName}";
+
+        var pluginType = parts[0];
+        var pluginSubdir = parts[1];
+
+        return pluginType switch
+        {
+            "mod" => $"/var/www/html/mod/{pluginSubdir}",
+            "block" => $"/var/www/html/blocks/{pluginSubdir}",
+            "tool" => $"/var/www/html/admin/tool/{pluginSubdir}",
+            "logstore" => $"/var/www/html/admin/tool/log/store/{pluginSubdir}",
+            "local" => $"/var/www/html/local/{pluginSubdir}",
+            "qtype" => $"/var/www/html/question/type/{pluginSubdir}",
+            "qbehaviour" => $"/var/www/html/question/behaviour/{pluginSubdir}",
+            "qformat" => $"/var/www/html/question/format/{pluginSubdir}",
+            "aiplacement" => $"/var/www/html/ai/placement/{pluginSubdir}",
+            "theme" => $"/var/www/html/theme/{pluginSubdir}",
+            _ => $"/var/www/html/{pluginType}/{pluginSubdir}"
+        };
+    }
+
+    private static string MapPluginToHostPath(string pluginName, string moodleBasePath)
+    {
+        var parts = pluginName.Split('_', 2);
+        if (parts.Length < 2) return Path.Combine(moodleBasePath, pluginName);
+
+        var pluginType = parts[0];
+        var pluginSubdir = parts[1];
+
+        return pluginType switch
+        {
+            "mod" => Path.Combine(moodleBasePath, "mod", pluginSubdir),
+            "block" => Path.Combine(moodleBasePath, "blocks", pluginSubdir),
+            "tool" => Path.Combine(moodleBasePath, "admin", "tool", pluginSubdir),
+            "logstore" => Path.Combine(moodleBasePath, "admin", "tool", "log", "store", pluginSubdir),
+            "local" => Path.Combine(moodleBasePath, "local", pluginSubdir),
+            "qtype" => Path.Combine(moodleBasePath, "question", "type", pluginSubdir),
+            "qbehaviour" => Path.Combine(moodleBasePath, "question", "behaviour", pluginSubdir),
+            "qformat" => Path.Combine(moodleBasePath, "question", "format", pluginSubdir),
+            "aiplacement" => Path.Combine(moodleBasePath, "ai", "placement", pluginSubdir),
+            "theme" => Path.Combine(moodleBasePath, "theme", pluginSubdir),
+            _ => Path.Combine(moodleBasePath, pluginType, pluginSubdir)
+        };
+    }
+
+    private static List<MoodlePlugin> ReadMoodlePlugins()
+    {
+        var plugins = new List<MoodlePlugin>();
+        var workspaceRoot = "/workspaces/crucible-development";
+        var reposJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.json");
+        var reposLocalJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.local.json");
+
+        if (!File.Exists(reposJsonPath))
+        {
+            Console.WriteLine($"Warning: {reposJsonPath} not found. No Moodle plugins will be loaded.");
+            return plugins;
+        }
+
+        try
+        {
+            // Read and parse repos.json
+            var reposJson = File.ReadAllText(reposJsonPath);
+            var reposDoc = System.Text.Json.JsonDocument.Parse(reposJson);
+
+            // Read and parse repos.local.json if it exists
+            System.Text.Json.JsonDocument? reposLocalDoc = null;
+            if (File.Exists(reposLocalJsonPath))
+            {
+                Console.WriteLine("Found repos.local.json, merging with repos.json...");
+                var reposLocalJson = File.ReadAllText(reposLocalJsonPath);
+                reposLocalDoc = System.Text.Json.JsonDocument.Parse(reposLocalJson);
+            }
+
+            // Process groups from both files
+            var moodleBasePath = "/mnt/data/crucible/moodle";
+
+            ProcessReposDocument(reposDoc, plugins, moodleBasePath);
+            if (reposLocalDoc != null)
+            {
+                ProcessReposDocument(reposLocalDoc, plugins, moodleBasePath);
+            }
+
+            Console.WriteLine($"Loaded {plugins.Count} Moodle plugin(s) from repos.json{(reposLocalDoc != null ? " + repos.local.json" : "")}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reading Moodle plugins from repos.json: {ex.Message}");
+        }
+
+        return plugins;
+    }
+
+    private static void ProcessReposDocument(System.Text.Json.JsonDocument doc, List<MoodlePlugin> plugins, string moodleBasePath)
+    {
+        if (!doc.RootElement.TryGetProperty("groups", out var groups))
+            return;
+
+        foreach (var group in groups.EnumerateArray())
+        {
+            if (!group.TryGetProperty("name", out var groupName) || groupName.GetString() != "moodle")
+                continue;
+
+            if (!group.TryGetProperty("repos", out var repos))
+                continue;
+
+            foreach (var repo in repos.EnumerateArray())
+            {
+                if (!repo.TryGetProperty("name", out var nameProperty))
+                    continue;
+
+                var pluginName = nameProperty.GetString();
+                if (string.IsNullOrEmpty(pluginName))
+                    continue;
+
+                // Skip if already added (repos.local.json takes precedence)
+                if (plugins.Any(p => p.Name == pluginName))
+                    continue;
+
+                var plugin = new MoodlePlugin
+                {
+                    Name = pluginName,
+                    HostPath = MapPluginToHostPath(pluginName, moodleBasePath),
+                    ContainerPath = MapPluginToContainerPath(pluginName)
+                };
+
+                plugins.Add(plugin);
+            }
+        }
     }
 }

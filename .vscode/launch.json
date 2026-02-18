@@ -404,17 +404,19 @@
         //"/var/www/html/lib/**"          // Skip Moodle core lib files
       ],
       "pathMappings": {
-        // Map the remote path (inside the container) to the local path (on your host machine)
+        // Map container paths to local paths
+        // IMPORTANT: More specific paths must come FIRST (xdebug matches in order)
+
+        // Moodle core files (in moodle-core subdirectory)
         "/var/www/html/theme": "/mnt/data/crucible/moodle/moodle-core/theme",
         "/var/www/html/lib": "/mnt/data/crucible/moodle/moodle-core/lib",
         "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/moodle-core/admin/cli",
-        "/var/www/html/mod/crucible": "/mnt/data/crucible/moodle/mod_crucible",
-        "/var/www/html/mod/topomojo": "/mnt/data/crucible/moodle/mod_topomojo",
-        "/var/www/html/mod/groupquiz": "/mnt/data/crucible/moodle/mod_groupquiz",
-        "/var/www/html/blocks/crucible": "/mnt/data/crucible/moodle/block_crucible",
-        "/var/www/html/admin/tool/lptmanager": "/mnt/data/crucible/moodle/tool_lptmanager",
-        "/var/www/html/question/type/crucible": "/mnt/data/crucible/moodle/qtype_mojomatch",
-        "/var/www/html/question/behaviour/mojomatch": "/mnt/data/crucible/moodle/qbehaviour_mojomatch",
+        "/var/www/html/ai/provider": "/mnt/data/crucible/moodle/moodle-core/ai/provider",
+        "/var/www/html/ai/classes": "/mnt/data/crucible/moodle/moodle-core/ai/classes",
+
+        // General catch-all for all plugins (hierarchical structure)
+        "/var/www/html": "/mnt/data/crucible/moodle",
+
         "/usr/local/bin/setup_environment.php": "${workspaceFolder}/Crucible.AppHost/resources/moodle/setup_environment.php"
       },
       "presentation": {
