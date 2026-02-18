@@ -667,7 +667,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
 
-        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, options.Gameboard, distPath: "dist/gameboard-ui", buildArgs: "gameboard-ui");
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, options.Gameboard, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui");
 
         if (options.Gameboard == "off")
         {
