@@ -177,7 +177,9 @@ public static class BuilderExtensions
             .WithEnvironment("Authorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
-            .WithEnvironment("Authorization__ClientId", "player.vm.api");
+            .WithEnvironment("Authorization__ClientId", "player.vm.api")
+            .WithEnvironment("IdentityClient__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
+            .WithEnvironment("IdentityClient__ClientId", "player.vm.admin");
 
         var vmUiRoot = "/mnt/data/crucible/player/vm.ui";
 
