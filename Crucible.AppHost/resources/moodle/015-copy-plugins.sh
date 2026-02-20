@@ -48,7 +48,7 @@ for entry in $PLUGINS; do
 
   # Move to the corresponding path
   case "$plugin_type" in
-    mod) target="/var/www/html/mod/$plugin_subdir" ;;
+     mod) target="/var/www/html/mod/$plugin_subdir" ;;
     block) target="/var/www/html/blocks/$plugin_subdir" ;;
     theme) target="/var/www/html/theme/$plugin_subdir" ;;
     local) target="/var/www/html/local/$plugin_subdir" ;;
@@ -60,7 +60,6 @@ for entry in $PLUGINS; do
     gradereport) target="/var/www/html/grade/report/$plugin_subdir" ;;
     message) target="/var/www/html/message/output/$plugin_subdir" ;;
     tool) target="/var/www/html/admin/tool/$plugin_subdir" ;;
-    logstore) target="/var/www/html/admin/tool/log/store/$plugin_subdir" ;; # added to support logstore_xapi plugin
     profilefield) target="/var/www/html/user/profile/field/$plugin_subdir" ;;
     quiz) target="/var/www/html/mod/quiz/report/$plugin_subdir" ;;
     plagiarism) target="/var/www/html/plagiarism/$plugin_subdir" ;;
@@ -80,8 +79,8 @@ for entry in $PLUGINS; do
     qbehaviour) target="/var/www/html/question/behaviour/$plugin_subdir" ;;
     qformat) target="/var/www/html/question/format/$plugin_subdir" ;;
     editor) target="/var/www/html/lib/editor/$plugin_subdir" ;;
-    atto) target="/var/www/html/lib/editor/atto/plugins/$plugin_subdir" ;;
     tiny) target="/var/www/html/lib/editor/tiny/plugins/$plugin_subdir" ;;
+    atto) target="/var/www/html/lib/editor/atto/plugins/$plugin_subdir" ;;
     tinymce) target="/var/www/html/lib/editor/tinymce/plugins/$plugin_subdir" ;;
     availability) target="/var/www/html/availability/condition/$plugin_subdir" ;;
     datafield) target="/var/www/html/mod/data/field/$plugin_subdir" ;;
@@ -94,10 +93,12 @@ for entry in $PLUGINS; do
     paymentgateway) target="/var/www/html/payment/gateway/$plugin_subdir" ;;
     analytics) target="/var/www/html/analytics/indicator/$plugin_subdir" ;;
     aiprovider) target="/var/www/html/ai/provider/$plugin_subdir" ;;
+    aiplacement) target="/var/www/html/ai/placement/$plugin_subdir" ;;
     cachelock) target="/var/www/html/cache/lock/$plugin_subdir" ;;
     cachestore) target="/var/www/html/cache/stores/$plugin_subdir" ;;
     coresearch) target="/var/www/html/search/engine/$plugin_subdir" ;;
     localcache) target="/var/www/html/local/cache/$plugin_subdir" ;;
+    logstore) target="/var/www/html/admin/tool/log/store/$plugin_subdir" ;;
     *)
       echo "Warning: Unknown plugin type: $plugin_type"
       echo "Attempting to install in /var/www/html/$plugin_type/$plugin_subdir"
