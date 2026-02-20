@@ -115,55 +115,99 @@ The value is in MB. Common settings: `768` (minimal), `1024` (recommended), `153
 
 The Crucible AppHost supports running Angular UIs in two modes to optimize memory usage during development:
 
-**Dev Mode** (`dev`): Full `ng serve` with hot reload (~1.5GB per UI)
+**Dev Mode**: Full `ng serve` with hot reload (~1.5GB per UI)
 - Use for your primary development app
 - Instant code changes without rebuild
 - Full debugging capabilities
 
-**Production Mode** (`prod`): Lightweight production build server (~90MB per UI)
+**Production Mode**: Lightweight production build server (~90MB per UI)
 - Use for supporting apps during integration testing
 - Saves ~1.4GB per UI compared to dev mode
 - Requires manual rebuild when code changes
 
 #### Configuration
 
-**For team-shared configurations**, UI launch modes are defined in `.env/*.env` files:
+The configuration system uses a two-tier approach:
+
+**1. Primary App Selection (`.env/*.env` files - committed to git)**
+
+Task-specific `.env` files define which app is the primary development focus using boolean flags:
 
 ```bash
-# TTX Task - Blueprint as primary development app
-Launch__Player=prod        # Production build (~90MB)
-Launch__Steamfitter=prod   # Production build (~90MB)
-Launch__Cite=prod          # Production build (~90MB)
-Launch__Gallery=prod       # Production build (~90MB)
-Launch__Blueprint=dev      # Dev mode with hot reload (~1.5GB)
+# .env/blueprint.env - Blueprint development task
+Launch__Blueprint=true   # Dev mode with hot reload (~1.5GB)
+
+# .env/player.env - Player development task
+Launch__Player=true      # Dev mode with hot reload (~1.5GB)
+
+# .env/ttx.env - Multi-app development task
+Launch__Player=true
+Launch__Steamfitter=true
+Launch__Cite=true
+Launch__Gallery=true
+Launch__Blueprint=true
 ```
 
-**For local development overrides**, use `Crucible.AppHost/appsettings.Development.json` (git-ignored) to customize settings without committing changes:
+**Boolean flag behavior:**
+- `true` = Launch in **dev mode** (ng serve with hot reload)
+- `false` or omitted = App is **off** (not launched)
+
+**2. Supporting Apps (`.env/*.env` or `appsettings.Development.json` - local overrides)**
+
+Add supporting apps in production or dev mode using `appsettings.Development.json` (git-ignored):
 
 ```json
 {
   "Launch": {
-    "Player": "dev",
-    "Blueprint": "off",
-    "PGAdmin": "prod"
+    "Prod": ["Gallery", "Cite", "Lrsql", "PGAdmin"],
+    "Dev": ["Steamfitter"]
   }
 }
 ```
 
-Settings in `appsettings.Development.json` override values from `.env` files and `appsettings.json`, allowing you to customize your local environment without affecting team configurations.
+Or directly in `.env` files for team-shared configurations:
+```bash
+# All team members working on this task need these supporting apps
+Launch__Blueprint=true    # Primary dev app
+Launch__Gallery=true      # Supporting dev app
+Launch__Cite=true         # Supporting dev app
+```
 
-**Available values:**
-- `off` (default) - Don't launch the application
-- `prod` - Launch with production build
-- `dev` - Launch with ng serve (hot reload)
+**Configuration Precedence (highest to lowest):**
+1. Boolean flag in `.env` file = `true` → **Dev mode**
+2. App name in `Dev` array → **Dev mode**
+3. App name in `Prod` array → **Production mode**
+4. Otherwise → **Off**
 
-#### Memory Savings
+**Memory Savings:**
 
 Running 5 UIs in production mode instead of dev mode saves approximately **6-8GB** of memory, allowing you to run comprehensive integration tests while actively developing on a single primary application.
 
+**Example Workflow:**
+
+1. Select your task in VS Code's launch picker (e.g., "Blueprint Task")
+2. The `.env/blueprint.env` file launches Blueprint in dev mode
+3. Add supporting apps to your local `appsettings.Development.json`:
+   ```json
+   {
+     "Launch": {
+       "Prod": ["Player", "Gallery"],  // Prod mode for testing
+       "Dev": []                        // Additional dev mode apps
+     }
+   }
+   ```
+4. Restart the task to apply changes
+
+**Moodle Integration:**
+
+Moodle automatically configures itself based on which Crucible services are running:
+- The Crucible block only shows links to services that are currently running
+- URLs are only configured for enabled services
+- This prevents timeouts and slow page loads when services aren't available
+
 #### Supported Applications
 
-All Angular UIs support dev/prod modes:
+**Angular UIs** (support dev/prod modes):
 - Player (player-ui, player-vm-ui, player-vm-console-ui)
 - Caster (caster-ui)
 - Alloy (alloy-ui)
@@ -173,6 +217,13 @@ All Angular UIs support dev/prod modes:
 - Gallery (gallery-ui)
 - Blueprint (blueprint-ui)
 - Gameboard (gameboard-ui)
+
+**Containers** (support prod mode only via boolean flags or Prod array):
+- Moodle (with optional Xdebug - see Moodle Configuration below)
+- Lrsql (Learning Record Store for xAPI)
+- Misp (threat intelligence platform)
+- PGAdmin (database administration)
+- Docs (MkDocs documentation server)
 
 ## Troubleshooting
 
@@ -219,6 +270,26 @@ be copied into mounts on the dev container's file system so that they are access
 debugging with xdebug. These files will be mounted alongside our repos under the folder
 `/mnt/data/crucible/moodle/moodle-core/`. The xAPI logstore plugin will also be configured
 automatically as will one default Moodle course with no activities within it.
+
+### Moodle Tasks
+
+Two Moodle task configurations are available:
+
+- **`.env/moodle.env`** - Moodle without Xdebug (faster, for general development/testing)
+- **`.env/moodle-xdebug.env`** - Moodle with Xdebug enabled (for PHP debugging)
+
+Use the appropriate task based on whether you need to debug PHP code. Xdebug has significant performance overhead, so only enable it when actively debugging.
+
+### Dynamic Crucible Integration
+
+Moodle automatically configures the Crucible block based on which services are running:
+
+- Only enabled services have their API URLs configured
+- Disabled services have empty URLs (prevents connection timeouts)
+- The block only displays links to running services
+- This is configured dynamically via environment variables passed from AppHost.cs
+
+This ensures fast dashboard loading regardless of which services are running in your current task.
 
 ### OAUTH
 
@@ -521,21 +592,27 @@ The Intelephense PHP language server is disabled by default to save approximatel
 
 ### Moodle PHP Debugging with xdebug
 
-If you do not wish to debug Moodle, simply run Moodle via the `Moodle` task. Id you do wish
-to debug Mooodle, run Moodle via the `Moodle Debug` composite task. This task will start
-both the Moodle and Xdebug tasks. The specific setting to control the xdebug mode is set
-inside the `moodle.env` file or the `moodle-xdebug.env` file. Update the `XdebugMode` to
-the type of xdebug feature(s) you wish to use.
+Two Moodle tasks are available for different debugging needs:
 
-The xdebug configuration is set to `off` in its configuration file, `xdebug.ini`, however
-the `AppHost.cs` file sets the `XDEBUG_MODE` environment variable to enable it.
+**Normal Moodle Task** (`.env/moodle.env`):
+- Xdebug is **off** by default
+- Use for general development and testing
+- Faster startup and better performance
 
-**PHP on the Moodle container will pause execution after the line `Upgrading config.php...`
-if xdebug is enabled and the remote debugger in the devcontainer is not running.** To prevent
-this from happening, ensure that the Xdebug task is running in vscode when `XDEBUG_MODE` is
-enabled via the `AppHost.cs` file. An additional configuration for xdebug is enabled when the
-mode includes `coverage`: `xdebug_filter.php`. This script is meant to limit the scope of the
-code being analyzed by xdebug.
+**Moodle with Xdebug Task** (`.env/moodle-xdebug.env`):
+- Xdebug is **enabled** (`XDEBUG_MODE=debug`)
+- Use when you need to set breakpoints and debug PHP code
+- Requires VS Code debugger listener to be running
+
+**To debug Moodle PHP code:**
+1. Select the "Moodle with Xdebug" task in VS Code
+2. Start the "Listen for Xdebug" debugger in VS Code (F5 or Run panel)
+3. Set breakpoints in your PHP code
+4. Access Moodle in the browser - breakpoints will be hit
+
+**Important:** PHP on the Moodle container will pause execution if Xdebug is enabled but the VS Code debugger listener is not running. Always start the "Listen for Xdebug" debugger before accessing Moodle when using the Xdebug task.
+
+**Xdebug Filter:** An xdebug filter (`xdebug_filter.php`) is automatically generated from your plugin configuration to limit the scope of code analyzed by Xdebug. This improves performance by only debugging your custom plugins and core Moodle paths, not third-party dependencies.
 
 To make additional paths available for debugging, add the paths to `Dockerfile.MoodleCustom`,
 `add-moodle-mounts.sh`, `AppHost.cs`, `pre_configure.sh` and `launch.json`.
