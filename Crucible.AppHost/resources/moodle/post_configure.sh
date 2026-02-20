@@ -199,6 +199,8 @@ configure_site() {
 
 configure_crucible() {
   echo "Configuring Crucible"
+  log "Configuring Crucible block based on enabled services..."
+
   # Configure mod_crucible
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=issuerid --set=$OAUTH2_ISSUER_ID;
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=alloyapiurl --set=http://host.docker.internal:4402/api;
@@ -206,27 +208,136 @@ configure_crucible() {
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=vmappurl --set=http://localhost:4303;
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=steamfitterapiurl --set=http://host.docker.internal:4400/api
 
-  # Configure block_crucible
+  # Configure block_crucible - only set URLs for enabled services
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=enabled --set=1;
   php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=issuerid --set=$OAUTH2_ISSUER_ID;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=playerapiurl --set=http://host.docker.internal:4300/api;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=playerappurl --set=http://localhost:4301;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showplayer --set=1;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=blueprintapiurl --set=http://host.docker.internal:4724/api;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=blueprintappurl --set=http://localhost:4725;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showblueprint --set=1;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=citeapiurl --set=http://host.docker.internal:4720/api;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=citeappurl --set=http://localhost:4721;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showcite --set=1;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryapiurl --set=http://host.docker.internal:4722/api;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryappurl --set=http://localhost:4723;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showgallery --set=1;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardapiurl --set=http://host.docker.internal:5002/api;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardappurl --set=http://localhost:4202;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showgameboard --set=1;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=topomojoapiurl --set=http://host.docker.internal:5000/api;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=topomojoappurl --set=http://localhost:4201;
-  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showtopomojo --set=1;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showallapps --set=0;
+  log "Disabled showallapps - using individual service settings"
+
+  # Keycloak is always available (core dependency)
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showkeycloak --set=1;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=keycloakuserurl --set=https://localhost:8443/realms/crucible/account;
+  php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=keycloakadminurl --set=https://localhost:8443/admin/master/console/#/crucible;
+  log "Keycloak URLs configured"
+
+  # Player
+  if [ "${CRUCIBLE_PLAYER_ENABLED:-0}" = "1" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=playerapiurl --set=http://host.docker.internal:4300/api;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=playerappurl --set=http://localhost:4301;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showplayer --set=1;
+    log "Player enabled"
+  else
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=playerapiurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=playerappurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showplayer --set=0;
+    log "Player disabled"
+  fi
+
+  # Blueprint
+  if [ "${CRUCIBLE_BLUEPRINT_ENABLED:-0}" = "1" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=blueprintapiurl --set=http://host.docker.internal:4724/api;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=blueprintappurl --set=http://localhost:4725;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showblueprint --set=1;
+    log "Blueprint enabled"
+  else
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=blueprintapiurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=blueprintappurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showblueprint --set=0;
+    log "Blueprint disabled"
+  fi
+
+  # CITE
+  if [ "${CRUCIBLE_CITE_ENABLED:-0}" = "1" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=citeapiurl --set=http://host.docker.internal:4720/api;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=citeappurl --set=http://localhost:4721;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showcite --set=1;
+    log "CITE enabled"
+  else
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=citeapiurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=citeappurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showcite --set=0;
+    log "CITE disabled"
+  fi
+
+  # Gallery
+  if [ "${CRUCIBLE_GALLERY_ENABLED:-0}" = "1" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryapiurl --set=http://host.docker.internal:4722/api;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryappurl --set=http://localhost:4723;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showgallery --set=1;
+    log "Gallery enabled"
+  else
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryapiurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=galleryappurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showgallery --set=0;
+    log "Gallery disabled"
+  fi
+
+  # Gameboard
+  if [ "${CRUCIBLE_GAMEBOARD_ENABLED:-0}" = "1" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardapiurl --set=http://host.docker.internal:5002/api;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardappurl --set=http://localhost:4202;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showgameboard --set=1;
+    log "Gameboard enabled"
+  else
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardapiurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=gameboardappurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showgameboard --set=0;
+    log "Gameboard disabled"
+  fi
+
+  # TopoMojo
+  if [ "${CRUCIBLE_TOPOMOJO_ENABLED:-0}" = "1" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=topomojoapiurl --set=http://host.docker.internal:5000/api;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=topomojoappurl --set=http://localhost:4201;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showtopomojo --set=1;
+    log "TopoMojo enabled"
+  else
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=topomojoapiurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=topomojoappurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showtopomojo --set=0;
+    log "TopoMojo disabled"
+  fi
+
+  # Steamfitter
+  if [ "${CRUCIBLE_STEAMFITTER_ENABLED:-0}" = "1" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=steamfitterapiurl --set=http://host.docker.internal:4400/api;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=steamfitterappurl --set=http://localhost:4401;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showsteamfitter --set=1;
+    log "Steamfitter enabled"
+  else
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=steamfitterapiurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=steamfitterappurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showsteamfitter --set=0;
+    log "Steamfitter disabled"
+  fi
+
+  # Alloy
+  if [ "${CRUCIBLE_ALLOY_ENABLED:-0}" = "1" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=alloyapiurl --set=http://host.docker.internal:4402/api;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=alloyappurl --set=http://localhost:4403;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showalloy --set=1;
+    log "Alloy enabled"
+  else
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=alloyapiurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=alloyappurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showalloy --set=0;
+    log "Alloy disabled"
+  fi
+
+  # Caster
+  if [ "${CRUCIBLE_CASTER_ENABLED:-0}" = "1" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=casterapiurl --set=http://host.docker.internal:4308/api;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=casterappurl --set=http://localhost:4310;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showcaster --set=1;
+    log "Caster enabled"
+  else
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=casterapiurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=casterappurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showcaster --set=0;
+    log "Caster disabled"
+  fi
+
+  log "Crucible block configured with enabled services only"
 }
 
 configure_topomojo() {
