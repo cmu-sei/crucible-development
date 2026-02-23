@@ -326,7 +326,7 @@ configure_crucible() {
 
   # Caster
   if [ "${CRUCIBLE_CASTER_ENABLED:-0}" = "1" ]; then
-    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=casterapiurl --set=http://host.docker.internal:4308/api;
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=casterapiurl --set=http://host.docker.internal:4309/api;
     php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=casterappurl --set=http://localhost:4310;
     php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showcaster --set=1;
     log "Caster enabled"
