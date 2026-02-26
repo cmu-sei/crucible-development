@@ -312,11 +312,7 @@ public static class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "caster.api")
             .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
-            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true")
-            .WithUrlForEndpoint("http", url =>
-            {
-                url.Url = "/api";
-            });
+            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
@@ -366,11 +362,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm alloy steamfitter caster")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
             .WithEnvironment("CorsPolicy__Origins__0", "http://localhost:4403") // for alloy-ui
-            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081") // for moodle
-            .WithUrlForEndpoint("http", url =>
-            {
-                url.Url = "/api";
-            });
+            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081"); // for moodle
 
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
@@ -403,7 +395,6 @@ public static class BuilderExtensions
         var topoApi = builder.AddProject<Projects.TopoMojo_Api>("topomojo")
             .WaitFor(postgres)
             .WaitFor(keycloak)
-            //.WithHttpHealthCheck("api/health/ready")
             .WithReference(topoDb, "PostgreSQL")
             .WithEnvironment("Database__ConnectionString", topoDb.Resource.ConnectionStringExpression)
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -414,32 +405,42 @@ public static class BuilderExtensions
             .WithEnvironment("OpenApi__Client__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
             .WithEnvironment("OpenApi__Client__ClientId", "topomojo.api")
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-            .WithEnvironment("ASPNETCORE_URLS", "http://localhost:5000")
             .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201") // for topo-ui
             .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
             .WithEnvironment("Headers__Cors__Methods__0", "*")
-            .WithEnvironment("Headers__Cors__Headers__0", "*")
-            .WithHttpEndpoint(name: "http", port: 5000, env: "PORT", isProxied: false)
-            .WithUrlForEndpoint("http", url =>
-            {
-                url.Url = "/api";
-            });
+            .WithEnvironment("Headers__Cors__Headers__0", "*");
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
 
         File.Copy($"{builder.AppHostDirectory}/resources/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
 
+        // Use AddAngularUI like other apps, but TopoMojo needs special dev mode args
         IResourceBuilder<ExecutableResource> topoUi;
         if (topoMojoMode == "dev")
         {
+            // Dev mode needs .WithArgs for the workspace
             topoUi = builder.AddJavaScriptApp("topomojo-ui", topoUiRoot, "start")
                 .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
-                .WithArgs("topomojo-work");
+                .WithArgs("topomojo-work")
+                .WithHttpHealthCheck();
+        }
+        else
+        {
+            // Prod/off mode with fixup-wmks check
+            var distPath = "dist/topomojo-work/browser";
+            var fixupCheck = "[ -e node_modules/vmware-wmks/css/css/wmks-all.css ] || [ -d node_modules/vmware-wmks/img/img ]";
+            var serveProd = $"if {fixupCheck}; then bash tools/fixup-wmks.sh; fi; if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm run build topomojo-work; fi; npx serve -s {distPath} -l 4201";
+            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4201, isProxied: false)
+                .WithHttpHealthCheck();
+        }
 
+        // Add fixup-wmks script if in dev mode and installer exists
+        if (topoMojoMode == "dev")
+        {
             var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
                 .FirstOrDefault(r => r.Name == "topomojo-ui-installer");
 
-            // Add script that runs after npm install but before the UI starts
             if (installerResource != null)
             {
                 var script = builder.AddExecutable("fixup-wmks", "bash", topoUiRoot, [
@@ -452,14 +453,6 @@ public static class BuilderExtensions
                 topoUi.WaitForCompletion(script);
             }
         }
-        else
-        {
-            var serveProd = $"if [ ! -d dist ] || [ -n \"$(find src -newer dist -print -quit)\" ]; then npm run build topomojo-work; fi; npx serve -s dist/topomojo-work/browser -l 4201";
-            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4201, isProxied: false);
-        }
-
-        topoUi = topoUi.WithHttpHealthCheck();
 
         if (!IsEnabled(topoMojoMode))
         {
@@ -501,11 +494,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "steamfitter player player-vm cite gallery")
-            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
-            .WithUrlForEndpoint("http", url =>
-            {
-                url.Url = "/api";
-            });
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
@@ -559,11 +548,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "openid profile email gallery")
-            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
-            .WithUrlForEndpoint("http", url =>
-            {
-                url.Url = "/api";
-            });
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
@@ -617,11 +602,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm steamfitter")
-            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
-            .WithUrlForEndpoint("http", url =>
-            {
-                url.Url = "/api";
-            });
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
@@ -674,11 +655,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite")
-            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
-            .WithUrlForEndpoint("http", url =>
-            {
-                url.Url = "/api";
-            });
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         if (IsEnabled(lrsqlMode))
         {
@@ -736,11 +713,7 @@ public static class BuilderExtensions
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true")
-            .WithEnvironment("Oidc__UserRolesClaimMap__Administrator", "Admin")
-            .WithUrlForEndpoint("http", url =>
-            {
-                url.Url = "/api";
-            });
+            .WithEnvironment("Oidc__UserRolesClaimMap__Administrator", "Admin");
 
         var gameboardUiRoot = "/mnt/data/crucible/gameboard/gameboard-ui/";
 
