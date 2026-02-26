@@ -10,6 +10,8 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 LaunchOptions launchOptions = builder.Configuration.GetSection("Launch").Get<LaunchOptions>() ?? new();
 
+LogLaunchOptions(launchOptions);
+
 var postgres = builder.AddPostgres(launchOptions);
 var keycloak = builder.AddKeycloak(postgres);
 builder.AddPlayer(postgres, keycloak, launchOptions);
@@ -28,10 +30,83 @@ builder.AddDocs(launchOptions);
 
 builder.Build().Run();
 
+static void LogLaunchOptions(LaunchOptions launchOptions)
+{
+    Console.WriteLine($"LaunchOptions:");
+    Console.WriteLine($"  Player: {launchOptions.Player}, Caster: {launchOptions.Caster}, Alloy: {launchOptions.Alloy}");
+    Console.WriteLine($"  Gallery: {launchOptions.Gallery}, Cite: {launchOptions.Cite}");
+    Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
+    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}");
+    Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, Gameboard: {launchOptions.Gameboard}");
+    Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, AddAllApplications: {launchOptions.AddAllApplications}");
+    Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
+    Console.WriteLine($"  Dev: [{string.Join(", ", launchOptions.Dev)}]");
+}
+
 public static class BuilderExtensions
 {
+    /// <summary>
+    /// Checks if a mode is enabled (not "off")
+    /// </summary>
+    private static bool IsEnabled(string mode)
+    {
+        return mode != "off";
+    }
+
+    /// <summary>
+    /// Resolves the mode for an app based on boolean flag and Prod/Dev arrays
+    /// </summary>
+    private static string ResolveMode(bool flag, string appName, LaunchOptions options)
+    {
+        // Boolean flag takes precedence (true = dev mode)
+        if (flag)
+            return "dev";
+
+        // Check if app is in Dev array
+        if (options.Dev != null && options.Dev.Contains(appName, StringComparer.OrdinalIgnoreCase))
+            return "dev";
+
+        // Check if app is in Prod array
+        if (options.Prod != null && options.Prod.Contains(appName, StringComparer.OrdinalIgnoreCase))
+            return "prod";
+
+        return "off";
+    }
+
+    /// <summary>
+    /// Adds an Angular UI with dev mode (ng serve) or production mode (build + serve)
+    /// </summary>
+    private static IResourceBuilder<ExecutableResource> AddAngularUI(
+        this IDistributedApplicationBuilder builder,
+        string name,
+        string appRoot,
+        int port,
+        string mode,
+        string distPath = "dist",
+        string buildArgs = "")
+    {
+        IResourceBuilder<ExecutableResource> ui;
+
+        if (mode == "dev")
+        {
+            ui = builder.AddJavaScriptApp(name, appRoot, "start")
+                .WithHttpEndpoint(port: port, env: "PORT", isProxied: false);
+        }
+        else
+        {
+            var buildCommand = string.IsNullOrEmpty(buildArgs) ? "npm run build" : $"npm run build {buildArgs}";
+            var serveProd = $"if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then {buildCommand}; fi; npx serve -s {distPath} -l {port}";
+            ui = builder.AddExecutable(name, "bash", appRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: port, isProxied: false);
+        }
+
+        return ui.WithHttpHealthCheck();
+    }
+
     public static IResourceBuilder<PostgresServerResource> AddPostgres(this IDistributedApplicationBuilder builder, LaunchOptions options)
     {
+        var pgAdminMode = ResolveMode(options.PGAdmin, "PGAdmin", options);
+
         var postgres = builder.AddPostgres("postgres")
             .WithDataVolume()
             .WithLifetime(ContainerLifetime.Persistent)
@@ -41,7 +116,7 @@ public static class BuilderExtensions
                 endpoint.IsProxied = false; // so tools (e.g. dotnet ef migrations) can connect to db when apphost is off
             });
 
-        if (options.PGAdmin || options.AddAllApplications)
+        if (IsEnabled(pgAdminMode) || options.AddAllApplications)
         {
             postgres.WithPgAdmin(pgAdmin =>
             {
@@ -52,7 +127,7 @@ public static class BuilderExtensions
                 });
                 pgAdmin.WithLifetime(ContainerLifetime.Persistent);
 
-                if (!options.PGAdmin)
+                if (!IsEnabled(pgAdminMode))
                 {
                     pgAdmin.WithExplicitStart();
                 }
@@ -64,7 +139,9 @@ public static class BuilderExtensions
 
     public static void AddDocs(this IDistributedApplicationBuilder builder, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Docs)
+        var docsMode = ResolveMode(options.Docs, "Docs", options);
+
+        if (!options.AddAllApplications && !IsEnabled(docsMode))
             return;
 
         var docs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
@@ -72,7 +149,7 @@ public static class BuilderExtensions
             .WithHttpEndpoint(port: 8000, targetPort: 8000)
             .WithArgs("serve", "-a", "0.0.0.0:8000");
 
-        if (!options.Docs)
+        if (!IsEnabled(docsMode))
         {
             docs.WithExplicitStart();
         }
@@ -98,6 +175,8 @@ public static class BuilderExtensions
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             .WithEnvironment("KC_HTTPS_CERTIFICATE_FILE", "/opt/keycloak/conf/crucible-dev.crt")
             .WithEnvironment("KC_HTTPS_CERTIFICATE_KEY_FILE", "/opt/keycloak/conf/crucible-dev.key")
+            // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
+            .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
             .WithBindMount("../.devcontainer/dev-certs/crucible-dev.crt", "/opt/keycloak/conf/crucible-dev.crt", isReadOnly: true)
             .WithBindMount("../.devcontainer/dev-certs/crucible-dev.key", "/opt/keycloak/conf/crucible-dev.key", isReadOnly: true)
             .WithHttpsEndpoint(port: 8443, targetPort: 8443, isProxied: false)
@@ -109,7 +188,9 @@ public static class BuilderExtensions
 
     public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Player)
+        var playerMode = ResolveMode(options.Player, "Player", options);
+
+        if (!options.AddAllApplications && !IsEnabled(playerMode))
             return;
 
         var playerDb = postgres.AddDatabase("playerDb", "player")
@@ -136,20 +217,12 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var playerUi = builder.AddJavaScriptApp("player-ui", playerUiRoot, "start")
-            .WithHttpEndpoint(port: 4301, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode);
 
-        if (!options.Player)
-        {
-            playerApi.WithExplicitStart();
-            playerUi.WithExplicitStart();
-        }
-
-        builder.AddPlayerVm(postgres, keycloak, options.Player);
+        builder.AddPlayerVm(postgres, keycloak, options, playerMode);
     }
 
-    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, bool startByDefault)
+    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, string playerMode)
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm")
             .WithDevSettings();
@@ -185,30 +258,21 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var vmUi = builder.AddJavaScriptApp("player-vm-ui", vmUiRoot, "start")
-            .WithHttpEndpoint(port: 4303, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck(); ;
+        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, distPath: "dist/browser");
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var consoleUi = builder.AddJavaScriptApp("player-vm-console-ui", consoleUiRoot, "start")
-            .WithHttpEndpoint(port: 4305, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
-
-        if (!startByDefault)
-        {
-            vmApi.WithExplicitStart();
-            vmUi.WithExplicitStart();
-            consoleUi.WithExplicitStart();
-        }
+        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, distPath: "dist/browser");
 
     }
 
     public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Caster)
+        var casterMode = ResolveMode(options.Caster, "Caster", options);
+
+        if (!options.AddAllApplications && !IsEnabled(casterMode))
             return;
 
         var casterDb = postgres.AddDatabase("casterDb", "caster")
@@ -258,11 +322,9 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var casterUi = builder.AddJavaScriptApp("caster-ui", casterUiRoot, "start")
-            .WithHttpEndpoint(port: 4310, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode);
 
-        if (!options.Caster)
+        if (!IsEnabled(casterMode))
         {
             casterApi.WithExplicitStart();
             casterUi.WithExplicitStart();
@@ -272,7 +334,9 @@ public static class BuilderExtensions
 
     public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Alloy)
+        var alloyMode = ResolveMode(options.Alloy, "Alloy", options);
+
+        if (!options.AddAllApplications && !IsEnabled(alloyMode))
             return;
 
         var alloyDb = postgres.AddDatabase("alloyDb", "alloy")
@@ -308,11 +372,9 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var alloyUi = builder.AddJavaScriptApp("alloy-ui", alloyUiRoot, "start")
-            .WithHttpEndpoint(port: 4403, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode);
 
-        if (!options.Alloy)
+        if (!IsEnabled(alloyMode))
         {
             alloyApi.WithExplicitStart();
             alloyUi.WithExplicitStart();
@@ -321,7 +383,9 @@ public static class BuilderExtensions
 
     public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.TopoMojo)
+        var topoMojoMode = ResolveMode(options.TopoMojo, "TopoMojo", options);
+
+        if (!options.AddAllApplications && !IsEnabled(topoMojoMode))
             return;
 
         var topoDb = postgres.AddDatabase("topoDb", "topomojo")
@@ -335,7 +399,6 @@ public static class BuilderExtensions
         var topoApi = builder.AddProject<Projects.TopoMojo_Api>("topomojo")
             .WaitFor(postgres)
             .WaitFor(keycloak)
-            //.WithHttpHealthCheck("api/health/ready")
             .WithReference(topoDb, "PostgreSQL")
             .WithEnvironment("Database__ConnectionString", topoDb.Resource.ConnectionStringExpression)
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -346,43 +409,56 @@ public static class BuilderExtensions
             .WithEnvironment("OpenApi__Client__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
             .WithEnvironment("OpenApi__Client__ClientId", "topomojo.api")
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-            .WithEnvironment("ASPNETCORE_URLS", "http://localhost:5000")
             .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201") // for topo-ui
             .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
             .WithEnvironment("Headers__Cors__Methods__0", "*")
-            .WithEnvironment("Headers__Cors__Headers__0", "*")
-            .WithHttpEndpoint(name: "http", port: 5000, env: "PORT", isProxied: false)
-            .WithUrlForEndpoint("http", url =>
-            {
-                url.Url = "/api";
-            });
+            .WithEnvironment("Headers__Cors__Headers__0", "*");
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
 
         File.Copy($"{builder.AppHostDirectory}/resources/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
 
-        var topoUi = builder.AddJavaScriptApp("topomojo-ui", topoUiRoot, "start")
-            .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck()
-            .WithArgs("topomojo-work");
-
-        var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
-            .FirstOrDefault(r => r.Name == "topomojo-ui-installer");
-
-        // Add script that runs after npm install but before the UI starts
-        if (installerResource != null)
+        // Use AddAngularUI like other apps, but TopoMojo needs special dev mode args
+        IResourceBuilder<ExecutableResource> topoUi;
+        if (topoMojoMode == "dev")
         {
-            var script = builder.AddExecutable("fixup-wmks", "bash", topoUiRoot, [
-                "-c",
-                "tools/fixup-wmks.sh"
-            ])
-            .WithParentRelationship(installerResource);
-
-            script.Resource.Annotations.Add(new WaitAnnotation(installerResource, WaitType.WaitForCompletion));
-            topoUi.WaitForCompletion(script);
+            // Dev mode needs .WithArgs for the workspace
+            topoUi = builder.AddJavaScriptApp("topomojo-ui", topoUiRoot, "start")
+                .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
+                .WithArgs("topomojo-work")
+                .WithHttpHealthCheck();
+        }
+        else
+        {
+            // Prod/off mode with fixup-wmks check
+            var distPath = "dist/topomojo-work/browser";
+            var fixupCheck = "[ -e node_modules/vmware-wmks/css/css/wmks-all.css ] || [ -d node_modules/vmware-wmks/img/img ]";
+            var serveProd = $"if {fixupCheck}; then bash tools/fixup-wmks.sh; fi; if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm run build topomojo-work; fi; npx serve -s {distPath} -l 4201";
+            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4201, isProxied: false)
+                .WithHttpHealthCheck();
         }
 
-        if (!options.TopoMojo)
+        // Add fixup-wmks script if in dev mode and installer exists
+        if (topoMojoMode == "dev")
+        {
+            var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
+                .FirstOrDefault(r => r.Name == "topomojo-ui-installer");
+
+            if (installerResource != null)
+            {
+                var script = builder.AddExecutable("fixup-wmks", "bash", topoUiRoot, [
+                    "-c",
+                    "tools/fixup-wmks.sh"
+                ])
+                .WithParentRelationship(installerResource);
+
+                script.Resource.Annotations.Add(new WaitAnnotation(installerResource, WaitType.WaitForCompletion));
+                topoUi.WaitForCompletion(script);
+            }
+        }
+
+        if (!IsEnabled(topoMojoMode))
         {
             topoApi.WithExplicitStart();
             topoUi.WithExplicitStart();
@@ -391,7 +467,10 @@ public static class BuilderExtensions
 
     public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Steamfitter)
+        var steamfitterMode = ResolveMode(options.Steamfitter, "Steamfitter", options);
+        var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
+
+        if (!options.AddAllApplications && !IsEnabled(steamfitterMode))
             return;
 
         var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter")
@@ -421,15 +500,19 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "steamfitter player player-vm cite gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
+        // Configure xAPI if LRS is enabled
+        if (IsEnabled(lrsqlMode))
+        {
+            ConfigureXApi(steamfitterApi, "steamfitter", "http://localhost:4400/api/", "http://localhost:4401/");
+        }
+
         var steamfitterUiRoot = "/mnt/data/crucible/steamfitter/steamfitter.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var steamfitterUi = builder.AddJavaScriptApp("steamfitter-ui", steamfitterUiRoot, "start")
-            .WithHttpEndpoint(port: 4401, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode);
 
-        if (!options.Steamfitter)
+        if (!IsEnabled(steamfitterMode))
         {
             steamfitterApi.WithExplicitStart();
             steamfitterUi.WithExplicitStart();
@@ -438,7 +521,10 @@ public static class BuilderExtensions
 
     public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Cite)
+        var citeMode = ResolveMode(options.Cite, "Cite", options);
+        var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
+
+        if (!options.AddAllApplications && !IsEnabled(citeMode))
             return;
 
         var citeDb = postgres.AddDatabase("citeDb", "cite")
@@ -469,7 +555,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         // Configure xAPI if LRS is enabled
-        if (options.Lrsql)
+        if (IsEnabled(lrsqlMode))
         {
             ConfigureXApi(citeApi, "cite", "http://localhost:4720/api/", "http://localhost:4721/");
         }
@@ -478,11 +564,9 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var citeUi = builder.AddJavaScriptApp("cite-ui", citeUiRoot, "start")
-            .WithHttpEndpoint(port: 4721, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, distPath: "dist/browser");
 
-        if (!options.Cite)
+        if (!IsEnabled(citeMode))
         {
             citeApi.WithExplicitStart();
             citeUi.WithExplicitStart();
@@ -491,7 +575,10 @@ public static class BuilderExtensions
 
     public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Gallery)
+        var galleryMode = ResolveMode(options.Gallery, "Gallery", options);
+        var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
+
+        if (!options.AddAllApplications && !IsEnabled(galleryMode))
             return;
 
         var galleryDb = postgres.AddDatabase("galleryDb", "gallery")
@@ -522,7 +609,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         // Configure xAPI if LRS is enabled
-        if (options.Lrsql)
+        if (IsEnabled(lrsqlMode))
         {
             ConfigureXApi(galleryApi, "gallery", "http://localhost:4722/api/", "http://localhost:4723/");
         }
@@ -531,11 +618,9 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var galleryUi = builder.AddJavaScriptApp("gallery-ui", galleryUiRoot, "start")
-            .WithHttpEndpoint(port: 4723, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, distPath: "dist/browser");
 
-        if (!options.Gallery)
+        if (!IsEnabled(galleryMode))
         {
             galleryApi.WithExplicitStart();
             galleryUi.WithExplicitStart();
@@ -544,7 +629,10 @@ public static class BuilderExtensions
 
     public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Blueprint)
+        var blueprintMode = ResolveMode(options.Blueprint, "Blueprint", options);
+        var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
+
+        if (!options.AddAllApplications && !IsEnabled(blueprintMode))
             return;
 
         var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint")
@@ -573,7 +661,7 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
-        if (options.Lrsql)
+        if (IsEnabled(lrsqlMode))
         {
             ConfigureXApi(blueprintApi, "blueprint", "http://localhost:4724/api/", "http://localhost:4725/");
         }
@@ -582,11 +670,9 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var blueprintUi = builder.AddJavaScriptApp("blueprint-ui", blueprintUiRoot, "start")
-            .WithHttpEndpoint(port: 4725, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, distPath: "dist/browser");
 
-        if (!options.Blueprint)
+        if (!IsEnabled(blueprintMode))
         {
             blueprintApi.WithExplicitStart();
             blueprintUi.WithExplicitStart();
@@ -595,7 +681,9 @@ public static class BuilderExtensions
 
     public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Gameboard)
+        var gameboardMode = ResolveMode(options.Gameboard, "Gameboard", options);
+
+        if (!options.AddAllApplications && !IsEnabled(gameboardMode))
             return;
 
         var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard")
@@ -635,11 +723,9 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
 
-        var gameboardUi = builder.AddJavaScriptApp("gameboard-ui", gameboardUiRoot, "start")
-            .WithHttpEndpoint(port: 4202, env: "PORT", isProxied: false)
-            .WithHttpHealthCheck();
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui");
 
-        if (!options.Gameboard)
+        if (!IsEnabled(gameboardMode))
         {
             gameboardApi.WithExplicitStart();
             gameboardUi.WithExplicitStart();
@@ -648,13 +734,26 @@ public static class BuilderExtensions
 
     public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Moodle)
+        var moodleMode = ResolveMode(options.Moodle, "Moodle", options);
+
+        if (!options.AddAllApplications && !IsEnabled(moodleMode))
             return;
 
         var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
 
         // Read AWS credentials from ~/.aws/credentials file
         var awsCreds = ReadAwsCredentials();
+
+        // Check which Crucible services are enabled
+        var playerMode = ResolveMode(options.Player, "Player", options);
+        var casterMode = ResolveMode(options.Caster, "Caster", options);
+        var alloyMode = ResolveMode(options.Alloy, "Alloy", options);
+        var topoMojoMode = ResolveMode(options.TopoMojo, "TopoMojo", options);
+        var steamfitterMode = ResolveMode(options.Steamfitter, "Steamfitter", options);
+        var citeMode = ResolveMode(options.Cite, "Cite", options);
+        var galleryMode = ResolveMode(options.Gallery, "Gallery", options);
+        var blueprintMode = ResolveMode(options.Blueprint, "Blueprint", options);
+        var gameboardMode = ResolveMode(options.Gameboard, "Gameboard", options);
 
         var moodle = builder.AddContainer("moodle", "moodle-custom-image")
             .WaitFor(postgres)
@@ -679,26 +778,35 @@ public static class BuilderExtensions
             .WithEnvironment("AWS_SECRET_ACCESS_KEY", awsCreds["aws_secret_access_key"])
             .WithEnvironment("AWS_SESSION_TOKEN", awsCreds["aws_session_token"])
             .WithEnvironment("AWS_REGION", awsCreds["region"])
-            .WithEnvironment("PLUGINS", @"logstore_xapi=https://moodle.org/plugins/download.php/34860/logstore_xapi_2025021100.zip
-                    tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
+            // Pass which Crucible services are enabled
+            .WithEnvironment("CRUCIBLE_PLAYER_ENABLED", IsEnabled(playerMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_CASTER_ENABLED", IsEnabled(casterMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_ALLOY_ENABLED", IsEnabled(alloyMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_TOPOMOJO_ENABLED", IsEnabled(topoMojoMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_STEAMFITTER_ENABLED", IsEnabled(steamfitterMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_CITE_ENABLED", IsEnabled(citeMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_GALLERY_ENABLED", IsEnabled(galleryMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_BLUEPRINT_ENABLED", IsEnabled(blueprintMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_GAMEBOARD_ENABLED", IsEnabled(gameboardMode) ? "1" : "0")
+            .WithEnvironment("PLUGINS", @"tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"/usr/local/bin/post_configure.sh")
+            // Bind mount moodle-core directories (writable for xdebug)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/theme", "/var/www/html/theme", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/lib", "/var/www/html/lib", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/provider", "/var/www/html/ai/provider", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/block_crucible", "/var/www/html/blocks/crucible", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/mod_crucible", "/var/www/html/mod/crucible", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/mod_groupquiz", "/var/www/html/mod/groupquiz", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/mod_topomojo", "/var/www/html/mod/topomojo", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/qtype_mojomatch", "/var/www/html/question/type/mojomatch", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/qbehaviour_mojomatch", "/var/www/html/question/behaviour/mojomatch", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/tool_lptmanager", "/var/www/html/admin/tool/lptmanager", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/local_tagmanager", "/var/www/html/local/tagmanager", isReadOnly: true)
-            .WithBindMount("/mnt/data/crucible/moodle/aiplacement_competency", "/var/www/html/ai/placement/competency", isReadOnly: true);
+            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false);
 
-        if (!options.Moodle)
+        // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
+        var moodlePlugins = ReadMoodlePlugins();
+        foreach (var plugin in moodlePlugins)
+        {
+            moodle.WithBindMount(plugin.HostPath, plugin.ContainerPath, isReadOnly: true);
+            Console.WriteLine($"  Mounting Moodle plugin: {plugin.Name} -> {plugin.ContainerPath}");
+        }
+
+        if (!IsEnabled(moodleMode))
         {
             moodle.WithExplicitStart();
         }
@@ -706,7 +814,9 @@ public static class BuilderExtensions
 
     public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Lrsql)
+        var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
+
+        if (!options.AddAllApplications && !IsEnabled(lrsqlMode))
             return;
 
         var lrsqlDb = postgres.AddDatabase("lrsqlDb", "lrsql");
@@ -730,7 +840,7 @@ public static class BuilderExtensions
             .WithEnvironment("LRSQL_DB_PORT", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
             .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
 
-        if (!options.Lrsql)
+        if (!IsEnabled(lrsqlMode))
         {
             lrsql.WithExplicitStart();
         }
@@ -738,7 +848,9 @@ public static class BuilderExtensions
 
     public static void AddMisp(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        if (!options.AddAllApplications && !options.Misp)
+        var mispMode = ResolveMode(options.Misp, "Misp", options);
+
+        if (!options.AddAllApplications && !IsEnabled(mispMode))
             return;
 
         // Redis for MISP background jobs (without TLS for dev environment)
@@ -791,7 +903,7 @@ public static class BuilderExtensions
             .WithHttpEndpoint(port: 8666, targetPort: 6666, isProxied: false)
             .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle/misp_module.py", "/usr/local/lib/python3.12/site-packages/misp_modules/modules/action_mod/moodle.py", isReadOnly: false);
 
-        if (!options.Misp)
+        if (!IsEnabled(mispMode))
         {
             misp.WithExplicitStart();
             mispModules.WithExplicitStart();
@@ -951,5 +1063,149 @@ public static class BuilderExtensions
         }
 
         return creds;
+    }
+
+    private class MoodlePlugin
+    {
+        public string Name { get; set; } = "";
+        public string HostPath { get; set; } = "";
+        public string ContainerPath { get; set; } = "";
+    }
+
+    private static string MapPluginToContainerPath(string pluginName)
+    {
+        var parts = pluginName.Split('_', 2);
+        if (parts.Length < 2) return $"/var/www/html/{pluginName}";
+
+        var pluginType = parts[0];
+        var pluginSubdir = parts[1];
+
+        return pluginType switch
+        {
+            "mod" => $"/var/www/html/mod/{pluginSubdir}",
+            "block" => $"/var/www/html/blocks/{pluginSubdir}",
+            "tool" => $"/var/www/html/admin/tool/{pluginSubdir}",
+            "logstore" => $"/var/www/html/admin/tool/log/store/{pluginSubdir}",
+            "local" => $"/var/www/html/local/{pluginSubdir}",
+            "qtype" => $"/var/www/html/question/type/{pluginSubdir}",
+            "qbehaviour" => $"/var/www/html/question/behaviour/{pluginSubdir}",
+            "qformat" => $"/var/www/html/question/format/{pluginSubdir}",
+            "aiplacement" => $"/var/www/html/ai/placement/{pluginSubdir}",
+            "aiprovider" => $"/var/www/html/ai/provider/{pluginSubdir}",
+            "gradereport" => $"/var/www/html/grade/report/{pluginSubdir}",
+            "theme" => $"/var/www/html/theme/{pluginSubdir}",
+            _ => $"/var/www/html/{pluginType}/{pluginSubdir}"
+        };
+    }
+
+    private static string MapPluginToHostPath(string pluginName, string moodleBasePath)
+    {
+        var parts = pluginName.Split('_', 2);
+        if (parts.Length < 2) return Path.Combine(moodleBasePath, pluginName);
+
+        var pluginType = parts[0];
+        var pluginSubdir = parts[1];
+
+        return pluginType switch
+        {
+            "mod" => Path.Combine(moodleBasePath, "mod", pluginSubdir),
+            "block" => Path.Combine(moodleBasePath, "blocks", pluginSubdir),
+            "tool" => Path.Combine(moodleBasePath, "admin", "tool", pluginSubdir),
+            "logstore" => Path.Combine(moodleBasePath, "admin", "tool", "log", "store", pluginSubdir),
+            "local" => Path.Combine(moodleBasePath, "local", pluginSubdir),
+            "qtype" => Path.Combine(moodleBasePath, "question", "type", pluginSubdir),
+            "qbehaviour" => Path.Combine(moodleBasePath, "question", "behaviour", pluginSubdir),
+            "qformat" => Path.Combine(moodleBasePath, "question", "format", pluginSubdir),
+            "aiplacement" => Path.Combine(moodleBasePath, "ai", "placement", pluginSubdir),
+            "aiprovider" => Path.Combine(moodleBasePath, "ai", "provider", pluginSubdir),
+            "gradereport" => Path.Combine(moodleBasePath, "grade", "report", pluginSubdir),
+            "theme" => Path.Combine(moodleBasePath, "theme", pluginSubdir),
+            _ => Path.Combine(moodleBasePath, pluginType, pluginSubdir)
+        };
+    }
+
+    private static List<MoodlePlugin> ReadMoodlePlugins()
+    {
+        var plugins = new List<MoodlePlugin>();
+        var workspaceRoot = "/workspaces/crucible-development";
+        var reposJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.json");
+        var reposLocalJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.local.json");
+
+        if (!File.Exists(reposJsonPath))
+        {
+            Console.WriteLine($"Warning: {reposJsonPath} not found. No Moodle plugins will be loaded.");
+            return plugins;
+        }
+
+        try
+        {
+            // Read and parse repos.json
+            var reposJson = File.ReadAllText(reposJsonPath);
+            var reposDoc = System.Text.Json.JsonDocument.Parse(reposJson);
+
+            // Read and parse repos.local.json if it exists
+            System.Text.Json.JsonDocument? reposLocalDoc = null;
+            if (File.Exists(reposLocalJsonPath))
+            {
+                Console.WriteLine("Found repos.local.json, merging with repos.json...");
+                var reposLocalJson = File.ReadAllText(reposLocalJsonPath);
+                reposLocalDoc = System.Text.Json.JsonDocument.Parse(reposLocalJson);
+            }
+
+            // Process groups from both files
+            var moodleBasePath = "/mnt/data/crucible/moodle";
+
+            ProcessReposDocument(reposDoc, plugins, moodleBasePath);
+            if (reposLocalDoc != null)
+            {
+                ProcessReposDocument(reposLocalDoc, plugins, moodleBasePath);
+            }
+
+            Console.WriteLine($"Loaded {plugins.Count} Moodle plugin(s) from repos.json{(reposLocalDoc != null ? " + repos.local.json" : "")}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reading Moodle plugins from repos.json: {ex.Message}");
+        }
+
+        return plugins;
+    }
+
+    private static void ProcessReposDocument(System.Text.Json.JsonDocument doc, List<MoodlePlugin> plugins, string moodleBasePath)
+    {
+        if (!doc.RootElement.TryGetProperty("groups", out var groups))
+            return;
+
+        foreach (var group in groups.EnumerateArray())
+        {
+            if (!group.TryGetProperty("name", out var groupName) || groupName.GetString() != "moodle")
+                continue;
+
+            if (!group.TryGetProperty("repos", out var repos))
+                continue;
+
+            foreach (var repo in repos.EnumerateArray())
+            {
+                if (!repo.TryGetProperty("name", out var nameProperty))
+                    continue;
+
+                var pluginName = nameProperty.GetString();
+                if (string.IsNullOrEmpty(pluginName))
+                    continue;
+
+                // Skip if already added (repos.local.json takes precedence)
+                if (plugins.Any(p => p.Name == pluginName))
+                    continue;
+
+                var plugin = new MoodlePlugin
+                {
+                    Name = pluginName,
+                    HostPath = MapPluginToHostPath(pluginName, moodleBasePath),
+                    ContainerPath = MapPluginToContainerPath(pluginName)
+                };
+
+                plugins.Add(plugin);
+            }
+        }
     }
 }

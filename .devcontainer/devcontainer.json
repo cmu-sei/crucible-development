@@ -79,7 +79,12 @@
         "npm.packageManager": "npm",
         "workbench.view.showQuietly": {
           "workbench.panel.output": true // suppress C# Dev Kit output during dev container build
-        }
+        },
+        // Disable Intelephense by default to save ~337MB memory
+        // Enable when working on Moodle/PHP: Extensions > Intelephense > Enable (Workspace)
+        "intelephense.enable": false,
+        // Disable CloudFormation language server to save ~163MB memory (not used in this project)
+        "aws.cloudFormation.enable": false
       }
     }
   }

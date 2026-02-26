@@ -5,6 +5,7 @@ namespace Crucible.AppHost;
 
 public class LaunchOptions
 {
+    // Primary app per task (.env files): true = dev mode, false/omitted = off
     public bool Player { get; set; }
     public bool Caster { get; set; }
     public bool Alloy { get; set; }
@@ -19,6 +20,11 @@ public class LaunchOptions
     public bool PGAdmin { get; set; }
     public bool Docs { get; set; }
     public bool Misp { get; set; }
+
+    // Supporting apps (appsettings.Development.json): arrays grouped by mode
+    public string[] Prod { get; set; } = Array.Empty<string>();
+    public string[] Dev { get; set; } = Array.Empty<string>();
+
     public string XdebugMode { get; set; } = "off";
     public bool AddAllApplications { get; set; }
 }
