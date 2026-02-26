@@ -342,7 +342,7 @@ To add new Moodle plugin repositories, add them to `scripts/repos.json` or `scri
 
 #### Adding Private/Internal Repositories
 
-For private repositories (internal Bitbucket servers, private GitHub repos, or third-party plugins that shouldn't be committed to this public repo), use the **local repository configuration** pattern:
+For private repositories (internal Git servers, private GitHub repos, or third-party plugins that shouldn't be committed to this public repo), use the **local repository configuration** pattern:
 
 1. Create `scripts/repos.local.json` from the example template:
    ```bash
@@ -362,7 +362,7 @@ For private repositories (internal Bitbucket servers, private GitHub repos, or t
            },
            {
              "name": "prototype_plugin",
-             "url": "https://bitbucket.internal.org/scm/moodle/prototype_plugin.git"
+             "url": "https://git.internal.example.com/moodle/prototype_plugin.git"
            }
          ]
        }
@@ -380,12 +380,12 @@ The `repos.local.json` file is git-ignored, so your private repository URLs rema
 **Supported URL formats:**
 - HTTPS: `https://github.com/org/repo.git`
 - SSH: `git@github.com:org/repo.git`
-- Internal Bitbucket: `https://bitbucket.internal.org/scm/project/repo.git`
+- Internal Git server: `https://git.internal.example.com/project/repo.git`
 - Personal access tokens: `https://token@github.com/org/repo.git`
 
 #### Creating a Private Mirror for Custom Development
 
-If you need to customize a public plugin (like `logstore_xapi`) that can't be forked privately on GitHub, create a private mirror on your internal Bitbucket server:
+If you need to customize a public plugin (like `logstore_xapi`) that can't be forked privately on GitHub, create a private mirror on your internal Git server:
 
 **Initial Setup:**
 
@@ -396,7 +396,7 @@ If you need to customize a public plugin (like `logstore_xapi`) that can't be fo
    cd moodle-logstore_xapi
    ```
 
-2. **Create an empty private repo on Bitbucket** (via web UI)
+2. **Create an empty private repo on your internal Git server** (via web UI)
    - Repository name: `moodle-logstore_xapi`
    - Do NOT initialize with README/gitignore
 
@@ -405,17 +405,17 @@ If you need to customize a public plugin (like `logstore_xapi`) that can't be fo
    # Rename GitHub remote to upstream
    git remote rename origin upstream
 
-   # Add your Bitbucket as origin
-   git remote add origin ssh://git@your-bitbucket-server:7999/~youruser/moodle-logstore_xapi.git
+   # Add your internal Git server as origin
+   git remote add origin ssh://git@git.internal.example.com/youruser/moodle-logstore_xapi.git
 
    # Verify remotes
    git remote -v
    # Should show:
-   #   origin    ssh://git@your-bitbucket-server:7999/~youruser/... (your Bitbucket)
+   #   origin    ssh://git@git.internal.example.com/... (your internal Git server)
    #   upstream  https://github.com/xAPI-vle/... (original GitHub)
    ```
 
-4. **Push to your private Bitbucket:**
+4. **Push to your private repository:**
    ```bash
    # Rename master to main (modern convention)
    git branch -m master main
@@ -426,14 +426,14 @@ If you need to customize a public plugin (like `logstore_xapi`) that can't be fo
    git push origin --tags
    ```
 
-5. **Update `repos.local.json`** to use your Bitbucket URL:
+5. **Update `repos.local.json`** to use your internal Git server URL:
    ```json
    {
      "groups": [{
        "name": "moodle",
        "repos": [{
          "name": "logstore_xapi",
-         "url": "ssh://git@your-bitbucket-server:7999/~youruser/moodle-logstore_xapi.git"
+         "url": "ssh://git@git.internal.example.com/youruser/moodle-logstore_xapi.git"
        }]
      }]
    }
@@ -456,7 +456,7 @@ git checkout -b feature/branch-name
 # Make your changes
 # ... edit files ...
 
-# Commit and push to your Bitbucket
+# Commit and push to your internal repository
 git add .
 git commit -m "commit message"
 git push -u origin feature/branch-name
@@ -482,7 +482,7 @@ git merge upstream/master
 
 # Resolve any conflicts with your customizations
 
-# Push updated main to your Bitbucket
+# Push updated main to your internal repository
 git push origin main
 
 # Update your feature branch
