@@ -99,18 +99,6 @@ The Intelephense PHP language server is **disabled by default** (configured in `
 
 **To disable again:** Follow the same steps but select "Disable (Workspace)"
 
-### Node.js Memory Management
-
-Angular development servers (`ng serve`) can consume 1.2-1.5GB of memory each. To limit Node.js memory usage, add `.WithEnvironment("NODE_OPTIONS", "--max-old-space-size=1024")` in `AppHost.cs`:
-
-```csharp
-var blueprintUi = builder.AddJavaScriptApp("blueprint-ui", blueprintUiRoot, "start")
-    .WithEnvironment("NODE_OPTIONS", "--max-old-space-size=1024")
-    .WithHttpEndpoint(port: 4725, env: "PORT", isProxied: false);
-```
-
-The value is in MB. Common settings: `768` (minimal), `1024` (recommended), `1536` (generous).
-
 ### UI Development vs Production Mode
 
 The Crucible AppHost supports running Angular UIs in two modes to optimize memory usage during development:
