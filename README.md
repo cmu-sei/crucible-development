@@ -362,7 +362,7 @@ For private repositories (internal Bitbucket servers, private GitHub repos, or t
            },
            {
              "name": "prototype_plugin",
-             "url": "https://bitbucket.inernal.org/scm/moodle/prototype_plugin.git"
+             "url": "https://bitbucket.internal.org/scm/moodle/prototype_plugin.git"
            }
          ]
        }
