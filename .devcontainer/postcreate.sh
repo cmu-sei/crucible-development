@@ -26,8 +26,6 @@ ANGULAR_PID=$!
 wait $ASPIRE_PID $DOTNET_EF_PID $ANGULAR_PID
 echo "Tool installs complete."
 
-dotnet dev-certs https --trust
-
 # Generate crucible-dev certificates
 CERT_DIR=".devcontainer/dev-certs"
 CERT_FILE="${CERT_DIR}/crucible-dev.crt"

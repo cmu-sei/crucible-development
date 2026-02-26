@@ -8,6 +8,6 @@
     "response_type": "code",
     "scope": "openid profile player player-vm alloy caster steamfitter",
     "automaticSilentRenew": true,
-    "silent_redirect_uri": "http://localhost:4403/auth-callback-silent"
+    "silent_redirect_uri": "http://localhost:4403/auth-callback-silent.html"
   }
 }

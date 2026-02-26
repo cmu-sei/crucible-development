@@ -1472,7 +1472,7 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "http://host.docker.internal:4303/auth-callback-silent",
+        "http://host.docker.internal:4303/auth-callback-silent.html",
         "http://localhost:4303/auth-callback*",
         "http://host.docker.internal:4303/auth-callback*"
       ],
@@ -2052,7 +2052,7 @@
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
         "http://localhost:4725/auth-callback",
-        "http://localhost:4725/auth-callback-silent"
+        "http://localhost:4725/auth-callback-silent.html"
       ],
       "webOrigins": ["http://localhost:4725"],
       "notBefore": 0,
@@ -2245,7 +2245,7 @@
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
         "http://localhost:4721/auth-callback",
-        "http://localhost:4721/auth-callback-silent"
+        "http://localhost:4721/auth-callback-silent.html"
       ],
       "webOrigins": ["http://localhost:4721"],
       "notBefore": 0,
@@ -2398,7 +2398,7 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "http://localhost:4723/auth-callback-silent",
+        "http://localhost:4723/auth-callback-silent.html",
         "http://localhost:4723/auth-callback"
       ],
       "webOrigins": ["http://localhost:4723"],
@@ -2559,7 +2559,7 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "http://localhost:4401/auth-callback-silent",
+        "http://localhost:4401/auth-callback-silent.html",
         "http://localhost:4401/auth-callback"
       ],
       "webOrigins": ["http://localhost:4401"],

@@ -174,7 +174,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/default.env"
+          "envFile": "${workspaceFolder}/.env/default.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -188,7 +189,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/exercise.env"
+          "envFile": "${workspaceFolder}/.env/exercise.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -202,7 +204,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/ttx.env"
+          "envFile": "${workspaceFolder}/.env/ttx.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -216,7 +219,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/alloy.env"
+          "envFile": "${workspaceFolder}/.env/alloy.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -230,7 +234,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/blueprint.env"
+          "envFile": "${workspaceFolder}/.env/blueprint.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -244,7 +249,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/caster.env"
+          "envFile": "${workspaceFolder}/.env/caster.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -258,7 +264,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/cite.env"
+          "envFile": "${workspaceFolder}/.env/cite.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -272,7 +279,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/gallery.env"
+          "envFile": "${workspaceFolder}/.env/gallery.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -286,7 +294,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/player.env"
+          "envFile": "${workspaceFolder}/.env/player.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -300,7 +309,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/steamfitter.env"
+          "envFile": "${workspaceFolder}/.env/steamfitter.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -314,7 +324,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/topomojo.env"
+          "envFile": "${workspaceFolder}/.env/topomojo.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -328,7 +339,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/gameboard.env"
+          "envFile": "${workspaceFolder}/.env/gameboard.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -342,7 +354,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/lrsql.env"
+          "envFile": "${workspaceFolder}/.env/lrsql.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -356,7 +369,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/moodle.env"
+          "envFile": "${workspaceFolder}/.env/moodle.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
@@ -384,7 +398,8 @@
       "program": "",
       "debuggers": {
         "apphost": {
-          "envFile": "${workspaceFolder}/.env/misp.env"
+          "envFile": "${workspaceFolder}/.env/misp.env",
+          "console": "integratedTerminal"
         }
       },
       "presentation": {
