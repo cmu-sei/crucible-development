@@ -312,7 +312,11 @@ public static class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "caster.api")
             .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
-            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
+            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true")
+            .WithUrlForEndpoint("http", url =>
+            {
+                url.Url = "/api";
+            });
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
@@ -362,7 +366,11 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm alloy steamfitter caster")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
             .WithEnvironment("CorsPolicy__Origins__0", "http://localhost:4403") // for alloy-ui
-            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081"); // for moodle
+            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081") // for moodle
+            .WithUrlForEndpoint("http", url =>
+            {
+                url.Url = "/api";
+            });
 
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
@@ -493,7 +501,11 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "steamfitter player player-vm cite gallery")
-            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
+            .WithUrlForEndpoint("http", url =>
+            {
+                url.Url = "/api";
+            });
 
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
@@ -547,7 +559,11 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "openid profile email gallery")
-            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
+            .WithUrlForEndpoint("http", url =>
+            {
+                url.Url = "/api";
+            });
 
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
@@ -601,7 +617,11 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm steamfitter")
-            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
+            .WithUrlForEndpoint("http", url =>
+            {
+                url.Url = "/api";
+            });
 
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
@@ -654,7 +674,11 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite")
-            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
+            .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
+            .WithUrlForEndpoint("http", url =>
+            {
+                url.Url = "/api";
+            });
 
         if (IsEnabled(lrsqlMode))
         {
@@ -712,7 +736,11 @@ public static class BuilderExtensions
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true")
-            .WithEnvironment("Oidc__UserRolesClaimMap__Administrator", "Admin");
+            .WithEnvironment("Oidc__UserRolesClaimMap__Administrator", "Admin")
+            .WithUrlForEndpoint("http", url =>
+            {
+                url.Url = "/api";
+            });
 
         var gameboardUiRoot = "/mnt/data/crucible/gameboard/gameboard-ui/";
 
