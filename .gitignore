@@ -77,3 +77,12 @@ db-dumps/
 # helm charts
 helm-charts/*/charts/*
 helm-charts/crucible/files/*.crt
+
+# playwright mcp logs
+.playwright-mcp/
+
+# Local repository configurations (private/internal/personal repos, local overrides)
+scripts/repos.local.json
+
+# Auto-generated xdebug filter (includes repos.local.json plugins)
+Crucible.AppHost/resources/moodle/xdebug_filter.php

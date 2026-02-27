@@ -55,5 +55,11 @@ RUN chmod 755 /usr/local/bin/pre_configure.sh && chmod 755 /usr/local/bin/post_c
 USER nobody
 
 # Copy xdebug filter settings
-# TODO: determine if the script is actually working to limit xdebug
-COPY xdebug_filter.php /var/www/html/xdebug_filter.php
+# Use generated file if exists (includes repos.local.json), otherwise use template
+COPY xdebug_filter.ph* /var/www/html/
+RUN if [ -f /var/www/html/xdebug_filter.php ]; then \
+        echo "Using generated xdebug_filter.php"; \
+    else \
+        echo "Using xdebug_filter.php.template as fallback"; \
+        mv /var/www/html/xdebug_filter.php.template /var/www/html/xdebug_filter.php; \
+    fi

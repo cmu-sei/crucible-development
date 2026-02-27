@@ -1,0 +1,33 @@
+{
+  "_comment": "This is an example template for repos.local.json",
+  "_usage": [
+    "1. Copy this file to repos.local.json: cp repos.local.json.example repos.local.json",
+    "2. Add your private/internal/personal repositories (Bitbucket, private GitHub, etc.)",
+    "3. The clone-repos.sh script will automatically merge this with repos.json",
+    "4. This file is git-ignored so your private repo URLs stay private"
+  ],
+  "groups": [
+    {
+      "name": "moodle",
+      "repos": [
+        {
+          "name": "logstore_xapi",
+          "url": "https://github.com/xAPI-vle/moodle-logstore_xapi",
+          "_comment": "Example: Third-party Moodle plugin"
+        },
+        {
+          "name": "custom_plugin",
+          "url": "https://bitbucket.internal.org/moodle-local_customplugin.git",
+          "_comment": "Example: Internal Bitbucket repository"
+        }
+      ]
+    }
+  ],
+  "repos": [
+    {
+      "name": "internal-tool",
+      "url": "git@github.com:your-private-org/internal-tool.git",
+      "_comment": "Example: Private GitHub repository using SSH"
+    }
+  ]
+}

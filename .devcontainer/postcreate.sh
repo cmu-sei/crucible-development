@@ -11,6 +11,7 @@ sudo chown -R $(whoami): /home/vscode/.claude
 
 scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
+scripts/generate-xdebug-filter.sh
 
 echo "Installing tools..."
 

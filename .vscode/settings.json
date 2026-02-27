@@ -1,0 +1,28 @@
+{
+  // Exclude large directories from file watching to reduce memory usage
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/bin/**": true,
+    "**/obj/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true
+  },
+
+  // Exclude from search to improve performance
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bin": true,
+    "**/obj": true,
+    "**/.git": true
+  },
+
+  // Exclude from file explorer
+  "files.exclude": {
+    "**/bin": false,
+    "**/obj": false
+  },
+
+  // Disable Intelephense PHP extension by default to save memory (~333MB)
+  // Set to true when working on Moodle/PHP code
+  "intelephense.enable": false
+}
