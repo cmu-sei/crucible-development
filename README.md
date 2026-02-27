@@ -617,6 +617,22 @@ This is the preferred method to enable display of debug messages inside of the b
 
 The crucible-common-dotnet shared library is cloned into the `/mnt/data.crucible/libraries` directory. By default, APIs that use these libraries pull the published packages from NuGet. When developing or debugging these libraries, it is convenient to point the APIs to the local copy of the library. Developers can use the `scripts/toggle-local-library.sh` script to easily toggle between the default published NuGet packages and local Project References.
 
+### Usage
+
+```bash
+# Enable local library debugging (uses local EntityEvents source)
+./scripts/toggle-local-library.sh on
+
+# Disable local library debugging (uses NuGet packages)
+./scripts/toggle-local-library.sh off
+
+# Check current status
+./scripts/toggle-local-library.sh status
+
+# Toggle current state
+./scripts/toggle-local-library.sh
+```
+
 A Directory.Build.props file is mounted to `/mnt/data`. This file defines a variable `<UseLocalEntityEvents>false</UseLocalEntityEvents>`. If you want to use the local version of the Crucible.Common.EntityEvents library, copy this file to `/mnt/data/crucible` and set `<UseLocalEntityEvents>true</UseLocalEntityEvents>`. This will tell MSBuild to use a local project reference instead of the NuGet package and this file will not get checked into git. The script automates this process for you.
 
 This pattern should be extended to the other libraries in crucible-common-dotnet as necessary in the future.
