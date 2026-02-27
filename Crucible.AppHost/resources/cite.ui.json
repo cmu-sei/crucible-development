@@ -8,7 +8,7 @@
     "response_type": "code",
     "scope": "openid profile cite gallery",
     "automaticSilentRenew": true,
-    "silent_redirect_uri": "http://localhost:4721/auth-callback-silent"
+    "silent_redirect_uri": "http://localhost:4721/auth-callback-silent.html"
   },
   "AppTitle": "CITE",
   "AppTopBarHexColor": "#E81717",

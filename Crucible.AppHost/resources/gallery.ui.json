@@ -8,7 +8,7 @@
     "response_type": "code",
     "scope": "openid profile gallery steamfitter",
     "automaticSilentRenew": true,
-    "silent_redirect_uri": "http://localhost:4723/auth-callback-silent"
+    "silent_redirect_uri": "http://localhost:4723/auth-callback-silent.html"
   },
     "AppTitle": "Gallery",
     "AppTopBarHexColor": "#E81717",

@@ -8,7 +8,7 @@
     "response_type": "code",
     "scope": "openid profile blueprint cite gallery player player-vm steamfitter",
     "automaticSilentRenew": true,
-    "silent_redirect_uri": "http://localhost:4725/auth-callback-silent"
+    "silent_redirect_uri": "http://localhost:4725/auth-callback-silent.html"
   },
     "AppTitle": "Blueprint",
     "AppTopBarHexColor": "#2d69b4",
