@@ -5,11 +5,11 @@
       "repos": [
         {
           "name": "alloy.api",
-          "url": "https://github.com/cmu-sei/alloy.api"
+          "url": "https://github.com/cmu-sei/Alloy.Api"
         },
         {
           "name": "alloy.ui",
-          "url": "https://github.com/cmu-sei/alloy.ui"
+          "url": "https://github.com/cmu-sei/Alloy.Ui"
         }
       ]
     },
@@ -18,11 +18,11 @@
       "repos": [
         {
           "name": "caster.api",
-          "url": "https://github.com/cmu-sei/caster.api"
+          "url": "https://github.com/cmu-sei/Caster.Api"
         },
         {
           "name": "caster.ui",
-          "url": "https://github.com/cmu-sei/caster.ui"
+          "url": "https://github.com/cmu-sei/Caster.Ui"
         }
       ]
     },
@@ -44,23 +44,23 @@
       "repos": [
         {
           "name": "console.ui",
-          "url": "https://github.com/cmu-sei/console.ui"
+          "url": "https://github.com/cmu-sei/Console.Ui"
         },
         {
           "name": "player.api",
-          "url": "https://github.com/cmu-sei/player.api"
+          "url": "https://github.com/cmu-sei/Player.Api"
         },
         {
           "name": "player.ui",
-          "url": "https://github.com/cmu-sei/player.ui"
+          "url": "https://github.com/cmu-sei/Player.Ui"
         },
         {
           "name": "vm.api",
-          "url": "https://github.com/cmu-sei/vm.api"
+          "url": "https://github.com/cmu-sei/Vm.Api"
         },
         {
           "name": "vm.ui",
-          "url": "https://github.com/cmu-sei/vm.ui"
+          "url": "https://github.com/cmu-sei/Vm.Ui"
         }
       ]
     },
@@ -73,7 +73,7 @@
         },
         {
           "name": "topomojo-ui",
-          "url": "https://github.com/cmu-sei/TopoMojo-ui"
+          "url": "https://github.com/cmu-sei/topomojo-ui"
         }
       ]
     },
@@ -82,11 +82,11 @@
       "repos": [
         {
           "name": "steamfitter.api",
-          "url": "https://github.com/cmu-sei/steamfitter.api"
+          "url": "https://github.com/cmu-sei/Steamfitter.Api"
         },
         {
           "name": "steamfitter.ui",
-          "url": "https://github.com/cmu-sei/steamfitter.ui"
+          "url": "https://github.com/cmu-sei/Steamfitter.Ui"
         }
       ]
     },
@@ -95,11 +95,11 @@
       "repos": [
         {
           "name": "cite.api",
-          "url": "https://github.com/cmu-sei/cite.api"
+          "url": "https://github.com/cmu-sei/CITE.Api"
         },
         {
           "name": "cite.ui",
-          "url": "https://github.com/cmu-sei/cite.ui"
+          "url": "https://github.com/cmu-sei/CITE.Ui"
         }
       ]
     },
@@ -108,11 +108,11 @@
       "repos": [
         {
           "name": "gallery.api",
-          "url": "https://github.com/cmu-sei/gallery.api"
+          "url": "https://github.com/cmu-sei/Gallery.Api"
         },
         {
           "name": "gallery.ui",
-          "url": "https://github.com/cmu-sei/gallery.ui"
+          "url": "https://github.com/cmu-sei/Gallery.Ui"
         }
       ]
     },
@@ -121,11 +121,11 @@
       "repos": [
         {
           "name": "blueprint.api",
-          "url": "https://github.com/cmu-sei/blueprint.api"
+          "url": "https://github.com/cmu-sei/Blueprint.Api"
         },
         {
           "name": "blueprint.ui",
-          "url": "https://github.com/cmu-sei/blueprint.ui"
+          "url": "https://github.com/cmu-sei/Blueprint.Ui"
         }
       ]
     },
@@ -134,7 +134,7 @@
       "repos": [
         {
           "name": "gameboard",
-          "url": "https://github.com/cmu-sei/gameboard"
+          "url": "https://github.com/cmu-sei/Gameboard"
         },
         {
           "name": "gameboard-ui",
