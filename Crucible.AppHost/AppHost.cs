@@ -95,7 +95,7 @@ public static class BuilderExtensions
         else
         {
             var buildCommand = string.IsNullOrEmpty(buildArgs) ? "npm run build" : $"npm run build {buildArgs}";
-            var serveProd = $"if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then {buildCommand}; fi; npx serve -s {distPath} -l {port}";
+            var serveProd = $"if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm install && {buildCommand}; fi; npx serve -s {distPath} -l {port}";
             ui = builder.AddExecutable(name, "bash", appRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: port, isProxied: false);
         }
@@ -322,7 +322,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode);
+        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, distPath: "dist/browser");
 
         if (!IsEnabled(casterMode))
         {
@@ -433,7 +433,7 @@ public static class BuilderExtensions
             // Prod/off mode with fixup-wmks check
             var distPath = "dist/topomojo-work/browser";
             var fixupCheck = "[ -e node_modules/vmware-wmks/css/css/wmks-all.css ] || [ -d node_modules/vmware-wmks/img/img ]";
-            var serveProd = $"if {fixupCheck}; then bash tools/fixup-wmks.sh; fi; if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm run build topomojo-work; fi; npx serve -s {distPath} -l 4201";
+            var serveProd = $"if {fixupCheck}; then bash tools/fixup-wmks.sh; fi; if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm install && npm run build topomojo-work; fi; npx serve -s {distPath} -l 4201";
             topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4201, isProxied: false)
                 .WithHttpHealthCheck();
