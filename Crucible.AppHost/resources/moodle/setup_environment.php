@@ -50,23 +50,24 @@ switch ($options['step']) {
         enable_auth_oauth2();
         break;
     case 'configure_ai_bedrock':
-        if (empty($options['accesskeyid']) || empty($options['secretaccesskey']) || empty($options['sessiontoken'] ||
-            empty($options['region']) || empty($options['modelid']))) {
-            cli_error("Missing required parameters. Current values:\n" .
-                      "  --accesskeyid={$options['accesskeyid']}\n" .
-                      "  --secretaccesskey={$options['secretaccesskey']}\n" .
-                      "  --sessiontoken={$options['sessiontoken']}\n" .
-                      "  --region={$options['region']}\n" .
-                      "  --modelid={$options['modelid']}");
-        }
-        configure_ai_bedrock($options);
+        // if (empty($options['accesskeyid']) || empty($options['secretaccesskey']) || empty($options['sessiontoken'] ||
+        //     empty($options['region']) || empty($options['modelid']))) {
+        //     cli_error("Missing required parameters. Current values:\n" .
+        //               "  --accesskeyid={$options['accesskeyid']}\n" .
+        //               "  --secretaccesskey={$options['secretaccesskey']}\n" .
+        //               "  --sessiontoken={$options['sessiontoken']}\n" .
+        //               "  --region={$options['region']}\n" .
+        //               "  --modelid={$options['modelid']}");
+        // }
+        // configure_ai_bedrock($options);
         break;
 
     default:
         cli_error("Unknown step: {$options['step']}");
 }
 
-function manage_oauth($options) {
+function manage_oauth($options)
+{
     global $CFG;
     require_once("$CFG->libdir/clilib.php");
     require_once("$CFG->libdir/adminlib.php");
@@ -75,9 +76,19 @@ function manage_oauth($options) {
 
     $api = new \core\oauth2\api();
     $issuer_settings = [
-        'id', 'baseurl', 'clientid', 'clientsecret', 'loginscopes',
-        'loginscopesoffline', 'name', 'image', 'showonloginpage',
-        'requireconfirmation', 'loginparams', 'loginparamsoffline', 'alloweddomains',
+        'id',
+        'baseurl',
+        'clientid',
+        'clientsecret',
+        'loginscopes',
+        'loginscopesoffline',
+        'name',
+        'image',
+        'showonloginpage',
+        'requireconfirmation',
+        'loginparams',
+        'loginparamsoffline',
+        'alloweddomains',
     ];
 
     $results = ['success' => true, 'data' => []];
@@ -219,7 +230,8 @@ function manage_oauth($options) {
     }
 }
 
-function enable_auth_oauth2() {
+function enable_auth_oauth2()
+{
     // Ensure the class is available
     if (!class_exists('\auth_oauth2\api')) {
         throw new \moodle_exception('auth_oauth2 API class not found');
@@ -237,7 +249,8 @@ function enable_auth_oauth2() {
     }
 }
 
-function output_results($options, $results) {
+function output_results($options, $results)
+{
     if ($options['json']) {
         echo json_encode($results, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
     } else {
@@ -245,7 +258,8 @@ function output_results($options, $results) {
     }
 }
 
-function configure_ai_bedrock(array $options): void {
+function configure_ai_bedrock(array $options): void
+{
     global $CFG, $DB;
 
     require_once($CFG->libdir . '/adminlib.php');
@@ -367,5 +381,3 @@ function configure_ai_bedrock(array $options): void {
         cli_writeln("Purged caches.");
     }
 }
-
-?>

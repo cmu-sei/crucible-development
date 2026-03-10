@@ -59,7 +59,7 @@ configure_oauth2() {
   KEYCLOAK_CLIENTID="moodle-client"
   KEYCLOAK_CLIENTSECRET="super-safe-secret"
   KEYCLOAK_NAME="Crucible Keycloak"
-  KEYCLOAK_IMAGE="https://keycloak:8443/favicon.svg"
+  KEYCLOAK_IMAGE="https://localhost:8443/favicon.svg"
   KEYCLOAK_LOGINSCOPES="openid profile email player player-vm alloy steamfitter caster"
   KEYCLOAK_LOGINSCOPESOFFLINE="openid profile email offline_access player player-vm alloy steamfitter caster"
 
@@ -390,7 +390,7 @@ execute_section "xAPI Configuration" configure_xapi
 execute_section "Crucible Configuration" configure_crucible
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
-execute_section "Configure AWS Bedrock AI Provider" configure_ai_bedrock
+# execute_section "Configure AWS Bedrock AI Provider" configure_ai_bedrock
 
 # On subsequent runs add admin user to the list of site admins
 ADMINUSERID=$(moosh user-list | grep admin@localhost | sed -e "s/admin.*(\([0-9]\)),.*/\1/")
