@@ -46,21 +46,27 @@ sync_repository() {
     local dir=$1
     if [[ ! -d "$dir" ]]; then
         echo "Repository not found: $dir (skipping)"
-        return 1
+        return 0
     fi
 
     if git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         if [[ "$USE_PULL" == true ]]; then
             echo "Pulling updates in $dir"
-            git -C "$dir" pull "${GIT_ARGS[@]}"
+            if ! git -C "$dir" pull "${GIT_ARGS[@]}"; then
+                echo -e "\033[31mError: Failed to pull in $dir\033[0m" >&2
+                return 0
+            fi
         else
             echo "Fetching updates in $dir"
-            git -C "$dir" fetch "${GIT_ARGS[@]}"
+            if ! git -C "$dir" fetch "${GIT_ARGS[@]}"; then
+                echo -e "\033[31mError: Failed to fetch in $dir\033[0m" >&2
+                return 0
+            fi
         fi
         return 0
     fi
     echo "Skipping $dir (not a git repository)"
-    return 1
+    return 0
 }
 
 # Merge repos.json and repos.local.json if local exists
