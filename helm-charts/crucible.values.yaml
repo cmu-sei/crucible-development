@@ -44,6 +44,9 @@ keycloak:
       - hosts:
           - "{{ .Values.global.domain }}"
         secretName: crucible-cert
+  # Automatically generate OIDC client secrets and create a realm ConfigMap
+  createRealm: true
+  realmAdminPassword: "admin"
   # Realm import configuration - enabled for local development
   # Import realm on startup (if the realm already exists, keycloak will not overwrite it)
   extraEnvVars:
@@ -52,7 +55,7 @@ keycloak:
   extraVolumes:
     - name: realm-import
       configMap:
-        name: '{{ include "crucible.fullname" . }}-config-cli'
+        name: "{{ .Release.Name }}-config-cli"
   extraVolumeMounts:
     - name: realm-import
       mountPath: /opt/bitnami/keycloak/data/import
@@ -94,9 +97,9 @@ alloy:
     resourceOwnerAuthorization:
       authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
       clientId: "alloy.admin"
-      clientSecret: "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW"
+      clientSecret: "" # auto-generated when keycloak.createRealm is true
       userName: "admin"
-      password: "admin"
+      password: "" # auto-generated when keycloak.createRealm is true
     env:
       PathBase: /alloy
       # CORS policy settings.
@@ -183,9 +186,9 @@ blueprint:
     resourceOwnerAuthorization:
       authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
       clientId: "blueprint.admin"
-      clientSecret: "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW"
+      clientSecret: "" # auto-generated when keycloak.createRealm is true
       userName: "admin"
-      password: "admin"
+      password: "" # auto-generated when keycloak.createRealm is true
     env:
       PathBase: /blueprint
       # CORS policy settings
@@ -278,7 +281,7 @@ caster:
     # Values placed into the {{ .Release.Name }}-caster-api-custom secret
     client:
       userName: "admin"
-      password: "admin"
+      password: "" # auto-generated when keycloak.createRealm is true
     env:
       PathBase: /caster
       # Use Keycloak client configurations
@@ -502,7 +505,7 @@ gameboard:
     existingSecret: "{{ .Release.Name }}-gameboard-api-custom"
     # This gets added to a secret
     # In prod, the data should come from an external secret store
-    gameEngineClientSecret: "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW"
+    gameEngineClientSecret: "" # auto-generated when keycloak.createRealm is true
     env:
       PathBase: /gameboard
       # Game Engine (TopoMojo) configuration
@@ -755,9 +758,9 @@ steamfitter:
     resourceOwnerAuthorization:
       authority: "https://{{ .Values.global.domain }}/keycloak/realms/crucible"
       clientId: "steamfitter.admin"
-      clientSecret: "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW"
+      clientSecret: "" # auto-generated when keycloak.createRealm is true
       userName: "admin"
-      password: "admin"
+      password: "" # auto-generated when keycloak.createRealm is true
     env:
       PathBase: /steamfitter
       # CORS policy settings
@@ -939,8 +942,8 @@ moodle:
         - "sub:idnumber"
       disableCurlSecurityBlockedHosts: true
       ## Optional: Custom CA certificate for OIDC provider HTTPS (enabled for local development)
+      ## The cert is already mounted at /opt/sei/certs via extraVolumeMounts below
       caCert:
-        key: "crucible-dev.crt"
         path: "/opt/sei/certs/crucible-dev.crt"
   ## Optional: Extra environment variables to trust a custom CA certificate (enabled for local development)
   extraEnvVars:
