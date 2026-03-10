@@ -390,9 +390,6 @@ execute_section "xAPI Configuration" configure_xapi
 execute_section "Crucible Configuration" configure_crucible
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
-<<<<<<< HEAD
-# execute_section "Configure AWS Bedrock AI Provider" configure_ai_bedrock
-=======
 
 # Only configure AWS Bedrock if credentials are available
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then
@@ -401,7 +398,6 @@ if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_
 else
     log "AWS credentials not found, skipping Bedrock AI provider configuration"
 fi
->>>>>>> main
 
 # On subsequent runs add admin user to the list of site admins
 ADMINUSERID=$(moosh user-list | grep admin@localhost | sed -e "s/admin.*(\([0-9]\)),.*/\1/")
