@@ -95,7 +95,7 @@ public static class BuilderExtensions
         else
         {
             var buildCommand = string.IsNullOrEmpty(buildArgs) ? "npm run build" : $"npm run build {buildArgs}";
-            var serveProd = $"if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then {buildCommand}; fi; npx serve -s {distPath} -l {port}";
+            var serveProd = $"if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm install && {buildCommand}; fi; npx serve -s {distPath} -l {port}";
             ui = builder.AddExecutable(name, "bash", appRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: port, isProxied: false);
         }
@@ -322,7 +322,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode);
+        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, distPath: "dist/browser");
 
         if (!IsEnabled(casterMode))
         {
@@ -433,7 +433,7 @@ public static class BuilderExtensions
             // Prod/off mode with fixup-wmks check
             var distPath = "dist/topomojo-work/browser";
             var fixupCheck = "[ -e node_modules/vmware-wmks/css/css/wmks-all.css ] || [ -d node_modules/vmware-wmks/img/img ]";
-            var serveProd = $"if {fixupCheck}; then bash tools/fixup-wmks.sh; fi; if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm run build topomojo-work; fi; npx serve -s {distPath} -l 4201";
+            var serveProd = $"if {fixupCheck}; then bash tools/fixup-wmks.sh; fi; if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm install && npm run build topomojo-work; fi; npx serve -s {distPath} -l 4201";
             topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4201, isProxied: false)
                 .WithHttpHealthCheck();
@@ -510,7 +510,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode);
+        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, distPath: "dist/browser");
 
         if (!IsEnabled(steamfitterMode))
         {
@@ -773,11 +773,19 @@ public static class BuilderExtensions
             .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)
             .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
-            .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName)
-            .WithEnvironment("AWS_ACCESS_KEY_ID", awsCreds["aws_access_key_id"])
-            .WithEnvironment("AWS_SECRET_ACCESS_KEY", awsCreds["aws_secret_access_key"])
-            .WithEnvironment("AWS_SESSION_TOKEN", awsCreds["aws_session_token"])
-            .WithEnvironment("AWS_REGION", awsCreds["region"])
+            .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName);
+
+        // Only set AWS credentials if the credentials file exists
+        if (awsCreds != null)
+        {
+            moodle
+                .WithEnvironment("AWS_ACCESS_KEY_ID", awsCreds["aws_access_key_id"])
+                .WithEnvironment("AWS_SECRET_ACCESS_KEY", awsCreds["aws_secret_access_key"])
+                .WithEnvironment("AWS_SESSION_TOKEN", awsCreds["aws_session_token"])
+                .WithEnvironment("AWS_REGION", awsCreds["region"]);
+        }
+
+        moodle
             // Pass which Crucible services are enabled
             .WithEnvironment("CRUCIBLE_PLAYER_ENABLED", IsEnabled(playerMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_CASTER_ENABLED", IsEnabled(casterMode) ? "1" : "0")
@@ -1024,8 +1032,17 @@ public static class BuilderExtensions
             .WithEnvironment("XApiOptions__Platform", platform);
     }
 
-    private static Dictionary<string, string> ReadAwsCredentials()
+    private static Dictionary<string, string>? ReadAwsCredentials()
     {
+        var homeDir = Environment.GetEnvironmentVariable("HOME") ?? "";
+        var credentialsPath = Path.Combine(homeDir, ".aws", "sso-credentials");
+
+        if (!File.Exists(credentialsPath))
+        {
+            Console.WriteLine($"AWS credentials file not found at {credentialsPath}. AWS environment variables will not be set.");
+            return null;
+        }
+
         var creds = new Dictionary<string, string>
         {
             ["aws_access_key_id"] = "",
@@ -1033,11 +1050,6 @@ public static class BuilderExtensions
             ["aws_session_token"] = "",
             ["region"] = "us-east-1"
         };
-
-        var homeDir = Environment.GetEnvironmentVariable("HOME") ?? "";
-        var credentialsPath = Path.Combine(homeDir, ".aws", "sso-credentials");
-
-        if (!File.Exists(credentialsPath)) return creds;
 
         try
         {
@@ -1056,10 +1068,13 @@ public static class BuilderExtensions
 
             if (root.TryGetProperty("Region", out var region))
                 creds["region"] = region.GetString() ?? "us-east-1";
+
+            Console.WriteLine($"AWS credentials loaded from {credentialsPath}");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Warning: Failed to parse AWS credentials from {credentialsPath}: {ex.Message}");
+            return null;
         }
 
         return creds;

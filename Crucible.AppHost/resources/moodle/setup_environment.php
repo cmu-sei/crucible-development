@@ -50,16 +50,18 @@ switch ($options['step']) {
         enable_auth_oauth2();
         break;
     case 'configure_ai_bedrock':
-        // if (empty($options['accesskeyid']) || empty($options['secretaccesskey']) || empty($options['sessiontoken'] ||
-        //     empty($options['region']) || empty($options['modelid']))) {
-        //     cli_error("Missing required parameters. Current values:\n" .
-        //               "  --accesskeyid={$options['accesskeyid']}\n" .
-        //               "  --secretaccesskey={$options['secretaccesskey']}\n" .
-        //               "  --sessiontoken={$options['sessiontoken']}\n" .
-        //               "  --region={$options['region']}\n" .
-        //               "  --modelid={$options['modelid']}");
-        // }
-        // configure_ai_bedrock($options);
+        if (
+            empty($options['accesskeyid']) || empty($options['secretaccesskey']) || empty($options['sessiontoken']) ||
+            empty($options['region']) || empty($options['modelid'])
+        ) {
+            cli_error("Missing required parameters. Current values:\n" .
+                "  --accesskeyid={$options['accesskeyid']}\n" .
+                "  --secretaccesskey={$options['secretaccesskey']}\n" .
+                "  --sessiontoken={$options['sessiontoken']}\n" .
+                "  --region={$options['region']}\n" .
+                "  --modelid={$options['modelid']}");
+        }
+        configure_ai_bedrock($options);
         break;
 
     default:
