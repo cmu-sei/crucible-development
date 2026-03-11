@@ -5,6 +5,7 @@
 # Show git dirty status in zsh prompt
 git config devcontainers-theme.show-dirty 1
 
+mkdir -p /mnt/data/terraform/root
 sudo chown -R $(whoami): /home/vscode/.microsoft
 sudo chown -R $(whoami): /mnt/data/
 sudo chown -R $(whoami): /home/vscode/.claude
@@ -14,9 +15,6 @@ scripts/add-moodle-mounts.sh
 scripts/generate-xdebug-filter.sh
 
 echo "Installing tools..."
-
-# (curl -sSL https://aspire.dev/install.sh | bash) &
-# ASPIRE_PID=$!
 
 (dotnet tool install --global dotnet-ef --version 10) &
 DOTNET_EF_PID=$!
