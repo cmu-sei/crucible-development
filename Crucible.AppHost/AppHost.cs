@@ -90,7 +90,17 @@ public static class BuilderExtensions
         if (mode == "dev")
         {
             ui = builder.AddJavaScriptApp(name, appRoot, "start")
-                .WithHttpEndpoint(port: port, env: "PORT", isProxied: false);
+                .WithHttpEndpoint(port: port, isProxied: true)
+                .WithArgs(ctx =>
+                {
+                    if (ctx.Resource is IResourceWithEndpoints resourceWithEndpoints)
+                    {
+                        var endpoint = resourceWithEndpoints.GetEndpoint("http");
+                        ctx.Args.Add("--");
+                        ctx.Args.Add("--port");
+                        ctx.Args.Add(endpoint.Property(EndpointProperty.TargetPort));
+                    }
+                });
         }
         else
         {
