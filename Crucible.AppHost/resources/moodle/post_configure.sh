@@ -55,7 +55,7 @@ configure_oauth2() {
   section="OAuth2 Configuration"
   log "Configuring OAuth2 settings..."
 
-  KEYCLOAK_URL="https://keycloak:8443/realms/crucible/"
+  KEYCLOAK_URL="https://keycloak.dev.internal:8443/realms/crucible/"
   KEYCLOAK_CLIENTID="moodle-client"
   KEYCLOAK_CLIENTSECRET="super-safe-secret"
   KEYCLOAK_NAME="Crucible Keycloak"
@@ -112,8 +112,8 @@ configure_oauth2() {
     --loginscopes="$KEYCLOAK_LOGINSCOPES" \
     --loginscopesoffline="$KEYCLOAK_LOGINSCOPESOFFLINE" \
     --name="$KEYCLOAK_NAME" \
-    --tokenendpoint="https://keycloak:8443/realms/crucible/protocol/openid-connect/token" \
-    --userinfoendpoint="https://keycloak:8443/realms/crucible/protocol/openid-connect/userinfo" \
+    --tokenendpoint="https://keycloak.dev.internal:8443/realms/crucible/protocol/openid-connect/token" \
+    --userinfoendpoint="https://keycloak.dev.internal:8443/realms/crucible/protocol/openid-connect/userinfo" \
     --image="$KEYCLOAK_IMAGE" \
     --requireconfirmation=0 \
     --showonloginpage=1 \

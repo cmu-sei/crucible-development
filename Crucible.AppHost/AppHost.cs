@@ -162,8 +162,6 @@ public static class BuilderExtensions
         var keycloak = builder.AddKeycloak("keycloak", 8080)
             .WithReference(keycloakDb)
             .WithLifetime(ContainerLifetime.Persistent)
-            // Disable built-in HTTPS so we can set a custom cert
-            .WithoutHttpsCertificate()
             // Configure environment variables for the PostgreSQL connection
             .WithEnvironment("KC_DB", "postgres")
             .WithEnvironment("KC_DB_URL_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
@@ -173,15 +171,21 @@ public static class BuilderExtensions
             .WithEnvironment("KC_HTTPS_PORT", "8443")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
-            .WithEnvironment("KC_HTTPS_CERTIFICATE_FILE", "/opt/keycloak/conf/crucible-dev.crt")
-            .WithEnvironment("KC_HTTPS_CERTIFICATE_KEY_FILE", "/opt/keycloak/conf/crucible-dev.key")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
-            .WithBindMount("../.devcontainer/dev-certs/crucible-dev.crt", "/opt/keycloak/conf/crucible-dev.crt", isReadOnly: true)
-            .WithBindMount("../.devcontainer/dev-certs/crucible-dev.key", "/opt/keycloak/conf/crucible-dev.key", isReadOnly: true)
-            .WithHttpsEndpoint(port: 8443, targetPort: 8443, isProxied: false)
-            .WithEndpoint("management", ep => ep.UriScheme = "https")
             .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
+
+        // Override https endpoint to have a static port
+        builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
+        {
+            keycloak.WithEndpoint("https", ep =>
+            {
+                ep.Port = 8443;
+                ep.TargetPort = 8443;
+            });
+
+            return Task.CompletedTask;
+        });
 
         return keycloak;
     }
@@ -813,6 +817,27 @@ public static class BuilderExtensions
             moodle.WithBindMount(plugin.HostPath, plugin.ContainerPath, isReadOnly: true);
             Console.WriteLine($"  Mounting Moodle plugin: {plugin.Name} -> {plugin.ContainerPath}");
         }
+
+        // Copy dotnet dev-cert(s) into resources/moodle/certs so they get trusted through the Dockerfile
+        builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
+        {
+            var aspireDevCertDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".aspnet", "dev-certs", "trust");
+            var moodleCertDir = Path.Combine(builder.AppHostDirectory, "resources", "moodle", "certs");
+
+            if (Directory.Exists(aspireDevCertDir))
+            {
+                Directory.CreateDirectory(moodleCertDir);
+                foreach (var pem in Directory.GetFiles(aspireDevCertDir, "*.pem"))
+                {
+                    var destName = Path.GetFileNameWithoutExtension(pem) + ".crt";
+                    File.Copy(pem, Path.Combine(moodleCertDir, destName), overwrite: true);
+                }
+            }
+
+            return Task.CompletedTask;
+        });
 
         if (!IsEnabled(moodleMode))
         {

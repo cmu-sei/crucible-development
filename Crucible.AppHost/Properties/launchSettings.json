@@ -10,9 +10,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "DOTNET_ENVIRONMENT": "Development",
         "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "https://localhost:21281",
-        "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "https://localhost:22207",
-        "ASPNETCORE_Kestrel__Certificates__Default__Path": "/workspaces/crucible-development/.devcontainer/dev-certs/crucible-dev.crt",
-        "ASPNETCORE_Kestrel__Certificates__Default__KeyPath": "/workspaces/crucible-development/.devcontainer/dev-certs/crucible-dev.key"
+        "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "https://localhost:22207"
       }
     },
     "http": {
