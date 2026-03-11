@@ -182,6 +182,8 @@ function manage_oauth($options)
         }
     } else {
         $api->update_issuer($data);
+        $issuer = \core\oauth2\api::get_issuer($data->id);
+        $issuerid = $data->id;
         cli_writeln("Updated provider with ID {$data->id}");
     }
 
