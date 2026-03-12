@@ -82,6 +82,7 @@ public static class BuilderExtensions
         string appRoot,
         int port,
         string mode,
+        bool useAspireProxy,
         string distPath = "dist",
         string buildArgs = "")
     {
@@ -89,18 +90,27 @@ public static class BuilderExtensions
 
         if (mode == "dev")
         {
-            ui = builder.AddJavaScriptApp(name, appRoot, "start")
-                .WithHttpEndpoint(port: port, isProxied: true)
-                .WithArgs(ctx =>
-                {
-                    if (ctx.Resource is IResourceWithEndpoints resourceWithEndpoints)
+            ui = builder.AddJavaScriptApp(name, appRoot, "start");
+
+            if (useAspireProxy)
+            {
+                ui = ui
+                    .WithHttpEndpoint(port: port, isProxied: true)
+                    .WithArgs(ctx =>
                     {
-                        var endpoint = resourceWithEndpoints.GetEndpoint("http");
-                        ctx.Args.Add("--");
-                        ctx.Args.Add("--port");
-                        ctx.Args.Add(endpoint.Property(EndpointProperty.TargetPort));
-                    }
-                });
+                        if (ctx.Resource is IResourceWithEndpoints resourceWithEndpoints)
+                        {
+                            var endpoint = resourceWithEndpoints.GetEndpoint("http");
+                            ctx.Args.Add("--");
+                            ctx.Args.Add("--port");
+                            ctx.Args.Add(endpoint.Property(EndpointProperty.TargetPort));
+                        }
+                    });
+            }
+            else
+            {
+                ui = ui.WithHttpEndpoint(port: port, isProxied: false);
+            }
         }
         else
         {
@@ -231,7 +241,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode);
+        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy);
 
         builder.AddPlayerVm(postgres, keycloak, options, playerMode);
     }
@@ -272,13 +282,13 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, distPath: "dist/browser");
+        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options.UseAspireProxy, distPath: "dist/browser");
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, distPath: "dist/browser");
+        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, options.UseAspireProxy, distPath: "dist/browser");
 
     }
 
@@ -336,7 +346,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, distPath: "dist/browser");
+        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(casterMode))
         {
@@ -386,7 +396,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode);
+        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy);
 
         if (!IsEnabled(alloyMode))
         {
@@ -524,7 +534,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, distPath: "dist/browser");
+        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(steamfitterMode))
         {
@@ -578,7 +588,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, distPath: "dist/browser");
+        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(citeMode))
         {
@@ -632,7 +642,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, distPath: "dist/browser");
+        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(galleryMode))
         {
@@ -684,7 +694,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, distPath: "dist/browser");
+        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(blueprintMode))
         {
@@ -737,7 +747,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
 
-        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui");
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options.UseAspireProxy, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui");
 
         if (!IsEnabled(gameboardMode))
         {
