@@ -1,35 +1,95 @@
 # crucible-development
 
-Development Environment for Crucible
+Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a cybersecurity training and simulation platform developed by Carnegie Mellon University's Software Engineering Institute (SEI).
+
+## Table of Contents
+
+- [Getting Started](#getting-started)
+  - [Setting up Docker](#setting-up-docker)
+  - [Custom Certificates](#custom-certificates)
+- [Using the Dev Container](#using-the-dev-container)
+  - [Opening the Workspace](#opening-the-workspace)
+  - [Launch Profiles](#launch-profiles)
+  - [Default Credentials](#default-credentials)
+- [Claude Code](#claude-code)
+- [Memory Optimization](#memory-optimization)
+  - [Intelephense PHP Extension](#intelephense-php-extension)
+  - [UI Development vs Production Mode](#ui-development-vs-production-mode)
+- [Database Seeding and Backup](#database-seeding-and-backup)
+- [Moodle Configuration](#moodle-configuration)
+- [Library Development](#library-development)
 
 ## Getting Started
 
-`crucible-development` is a [Development-Containers](https://containers.dev/)-based solution that uses .NET Aspire to orchestrate the various components of Crucible, along with supporting resources like an identity provider (Keycloak), a Postgres database server, and PGAdmin.
+`crucible-development` is a [Development-Containers](https://containers.dev/)-based solution that uses [Aspire](https://aspire.dev) to orchestrate the various components of Crucible, along with supporting resources like an identity provider (Keycloak), a Postgres database server, and Moodle.
+
+> If your environment is already set up, skip to [Using the Dev Container](#using-the-dev-container).
 
 ### Setting up Docker
 
-To use any dev container, you'll need to run Docker on your machine. [Docker Desktop](https://www.docker.com/) is a great way to get started if you're not confident administering Docker from the command line.
+To use any dev container, you'll need to run Docker on your machine. [Docker Desktop](https://www.docker.com/) is a great way to get started.
 
 #### Setting memory and storage limits
 
-If you're on a Windows machine, Docker's consumption of your host machine's memory and storage is managed by [WSL2](https://learn.microsoft.com/en-us/windows/wsl/about). These will automatically scale to a percentage of your system's available resources, so you typically don't need to do any additional configuration.
+If you're on a Windows machine, Docker's consumption of your host machine's memory and storage may be managed by [WSL2](https://learn.microsoft.com/en-us/windows/wsl/about). These will automatically scale to a percentage of your system's available resources, so you typically don't need to do any additional configuration.
 
 **If you're on Mac/Linux using Docker Desktop**, you'll need to manually adjust these limits. In Docker Desktop, go to Settings -> Resources. We recommend the following minimums:
 
 - Memory Limit: 16GB
 - Disk Usage Limit: 120GB
 
+This will var based on usage. Running all applications simultaneously may require more Memory. See [Memory Optimization](#memory-optimization) for tips.
+
 ### Custom Certificates
 
-For details on how to add root CA certificates (including Zscaler), see the [Custom Certs Docs](.devcontainer/certs/README.md).
+For details on how to add root CA certificates, see the [Custom Certs Docs](.devcontainer/certs/README.md).
 
 #### Development Certificates
 
-Development certificates, including a CA, are generated at container build time via the `postcreate.sh` script. These certificates are git ignored and placed in the `.devcontainer/dev-certs` directory.
+The Aspire project uses `dotnet dev-certs` to generate development certificates. Additional development certificates, including a CA, are generated at container build time via the `postcreate.sh` script for testing helm deployments in minikube. These certificates are git ignored and placed in the `.devcontainer/dev-certs` directory.
+
+## Using the Dev Container
+
+This repo is designed exclusively for use within the dev container. The scripts and Aspire orchestration assume dev container paths and configurations and will not work outside of it.
+
+### Opening the Workspace
+
+To see all Crucible repositories in the VS Code file explorer, you need to open the workspace file:
+
+1. Click on `crucible-dev.code-workspace` in the VS Code file explorer
+2. Click the **"Open Workspace"** button that appears in the bottom-right corner
+
+Alternatively, use **File > Open Workspace from File** and select `crucible-dev.code-workspace`.
+
+You can confirm you're in the workspace when the VS Code title bar shows **"crucible-dev (Workspace)"**. Without this, the `/mnt/data/crucible` directory (containing all cloned repositories) won't appear in the file explorer. This can be done before or after opening the repo inside the dev container.
+
+### Launch Profiles
+
+Several VS Code launch profiles are pre-configured for different development scenarios. To use them:
+
+1. Click the **Run and Debug** icon in the left panel (or press `Ctrl+Shift+D`)
+2. Use the dropdown at the top to select a profile
+3. Press **F5** (or the green play button) to launch
+
+Each profile runs a different subset of services depending on what you're working on. Some examples:
+
+- **Default** - Launches most services (resource-intensive)
+- **Player**, **Blueprint**, **Caster**, **Steamfitter**, etc. - Focused on a single application
+- **Exercise**, **TTX** - Multi-app profiles for specific workflows
+- **Moodle**, **Moodle-Xdebug** - Moodle development with optional PHP debugging
+
+Pressing F5 without changing the dropdown launches the Default profile (or your previously selected profile). Be aware that the Default profile launches many applications and uses significant system resources.
+
+### Default Credentials
+
+The default admin user credentials are:
+
+- **Username:** `admin`
+- **Password:** `admin`
 
 ## Claude Code
 
-The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for Claude, configured to use AWS Bedrock via the official [Claude Code devcontainer feature](https://github.com/anthropics/devcontainer-features).  There are two setup methods that can be used to authenticate to AWS.  Select the one that fits your use case.
+The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for Claude, configured to use AWS Bedrock.  There are two setup methods that can be used to authenticate to AWS.  Select the one that fits your use case.
 
 ### Setup option 1 - credential authentication
 
@@ -73,7 +133,7 @@ The credentials file is mounted to `/home/vscode/.aws/credentials` inside the co
 
 3. Build or rebuild the dev container
 4. Run the aws-sso-login.sh script
-   ```ini
+   ```bash
    scripts/aws-sso-login.sh
    ```
 
@@ -89,15 +149,7 @@ The Crucible development environment includes 30+ microservices and can be memor
 
 ### Intelephense PHP Extension
 
-The Intelephense PHP language server is **disabled by default** (configured in `.devcontainer/devcontainer.json`) to save approximately 337MB of memory.
-
-**When to enable:** When working on Moodle/PHP code:
-1. Open Extensions panel (Ctrl+Shift+X)
-2. Search for "Intelephense"
-3. Click the gear icon → "Enable (Workspace)"
-4. Reload VS Code window (Ctrl+Shift+P → "Reload Window")
-
-**To disable again:** Follow the same steps but select "Disable (Workspace)"
+The Intelephense PHP language server is **disabled by default** (configured in `.devcontainer/devcontainer.json`) to save approximately 337MB of memory. See [Moodle PHP IntelliSense](#moodle-php-intellisense) for instructions on enabling it when working on PHP code.
 
 ### UI Development vs Production Mode
 
@@ -213,44 +265,40 @@ Moodle automatically configures itself based on which Crucible services are runn
 - PGAdmin (database administration)
 - Docs (MkDocs documentation server)
 
-## Troubleshooting
+## Database Seeding and Backup
 
-This repo is still under construction, so you may run into the occasional challenge or oddity. From our lessons learned:
-
-- **Aspire resources appearing to have exited with no crash log:** Use Docker Desktop or otherwise exec into the container and run `docker ps -a` to see all containers, regardless of their status. Stopped containers typically show an error code that might give you a hint.
-- **`npm i` issues:** Even though the devcontainer allows us to work in a container based on the same image, the image has independent builds for various architectures. This means that when you `npm i` in a `x86_64` container, some dependnecies may require precompiled binaries there that are unavailable on the ARM version. An ARM environment needs to compile these locally, which may require additional APT packages. This is why our `postcreate.sh` installs `python3-dev` currently. TL;DR - if you're having problems related to `npm install` in your container, shell in and execute it yourself to see the error log. It may be related to an OS package dependency that isn't present by default in the image.
-
-## Known issues
-
-- Some extensions (e.g. C#) very rarely seem to fail to install in the container's VS Code environment. If you see weird intellisense behavior or have compilation/debugging problems, ensure all extensions in the `devcontainers.json` file are installed in your container.
-
-## Database seeding and backup
+These examples use `blueprint` as the database name. Replace with the appropriate database name for your use case.
 
 ### Setup
 
-... using blueprint as the example
-create a db-dumps folder under crucible-dev
-copy your blueprint.dump file into the db-dumps folder
+1. Create a `db-dumps` folder under the project root:
+   ```bash
+   mkdir -p db-dumps
+   ```
+2. Copy your `.dump` file into the `db-dumps` folder
 
-### Seed/Restore a database
+### Seed/Restore a Database
 
-navigate to the db-dumps folder in the integrated terminal
-drop the blueprint database using pgadmin
-create a new blueprint database using pgadmin
-assuming crucible-postgres is the postgres container name,
-docker cp blueprint.dump crucible-postgres:/tmp/blueprint.dump
-docker exec -it crucible-postgres /bin/bash
-/usr/lib/postgresql/17/bin/psql --username=postgres blueprint < /tmp/blueprint.dump
-exit
+1. Drop the existing database using PGAdmin
+2. Create a new empty database with the same name using PGAdmin
+3. Copy the dump file into the container and restore it:
+   ```bash
+   docker cp db-dumps/blueprint.dump crucible-postgres:/tmp/blueprint.dump
+   docker exec -it crucible-postgres /bin/bash
+   /usr/lib/postgresql/17/bin/psql --username=postgres blueprint < /tmp/blueprint.dump
+   exit
+   ```
 
-### Backup/Dump a database
+### Backup/Dump a Database
 
+```bash
 docker exec -it crucible-postgres /bin/bash
 pg_dump -U postgres blueprint > /tmp/blueprint.dump
 exit
-docker cp crucible-postgres:/tmp/blueprint.dump blueprint.dump
+docker cp crucible-postgres:/tmp/blueprint.dump db-dumps/blueprint.dump
+```
 
-## Moodle configuration
+## Moodle Configuration
 
 Moodle will be configured using files located in `scripts/` and `resources/moodle/`.
 When starting for the first time, Moodle will make a copy of some core files that will
@@ -571,12 +619,12 @@ To add additional plugins, add them to the `PLUGINS` environment variable in `Ap
 The Intelephense PHP language server is disabled by default to save approximately 337MB of memory. When working on Moodle/PHP code, you'll want to enable it for code completion, go-to-definition, and other IntelliSense features.
 
 **To enable Intelephense:**
-1. Open VS Code Settings: `Ctrl+,` (or `Cmd+,` on Mac)
-2. Search for: `intelephense enable`
-3. Check the box for **"Intelephense: Enable"** (make sure you're in the **Workspace** tab)
+1. Open Extensions panel (`Ctrl+Shift+X`)
+2. Search for "Intelephense"
+3. Click the gear icon and select **"Enable (Workspace)"**
 4. Reload VS Code window: `Ctrl+Shift+P` → "Reload Window"
 
-**To disable when done:** Follow the same steps but uncheck the box to free up the memory.
+**To disable when done:** Follow the same steps but select "Disable (Workspace)" to free up memory.
 
 ### Moodle PHP Debugging with xdebug
 
@@ -615,7 +663,7 @@ This is the preferred method to enable display of debug messages inside of the b
 
 ## Library Development
 
-The crucible-common-dotnet shared library is cloned into the `/mnt/data.crucible/libraries` directory. By default, APIs that use these libraries pull the published packages from NuGet. When developing or debugging these libraries, it is convenient to point the APIs to the local copy of the library. Developers can use the `scripts/toggle-local-library.sh` script to easily toggle between the default published NuGet packages and local Project References.
+The crucible-common-dotnet shared library is cloned into the `/mnt/data/crucible/libraries` directory. By default, APIs that use these libraries pull the published packages from NuGet. When developing or debugging these libraries, it is convenient to point the APIs to the local copy of the library. Developers can use the `scripts/toggle-local-library.sh` script to easily toggle between the default published NuGet packages and local Project References.
 
 ### Usage
 
