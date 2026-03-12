@@ -489,20 +489,6 @@ deploy_infra_chart() {
 
 deploy_apps_chart() {
   log_header "Deploying crucible (apps) chart"
-
-  # Create Keycloak realm import ConfigMap if realm file exists
-  local realm_file="${SCRIPT_DIR}/files/crucible-realm.json"
-  local realm_configmap="crucible-keycloak-config-cli"
-
-  if [[ -f "$realm_file" ]]; then
-    echo "Creating Keycloak realm import ConfigMap ${realm_configmap}..."
-    kubectl create configmap "${realm_configmap}" --from-file=realm.json="${realm_file}" \
-      --dry-run=client -o yaml | kubectl apply -f -
-    echo "Keycloak realm ConfigMap created/updated successfully"
-  else
-    log_warn "Keycloak realm file not found at ${realm_file}, skipping realm import ConfigMap creation"
-  fi
-
   helm_deploy "crucible" "${SCRIPT_DIR}/crucible.values.yaml"
 }
 
@@ -542,7 +528,7 @@ uninstall_charts() {
         ;;
       "crucible")
         log_header "Deleting secrets and ConfigMaps created by deployment script (apps)"
-        kubectl delete configmap crucible-keycloak-config-cli -n "$CURRENT_NAMESPACE" --ignore-not-found
+        kubectl delete secret crucible-oidc-client-secrets -n "$CURRENT_NAMESPACE" --ignore-not-found
         ;;
     esac
   done
@@ -652,6 +638,7 @@ nohup kk port-forward -n default "service/crucible-infra-ingress-nginx-controlle
 # Print URLs and credentials
 print_web_app_urls
 print_secret_credentials "Keycloak admin credentials" "crucible-keycloak-auth" "admin-password" "keycloak-admin"
+print_secret_credentials "Crucible realm admin credentials" "crucible-oidc-client-secrets" "realm-admin-password" "admin"
 print_secret_credentials "pgAdmin credentials" "crucible-infra-pgadmin" "password" "${PGADMIN_EMAIL}"
 
 echo -e "\n${GREEN}${BOLD}Crucible deployment complete${RESET}\n"
