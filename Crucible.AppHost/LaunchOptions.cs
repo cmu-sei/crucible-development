@@ -27,4 +27,5 @@ public class LaunchOptions
 
     public string XdebugMode { get; set; } = "off";
     public bool AddAllApplications { get; set; }
+    public bool UseAspireProxy { get; set; }
 }
