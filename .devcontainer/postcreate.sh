@@ -22,7 +22,6 @@ DOTNET_EF_PID=$!
 (npm config -g set fund false && npm install -g @angular/cli@latest) &
 ANGULAR_PID=$!
 
-#wait $ASPIRE_PID $DOTNET_EF_PID $ANGULAR_PID
 wait $DOTNET_EF_PID $ANGULAR_PID
 echo "Tool installs complete."
 
