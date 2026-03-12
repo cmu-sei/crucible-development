@@ -235,7 +235,22 @@ public static class BuilderExtensions
             .WithEnvironment("Authorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
-            .WithEnvironment("Authorization__ClientId", "player.api");
+            .WithEnvironment("Authorization__ClientId", "player.api")
+            .WithEnvironment("SeedData__ApplicationTemplates__0__Id", "ace19f19-8916-4169-84de-ad00565d8456")
+            .WithEnvironment("SeedData__ApplicationTemplates__0__Name", "Virtual Machines")
+            .WithEnvironment("SeedData__ApplicationTemplates__0__Url", "http://localhost:4303/views/{viewId}?{theme}")
+            .WithEnvironment("SeedData__ApplicationTemplates__0__Icon", "assets/img/SP_Icon_Virtual.png")
+            .WithEnvironment("SeedData__ApplicationTemplates__0__Embeddable", "true")
+            .WithEnvironment("SeedData__ApplicationTemplates__1__Id", "fb7b173d-9f5b-45d2-8be2-6bab8b8b2d57")
+            .WithEnvironment("SeedData__ApplicationTemplates__1__Name", "Map")
+            .WithEnvironment("SeedData__ApplicationTemplates__1__Url", "http://localhost:4303/views/{viewId}/map?{theme}")
+            .WithEnvironment("SeedData__ApplicationTemplates__1__Icon", "assets/img/SP_Icon_Map.png")
+            .WithEnvironment("SeedData__ApplicationTemplates__1__Embeddable", "true")
+            .WithEnvironment("SeedData__ApplicationTemplates__2__Id", "a4c361cc-b43f-4c44-99a7-7e2e2b3a9f88")
+            .WithEnvironment("SeedData__ApplicationTemplates__2__Name", "Dashboard")
+            .WithEnvironment("SeedData__ApplicationTemplates__2__Url", "http://localhost:4403/views/{viewId}")
+            .WithEnvironment("SeedData__ApplicationTemplates__2__Icon", "assets/img/SP_Icon_Dashboard.png")
+            .WithEnvironment("SeedData__ApplicationTemplates__2__Embeddable", "true");
 
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 
@@ -289,7 +304,6 @@ public static class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, options.UseAspireProxy, distPath: "dist/browser");
-
     }
 
     public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
