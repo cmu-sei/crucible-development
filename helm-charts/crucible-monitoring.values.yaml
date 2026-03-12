@@ -65,7 +65,7 @@ grafana:
       name: Keycloak
       allow_sign_up: true
       client_id: grafana
-      client_secret: ${GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET}
+      # client_secret is set via GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET env var (see envValueFrom below)
       scopes: "openid profile email"
       auth_url: "https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/auth"
       token_url: "https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/token"
@@ -107,7 +107,11 @@ grafana:
   # Env var can optionally be used for OAuth client secret for integration
   env:
     SSL_CERT_FILE: /etc/ssl/certs/combined-ca/ca-certificates.crt
-    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: "516aea1d6915825e2dd757834a34386bd21c942c6c42e7cbc52ef2ba7cfb5518"
+  envValueFrom:
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+      secretKeyRef:
+        name: crucible-oidc-client-secrets
+        key: grafana
 
   # Init container to combine system CA certs with custom certs
   extraInitContainers:
