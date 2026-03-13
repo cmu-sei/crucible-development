@@ -82,6 +82,7 @@ public static class BuilderExtensions
         string appRoot,
         int port,
         string mode,
+        bool useAspireProxy,
         string distPath = "dist",
         string buildArgs = "")
     {
@@ -89,8 +90,27 @@ public static class BuilderExtensions
 
         if (mode == "dev")
         {
-            ui = builder.AddJavaScriptApp(name, appRoot, "start")
-                .WithHttpEndpoint(port: port, env: "PORT", isProxied: false);
+            ui = builder.AddJavaScriptApp(name, appRoot, "start");
+
+            if (useAspireProxy)
+            {
+                ui = ui
+                    .WithHttpEndpoint(port: port, isProxied: true)
+                    .WithArgs(ctx =>
+                    {
+                        if (ctx.Resource is IResourceWithEndpoints resourceWithEndpoints)
+                        {
+                            var endpoint = resourceWithEndpoints.GetEndpoint("http");
+                            ctx.Args.Add("--");
+                            ctx.Args.Add("--port");
+                            ctx.Args.Add(endpoint.Property(EndpointProperty.TargetPort));
+                        }
+                    });
+            }
+            else
+            {
+                ui = ui.WithHttpEndpoint(port: port, isProxied: false);
+            }
         }
         else
         {
@@ -162,8 +182,6 @@ public static class BuilderExtensions
         var keycloak = builder.AddKeycloak("keycloak", 8080)
             .WithReference(keycloakDb)
             .WithLifetime(ContainerLifetime.Persistent)
-            // Disable built-in HTTPS so we can set a custom cert
-            .WithoutHttpsCertificate()
             // Configure environment variables for the PostgreSQL connection
             .WithEnvironment("KC_DB", "postgres")
             .WithEnvironment("KC_DB_URL_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
@@ -173,15 +191,21 @@ public static class BuilderExtensions
             .WithEnvironment("KC_HTTPS_PORT", "8443")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
-            .WithEnvironment("KC_HTTPS_CERTIFICATE_FILE", "/opt/keycloak/conf/crucible-dev.crt")
-            .WithEnvironment("KC_HTTPS_CERTIFICATE_KEY_FILE", "/opt/keycloak/conf/crucible-dev.key")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
-            .WithBindMount("../.devcontainer/dev-certs/crucible-dev.crt", "/opt/keycloak/conf/crucible-dev.crt", isReadOnly: true)
-            .WithBindMount("../.devcontainer/dev-certs/crucible-dev.key", "/opt/keycloak/conf/crucible-dev.key", isReadOnly: true)
-            .WithHttpsEndpoint(port: 8443, targetPort: 8443, isProxied: false)
-            .WithEndpoint("management", ep => ep.UriScheme = "https")
             .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
+
+        // Override https endpoint to have a static port
+        builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
+        {
+            keycloak.WithEndpoint("https", ep =>
+            {
+                ep.Port = 8443;
+                ep.TargetPort = 8443;
+            });
+
+            return Task.CompletedTask;
+        });
 
         return keycloak;
     }
@@ -211,13 +235,28 @@ public static class BuilderExtensions
             .WithEnvironment("Authorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("Authorization__AuthorizationUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
-            .WithEnvironment("Authorization__ClientId", "player.api");
+            .WithEnvironment("Authorization__ClientId", "player.api")
+            .WithEnvironment("SeedData__ApplicationTemplates__0__Id", "ace19f19-8916-4169-84de-ad00565d8456")
+            .WithEnvironment("SeedData__ApplicationTemplates__0__Name", "Virtual Machines")
+            .WithEnvironment("SeedData__ApplicationTemplates__0__Url", "http://localhost:4303/views/{viewId}?{theme}")
+            .WithEnvironment("SeedData__ApplicationTemplates__0__Icon", "assets/img/SP_Icon_Virtual.png")
+            .WithEnvironment("SeedData__ApplicationTemplates__0__Embeddable", "true")
+            .WithEnvironment("SeedData__ApplicationTemplates__1__Id", "fb7b173d-9f5b-45d2-8be2-6bab8b8b2d57")
+            .WithEnvironment("SeedData__ApplicationTemplates__1__Name", "Map")
+            .WithEnvironment("SeedData__ApplicationTemplates__1__Url", "http://localhost:4303/views/{viewId}/map?{theme}")
+            .WithEnvironment("SeedData__ApplicationTemplates__1__Icon", "assets/img/SP_Icon_Map.png")
+            .WithEnvironment("SeedData__ApplicationTemplates__1__Embeddable", "true")
+            .WithEnvironment("SeedData__ApplicationTemplates__2__Id", "a4c361cc-b43f-4c44-99a7-7e2e2b3a9f88")
+            .WithEnvironment("SeedData__ApplicationTemplates__2__Name", "Dashboard")
+            .WithEnvironment("SeedData__ApplicationTemplates__2__Url", "http://localhost:4403/views/{viewId}")
+            .WithEnvironment("SeedData__ApplicationTemplates__2__Icon", "assets/img/SP_Icon_Dashboard.png")
+            .WithEnvironment("SeedData__ApplicationTemplates__2__Embeddable", "true");
 
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode);
+        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy);
 
         builder.AddPlayerVm(postgres, keycloak, options, playerMode);
     }
@@ -258,14 +297,13 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, distPath: "dist/browser");
+        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options.UseAspireProxy, distPath: "dist/browser");
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, distPath: "dist/browser");
-
+        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, options.UseAspireProxy, distPath: "dist/browser");
     }
 
     public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
@@ -322,7 +360,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, distPath: "dist/browser");
+        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(casterMode))
         {
@@ -372,7 +410,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode);
+        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy);
 
         if (!IsEnabled(alloyMode))
         {
@@ -510,7 +548,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, distPath: "dist/browser");
+        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(steamfitterMode))
         {
@@ -564,7 +602,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, distPath: "dist/browser");
+        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(citeMode))
         {
@@ -618,7 +656,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, distPath: "dist/browser");
+        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(galleryMode))
         {
@@ -670,7 +708,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, distPath: "dist/browser");
+        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(blueprintMode))
         {
@@ -723,7 +761,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
 
-        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui");
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options.UseAspireProxy, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui");
 
         if (!IsEnabled(gameboardMode))
         {
@@ -813,6 +851,27 @@ public static class BuilderExtensions
             moodle.WithBindMount(plugin.HostPath, plugin.ContainerPath, isReadOnly: true);
             Console.WriteLine($"  Mounting Moodle plugin: {plugin.Name} -> {plugin.ContainerPath}");
         }
+
+        // Copy dotnet dev-cert(s) into resources/moodle/certs so they get trusted through the Dockerfile
+        builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
+        {
+            var aspireDevCertDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".aspnet", "dev-certs", "trust");
+            var moodleCertDir = Path.Combine(builder.AppHostDirectory, "resources", "moodle", "certs");
+
+            if (Directory.Exists(aspireDevCertDir))
+            {
+                Directory.CreateDirectory(moodleCertDir);
+                foreach (var pem in Directory.GetFiles(aspireDevCertDir, "*.pem"))
+                {
+                    var destName = Path.GetFileNameWithoutExtension(pem) + ".crt";
+                    File.Copy(pem, Path.Combine(moodleCertDir, destName), overwrite: true);
+                }
+            }
+
+            return Task.CompletedTask;
+        });
 
         if (!IsEnabled(moodleMode))
         {

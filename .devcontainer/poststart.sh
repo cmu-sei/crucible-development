@@ -36,6 +36,12 @@ cat <<'EOF'
 
       Welcome to the Crucible Dev Container!
 
-Type Ctrl-Shift-` (backtick) to open a new terminal and get started building. 🤓
+Getting started:
+  - Open Run and Debug (Ctrl+Shift+D) to select a launch profile or press F5
+    to run the Default or last selected profile.
+  - Default admin credentials: admin / admin
+  - See the README for more details.
+
+Type Ctrl-Shift-` (backtick) to open a new terminal.
 
 EOF

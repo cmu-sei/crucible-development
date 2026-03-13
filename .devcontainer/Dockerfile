@@ -33,7 +33,9 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     yes | unminimize && \
     apt-get install -y --no-install-recommends \
     php \
-    php-cli
+    php-cli \
+    # includes certutil for dev cert verification
+    libnss3-tools
 # Install Vale
 ARG VALE_VERSION=3.12.0
 RUN set -eux; \

@@ -1,18 +1,76 @@
 <Solution>
-  <Project Path="/mnt/data/crucible/player/player.api/Player.Api/Player.Api.csproj" />
-  <Project Path="/mnt/data/crucible/player/vm.api/src/Player.Vm.Api/Player.Vm.Api.csproj" />
-  <Project Path="/mnt/data/crucible/caster/caster.api/src/Caster.Api/Caster.Api.csproj" />
-  <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.Authentication/Crucible.Common.Authentication.csproj" />
-  <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.EntityEvents.Generators/Crucible.Common.EntityEvents.Generators.csproj" />
-  <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.EntityEvents/Crucible.Common.EntityEvents.csproj" />
-  <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.Utilities/Crucible.Common.Utilities.csproj" />
-  <Project Path="/mnt/data/crucible/alloy/alloy.api/Alloy.Api/Alloy.Api.csproj" />
-  <Project Path="/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/TopoMojo.Api.csproj" />
   <Project Path="Crucible.AppHost/Crucible.AppHost.csproj" />
-  <Project Path="/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api/Steamfitter.Api.csproj" />
-  <Project Path="/mnt/data/crucible/cite/cite.api/Cite.Api/Cite.Api.csproj" />
-  <Project Path="/mnt/data/crucible/gallery/gallery.api/Gallery.Api/Gallery.Api.csproj" />
-  <Project Path="/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api/Blueprint.Api.csproj" />
-  <Project Path="/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api/Gameboard.Api.csproj" />
-  <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.ServiceDefaults/Crucible.Common.ServiceDefaults.csproj" />
+
+  <Folder Name="/Alloy/">
+    <Project Path="/mnt/data/crucible/alloy/alloy.api/Alloy.Api/Alloy.Api.csproj" />
+    <Project Path="/mnt/data/crucible/alloy/alloy.api/Alloy.Api.Client/Alloy.Api.Client.csproj" />
+    <Project Path="/mnt/data/crucible/alloy/alloy.api/Alloy.Api.Data/Alloy.Api.Data.csproj" />
+    <Project Path="/mnt/data/crucible/alloy/alloy.api/Alloy.Api.Migrations.PostgreSQL/Alloy.Api.Migrations.PostgreSQL.csproj" />
+  </Folder>
+
+  <Folder Name="/Blueprint/">
+    <Project Path="/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api/Blueprint.Api.csproj" />
+    <Project Path="/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api.Client/Blueprint.Api.Client.csproj" />
+    <Project Path="/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api.Data/Blueprint.Api.Data.csproj" />
+    <Project Path="/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api.Migrations.PostgreSQL/Blueprint.Api.Migrations.PostgreSQL.csproj" />
+  </Folder>
+
+  <Folder Name="/Caster/">
+    <Project Path="/mnt/data/crucible/caster/caster.api/src/Caster.Api/Caster.Api.csproj" />
+    <Project Path="/mnt/data/crucible/caster/caster.api/src/Caster.Api.Client/Caster.Api.Client.csproj" />
+    <Project Path="/mnt/data/crucible/caster/caster.api/test/Caster.Api.Tests/Caster.Api.Tests.csproj" />
+  </Folder>
+
+  <Folder Name="/CITE/">
+    <Project Path="/mnt/data/crucible/cite/cite.api/Cite.Api/Cite.Api.csproj" />
+    <Project Path="/mnt/data/crucible/cite/cite.api/Cite.Api.Client/Cite.Api.Client.csproj" />
+    <Project Path="/mnt/data/crucible/cite/cite.api/Cite.Api.Data/Cite.Api.Data.csproj" />
+    <Project Path="/mnt/data/crucible/cite/cite.api/Cite.Api.Migrations.PostgreSQL/Cite.Api.Migrations.PostgreSQL.csproj" />
+  </Folder>
+
+  <Folder Name="/Gallery/">
+    <Project Path="/mnt/data/crucible/gallery/gallery.api/Gallery.Api/Gallery.Api.csproj" />
+    <Project Path="/mnt/data/crucible/gallery/gallery.api/Gallery.Api.Client/Gallery.Api.Client.csproj" />
+    <Project Path="/mnt/data/crucible/gallery/gallery.api/Gallery.Api.Data/Gallery.Api.Data.csproj" />
+    <Project Path="/mnt/data/crucible/gallery/gallery.api/Gallery.Api.Migrations.PostgreSQL/Gallery.Api.Migrations.PostgreSQL.csproj" />
+  </Folder>
+
+  <Folder Name="/Gameboard/">
+    <Project Path="/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api/Gameboard.Api.csproj" />
+    <Project Path="/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api.Tests.Integration/Gameboard.Api.Tests.Integration.csproj" />
+    <Project Path="/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api.Tests.Unit/Gameboard.Api.Tests.Unit.csproj" />
+    <Project Path="/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api.Tests.Shared/Gameboard.Api.Tests.Shared.csproj" />
+  </Folder>
+
+  <Folder Name="/Libraries/">
+    <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.Authentication/Crucible.Common.Authentication.csproj" />
+    <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.EntityEvents/Crucible.Common.EntityEvents.csproj" />
+    <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.EntityEvents.Generators/Crucible.Common.EntityEvents.Generators.csproj" />
+    <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.ServiceDefaults/Crucible.Common.ServiceDefaults.csproj" />
+    <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/src/Crucible.Common.Utilities/Crucible.Common.Utilities.csproj" />
+    <Project Path="/mnt/data/crucible/libraries/crucible-common-dotnet/test/Crucible.Common.Tests/Crucible.Common.Tests.csproj" />
+  </Folder>
+
+  <Folder Name="/Player/">
+    <Project Path="/mnt/data/crucible/player/player.api/Player.Api/Player.Api.csproj" />
+    <Project Path="/mnt/data/crucible/player/player.api/Player.Api.Client/Player.Api.Client.csproj" />
+    <Project Path="/mnt/data/crucible/player/player.api/Player.Api.Data/Player.Api.Data.csproj" />
+    <Project Path="/mnt/data/crucible/player/player.api/Player.Api.Migrations.PostgreSQL/Player.Api.Migrations.PostgreSQL.csproj" />
+    <Project Path="/mnt/data/crucible/player/vm.api/src/Player.Vm.Api/Player.Vm.Api.csproj" />
+    <Project Path="/mnt/data/crucible/player/vm.api/src/Player.Vm.Api.Client/Player.Vm.Api.Client.csproj" />
+  </Folder>
+
+  <Folder Name="/Steamfitter/">
+    <Project Path="/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api/Steamfitter.Api.csproj" />
+    <Project Path="/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api.Client/Steamfitter.Api.Client.csproj" />
+    <Project Path="/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api.Data/Steamfitter.Api.Data.csproj" />
+    <Project Path="/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api.Migrations.PostgreSQL/Steamfitter.Api.Migrations.PostgreSQL.csproj" />
+  </Folder>
+
+  <Folder Name="/TopoMojo/">
+    <Project Path="/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/TopoMojo.Api.csproj" />
+    <Project Path="/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api.Client/TopoMojo.Api.Client.csproj" />
+    <Project Path="/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Agent/TopoMojo.Agent.csproj" />
+    <Project Path="/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Hypervisor/TopoMojo.Hypervisor.csproj" />
+  </Folder>
 </Solution>

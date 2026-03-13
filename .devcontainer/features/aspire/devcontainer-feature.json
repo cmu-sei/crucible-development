@@ -1,0 +1,14 @@
+{
+  "id": "aspire",
+  "version": "1.0.0",
+  "name": "Aspire",
+  "description": "Installs the Aspire CLI via the official installer script.",
+  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"],
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "13.1.1",
+      "description": "Aspire version to install"
+    }
+  }
+}

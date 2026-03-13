@@ -19,8 +19,6 @@
   },
   "AppTitle": "Player",
   "AppTopBarText": "Player",
-  "AppTopBarHexColor": "#4c7aa2",
-  "AppTopBarHexTextColor": "#FFFFFF",
   "UseLocalAuthStorage": false,
   "DebugLogging": false
 }

@@ -21,13 +21,17 @@
       "helm": "latest"
     },
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "./features/aspire": {
+      "version": "13.1.1"
+    }
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.
     "CLAUDE_CODE_USE_BEDROCK": "1", // vars for Claude Code using Amazon Bedrock
     "AWS_REGION": "us-east-1",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "SSL_CERT_DIR": "/usr/local/share/ca-certificates/:/etc/ssl/certs/:/home/vscode/.aspnet/dev-certs/trust/"
   },
   "mounts": [
     // crucible repo data
@@ -41,7 +45,7 @@
     // Claude Code data (sessions, history, todos, etc.)
     "source=crucible-dev-claude,target=/home/vscode/.claude,type=volume",
     // SSH keys and config
-    "source=crucible-dev-ssh,target=/home/vscode/.ssh,type=volume"
+    "source=crucible-dev-ssh,target=/home/vscode/.ssh,type=volume",
     // MSBuild files for local library development
     "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.props,target=/mnt/data/Directory.Build.props,type=bind",
     "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.targets,target=/mnt/data/Directory.Build.targets,type=bind"

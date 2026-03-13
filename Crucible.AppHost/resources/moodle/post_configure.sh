@@ -55,11 +55,11 @@ configure_oauth2() {
   section="OAuth2 Configuration"
   log "Configuring OAuth2 settings..."
 
-  KEYCLOAK_URL="https://keycloak:8443/realms/crucible/"
+  KEYCLOAK_URL="https://keycloak.dev.internal:8443/realms/crucible/"
   KEYCLOAK_CLIENTID="moodle-client"
   KEYCLOAK_CLIENTSECRET="super-safe-secret"
   KEYCLOAK_NAME="Crucible Keycloak"
-  KEYCLOAK_IMAGE="https://keycloak:8443/favicon.svg"
+  KEYCLOAK_IMAGE="https://localhost:8443/favicon.svg"
   KEYCLOAK_LOGINSCOPES="openid profile email player player-vm alloy steamfitter caster"
   KEYCLOAK_LOGINSCOPESOFFLINE="openid profile email offline_access player player-vm alloy steamfitter caster"
 
@@ -95,25 +95,24 @@ configure_oauth2() {
   ')
 
   if [ -n "$EXISTING_ID" ]; then
-      log "OAuth2 provider already exists with ID: $EXISTING_ID"
+      log "OAuth2 provider already exists with ID: $EXISTING_ID. Updating..."
       OAUTH2_ISSUER_ID="$EXISTING_ID"
-      return 0
+  else
+      log "No existing provider found. Creating a new one..."
   fi
 
-  log "No existing provider found. Creating a new one..."
-
-
-  log "Creating a new OAuth2 provider..."
+  log "Creating/updating OAuth2 provider..."
   PROVIDER_OUTPUT=$(php /usr/local/bin/setup_environment.php \
     --step=manage_oauth \
+    ${EXISTING_ID:+--id="$EXISTING_ID"} \
     --baseurl="$KEYCLOAK_URL" \
     --clientid="$KEYCLOAK_CLIENTID" \
     --clientsecret="$KEYCLOAK_CLIENTSECRET" \
     --loginscopes="$KEYCLOAK_LOGINSCOPES" \
     --loginscopesoffline="$KEYCLOAK_LOGINSCOPESOFFLINE" \
     --name="$KEYCLOAK_NAME" \
-    --tokenendpoint="https://keycloak:8443/realms/crucible/protocol/openid-connect/token" \
-    --userinfoendpoint="https://keycloak:8443/realms/crucible/protocol/openid-connect/userinfo" \
+    --tokenendpoint="https://keycloak.dev.internal:8443/realms/crucible/protocol/openid-connect/token" \
+    --userinfoendpoint="https://keycloak.dev.internal:8443/realms/crucible/protocol/openid-connect/userinfo" \
     --image="$KEYCLOAK_IMAGE" \
     --requireconfirmation=0 \
     --showonloginpage=1 \
@@ -124,15 +123,20 @@ configure_oauth2() {
     error "$section" "Provider creation failed (rc=$rc)."
   fi
 
-  NEW_ISSUER_ID=$(printf '%s\n' "$PROVIDER_OUTPUT" \
-    | awk '/Created provider with ID[[:space:]][0-9]+/ {print $NF; exit}')
-  if [ -z "$NEW_ISSUER_ID" ]; then
-    error "$section" "Failed to retrieve the new provider ID; aborting mapping."
+  if [ -n "$EXISTING_ID" ]; then
+    log "OAuth2 Provider updated successfully with ID: $EXISTING_ID"
+  else
+    NEW_ISSUER_ID=$(printf '%s\n' "$PROVIDER_OUTPUT" \
+      | awk '/provider with ID[[:space:]][0-9]+/ {print $NF; exit}')
+    if [ -z "$NEW_ISSUER_ID" ]; then
+      error "$section" "Failed to retrieve the new provider ID; aborting mapping."
+    fi
+    log "OAuth2 Provider created successfully with ID: $NEW_ISSUER_ID"
+    OAUTH2_ISSUER_ID="$NEW_ISSUER_ID"
   fi
-  log "OAuth2 Provider created successfully with ID: $NEW_ISSUER_ID"
-  OAUTH2_ISSUER_ID="$NEW_ISSUER_ID"
 
-  # ---- User field mappings ----
+  if [ -z "$EXISTING_ID" ]; then
+  # ---- User field mappings (only on initial creation) ----
   mappings="sub:idnumber"
 
   for m in $mappings; do
@@ -163,6 +167,7 @@ configure_oauth2() {
       fi
     fi
   done
+  fi
 
   log "OAuth2 configuration completed successfully."
 }
@@ -384,7 +389,7 @@ touch "$STATUS_FILE"
 
 # Execute sections based on status
 execute_section "Site Configuration" configure_site
-execute_section "OAuth2 Configuration" configure_oauth2
+configure_oauth2
 execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
 execute_section "Crucible Configuration" configure_crucible
