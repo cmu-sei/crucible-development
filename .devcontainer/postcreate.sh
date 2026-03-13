@@ -25,6 +25,9 @@ ANGULAR_PID=$!
 wait $DOTNET_EF_PID $ANGULAR_PID
 echo "Tool installs complete."
 
+# Generate dotnet dev-cert. Needed if not using aspire extension launch profiles
+dotnet dev-certs https --trust
+
 # Generate crucible-dev certificates
 CERT_DIR=".devcontainer/dev-certs"
 CERT_FILE="${CERT_DIR}/crucible-dev.crt"
