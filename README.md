@@ -38,7 +38,7 @@ If you're on a Windows machine, Docker's consumption of your host machine's memo
 - Memory Limit: 16GB
 - Disk Usage Limit: 120GB
 
-This will var based on usage. Running all applications simultaneously may require more Memory. See [Memory Optimization](#memory-optimization) for tips.
+This will vary based on usage. Running all applications simultaneously may require more memory. See [Memory Optimization](#memory-optimization) for tips.
 
 ### Custom Certificates
 
