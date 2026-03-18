@@ -24,7 +24,10 @@
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "./features/aspire": {
       "version": "13.1.1"
-    }
+    },
+    "ghcr.io/devcontainers/features/go:1": {},
+    "ghcr.io/devcontainers/features/terraform:1": {},
+    "ghcr.io/devcontainers-extra/features/go-task:1": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.

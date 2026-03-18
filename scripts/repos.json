@@ -185,7 +185,15 @@
     },
     {
       "name": "misp",
+      "repos": []
+    },
+    {
+      "name": "terraform-providers",
       "repos": [
+        {
+          "name": "terraform-provider-crucible",
+          "url": "https://github.com/cmu-sei/terraform-provider-crucible"
+        }
       ]
     }
   ],
