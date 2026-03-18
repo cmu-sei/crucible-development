@@ -36,6 +36,10 @@
         {
           "name": "Crucible.Common.Ui",
           "url": "https://github.com/cmu-sei/Crucible.Common.Ui"
+        },
+        {
+          "name": "console-forge",
+          "url": "https://github.com/cmu-sei/console-forge/"
         }
       ]
     },
