@@ -1,6 +1,9 @@
 {
   "name": "Crucible Development",
-  "runArgs": ["--name", "crucible-dev"],
+  "runArgs": [
+    "--name",
+    "crucible-dev"
+  ],
   "build": {
     "dockerfile": "Dockerfile"
   },
@@ -80,6 +83,10 @@
       ],
       "settings": {
         "editor.formatOnSave": true,
+        // The docs repo has some formatting settings that conflict with prettier, so disable auto formatting
+        "[markdown]": {
+          "editor.formatOnSave": false
+        },
         "files.insertFinalNewline": true,
         "files.eol": "\n",
         "files.trimTrailingWhitespace": true,
