@@ -22,7 +22,13 @@ DOTNET_EF_PID=$!
 (npm config -g set fund false && npm install -g @angular/cli@latest) &
 ANGULAR_PID=$!
 
-wait $DOTNET_EF_PID $ANGULAR_PID
+(cd Crucible.AppHost/tests && npm install) &
+NPM_TESTS_PID=$!
+
+(npx -y playwright install firefox --with-deps) &
+PLAYWRIGHT_PID=$!
+
+wait $DOTNET_EF_PID $ANGULAR_PID $NPM_TESTS_PID $PLAYWRIGHT_PID
 echo "Tool installs complete."
 
 # Generate dotnet dev-cert. Needed if not using aspire extension launch profiles

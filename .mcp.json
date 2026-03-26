@@ -2,17 +2,11 @@
   "mcpServers": {
     "aspire": {
       "command": "aspire",
-      "args": [
-        "mcp",
-        "start"
-      ]
+      "args": ["mcp", "start"]
     },
     "playwright": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@playwright/mcp@latest"
-      ]
+      "args": ["-y", "@playwright/mcp@latest", "--browser", "firefox"]
     }
   }
 }

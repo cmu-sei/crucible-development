@@ -3,7 +3,13 @@
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
+      "args": ["@playwright/mcp@latest", "--browser", "firefox"]
+    },
+    "playwright-test": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["playwright", "run-test-mcp-server"],
+      "cwd": "${workspaceFolder}/Crucible.AppHost/tests"
     }
   }
 }

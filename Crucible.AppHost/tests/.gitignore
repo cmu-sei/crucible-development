@@ -1,0 +1,12 @@
+# Test artifacts
+node_modules/
+playwright-report/
+test-results/
+.auth/
+
+# Playwright cache
+.cache/
+
+# Environment files
+.env
+.env.local

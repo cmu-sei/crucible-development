@@ -1,0 +1,17 @@
+{
+  "name": "crucible-tests",
+  "version": "1.0.0",
+  "description": "Playwright Test Agents for Crucible platform",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:headed": "playwright test --headed",
+    "test:report": "playwright show-report",
+    "test:codegen": "playwright codegen"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
