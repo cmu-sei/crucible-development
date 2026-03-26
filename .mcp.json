@@ -1,12 +1,12 @@
 {
   "mcpServers": {
-    "aspire": {
-      "command": "aspire",
-      "args": ["mcp", "start"]
-    },
-    "playwright": {
+    "playwright-test": {
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest", "--browser", "firefox"]
+      "args": [
+        "playwright",
+        "run-test-mcp-server"
+      ],
+      "cwd": "Crucible.AppHost/tests"
     }
   }
 }

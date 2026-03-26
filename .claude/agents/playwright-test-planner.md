@@ -1,38 +1,9 @@
 ---
 name: playwright-test-planner
 description: Use this agent when you need to create comprehensive test plan for a web application or website
-tools:
-  - search
-  - playwright-test/browser_click
-  - playwright-test/browser_close
-  - playwright-test/browser_console_messages
-  - playwright-test/browser_drag
-  - playwright-test/browser_evaluate
-  - playwright-test/browser_file_upload
-  - playwright-test/browser_handle_dialog
-  - playwright-test/browser_hover
-  - playwright-test/browser_navigate
-  - playwright-test/browser_navigate_back
-  - playwright-test/browser_network_requests
-  - playwright-test/browser_press_key
-  - playwright-test/browser_run_code
-  - playwright-test/browser_select_option
-  - playwright-test/browser_snapshot
-  - playwright-test/browser_take_screenshot
-  - playwright-test/browser_type
-  - playwright-test/browser_wait_for
-  - playwright-test/planner_setup_page
-  - playwright-test/planner_save_plan
-model: Claude Sonnet 4
-mcp-servers:
-  playwright-test:
-    type: stdio
-    command: npx
-    args:
-      - playwright
-      - run-test-mcp-server
-    tools:
-      - "*"
+tools: Glob, Grep, Read, LS, mcp__playwright-test__browser_click, mcp__playwright-test__browser_close, mcp__playwright-test__browser_console_messages, mcp__playwright-test__browser_drag, mcp__playwright-test__browser_evaluate, mcp__playwright-test__browser_file_upload, mcp__playwright-test__browser_handle_dialog, mcp__playwright-test__browser_hover, mcp__playwright-test__browser_navigate, mcp__playwright-test__browser_navigate_back, mcp__playwright-test__browser_network_requests, mcp__playwright-test__browser_press_key, mcp__playwright-test__browser_run_code, mcp__playwright-test__browser_select_option, mcp__playwright-test__browser_snapshot, mcp__playwright-test__browser_take_screenshot, mcp__playwright-test__browser_type, mcp__playwright-test__browser_wait_for, mcp__playwright-test__planner_setup_page, mcp__playwright-test__planner_save_plan
+model: sonnet
+color: green
 ---
 
 You are an expert web test planner with extensive experience in quality assurance, user experience testing, and test
