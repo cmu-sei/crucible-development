@@ -2,86 +2,52 @@
 # This chart deploys Keycloak and all Crucible applications
 
 # IMPORTANT: This chart assumes crucible-infra is already deployed
-# The infra chart provides: PostgreSQL, Ingress Controller, NFS Storage, pgAdmin
+# The infra chart provides: PostgreSQL (CNPG), Ingress Controller (nginx), NFS Storage, pgAdmin
 
 global:
   domain: crucible
   namespace: default
-  security:
-    allowInsecureImages: true
+  ingress:
+    className: nginx
 
-  keycloak:
-    # Base path for Keycloak (relative to global.domain)
-    basePath: "/keycloak"
-    # Keycloak realm name
-    realm: "crucible"
-
-# Deploy Keycloak IdP
-# https://artifacthub.io/packages/helm/bitnami/keycloak
+# Deploy Keycloak IdP (via Keycloak Operator)
+# https://www.keycloak.org/operator/installation
 keycloak:
   enabled: true
-  image:
-    # This bitnamilegacy image requires allowing insecure images
-    repository: bitnamilegacy/keycloak
-  auth:
-    # default admin creds come from an existing secret
-    adminUser: "keycloak-admin"
-    existingSecret: "{{ .Release.Name }}-keycloak-auth"
-  proxyHeaders: xforwarded
-  httpRelativePath: "/keycloak/"
+  instances: 1
   ingress:
     enabled: true
     ingressClassName: nginx
-    hostname: "{{ .Values.global.domain }}"
-    path: "/keycloak/"
+    tlsSecretName: crucible-cert
     annotations:
       nginx.ingress.kubernetes.io/server-snippet: |
         location ~ ^/keycloak/?$ {
           return 302 $scheme://$host/keycloak/admin/crucible/console/;
         }
-    tls: true
-    extraTls:
-      - hosts:
-          - "{{ .Values.global.domain }}"
-        secretName: crucible-cert
-  # Automatically generate OIDC client secrets and create a realm ConfigMap
   createRealm: true
   realmAdminPassword: "admin"
-  # Realm import configuration - enabled for local development
-  # Import realm on startup (if the realm already exists, keycloak will not overwrite it)
-  extraEnvVars:
-    - name: KEYCLOAK_EXTRA_ARGS
-      value: "--import-realm"
-  extraVolumes:
-    - name: realm-import
-      secret:
-        secretName: "{{ .Release.Name }}-realm"
-  extraVolumeMounts:
-    - name: realm-import
-      mountPath: /opt/bitnami/keycloak/data/import
-      readOnly: true
-  # Use the external postgres instead of the one provided by the bitnami chart
-  postgresql:
-    enabled: false
+  importRealmSecret: ""
   externalDatabase:
-    host: "crucible-infra-postgresql"
-    user: "postgres"
+    host: "crucible-infra-postgresql-rw"
+    port: 5432
     database: keycloak
-    existingSecret: "crucible-infra-postgresql"
-    existingSecretPasswordKey: "postgres-password"
+    user: "keycloak"
+    existingSecret: "crucible-infra-db-keycloak"
+    existingSecretUserKey: "username"
+    existingSecretPasswordKey: "password"
 
 alloy:
   enabled: true
   alloy-api:
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       port: 5432
       name: "alloy"
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-alloy"
       usernameKey: "username"
-      passwordKey: "postgres-password"
+      passwordKey: "password"
     ingress:
-      className: "nginx"
+      className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -123,7 +89,7 @@ alloy:
 
   alloy-ui:
     ingress:
-      className: "nginx"
+      className: nginx
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -159,12 +125,12 @@ blueprint:
   enabled: true
   blueprint-api:
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       port: 5432
       name: "blueprint"
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-blueprint"
       usernameKey: "username"
-      passwordKey: "postgres-password"
+      passwordKey: "password"
     # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     # Only needed if you use self-signed certificates or corporate proxies (e.g., Zscaler)
     # You must create the ConfigMap separately before enabling this
@@ -253,12 +219,12 @@ caster:
   enabled: true
   caster-api:
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       port: 5432
       name: "caster"
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-caster"
       usernameKey: "username"
-      passwordKey: "postgres-password"
+      passwordKey: "password"
     # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     # Git credentials - placeholder for local development
@@ -334,12 +300,12 @@ cite:
   enabled: true
   cite-api:
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       port: 5432
       name: "cite"
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-cite"
       usernameKey: "username"
-      passwordKey: "postgres-password"
+      passwordKey: "password"
     # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
@@ -405,12 +371,12 @@ gallery:
   enabled: true
   gallery-api:
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       port: 5432
       name: "gallery"
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-gallery"
       usernameKey: "username"
-      passwordKey: "postgres-password"
+      passwordKey: "password"
     # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
@@ -476,21 +442,17 @@ gameboard:
   enabled: true
   gameboard-api:
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       port: 5432
       name: "gameboard"
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-gameboard"
       usernameKey: "username"
-      passwordKey: "postgres-password"
+      passwordKey: "password"
     # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
       enabled: true
       className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-        nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-        nginx.ingress.kubernetes.io/proxy-body-size: 30m
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -504,12 +466,10 @@ gameboard:
       existing: "{{ .Release.Name }}-gameboard-api-nfs"
     existingSecret: "{{ .Release.Name }}-gameboard-api-custom"
     # This gets added to a secret
-    # In prod, the data should come from an external secret store
     gameEngineClientSecret: "" # auto-generated when keycloak.createRealm is true
     env:
       PathBase: /gameboard
       # Game Engine (TopoMojo) configuration
-      # Use K8s service addresses here to keep traffic between GB and TM in-cluster
       Core__GameEngineUrl: http://{{ .Release.Name }}-topomojo-api
       Core__ChallengeDocUrl: http://{{ .Release.Name }}-topomojo-api
       Core__GameEngineDeployBatchSize: "6"
@@ -570,12 +530,12 @@ player:
   enabled: true
   player-api:
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       port: 5432
       name: "player"
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-player"
       usernameKey: "username"
-      passwordKey: "postgres-password"
+      passwordKey: "password"
     # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
@@ -612,7 +572,6 @@ player:
       SSL_CERT_FILE: /usr/local/share/ca-certificates/crucible-dev.crt
       SSL_CERT_DIR: /usr/local/share/ca-certificates
       # Optional: Configure OpenTelemetry (enabled for local development with monitoring stack)
-      # Only needed if you have deployed the crucible-monitoring chart
       OTEL_EXPORTER_OTLP_ENDPOINT: http://crucible-monitoring-grafana-alloy:4317
       OTEL_EXPORTER_OTLP_PROTOCOL: grpc
   player-ui:
@@ -644,12 +603,12 @@ player:
         url: https://{{ .Values.global.domain }}/player/hubs
   vm-api:
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       port: 5432
       name: "player_vm"
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-player-vm"
       usernameKey: "username"
-      passwordKey: "postgres-password"
+      passwordKey: "password"
     # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
@@ -733,12 +692,12 @@ steamfitter:
   enabled: true
   steamfitter-api:
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       port: 5432
       name: "steamfitter"
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-steamfitter"
       usernameKey: "username"
-      passwordKey: "postgres-password"
+      passwordKey: "password"
     # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
@@ -821,19 +780,17 @@ topomojo:
   enabled: true
   topomojo-api:
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       port: 5432
       name: "topomojo"
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-topomojo"
       usernameKey: "username"
-      passwordKey: "postgres-password"
+      passwordKey: "password"
     # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
     certificateMap: "crucible-ca-cert"
     ingress:
       enabled: true
       className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-body-size: 6g
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -869,8 +826,6 @@ topomojo:
     ingress:
       enabled: true
       className: nginx
-      annotations:
-        nginx.ingress.kubernetes.io/proxy-body-size: 6g
       hosts:
         - host: "{{ .Values.global.domain }}"
           paths:
@@ -918,12 +873,12 @@ moodle:
     site:
       url: "https://{{ .Values.global.domain }}"
     database:
-      host: "crucible-infra-postgresql"
+      host: "crucible-infra-postgresql-rw"
       name: "moodle"
       user: "postgres" # Fallback if existingSecretUserKey is not set
-      existingSecret: "crucible-infra-postgresql"
+      existingSecret: "crucible-infra-db-moodle"
       existingSecretUserKey: "username"
-      existingSecretPasswordKey: "postgres-password"
+      existingSecretPasswordKey: "password"
     ## OIDC OAuth2 Configuration
     oidc:
       enabled: true
@@ -963,6 +918,7 @@ moodle:
       mountPath: /opt/sei/certs
       readOnly: true
   ingress:
+    className: nginx
     hostname: "{{ .Values.global.domain }}"
     path: /
     pathType: Prefix

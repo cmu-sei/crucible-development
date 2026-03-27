@@ -12,14 +12,14 @@ global:
   namespace: default
 
   # TLS secret name (accessible to subcharts via global values)
-  tlsSecretName: crucible-cert  # Created by helm-deploy.sh from local certs
+  tlsSecretName: crucible-cert # Created from local certs
 
 # Custom CA Certificates Configuration
 # Enable this if Grafana needs to trust custom CA certificates (e.g., for OAuth with Keycloak behind corporate proxy)
 # When enabled, ALL certificate files in the ConfigMap will be mounted to Grafana
 caCerts:
   enabled: true
-  configMapName: crucible-ca-cert  # Created by helm-deploy.sh from local certs
+  configMapName: crucible-ca-cert # Created from local certs
 
 # Prometheus - Metrics Collection and Storage
 # https://artifacthub.io/packages/helm/prometheus-community/prometheus
@@ -48,6 +48,10 @@ grafana:
       - "{{ .Values.global.domain }}"
     path: /grafana
     pathType: Prefix
+    tls:
+      - secretName: "{{ .Values.global.tlsSecretName }}"
+        hosts:
+          - "{{ .Values.global.domain }}"
 
   # Grafana configuration
   grafana.ini:
@@ -56,7 +60,7 @@ grafana:
       serve_from_sub_path: true
 
     auth:
-      disable_login_form: true  # OAuth only (no local users)
+      disable_login_form: true # OAuth only (no local users)
       signout_redirect_url: "https://{{ .Values.global.domain }}/keycloak/realms/crucible/protocol/openid-connect/logout?redirect_uri=https://{{ .Values.global.domain }}/grafana/"
 
     # OAuth integration
