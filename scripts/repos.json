@@ -40,6 +40,10 @@
         {
           "name": "console-forge",
           "url": "https://github.com/cmu-sei/console-forge/"
+        },
+        {
+          "name": "Crucible-Github-Actions",
+          "url": "https://github.com/cmu-sei/Crucible-Github-Actions"
         }
       ]
     },
