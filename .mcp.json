@@ -6,7 +6,7 @@
         "playwright",
         "run-test-mcp-server"
       ],
-      "cwd": "Crucible.AppHost/tests"
+      "cwd": "Crucible.AppHost/playwright"
     }
   }
 }

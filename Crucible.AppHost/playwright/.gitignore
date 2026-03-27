@@ -1,0 +1,35 @@
+# Playwright Test Results
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# Node modules
+node_modules/
+
+# Test artifacts
+*.log
+*.mp4
+*.webm
+screenshots/
+videos/
+traces/
+
+# Test output
+results.json
+report.html
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

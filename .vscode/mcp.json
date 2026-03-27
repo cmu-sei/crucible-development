@@ -9,7 +9,7 @@
       "type": "stdio",
       "command": "npx",
       "args": ["playwright", "run-test-mcp-server"],
-      "cwd": "${workspaceFolder}/Crucible.AppHost/tests"
+      "cwd": "${workspaceFolder}/Crucible.AppHost/playwright"
     }
   }
 }
