@@ -14,15 +14,17 @@ LogLaunchOptions(launchOptions);
 
 var postgres = builder.AddPostgres(launchOptions);
 var keycloak = builder.AddKeycloak(postgres);
-builder.AddPlayer(postgres, keycloak, launchOptions);
-builder.AddCaster(postgres, keycloak, launchOptions);
-builder.AddAlloy(postgres, keycloak, launchOptions);
+var commonUiDev = builder.AddCommonUIDev(launchOptions);
+
+builder.AddPlayer(postgres, keycloak, launchOptions, commonUiDev);
+builder.AddCaster(postgres, keycloak, launchOptions, null);
+builder.AddAlloy(postgres, keycloak, launchOptions, null);
 builder.AddTopoMojo(postgres, keycloak, launchOptions);
-builder.AddSteamfitter(postgres, keycloak, launchOptions);
-builder.AddCite(postgres, keycloak, launchOptions);
-builder.AddGallery(postgres, keycloak, launchOptions);
-builder.AddBlueprint(postgres, keycloak, launchOptions);
-builder.AddGameboard(postgres, keycloak, launchOptions);
+builder.AddSteamfitter(postgres, keycloak, launchOptions, null);
+builder.AddCite(postgres, keycloak, launchOptions, null);
+builder.AddGallery(postgres, keycloak, launchOptions, null);
+builder.AddBlueprint(postgres, keycloak, launchOptions, null);
+builder.AddGameboard(postgres, keycloak, launchOptions, null);
 builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
 builder.AddMisp(postgres, keycloak, launchOptions);
@@ -84,7 +86,8 @@ public static class BuilderExtensions
         string mode,
         bool useAspireProxy,
         string distPath = "dist",
-        string buildArgs = "")
+        string buildArgs = "",
+        IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         IResourceBuilder<ExecutableResource> ui;
 
@@ -102,6 +105,11 @@ public static class BuilderExtensions
                         {
                             var endpoint = resourceWithEndpoints.GetEndpoint("http");
                             ctx.Args.Add("--");
+                            if (commonUiSetup != null)
+                            {
+                                ctx.Args.Add("--configuration");
+                                ctx.Args.Add("local");
+                            }
                             ctx.Args.Add("--port");
                             ctx.Args.Add(endpoint.Property(EndpointProperty.TargetPort));
                         }
@@ -110,6 +118,30 @@ public static class BuilderExtensions
             else
             {
                 ui = ui.WithHttpEndpoint(port: port, isProxied: false);
+                if (commonUiSetup != null)
+                {
+                    ui = ui.WithArgs("--", "--configuration", "local");
+                }
+            }
+
+            // Set up local common UI library: copy tsconfig.local.json and use --configuration local
+            if (commonUiSetup != null)
+            {
+                var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
+                    .FirstOrDefault(r => r.Name == $"{name}-installer");
+
+                if (installerResource != null)
+                {
+                    var setupLocal = builder.AddExecutable($"{name}-setup-local", "bash", appRoot, [
+                        "-c",
+                        $"npm link @cmusei/crucible-common && cp {builder.AppHostDirectory}/resources/tsconfig.local.json ."
+                    ])
+                    .WithParentRelationship(installerResource);
+
+                    setupLocal.Resource.Annotations.Add(new WaitAnnotation(installerResource, WaitType.WaitForCompletion));
+                    setupLocal.WaitForCompletion(commonUiSetup);
+                    ui.WaitForCompletion(setupLocal);
+                }
             }
         }
         else
@@ -210,7 +242,7 @@ public static class BuilderExtensions
         return keycloak;
     }
 
-    public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var playerMode = ResolveMode(options.Player, "Player", options);
 
@@ -256,12 +288,12 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy);
+        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, commonUiSetup: null);
 
-        builder.AddPlayerVm(postgres, keycloak, options, playerMode);
+        builder.AddPlayerVm(postgres, keycloak, options, playerMode, commonUiSetup);
     }
 
-    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, string playerMode)
+    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, string playerMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm")
             .WithDevSettings();
@@ -299,16 +331,16 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options.UseAspireProxy, distPath: "dist/browser");
+        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, options.UseAspireProxy, distPath: "dist/browser");
+        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
     }
 
-    public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var casterMode = ResolveMode(options.Caster, "Caster", options);
 
@@ -362,7 +394,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options.UseAspireProxy, distPath: "dist/browser");
+        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(casterMode))
         {
@@ -372,7 +404,7 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var alloyMode = ResolveMode(options.Alloy, "Alloy", options);
 
@@ -412,7 +444,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy);
+        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy, commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(alloyMode))
         {
@@ -505,7 +537,7 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var steamfitterMode = ResolveMode(options.Steamfitter, "Steamfitter", options);
         var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
@@ -550,7 +582,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options.UseAspireProxy, distPath: "dist/browser");
+        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(steamfitterMode))
         {
@@ -559,7 +591,7 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var citeMode = ResolveMode(options.Cite, "Cite", options);
         var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
@@ -604,7 +636,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser");
+        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(citeMode))
         {
@@ -613,7 +645,7 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var galleryMode = ResolveMode(options.Gallery, "Gallery", options);
         var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
@@ -658,7 +690,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser");
+        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(galleryMode))
         {
@@ -667,7 +699,7 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var blueprintMode = ResolveMode(options.Blueprint, "Blueprint", options);
         var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
@@ -710,7 +742,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options.UseAspireProxy, distPath: "dist/browser");
+        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(blueprintMode))
         {
@@ -719,7 +751,7 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var gameboardMode = ResolveMode(options.Gameboard, "Gameboard", options);
 
@@ -763,7 +795,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
 
-        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options.UseAspireProxy, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui");
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options.UseAspireProxy, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(gameboardMode))
         {
@@ -977,6 +1009,32 @@ public static class BuilderExtensions
             misp.WithExplicitStart();
             mispModules.WithExplicitStart();
         }
+    }
+
+    public static IResourceBuilder<ExecutableResource>? AddCommonUIDev(this IDistributedApplicationBuilder builder, LaunchOptions options)
+    {
+        if (!options.LinkCommonUI)
+        {
+            return null;
+        }
+
+        IResourceBuilder<ExecutableResource>? commonUiSetup = null;
+        var commonUiRoot = "/mnt/data/crucible/libraries/Crucible.Common.Ui";
+
+        // install, build, and create global npm link (completes)
+        commonUiSetup = builder.AddExecutable("common-ui-setup", "bash", commonUiRoot, [
+            "-c",
+            "npm install && npx ng build crucible-common && npm link dist/@crucible-common"
+        ]);
+
+        // Long-running: watch for library changes and rebuild
+        builder.AddExecutable("common-ui-watch", "bash", commonUiRoot, [
+            "-c",
+            "npx ng build crucible-common --watch"
+        ])
+        .WaitForCompletion(commonUiSetup);
+
+        return commonUiSetup;
     }
 
     private static void ConfigureApiSecrets(

@@ -1,0 +1,11 @@
+{
+  "extends": "./src/tsconfig.app.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@cmusei/crucible-common": [
+        "/mnt/data/crucible/libraries/Crucible.Common.Ui/dist/@crucible-common"
+      ]
+    }
+  }
+}
