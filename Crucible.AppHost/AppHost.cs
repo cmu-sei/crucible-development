@@ -191,6 +191,10 @@ public static class BuilderExtensions
             .WithEnvironment("KC_HTTPS_PORT", "8443")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
+            // Configure SameSite cookie settings to help with iframe authentication
+            .WithEnvironment("KC_SPI_STICKY_SESSION_ENCODER_INFINISPAN_SHOULD_ATTACH_ROUTE", "false")
+            .WithEnvironment("KC_SPI_LOGIN_PROTOCOL_OPENID_CONNECT_LEGACY_LOGOUT_REDIRECT_URI", "true")
+            .WithEnvironment("KC_SPI_COOKIE_DEFAULT_SAME_SITE", "None")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
             .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
