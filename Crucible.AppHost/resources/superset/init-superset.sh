@@ -45,5 +45,10 @@ with app.app_context():
 "
 fi
 
+# Create starter xAPI analytics dashboard
+if [ -n "$LRSQL_SQLALCHEMY_URI" ]; then
+  python /app/create-dashboard-orm.py || echo "Dashboard creation skipped or failed (non-fatal)"
+fi
+
 # Start Superset
 superset run -h 0.0.0.0 -p 8088 --with-threads
