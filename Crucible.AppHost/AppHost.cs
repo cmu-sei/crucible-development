@@ -8,6 +8,7 @@ using Aspire.Hosting.JavaScript;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
+
 LaunchOptions launchOptions = builder.Configuration.GetSection("Launch").Get<LaunchOptions>() ?? new();
 
 LogLaunchOptions(launchOptions);
@@ -26,6 +27,7 @@ builder.AddGameboard(postgres, keycloak, launchOptions);
 builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
 builder.AddMisp(postgres, keycloak, launchOptions);
+builder.AddSuperset(postgres, keycloak, launchOptions);
 builder.AddDocs(launchOptions);
 
 builder.Build().Run();
@@ -191,6 +193,10 @@ public static class BuilderExtensions
             .WithEnvironment("KC_HTTPS_PORT", "8443")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
+            // Configure SameSite cookie settings to help with iframe authentication
+            .WithEnvironment("KC_SPI_STICKY_SESSION_ENCODER_INFINISPAN_SHOULD_ATTACH_ROUTE", "false")
+            .WithEnvironment("KC_SPI_LOGIN_PROTOCOL_OPENID_CONNECT_LEGACY_LOGOUT_REDIRECT_URI", "true")
+            .WithEnvironment("KC_SPI_COOKIE_DEFAULT_SAME_SITE", "None")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
             .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
@@ -976,6 +982,71 @@ public static class BuilderExtensions
         {
             misp.WithExplicitStart();
             mispModules.WithExplicitStart();
+        }
+    }
+
+    public static void AddSuperset(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        var supersetMode = ResolveMode(options.Superset, "Superset", options);
+
+        if (!options.AddAllApplications && !IsEnabled(supersetMode))
+            return;
+
+        var supersetDb = postgres.AddDatabase("supersetDb", "superset");
+
+        var superset = builder.AddContainer("superset", "superset-custom-image")
+            .WithDockerfile("./resources/superset", "Dockerfile.SupersetCustom")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("superset")
+            .WaitFor(postgres)
+            .WaitFor(keycloak)
+            .WithHttpEndpoint(port: 8088, targetPort: 8088)
+            .WithHttpHealthCheck(path: "/health", endpointName: "http")
+            .WithBindMount("./resources/superset/superset_config.py", "/app/superset_config.py", isReadOnly: true)
+            .WithBindMount("./resources/superset/init-superset.sh", "/app/init-superset.sh", isReadOnly: true)
+            .WithEnvironment("SUPERSET_CONFIG_PATH", "/app/superset_config.py")
+            .WithEnvironment("SUPERSET_SECRET_KEY", "crucible-dev-superset-secret-key")
+            .WithEnvironment("KEYCLOAK_EXTERNAL_URL", "http://localhost:8080/realms/crucible")
+            .WithEnvironment(context =>
+            {
+                // Internal Keycloak URL for server-to-server communication
+                var keycloakEndpoint = keycloak.GetEndpoint("http");
+                var keycloakHost = keycloakEndpoint.Property(EndpointProperty.Host);
+                var keycloakPort = keycloakEndpoint.Property(EndpointProperty.Port);
+                context.EnvironmentVariables["KEYCLOAK_INTERNAL_URL"] =
+                    ReferenceExpression.Create($"http://{keycloakHost}:{keycloakPort}/realms/crucible");
+            })
+            .WithEnvironment("KEYCLOAK_CLIENT_ID", "superset")
+            .WithEnvironment("KEYCLOAK_CLIENT_SECRET", "superset-client-secret")
+            .WithEnvironment(context =>
+            {
+                var host = postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host);
+                var port = postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Port);
+                var user = postgres.Resource.UserNameReference;
+                var password = postgres.Resource.PasswordParameter;
+                var dbName = supersetDb.Resource.DatabaseName;
+
+                context.EnvironmentVariables["DATABASE_HOST"] = host;
+                context.EnvironmentVariables["DATABASE_PORT"] = port;
+                context.EnvironmentVariables["DATABASE_USER"] = user;
+                context.EnvironmentVariables["DATABASE_PASSWORD"] = password;
+                context.EnvironmentVariables["DATABASE_DB"] = dbName;
+
+                // Compose the SQLAlchemy URI for Superset metadata DB
+                context.EnvironmentVariables["SUPERSET_SQLALCHEMY_DATABASE_URI"] =
+                    ReferenceExpression.Create($"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbName}");
+
+                // LRsql database connection for xAPI analytics
+                context.EnvironmentVariables["LRSQL_SQLALCHEMY_URI"] =
+                    ReferenceExpression.Create($"postgresql+psycopg2://{user}:{password}@{host}:{port}/lrsql");
+            })
+            .WithEnvironment("SUPERSET_LOAD_EXAMPLES", "no")
+            .WithEnvironment("CYPRESS_CONFIG", "false")
+            .WithArgs("bash", "/app/init-superset.sh");
+
+        if (!IsEnabled(supersetMode))
+        {
+            superset.WithExplicitStart();
         }
     }
 
