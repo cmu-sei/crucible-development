@@ -51,13 +51,13 @@ switch ($options['step']) {
         break;
     case 'configure_ai_bedrock':
         if (
-            empty($options['accesskeyid']) || empty($options['secretaccesskey']) || empty($options['sessiontoken']) ||
+            empty($options['accesskeyid']) || empty($options['secretaccesskey']) ||
             empty($options['region']) || empty($options['modelid'])
         ) {
             cli_error("Missing required parameters. Current values:\n" .
                 "  --accesskeyid={$options['accesskeyid']}\n" .
                 "  --secretaccesskey={$options['secretaccesskey']}\n" .
-                "  --sessiontoken={$options['sessiontoken']}\n" .
+                "  --sessiontoken=" . ($options['sessiontoken'] ? '(set)' : '(empty, optional)') . "\n" .
                 "  --region={$options['region']}\n" .
                 "  --modelid={$options['modelid']}");
         }
