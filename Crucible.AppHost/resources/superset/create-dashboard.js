@@ -1,3 +1,6 @@
+// Copyright 2026 Carnegie Mellon University. All Rights Reserved.
+// Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
+
 const fetch = require('node-fetch');
 const BASE = process.argv[2] || 'http://localhost:8088';
 
