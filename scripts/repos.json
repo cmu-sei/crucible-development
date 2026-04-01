@@ -36,6 +36,14 @@
         {
           "name": "Crucible.Common.Ui",
           "url": "https://github.com/cmu-sei/Crucible.Common.Ui"
+        },
+        {
+          "name": "console-forge",
+          "url": "https://github.com/cmu-sei/console-forge/"
+        },
+        {
+          "name": "Crucible-Github-Actions",
+          "url": "https://github.com/cmu-sei/Crucible-Github-Actions"
         }
       ]
     },
@@ -185,7 +193,15 @@
     },
     {
       "name": "misp",
+      "repos": []
+    },
+    {
+      "name": "terraform-providers",
       "repos": [
+        {
+          "name": "terraform-provider-crucible",
+          "url": "https://github.com/cmu-sei/terraform-provider-crucible"
+        }
       ]
     }
   ],
