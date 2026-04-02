@@ -28,6 +28,7 @@ builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
 builder.AddMisp(postgres, keycloak, launchOptions);
 builder.AddSuperset(postgres, keycloak, launchOptions);
+builder.AddCass(postgres, keycloak, launchOptions);
 builder.AddDocs(launchOptions);
 
 builder.Build().Run();
@@ -40,6 +41,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
     Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}");
     Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, Gameboard: {launchOptions.Gameboard}");
+    Console.WriteLine($"  Cass: {launchOptions.Cass}");
     Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
     Console.WriteLine($"  Dev: [{string.Join(", ", launchOptions.Dev)}]");
@@ -189,9 +191,10 @@ public static class BuilderExtensions
             .WithEnvironment("KC_DB_URL_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("KC_DB_USERNAME", postgres.Resource.UserNameReference)
             .WithEnvironment("KC_DB_PASSWORD", postgres.Resource.PasswordParameter)
-            .WithEnvironment("KC_HOSTNAME", "localhost")
+            .WithEnvironment("KC_HOSTNAME", "https://localhost:8443")
             .WithEnvironment("KC_HTTPS_PORT", "8443")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
+            .WithEnvironment("KC_HOSTNAME_BACKCHANNEL_DYNAMIC", "true")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
@@ -1044,6 +1047,59 @@ public static class BuilderExtensions
         if (!IsEnabled(supersetMode))
         {
             superset.WithExplicitStart();
+        }
+    }
+
+    public static void AddCass(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        var cassMode = ResolveMode(options.Cass, "Cass", options);
+
+        if (!options.AddAllApplications && !IsEnabled(cassMode))
+            return;
+
+        var cassElasticsearch = builder.AddContainer("cass-elasticsearch", "docker.elastic.co/elasticsearch/elasticsearch", "9.3.1")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("cass-elasticsearch")
+            .WithVolume("cass-esdata", "/usr/share/elasticsearch/data")
+            .WithEndpoint("http", endpoint =>
+            {
+                endpoint.Port = 9201;
+                endpoint.TargetPort = 9200;
+                endpoint.IsProxied = false;
+            })
+            .WithEnvironment("discovery.type", "single-node")
+            .WithEnvironment("xpack.security.enabled", "false")
+            .WithEnvironment("ES_JAVA_OPTS", "-Xms512m -Xmx512m");
+
+        var cass = builder.AddContainer("cass", "cassproject/cass")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("cass")
+            .WaitFor(cassElasticsearch)
+            .WaitFor(keycloak)
+            .WithHttpEndpoint(port: 8060, targetPort: 80)
+            .WithHttpHealthCheck(endpointName: "http")
+            .WithEnvironment("ELASTICSEARCH_ENDPOINT", "http://cass-elasticsearch:9200")
+            .WithEnvironment("CASS_LOOPBACK", "http://cass:80/api")
+            .WithEnvironment("CASS_OIDC_ENABLED", "true")
+            .WithEnvironment(context =>
+            {
+                var keycloakEndpoint = keycloak.GetEndpoint("http");
+                var keycloakHost = keycloakEndpoint.Property(EndpointProperty.Host);
+                var keycloakPort = keycloakEndpoint.Property(EndpointProperty.Port);
+                context.EnvironmentVariables["CASS_OIDC_ISSUER_BASE_URL"] =
+                    ReferenceExpression.Create($"http://{keycloakHost}:{keycloakPort}/realms/crucible/");
+            })
+            .WithEnvironment("CASS_OIDC_BASE_URL", "http://localhost:8060/")
+            .WithEnvironment("CASS_OIDC_CLIENT_ID", "cass")
+            .WithEnvironment("CASS_OIDC_SECRET", "cass-client-secret")
+            .WithEnvironment("CASS_SSO_ACCOUNT_REQUIRED", "0")
+            .WithEnvironment("CASS_IP_ALLOW", "0.0.0.0/0")
+            .WithEnvironment("FIPS", "false");
+
+        if (!IsEnabled(cassMode))
+        {
+            cassElasticsearch.WithExplicitStart();
+            cass.WithExplicitStart();
         }
     }
 
