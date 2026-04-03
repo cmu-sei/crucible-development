@@ -81,6 +81,9 @@ helm-charts/crucible/files/*.crt
 # playwright mcp logs
 .playwright-mcp/
 
+# Generated Playwright test agents
+.claude/agents/
+
 # Local repository configurations (private/internal/personal repos, local overrides)
 scripts/repos.local.json
 

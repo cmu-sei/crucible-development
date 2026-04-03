@@ -83,6 +83,9 @@ IMPORTANT! Aspire is designed to capture rich logs and telemetry for all resourc
 ## Playwright MCP server
 The playwright MCP server has also been configured in this repository and you should use it to perform functional investigations of the resources defined in the app model as you work on the codebase. To get endpoints that can be used for navigation using the playwright MCP server use the list resources tool.
 
+## Playwright Test Suite
+End-to-end Playwright tests live at `/mnt/data/crucible/playwright-testing/`. This repo contains test plans and spec files for all 11 Crucible applications. See the `CLAUDE.md` in that directory for full details on test conventions, fixtures, and how to write/run tests. When asked to create, update, or run Playwright tests, work in that directory.
+
 ## Aspire workload
 IMPORTANT! The aspire workload is obsolete. You should never attempt to install or use the Aspire workload.
 
