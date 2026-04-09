@@ -12,6 +12,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [Launch Profiles](#launch-profiles)
   - [Default Credentials](#default-credentials)
 - [Claude Code](#claude-code)
+- [Playwright Testing](#playwright-testing)
 - [Memory Optimization](#memory-optimization)
   - [Intelephense PHP Extension](#intelephense-php-extension)
   - [UI Development vs Production Mode](#ui-development-vs-production-mode)
@@ -142,6 +143,57 @@ The config file is mounted to `/home/vscode/.aws/config` inside the container an
 ### Usage
 
 Once the container is running with valid credentials, run `claude` in the terminal to start Claude Code.
+
+## Playwright Testing
+
+The dev container includes [Playwright](https://playwright.dev/) for end-to-end testing of Crucible applications. Dependencies (Node.js packages and Chromium browser) are installed automatically during container creation.
+
+The test suite lives in `/mnt/data/crucible/crucible-tests/` and covers all 11 Crucible applications. Each app has a test plan and organized spec files. See the [crucible-tests README](https://github.com/cmu-sei/crucible-tests) for full documentation.
+
+### VS Code Playwright Extension
+
+The [Playwright Test for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-playwright.playwright) extension is pre-installed and configured to use the Crucible test suite. Open the **Testing** panel in VS Code to browse, run, and debug tests visually.
+
+### Claude Code Playwright Test Agents
+
+The dev container automatically initializes three [Playwright test agents](https://playwright.dev/docs/test-agents) for use with Claude Code during container creation. These agents allow Claude Code to plan, generate, and fix Playwright tests interactively using a real browser.
+
+| Agent | Purpose |
+|-------|---------|
+| **playwright-test-planner** | Navigates a running application in a browser, explores the UI, and produces a comprehensive test plan (saved as a markdown file) |
+| **playwright-test-generator** | Takes a test plan and generates `.spec.ts` files by executing each step in a real browser, then recording the actions |
+| **playwright-test-healer** | Runs failing tests, debugs them in a live browser, identifies root causes, and fixes the test code |
+
+To use the agents, start Claude Code in the terminal and ask it to plan, generate, or fix tests. Claude Code will automatically delegate to the appropriate agent. For example:
+
+- *"Create a test plan for the Player application"* — invokes the **planner** to explore the Player UI and produce a test plan
+- *"Generate tests for the Blueprint authentication section"* — invokes the **generator** to create spec files from the test plan
+- *"Fix the failing Blueprint tests"* — invokes the **healer** to debug and repair broken tests
+
+The agents require Crucible services to be running since they interact with the applications through a real browser.
+
+### Running Tests from the Terminal
+
+Start the Crucible services first (via a VS Code launch profile or `aspire run`), then:
+
+```bash
+cd /mnt/data/crucible/crucible-tests
+
+# Run tests for a specific application
+./run-tests.sh blueprint
+
+# Run all tests
+./run-tests.sh all
+
+# Interactive UI mode
+./run-tests.sh ui blueprint
+
+# Headed mode (see browser)
+./run-tests.sh headed blueprint
+
+# View test report
+./run-tests.sh report
+```
 
 ## Memory Optimization
 

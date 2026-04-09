@@ -215,8 +215,8 @@
       "url": "https://github.com/cmu-sei/helm-charts"
     },
     {
-      "name": "playwright-testing",
-      "url": "https://github.com/sei-npacheco/playwright-testing.git"
+      "name": "crucible-tests",
+      "url": "https://github.com/cmu-sei/crucible-tests.git"
     }
   ]
 }

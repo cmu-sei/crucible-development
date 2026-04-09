@@ -93,7 +93,7 @@
         "playwright.reuseBrowser": true,
         "playwright.env": {},
         "playwright.configs": [
-          "/mnt/data/crucible/playwright-testing/playwright.config.ts"
+          "/mnt/data/crucible/crucible-tests/playwright.config.ts"
         ]
       }
     }

@@ -23,7 +23,7 @@ DOTNET_EF_PID=$!
 ANGULAR_PID=$!
 
 # Initialize Playwright test agents in the dev container
-PLAYWRIGHT_TESTING_DIR="/mnt/data/crucible/playwright-testing"
+PLAYWRIGHT_TESTING_DIR="/mnt/data/crucible/crucible-tests"
 if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
   (
     cd "$PLAYWRIGHT_TESTING_DIR" || exit 1

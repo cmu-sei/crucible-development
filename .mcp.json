@@ -15,13 +15,13 @@
       ]
     },
     "playwright-test": {
-      "command": "/mnt/data/crucible/playwright-testing/node_modules/.bin/playwright",
+      "command": "/mnt/data/crucible/crucible-tests/node_modules/.bin/playwright",
       "args": [
         "run-test-mcp-server",
         "--config",
-        "/mnt/data/crucible/playwright-testing/playwright.config.ts"
+        "/mnt/data/crucible/crucible-tests/playwright.config.ts"
       ],
-      "cwd": "/mnt/data/crucible/playwright-testing"
+      "cwd": "/mnt/data/crucible/crucible-tests"
     }
   }
 }
