@@ -177,7 +177,7 @@ The agents require Crucible services to be running since they interact with the 
 Start the Crucible services first (via a VS Code launch profile or `aspire run`), then:
 
 ```bash
-cd /mnt/data/crucible/crucible-tests
+cd /mnt/data/crucible/libraries/crucible-tests
 
 # Run tests for a specific application
 ./run-tests.sh blueprint
