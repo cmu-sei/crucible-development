@@ -180,20 +180,44 @@ Start the Crucible services first (via a VS Code launch profile or `aspire run`)
 cd /mnt/data/crucible/libraries/crucible-tests
 
 # Run tests for a specific application
+./run-tests.sh topomojo
 ./run-tests.sh blueprint
+./run-tests.sh player
 
 # Run all tests
 ./run-tests.sh all
 
+# Smoke tests (login/home) for a specific app or all apps
+./run-tests.sh quick --app cite
+./run-tests.sh quick
+
 # Interactive UI mode
-./run-tests.sh ui blueprint
+./run-tests.sh ui gameboard
 
 # Headed mode (see browser)
-./run-tests.sh headed blueprint
+./run-tests.sh headed caster
+
+# Filter tests by pattern
+./run-tests.sh alloy --filter login
+
+# Skip health checks
+./run-tests.sh topomojo --no-check
 
 # View test report
 ./run-tests.sh report
 ```
+
+The script automatically checks that Keycloak and the target application are reachable before running tests. Use `--no-check` to skip these checks.
+
+### Configuring Service URLs
+
+All service URLs used by the test suite are defined in a single file:
+
+```
+/mnt/data/crucible/crucible-tests/.env
+```
+
+Edit this file to change ports or hostnames for your environment. The `.env` file is loaded by both the shell scripts (`run-tests.sh`, `setup.sh`) and the Playwright TypeScript configuration. If the file is missing, all URLs fall back to their default `localhost` values.
 
 ## Memory Optimization
 

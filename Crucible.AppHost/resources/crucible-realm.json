@@ -4627,17 +4627,14 @@
       },
       "credentials": [
         {
-          "id": "1c0b51a9-032b-45e9-bf6f-f75dc00da35f",
           "type": "password",
-          "userLabel": "My password",
-          "createdDate": 1697743646353,
-          "secretData": "{\"value\":\"xCdS3sYG25gkMyZ7H6kc63tsRHVoqkBHG7tCVj8IQqg=\",\"salt\":\"2ElAs9aJaR5c6UOwZQVEiw==\",\"additionalParameters\":{}}",
-          "credentialData": "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
+          "value": "user1",
+          "temporary": false
         }
       ],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": ["Administrator", "default-roles-crucible"],
+      "realmRoles": ["default-roles-crucible"],
       "notBefore": 0,
       "groups": []
     },
