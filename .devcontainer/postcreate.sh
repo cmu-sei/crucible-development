@@ -33,6 +33,7 @@ if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
 
     echo "Installing Playwright browser binaries..."
     npx playwright install chromium
+    npx playwright install firefox
 
     echo "Initializing Playwright test agents..."
     TMPDIR=$(mktemp -d)
