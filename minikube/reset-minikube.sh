@@ -47,12 +47,34 @@ if [[ -z "$MODE" ]]; then
   exit 1
 fi
 
+stop_registry_mirrors() {
+  local registries=("docker.io" "ghcr.io" "quay.io" "registry.k8s.io")
+  for registry in "${registries[@]}"; do
+    local container="crucible-registry-${registry//[.\/]/-}"
+    if docker inspect "${container}" &>/dev/null; then
+      docker stop "${container}" 2>/dev/null || true
+      docker rm "${container}" 2>/dev/null || true
+    fi
+  done
+  echo "Registry mirrors stopped."
+}
+
 if [[ "$MODE" == "purge" ]]; then
+  log_header "Stopping registry mirrors"
+  stop_registry_mirrors
+
   log_header "Purging minikube cluster"
   echo "Attempting sudo umount of ~/.minikube to release mounts (may prompt for sudo)"
   sudo umount "${HOME}/.minikube" 2>/dev/null || log_warn "sudo umount ~/.minikube did not succeed; continuing"
   minikube delete --all --purge
+
+  log_header "Clearing registry mirror cache"
+  rm -rf /mnt/data/registry
+  echo "Registry mirror cache cleared."
 elif [[ "$MODE" == "delete" ]]; then
+  log_header "Stopping registry mirrors"
+  stop_registry_mirrors
+
   log_header "Deleting minikube cluster (preserving cache)"
   minikube delete --all
 fi

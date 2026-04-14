@@ -132,6 +132,61 @@ setup_caster_certs() {
 
 stage_custom_ca_certs
 
+# -----------------------------------------------------------------------------
+# Registry Mirror Configuration
+# Pull-through cache containers for minikube image pulls.
+# Image blobs are stored under /mnt/data/registry/ on the persistent
+# crucible-dev-data volume and survive `minikube delete` (but not --purge).
+# Mirror ports: docker.io=5001, ghcr.io=5002, quay.io=5003, registry.k8s.io=5004
+# -----------------------------------------------------------------------------
+
+declare -A REGISTRY_MIRRORS=(
+  ["docker.io"]="5001:https://registry-1.docker.io"
+  ["ghcr.io"]="5002:https://ghcr.io"
+  ["quay.io"]="5003:https://quay.io"
+  ["registry.k8s.io"]="5004:https://registry.k8s.io"
+)
+
+start_registry_mirrors() {
+  local mirrors_dir="${HOME}/.minikube/files/etc/containerd/certs.d"
+  mkdir -p /mnt/data/registry
+
+  for registry in "${!REGISTRY_MIRRORS[@]}"; do
+    IFS=':' read -r port upstream_host upstream_path <<< "${REGISTRY_MIRRORS[$registry]}"
+    local upstream="https:${upstream_path}"
+    local container="crucible-registry-${registry//[.\/]/-}"
+    local data_dir="/mnt/data/registry/${registry}"
+    mkdir -p "${data_dir}"
+
+    if docker inspect "${container}" &>/dev/null; then
+      docker start "${container}" 2>/dev/null || true
+    else
+      echo "Starting registry mirror for ${registry} on port ${port}..."
+      docker run -d \
+        --name "${container}" \
+        -p "${port}:5000" \
+        -v "${data_dir}:/var/lib/registry" \
+        -e "REGISTRY_PROXY_REMOTEURL=${upstream}" \
+        -e "REGISTRY_LOG_LEVEL=warn" \
+        -e "REGISTRY_STORAGE_DELETE_ENABLED=true" \
+        registry:2
+    fi
+
+    # Stage containerd mirror config — injected into the minikube node on start
+    local hosts_dir="${mirrors_dir}/${registry}"
+    mkdir -p "${hosts_dir}"
+    cat > "${hosts_dir}/hosts.toml" <<EOF
+server = "${upstream}"
+
+[host."http://host.minikube.internal:${port}"]
+  capabilities = ["pull", "resolve"]
+EOF
+  done
+  echo "Registry mirrors ready."
+}
+
+start_registry_mirrors
+
 log_header "Checking minikube cluster status"
 
 STATUS=$(minikube status --output json 2>/dev/null || echo '{}')
@@ -144,7 +199,8 @@ if [[ "$HOST_STATE" == "Running" && "$KUBELET_STATE" == "Running" && "$APISERVER
     echo "minikube is operational."
 else
     echo "minikube is not running. Starting now..."
-    minikube start --mount-string="/mnt/data/terraform:/mnt/data/terraform" --embed-certs
+    minikube start --mount-string="/mnt/data/terraform:/mnt/data/terraform" --embed-certs \
+      --container-runtime=containerd
 
     echo "Configuring kubelet for parallel image pulls..."
     minikube ssh "sudo sed -i 's/serializeImagePulls: true/serializeImagePulls: false/' /var/lib/kubelet/config.yaml || echo 'serializeImagePulls: false' | sudo tee -a /var/lib/kubelet/config.yaml"
