@@ -151,6 +151,13 @@ start_registry_mirrors() {
   local mirrors_dir="${HOME}/.minikube/files/etc/containerd/certs.d"
   mkdir -p /mnt/data/registry
 
+  # Mount the devcontainer's CA bundle so registry containers trust any
+  # TLS-inspecting proxies when connecting to upstream registries.
+  local ca_bundle_mount=()
+  if [[ -f /etc/ssl/certs/ca-certificates.crt ]]; then
+    ca_bundle_mount=(-v /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro)
+  fi
+
   for registry in "${!REGISTRY_MIRRORS[@]}"; do
     IFS=':' read -r port upstream_host upstream_path <<< "${REGISTRY_MIRRORS[$registry]}"
     local upstream="https:${upstream_path}"
@@ -158,14 +165,26 @@ start_registry_mirrors() {
     local data_dir="/mnt/data/registry/${registry}"
     mkdir -p "${data_dir}"
 
+    # Remove the container if it exists but isn't running (crashed or stopped)
+    # so it gets recreated with current config.
     if docker inspect "${container}" &>/dev/null; then
-      docker start "${container}" 2>/dev/null || true
-    else
+      local state
+      state=$(docker inspect --format='{{.State.Status}}' "${container}" 2>/dev/null)
+      if [[ "${state}" == "running" ]]; then
+        : # already up, nothing to do
+      else
+        echo "Registry mirror ${registry} is ${state}, recreating..."
+        docker rm -f "${container}" 2>/dev/null || true
+      fi
+    fi
+
+    if ! docker inspect "${container}" &>/dev/null; then
       echo "Starting registry mirror for ${registry} on port ${port}..."
       docker run -d \
         --name "${container}" \
         -p "${port}:5000" \
         -v "${data_dir}:/var/lib/registry" \
+        "${ca_bundle_mount[@]}" \
         -e "REGISTRY_PROXY_REMOTEURL=${upstream}" \
         -e "REGISTRY_LOG_LEVEL=warn" \
         -e "REGISTRY_STORAGE_DELETE_ENABLED=true" \
