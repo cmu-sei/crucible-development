@@ -111,6 +111,11 @@ setopt HIST_VERIFY             # don't immediately execute recalled commands
 # DEVCONTAINER ZSH HISTORY END
 EOF
 
+# Export GitHub token from gh CLI for MCP server auth
+RUN echo '' >> /home/vscode/.zshrc && \
+    echo '# GitHub MCP token from gh CLI' >> /home/vscode/.zshrc && \
+    echo 'export GITHUB_PERSONAL_ACCESS_TOKEN=$(gh auth token 2>/dev/null)' >> /home/vscode/.zshrc
+
 # Switch back to vscode user
 USER vscode
 

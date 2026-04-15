@@ -57,6 +57,8 @@
     "source=crucible-dev-claude,target=/home/vscode/.claude,type=volume",
     // SSH keys and config
     "source=crucible-dev-ssh,target=/home/vscode/.ssh,type=volume",
+    // GitHub CLI auth
+    "source=crucible-dev-gh,target=/home/vscode/.config/gh,type=volume",
     // MSBuild files for local library development
     "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.props,target=/mnt/data/Directory.Build.props,type=bind",
     "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.targets,target=/mnt/data/Directory.Build.targets,type=bind"

@@ -13,6 +13,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [Default Credentials](#default-credentials)
 - [Claude Code](#claude-code)
 - [Playwright Testing](#playwright-testing)
+- [GitHub CLI](#github-cli)
 - [Memory Optimization](#memory-optimization)
   - [Intelephense PHP Extension](#intelephense-php-extension)
   - [UI Development vs Production Mode](#ui-development-vs-production-mode)
@@ -218,6 +219,86 @@ All service URLs used by the test suite are defined in a single file:
 ```
 
 Edit this file to change ports or hostnames for your environment. The `.env` file is loaded by both the shell scripts (`run-tests.sh`, `setup.sh`) and the Playwright TypeScript configuration. If the file is missing, all URLs fall back to their default `localhost` values.
+## GitHub CLI
+
+The dev container includes the [GitHub CLI](https://cli.github.com/) (`gh`). The GitHub CLI's authentication is reused by the GitHub MCP server for agentic development.
+
+### Authentication
+
+GitHub CLI authentication is **persisted across container rebuilds** using a bind mount. Credentials stored via `gh auth login` are saved and automatically available inside the container after a rebuild.
+
+To authenticate for the first time:
+
+```bash
+gh auth login
+```
+
+Follow the prompts to authenticate via browser or token.
+
+### Recommended: Use a Fine-Grained Personal Access Token
+
+We strongly recommend authenticating with a **fine-grained personal access token (PAT)** rather than a full OAuth login. Fine-grained PATs let you limit exactly what `gh` can do on your behalf.
+
+**To create a fine-grained PAT:**
+
+1. Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**
+2. Click **Generate new token**
+3. Set an expiration date
+4. Under **Repository access**, select only the repositories relevant to your work
+5. Under **Permissions**, grant only what you need — a reasonable read-heavy baseline:
+
+| Permission | Access |
+|---|---|
+| Contents | Read-only |
+| Issues | Read and write |
+| Pull requests | Read and write |
+| Metadata | Read-only (required) |
+| Actions | Read-only |
+| Secrets | None |
+| Administration | None |
+
+6. Click **Generate token**, copy it, then run:
+
+```bash
+gh auth login --with-token <<< "your_token_here"
+```
+
+> Avoid granting `Administration`, `Secrets`, or `Members` permissions — these allow destructive or sensitive operations that are unlikely to be needed during normal development.
+
+### Claude Code Restrictions
+
+To prevent accidental or unintended destructive actions, Claude Code has been configured to **deny** the following `gh` commands in `.claude/settings.json`:
+
+**Raw API access**
+- `gh api` — bypasses all CLI safeguards; denied entirely
+
+**Delete operations**
+- `gh alias delete`, `gh cache delete`, `gh codespace delete`
+- `gh extension remove`, `gh gist delete`, `gh gpg-key delete`
+- `gh issue delete`, `gh label delete`
+- `gh project delete`, `gh project field-delete`, `gh project item-delete`, `gh project item-archive`
+- `gh release delete`, `gh release delete-asset`
+- `gh repo delete`, `gh repo deploy-key delete`
+- `gh run delete`, `gh secret delete`, `gh ssh-key delete`, `gh variable delete`
+
+**Repository state changes**
+- `gh repo archive`, `gh repo unarchive`
+- `gh repo rename`, `gh repo transfer`
+- `gh repo visibility` — prevents accidentally making a private repo public
+
+**Operational disruption**
+- `gh run cancel` — halts CI runs
+- `gh workflow disable` — disables automation
+- `gh issue transfer` — moves issues to other repos
+- `gh codespace rebuild` — destroys current codespace state
+
+**Credential operations**
+- `gh auth logout` — removes stored credentials
+- `gh config clear-cache` — wipes cached auth data
+
+Claude will be blocked from running any of the above and will need to ask you to run them manually if they are genuinely required.
+
+
 
 ## Memory Optimization
 
