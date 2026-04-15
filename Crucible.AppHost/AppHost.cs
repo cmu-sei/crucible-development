@@ -17,14 +17,14 @@ var keycloak = builder.AddKeycloak(postgres);
 var commonUiDev = builder.AddCommonUIDev(launchOptions);
 
 builder.AddPlayer(postgres, keycloak, launchOptions, commonUiDev);
-builder.AddCaster(postgres, keycloak, launchOptions, null);
-builder.AddAlloy(postgres, keycloak, launchOptions, null);
+builder.AddCaster(postgres, keycloak, launchOptions, commonUiDev);
+builder.AddAlloy(postgres, keycloak, launchOptions, commonUiDev);
 builder.AddTopoMojo(postgres, keycloak, launchOptions);
-builder.AddSteamfitter(postgres, keycloak, launchOptions, null);
-builder.AddCite(postgres, keycloak, launchOptions, null);
-builder.AddGallery(postgres, keycloak, launchOptions, null);
-builder.AddBlueprint(postgres, keycloak, launchOptions, null);
-builder.AddGameboard(postgres, keycloak, launchOptions, null);
+builder.AddSteamfitter(postgres, keycloak, launchOptions, commonUiDev);
+builder.AddCite(postgres, keycloak, launchOptions, commonUiDev);
+builder.AddGallery(postgres, keycloak, launchOptions, commonUiDev);
+builder.AddBlueprint(postgres, keycloak, launchOptions, commonUiDev);
+builder.AddGameboard(postgres, keycloak, launchOptions);
 builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
 builder.AddMisp(postgres, keycloak, launchOptions);
@@ -108,7 +108,7 @@ public static class BuilderExtensions
                             if (commonUiSetup != null)
                             {
                                 ctx.Args.Add("--configuration");
-                                ctx.Args.Add("local");
+                                ctx.Args.Add("localNPM");
                             }
                             ctx.Args.Add("--port");
                             ctx.Args.Add(endpoint.Property(EndpointProperty.TargetPort));
@@ -120,11 +120,11 @@ public static class BuilderExtensions
                 ui = ui.WithHttpEndpoint(port: port, isProxied: false);
                 if (commonUiSetup != null)
                 {
-                    ui = ui.WithArgs("--", "--configuration", "local");
+                    ui = ui.WithArgs("--", "--configuration", "localNPM");
                 }
             }
 
-            // Set up local common UI library: copy tsconfig.local.json and use --configuration local
+            // Set up local common UI library: copy tsconfig.local-npm.json and use --configuration local
             if (commonUiSetup != null)
             {
                 var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
@@ -134,7 +134,7 @@ public static class BuilderExtensions
                 {
                     var setupLocal = builder.AddExecutable($"{name}-setup-local", "bash", appRoot, [
                         "-c",
-                        $"npm link @cmusei/crucible-common && cp {builder.AppHostDirectory}/resources/tsconfig.local.json ."
+                        $"for i in 1 2 3; do npm link @cmusei/crucible-common && break || sleep 1; done && cp {builder.AppHostDirectory}/resources/tsconfig.local-npm.json ."
                     ])
                     .WithParentRelationship(installerResource);
 
@@ -288,7 +288,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, commonUiSetup: null);
+        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, commonUiSetup: commonUiSetup);
 
         builder.AddPlayerVm(postgres, keycloak, options, playerMode, commonUiSetup);
     }
@@ -751,7 +751,7 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    public static void AddGameboard(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
         var gameboardMode = ResolveMode(options.Gameboard, "Gameboard", options);
 
@@ -795,7 +795,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
 
-        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options.UseAspireProxy, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: commonUiSetup);
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options.UseAspireProxy, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: null);
 
         if (!IsEnabled(gameboardMode))
         {
