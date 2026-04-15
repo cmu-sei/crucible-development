@@ -925,9 +925,7 @@ public static class BuilderExtensions
             return;
 
         // Redis for MISP background jobs (without TLS for dev environment)
-        var mispRedisPassword = builder.AddParameter("misp-redis-password", secret: true);
-
-        var mispRedis = builder.AddRedis("misp-redis", password: mispRedisPassword)
+        var mispRedis = builder.AddRedis("misp-redis")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-redis");
 
@@ -955,7 +953,7 @@ public static class BuilderExtensions
             .WithEnvironment("MYSQL_PORT", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
             .WithEnvironment("REDIS_HOST", mispRedis.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("REDIS_PORT", "6380") // Use non-TLS port for dev environment
-            .WithEnvironment("REDIS_PASSWORD", mispRedisPassword)
+            .WithEnvironment("REDIS_PASSWORD", mispRedis.Resource.PasswordParameter)
             .WithEnvironment("HOSTNAME", "https://localhost:8444")
             .WithEnvironment("MISP_ADMIN_EMAIL", "admin@admin.test")
             .WithEnvironment("MISP_ADMIN_PASSPHRASE", "admin")
