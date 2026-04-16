@@ -971,6 +971,9 @@ public static class BuilderExtensions
             .WithEnvironment("OIDC_CLIENT_SECRET", "misp-client-secret")
             .WithEnvironment("OIDC_LOGOUT_URL", "http://localhost:8080/realms/crucible/protocol/openid-connect/logout");
 
+        // Training links JS panel — deployed to MISP webroot by customize_misp.sh
+        misp.WithBindMount("./resources/misp/custom_training_links.js", "/custom/files/custom_training_links.js", isReadOnly: true);
+
         // MISP modules with custom module mounted
         var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
             .WithDockerfile("./resources/misp", "Dockerfile.MispModules")

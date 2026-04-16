@@ -9,6 +9,8 @@
 set -e
 
 CAKE="/var/www/MISP/app/Console/cake"
+MOODLE_URL="${MOODLE_URL:-http://localhost:8081}"
+COMPETENCY_FRAMEWORK="${COMPETENCY_FRAMEWORK:-MITRE ATT&CK}"
 
 # OIDC settings (passed from AppHost environment)
 OIDC_PROVIDER_URL="${OIDC_PROVIDER_URL:-}"
@@ -20,6 +22,56 @@ OIDC_LOGOUT_URL="${OIDC_LOGOUT_URL:-}"
 log() {
     echo "CRUCIBLE | $1"
 }
+
+###############################################
+# Deploy custom training links JS panel
+###############################################
+log "Deploying custom training links JS..."
+JS_SRC="/custom/files/custom_training_links.js"
+JS_DEST="/var/www/MISP/app/webroot/js/custom_training_links.js"
+if [ -f "$JS_SRC" ]; then
+    # Replace placeholders (escape & in values since it's special in sed replacement)
+    ESCAPED_FRAMEWORK=$(printf '%s' "$COMPETENCY_FRAMEWORK" | sed 's/[&/\\]/\\&/g')
+    sed -e "s|%%MOODLE_URL%%|${MOODLE_URL}|g" \
+        -e "s|%%COMPETENCY_FRAMEWORK%%|${ESCAPED_FRAMEWORK}|g" \
+        "$JS_SRC" > "$JS_DEST"
+    chown www-data:www-data "$JS_DEST"
+
+    # Inject script tag into MISP layout if not already present
+    LAYOUT="/var/www/MISP/app/View/Layouts/default.ctp"
+    if [ -f "$LAYOUT" ] && ! grep -q "custom_training_links.js" "$LAYOUT"; then
+        sed -i 's|</body>|<script src="/js/custom_training_links.js"></script>\n</body>|' "$LAYOUT"
+        log "  Injected script tag into default layout"
+    fi
+else
+    log "  WARNING: $JS_SRC not found, skipping JS deployment"
+fi
+
+###############################################
+# Configure Content Security Policy for Moodle
+###############################################
+log "Configuring CSP for Moodle cross-origin requests..."
+# MISP's Security.csp setting allows JS to call Moodle API
+CONFIG_FILE="/var/www/MISP/app/Config/config.php"
+if [ -f "$CONFIG_FILE" ] && ! grep -q "connect-src" "$CONFIG_FILE"; then
+    # Add CSP connect-src to allow Moodle API calls from custom JS
+    php -r "
+        \$cfg = file_get_contents('$CONFIG_FILE');
+        if (strpos(\$cfg, \"'Security'\") !== false && strpos(\$cfg, 'connect-src') === false) {
+            // Add csp inside the Security array
+            \$cfg = preg_replace(
+                \"/('Security'\\s*=>\\s*array\\s*\\()/\",
+                \"\\\\1\\n        'csp' => array('connect-src' => \\\"'self' ${MOODLE_URL}\\\"),\",
+                \$cfg,
+                1
+            );
+            file_put_contents('$CONFIG_FILE', \$cfg);
+            echo 'CSP configured successfully';
+        } else {
+            echo 'Security array not found or CSP already set';
+        }
+    "
+fi
 
 ###############################################
 # Configure OIDC authentication via Keycloak
