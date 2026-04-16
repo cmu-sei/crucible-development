@@ -963,7 +963,13 @@ public static class BuilderExtensions
             .WithEnvironment("CRON_USER_ID", "1")
             .WithEnvironment("USERID", "33")
             .WithEnvironment("GROUPID", "33")
-            .WithEnvironment("MOODLE_URL", "http://localhost:8081");
+            .WithEnvironment("MOODLE_URL", "http://localhost:8081")
+            // OIDC authentication via Keycloak
+            .WithEnvironment("OIDC_PROVIDER_URL", "http://keycloak:8080/realms/crucible")
+            .WithEnvironment("OIDC_ISSUER", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("OIDC_CLIENT_ID", "misp")
+            .WithEnvironment("OIDC_CLIENT_SECRET", "misp-client-secret")
+            .WithEnvironment("OIDC_LOGOUT_URL", "http://localhost:8080/realms/crucible/protocol/openid-connect/logout");
 
         // MISP modules with custom module mounted
         var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
