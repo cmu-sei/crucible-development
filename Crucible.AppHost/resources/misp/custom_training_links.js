@@ -69,7 +69,7 @@
         content.style.cssText = 'padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;';
 
         if (techniques.length === 0) {
-            content.innerHTML = '<em style="color:#999;">No MITRE ATT&CK techniques found in this event.</em>';
+            content.innerHTML = '<em style="color:#555;">No MITRE ATT&CK techniques found in this event.</em>';
             container.appendChild(content);
             insertPanel(container);
             return;
@@ -100,7 +100,7 @@
                 link.target = '_blank';
                 link.rel = 'noopener';
                 link.title = 'Moodle training for ' + tid;
-                link.style.cssText = 'display:inline-block; padding:3px 8px; background:#ff8c00; color:#fff; ' +
+                link.style.cssText = 'display:inline-block; padding:3px 8px; background:#ff8c00; color:#000; ' +
                     'border-radius:3px; text-decoration:none; font-size:12px; font-weight:bold;';
                 link.textContent = tid;
                 link.onmouseover = function() { this.style.background = '#e67e00'; };
@@ -112,13 +112,13 @@
 
         if (withoutContent.length > 0) {
             var noContentDiv = document.createElement('div');
-            noContentDiv.style.cssText = 'color:#999; font-size:11px; margin-top:4px;';
+            noContentDiv.style.cssText = 'color:#555; font-size:11px; margin-top:4px;';
             noContentDiv.textContent = 'No training content yet: ' + withoutContent.join(', ');
             content.appendChild(noContentDiv);
         }
 
         var summary = document.createElement('div');
-        summary.style.cssText = 'font-size:11px; color:#666; margin-top:6px; border-top:1px solid #eee; padding-top:4px;';
+        summary.style.cssText = 'font-size:11px; color:#444; margin-top:6px; border-top:1px solid #ddd; padding-top:4px;';
         summary.textContent = techniques.length + ' technique' + (techniques.length > 1 ? 's' : '') +
             ' detected, ' + withContent.length + ' with training content';
         content.appendChild(summary);
