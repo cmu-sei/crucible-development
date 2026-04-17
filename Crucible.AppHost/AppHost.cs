@@ -258,7 +258,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy);
+        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser");
 
         builder.AddPlayerVm(postgres, keycloak, options, playerMode);
     }
@@ -414,7 +414,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy);
+        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy, distPath: "dist/browser");
 
         if (!IsEnabled(alloyMode))
         {
