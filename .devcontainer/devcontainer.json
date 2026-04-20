@@ -27,7 +27,8 @@
     },
     "ghcr.io/devcontainers/features/go:1": {},
     "ghcr.io/devcontainers/features/terraform:1": {},
-    "ghcr.io/devcontainers-extra/features/go-task:1": {}
+    "ghcr.io/devcontainers-extra/features/go-task:1": {},
+    "./features/desktop": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.
@@ -59,7 +60,8 @@
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
   "forwardPorts": [
     9003, // Xdebug
-    443 // Minikube ingress
+    443, // Minikube ingress
+    6080 // noVNC (Playwright headed browser)
   ],
   "customizations": {
     "vscode": {
@@ -76,6 +78,7 @@
         "shd101wyy.markdown-preview-enhanced",
         "pflannery.vscode-versionlens",
         "Anthropic.claude-code",
+        "ms-playwright.playwright",
         "AmazonWebServices.aws-toolkit-vscode",
         "bmewburn.vscode-intelephense-client",
         "xdebug.php-debug"
@@ -93,7 +96,13 @@
         // Enable when working on Moodle/PHP: Extensions > Intelephense > Enable (Workspace)
         "intelephense.enable": false,
         // Disable CloudFormation language server to save ~163MB memory (not used in this project)
-        "aws.cloudFormation.enable": false
+        "aws.cloudFormation.enable": false,
+        // Point Playwright extension to the test project
+        "playwright.reuseBrowser": true,
+        "playwright.env": {},
+        "playwright.configs": [
+          "/mnt/data/crucible/crucible-tests/playwright.config.ts"
+        ]
       }
     }
   }

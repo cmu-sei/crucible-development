@@ -1,0 +1,25 @@
+{
+  "id": "desktop",
+  "version": "1.0.0",
+  "name": "Desktop (conditional)",
+  "description": "On WSL: no-op (native WSLg). On non-WSL: installs VNC/noVNC/fluxbox via desktop-lite for on-demand headed browser support via scripts/desktop.sh.",
+  "init": true,
+  "entrypoint": "/usr/local/share/desktop-init.sh",
+  "options": {
+    "password": {
+      "type": "string",
+      "default": "crucible",
+      "description": "VNC password (non-WSL only)"
+    },
+    "webPort": {
+      "type": "string",
+      "default": "6080",
+      "description": "noVNC web port (non-WSL only)"
+    },
+    "vncPort": {
+      "type": "string",
+      "default": "5901",
+      "description": "VNC server port (non-WSL only)"
+    }
+  }
+}

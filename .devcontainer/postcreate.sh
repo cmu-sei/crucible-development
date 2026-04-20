@@ -22,7 +22,31 @@ DOTNET_EF_PID=$!
 (npm config -g set fund false && npm install -g @angular/cli@latest) &
 ANGULAR_PID=$!
 
-wait $DOTNET_EF_PID $ANGULAR_PID
+# Initialize Playwright test agents in the dev container
+PLAYWRIGHT_TESTING_DIR="/mnt/data/crucible/libraries/crucible-tests"
+if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
+  (
+    cd "$PLAYWRIGHT_TESTING_DIR" || exit 1
+
+    echo "Installing Playwright dependencies..."
+    npm install
+
+    echo "Installing Playwright browser binaries..."
+    npx playwright install chromium
+    npx playwright install firefox
+
+    echo "Initializing Playwright test agents..."
+    TMPDIR=$(mktemp -d)
+    cd "$TMPDIR"
+    npx --prefix "$PLAYWRIGHT_TESTING_DIR" playwright init-agents --loop=claude --config "$PLAYWRIGHT_TESTING_DIR/playwright.config.ts"
+    mkdir -p /workspaces/crucible-development/.claude/agents
+    cp "$TMPDIR/.claude/agents/"*.md /workspaces/crucible-development/.claude/agents/
+    rm -rf "$TMPDIR"
+  ) &
+  PLAYWRIGHT_AGENTS_PID=$!
+fi
+
+wait $DOTNET_EF_PID $ANGULAR_PID ${PLAYWRIGHT_AGENTS_PID:-}
 echo "Tool installs complete."
 
 # Generate dotnet dev-cert. Needed if not using aspire extension launch profiles
