@@ -210,6 +210,24 @@ cd /mnt/data/crucible/libraries/crucible-tests
 
 The script automatically checks that Keycloak and the target application are reachable before running tests. Use `--no-check` to skip these checks.
 
+### Headed Browser Support
+
+Headed mode (visible browser windows) works differently depending on your platform:
+
+**Windows/WSL** -- Headed browsers render natively to your Windows desktop via WSLg. No additional setup is required. The Playwright MCP server, `--headed` tests, and VS Code's Playwright extension all display browser windows on your host automatically.
+
+**Mac** -- There is no native display server, so a VNC-based virtual display is used. Start it on demand:
+
+```bash
+scripts/desktop.sh start   # Start VNC/noVNC on display :0
+scripts/desktop.sh status  # Check if services are running
+scripts/desktop.sh stop    # Stop VNC services
+```
+
+After starting, view the desktop at <http://localhost:6080> (password: `crucible`). Headed browsers (including the Playwright MCP server) will render to this virtual display.
+
+VNC services are **not** started automatically to conserve resources. They are only needed when running headed/UI mode tests or using the Playwright MCP server in headed mode.
+
 ### Configuring Service URLs
 
 All service URLs used by the test suite are defined in a single file:

@@ -20,9 +20,6 @@
       "kubectl": "latest",
       "helm": "latest"
     },
-    "ghcr.io/devcontainers/features/dotnet:2": {},
-    "ghcr.io/devcontainers/features/node:1": {},
-    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {},
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "./features/aspire": {
@@ -31,11 +28,7 @@
     "ghcr.io/devcontainers/features/go:1": {},
     "ghcr.io/devcontainers/features/terraform:1": {},
     "ghcr.io/devcontainers-extra/features/go-task:1": {},
-    "ghcr.io/devcontainers/features/desktop-lite:1": {
-      "password": "crucible",
-      "webPort": "6080",
-      "vncPort": "5901"
-    }
+    "./features/desktop": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.
