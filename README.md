@@ -19,6 +19,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [UI Development vs Production Mode](#ui-development-vs-production-mode)
 - [Database Seeding and Backup](#database-seeding-and-backup)
 - [Moodle Configuration](#moodle-configuration)
+- [Local Configuration Files](#local-configuration-files)
 - [Library Development](#library-development)
 
 ## Getting Started
@@ -835,6 +836,50 @@ Administration, Development, menu. The install process for this container instal
 `tool_userdebug` which allows site admins to easily toggle debug display via an icon added
 to the header just to the left of the user avatar in the upper right corner of the screen.
 This is the preferred method to enable display of debug messages inside of the browser.
+
+## Local Configuration Files
+
+Some configuration files are git-ignored to protect sensitive data or allow local customization. These files extend or override the default configuration.
+
+### Repository Configuration (`repos.json` and `repos.local.json`)
+
+Repository definitions are managed through two files:
+
+- **`scripts/repos.json`** - Public repository list (committed to git)
+- **`scripts/repos.local.json`** - Local/private repository list (git-ignored)
+
+The `repos.local.json` file allows you to add private repositories or override public ones without modifying the shared configuration. This is commonly used for:
+- Private internal plugins
+- Personal development forks
+- Third-party plugins that shouldn't be committed to the public repo
+
+**Format:**
+```json
+{
+  "groups": [
+    {
+      "name": "moodle",
+      "repos": [
+        {
+          "name": "plugin_name",
+          "url": "https://github.com/org/repo.git"
+        }
+      ]
+    }
+  ]
+}
+```
+
+See [Adding Private/Internal Repositories](#adding-privateinternal-repositories) for detailed usage.
+
+### Claude Code Settings (`.claude/settings.local.json`)
+
+Claude Code can be customized with local settings that won't be shared with the team:
+
+- **`.claude/settings.json`** - Shared team configuration (committed to git)
+- **`.claude/settings.local.json`** - Local personalization (git-ignored)
+
+Use this file to personalize Claude Code behavior without affecting other developers.
 
 ## Library Development
 
