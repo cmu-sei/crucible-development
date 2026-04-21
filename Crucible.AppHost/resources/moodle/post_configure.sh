@@ -196,6 +196,15 @@ configure_xapi() {
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=mbox --set=1
 }
 
+configure_lptmanager() {
+  echo "Configuring lptmanager LRS integration"
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_endpoint --set=http://host.docker.internal:9274/xapi
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_api_key --set=defaultkey
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_api_secret --set=defaultsecret
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=enable_lrs_sync --set=1
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=competency_iri_prefix --set=https://niccs.cisa.gov/workforce-development/nice-framework/ksat/
+}
+
 configure_site() {
   echo "Configuring Site"
   php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --set='';
@@ -392,6 +401,7 @@ execute_section "Site Configuration" configure_site
 configure_oauth2
 execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
+execute_section "lptmanager Configuration" configure_lptmanager
 execute_section "Crucible Configuration" configure_crucible
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
