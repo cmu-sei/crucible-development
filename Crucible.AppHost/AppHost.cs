@@ -5,6 +5,8 @@ using Microsoft.Extensions.Configuration;
 using Crucible.AppHost;
 using System.Diagnostics;
 using Aspire.Hosting.JavaScript;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -136,12 +138,12 @@ public static class BuilderExtensions
                 {
                     var setupLocal = builder.AddExecutable($"{name}-setup-local", "bash", appRoot, [
                         "-c",
-                        $"for i in 1 2 3; do npm link @cmusei/crucible-common && break || sleep 1; done && cp {builder.AppHostDirectory}/resources/tsconfig.local-npm.json ."
+                        $"npm link @cmusei/crucible-common && cp {builder.AppHostDirectory}/resources/tsconfig.local-npm.json ."
                     ])
                     .WithParentRelationship(installerResource);
 
                     setupLocal.Resource.Annotations.Add(new WaitAnnotation(installerResource, WaitType.WaitForCompletion));
-                    setupLocal.WaitForCompletion(commonUiSetup);
+                    setupLocal.WaitFor(commonUiSetup);
                     ui.WaitForCompletion(setupLocal);
                 }
             }
@@ -1028,23 +1030,23 @@ public static class BuilderExtensions
             return null;
         }
 
-        IResourceBuilder<ExecutableResource>? commonUiSetup = null;
         var commonUiRoot = "/mnt/data/crucible/libraries/Crucible.Common.Ui";
+        var markerFile = $"{builder.AppHostDirectory}/.common-ui-build-ready";
 
-        // install, build, and create global npm link (completes)
-        commonUiSetup = builder.AddExecutable("common-ui-setup", "bash", commonUiRoot, [
-            "-c",
-            "npm install && npx ng build crucible-common && npm link dist/@crucible-common"
-        ]);
+        builder.Services.AddHealthChecks().AddCheck("common-ui-healthy", () =>
+        {
+            return File.Exists(markerFile)
+                ? HealthCheckResult.Healthy()
+                : HealthCheckResult.Unhealthy("Initial build not yet complete");
+        });
 
-        // Long-running: watch for library changes and rebuild
-        builder.AddExecutable("common-ui-watch", "bash", commonUiRoot, [
+        var commonUi = builder.AddExecutable("common-ui-dev", "bash", commonUiRoot, [
             "-c",
-            "npx ng build crucible-common --watch"
+            $"rm -f {builder.AppHostDirectory}/.common-ui-build-ready && npm install && npx ng build crucible-common --watch | while IFS= read -r line; do echo \"$line\"; if echo \"$line\" | grep -q 'Compilation complete' && [ ! -f {builder.AppHostDirectory}/.common-ui-build-ready ]; then npm link dist/@crucible-common && touch {builder.AppHostDirectory}/.common-ui-build-ready; fi; done"
         ])
-        .WaitForCompletion(commonUiSetup);
+        .WithHealthCheck("common-ui-healthy");
 
-        return commonUiSetup;
+        return commonUi;
     }
 
     public static void AddSuperset(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
