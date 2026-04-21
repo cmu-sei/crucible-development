@@ -15,3 +15,10 @@ RUN sh -c 'if ls /usr/local/share/ca-certificates/custom/*.crt >/dev/null 2>&1; 
     echo "No extra CA certificates found, skipping update-ca-certificates"; \
     fi'
 
+# socat for forwarding localhost:8080 to Keycloak container (OIDC token exchange)
+RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends socat && rm -rf /var/lib/apt/lists/*
+
+# Post-init customization script — runs automatically after MISP's configure_misp.sh
+# via the /custom/files/customize_misp.sh hook in the entrypoint
+COPY customize_misp.sh /custom/files/customize_misp.sh
+RUN chmod +x /custom/files/customize_misp.sh

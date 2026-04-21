@@ -925,9 +925,7 @@ public static class BuilderExtensions
             return;
 
         // Redis for MISP background jobs (without TLS for dev environment)
-        var mispRedisPassword = builder.AddParameter("misp-redis-password", secret: true);
-
-        var mispRedis = builder.AddRedis("misp-redis", password: mispRedisPassword)
+        var mispRedis = builder.AddRedis("misp-redis")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-redis");
 
@@ -946,8 +944,9 @@ public static class BuilderExtensions
             .WithContainerName("misp")
             .WaitFor(mispMysql)
             .WaitFor(mispRedis)
-            .WithHttpsEndpoint(port: 8444, targetPort: 443, name: "https", isProxied: false)
+            .WithHttpEndpoint(port: 8444, targetPort: 80, name: "http", isProxied: false)
             .WithEnvironment("INIT", "true")
+            .WithEnvironment("DISABLE_SSL_REDIRECT", "true")
             .WithEnvironment("MYSQL_HOST", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("MYSQL_DATABASE", mispDb.Resource.DatabaseName)
             .WithEnvironment("MYSQL_USER", "root")
@@ -955,16 +954,25 @@ public static class BuilderExtensions
             .WithEnvironment("MYSQL_PORT", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
             .WithEnvironment("REDIS_HOST", mispRedis.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("REDIS_PORT", "6380") // Use non-TLS port for dev environment
-            .WithEnvironment("REDIS_PASSWORD", mispRedisPassword)
-            .WithEnvironment("HOSTNAME", "https://localhost:8444")
+            .WithEnvironment("REDIS_PASSWORD", mispRedis.Resource.PasswordParameter)
+            .WithEnvironment("HOSTNAME", "http://localhost:8444")
             .WithEnvironment("MISP_ADMIN_EMAIL", "admin@admin.test")
             .WithEnvironment("MISP_ADMIN_PASSPHRASE", "admin")
-            .WithEnvironment("BASE_URL", "https://localhost:8444")
+            .WithEnvironment("BASE_URL", "http://localhost:8444")
             .WithEnvironment("TIMEZONE", "UTC")
             .WithEnvironment("CRON_USER_ID", "1")
             .WithEnvironment("USERID", "33")
             .WithEnvironment("GROUPID", "33")
-            .WithEnvironment("MOODLE_URL", "http://localhost:8081");
+            .WithEnvironment("MOODLE_URL", "http://localhost:8081")
+            // OIDC authentication via Keycloak
+            .WithEnvironment("OIDC_PROVIDER_URL", "http://keycloak:8080/realms/crucible")
+            .WithEnvironment("OIDC_ISSUER", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("OIDC_CLIENT_ID", "misp")
+            .WithEnvironment("OIDC_CLIENT_SECRET", "misp-client-secret")
+            .WithEnvironment("OIDC_LOGOUT_URL", "http://localhost:8080/realms/crucible/protocol/openid-connect/logout");
+
+        // Training links JS panel — deployed to MISP webroot by customize_misp.sh
+        misp.WithBindMount("./resources/misp/custom_training_links.js", "/custom/files/custom_training_links.js", isReadOnly: true);
 
         // MISP modules with custom module mounted
         var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
