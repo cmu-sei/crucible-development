@@ -27,7 +27,8 @@
     },
     "ghcr.io/devcontainers/features/go:1": {},
     "ghcr.io/devcontainers/features/terraform:1": {},
-    "ghcr.io/devcontainers-extra/features/go-task:1": {}
+    "ghcr.io/devcontainers-extra/features/go-task:1": {},
+    "./features/desktop": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.
@@ -49,6 +50,8 @@
     "source=crucible-dev-claude,target=/home/vscode/.claude,type=volume",
     // SSH keys and config
     "source=crucible-dev-ssh,target=/home/vscode/.ssh,type=volume",
+    // GitHub CLI auth
+    "source=crucible-dev-gh,target=/home/vscode/.config/gh,type=volume",
     // MSBuild files for local library development
     "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.props,target=/mnt/data/Directory.Build.props,type=bind",
     "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.targets,target=/mnt/data/Directory.Build.targets,type=bind"
@@ -57,7 +60,8 @@
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
   "forwardPorts": [
     9003, // Xdebug
-    443 // Minikube ingress
+    443, // Minikube ingress
+    6080 // noVNC (Playwright headed browser)
   ],
   "customizations": {
     "vscode": {
@@ -74,6 +78,7 @@
         "shd101wyy.markdown-preview-enhanced",
         "pflannery.vscode-versionlens",
         "Anthropic.claude-code",
+        "ms-playwright.playwright",
         "AmazonWebServices.aws-toolkit-vscode",
         "bmewburn.vscode-intelephense-client",
         "xdebug.php-debug"
@@ -91,7 +96,13 @@
         // Enable when working on Moodle/PHP: Extensions > Intelephense > Enable (Workspace)
         "intelephense.enable": false,
         // Disable CloudFormation language server to save ~163MB memory (not used in this project)
-        "aws.cloudFormation.enable": false
+        "aws.cloudFormation.enable": false,
+        // Point Playwright extension to the test project
+        "playwright.reuseBrowser": true,
+        "playwright.env": {},
+        "playwright.configs": [
+          "/mnt/data/crucible/crucible-tests/playwright.config.ts"
+        ]
       }
     }
   }

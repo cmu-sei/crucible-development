@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "Crucible.AppHost/Crucible.AppHost.csproj"
+  }
+}

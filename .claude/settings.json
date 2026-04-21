@@ -7,6 +7,41 @@
   "permissions": {
     "additionalDirectories": [
       "/mnt/data/crucible"
+    ],
+    "deny": [
+      "Bash(gh api *)",
+      "Bash(gh alias delete *)",
+      "Bash(gh auth logout *)",
+      "Bash(gh cache delete *)",
+      "Bash(gh codespace delete *)",
+      "Bash(gh codespace rebuild *)",
+      "Bash(gh config clear-cache *)",
+      "Bash(gh extension remove *)",
+      "Bash(gh gist delete *)",
+      "Bash(gh gpg-key delete *)",
+      "Bash(gh issue delete *)",
+      "Bash(gh issue transfer *)",
+      "Bash(gh label delete *)",
+      "Bash(gh project close *)",
+      "Bash(gh project delete *)",
+      "Bash(gh project field-delete *)",
+      "Bash(gh project item-delete *)",
+      "Bash(gh project item-archive *)",
+      "Bash(gh release delete *)",
+      "Bash(gh release delete-asset *)",
+      "Bash(gh repo archive *)",
+      "Bash(gh repo delete *)",
+      "Bash(gh repo deploy-key delete *)",
+      "Bash(gh repo rename *)",
+      "Bash(gh repo transfer *)",
+      "Bash(gh repo unarchive *)",
+      "Bash(gh repo visibility *)",
+      "Bash(gh run cancel *)",
+      "Bash(gh run delete *)",
+      "Bash(gh secret delete *)",
+      "Bash(gh ssh-key delete *)",
+      "Bash(gh variable delete *)",
+      "Bash(gh workflow disable *)"
     ]
   }
 }

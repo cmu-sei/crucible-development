@@ -8,6 +8,7 @@ using Aspire.Hosting.JavaScript;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
+
 LaunchOptions launchOptions = builder.Configuration.GetSection("Launch").Get<LaunchOptions>() ?? new();
 
 LogLaunchOptions(launchOptions);
@@ -28,6 +29,7 @@ builder.AddGameboard(postgres, keycloak, launchOptions);
 builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
 builder.AddMisp(postgres, keycloak, launchOptions);
+builder.AddSuperset(postgres, keycloak, launchOptions);
 builder.AddDocs(launchOptions);
 
 builder.Build().Run();
@@ -147,7 +149,7 @@ public static class BuilderExtensions
         else
         {
             var buildCommand = string.IsNullOrEmpty(buildArgs) ? "npm run build" : $"npm run build {buildArgs}";
-            var serveProd = $"if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm install && {buildCommand}; fi; npx serve -s {distPath} -l {port}";
+            var serveProd = $"if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm install && {buildCommand}; fi; echo '{{\"cleanUrls\":false,\"rewrites\":[{{\"source\":\"**\",\"destination\":\"/index.html\"}}]}}' > {distPath}/serve.json && npx serve -c serve.json {distPath} -l {port}";
             ui = builder.AddExecutable(name, "bash", appRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: port, isProxied: false);
         }
@@ -288,7 +290,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, commonUiSetup: commonUiSetup);
+        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         builder.AddPlayerVm(postgres, keycloak, options, playerMode, commonUiSetup);
     }
@@ -444,7 +446,7 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy, commonUiSetup: commonUiSetup);
+        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(alloyMode))
         {
@@ -955,9 +957,7 @@ public static class BuilderExtensions
             return;
 
         // Redis for MISP background jobs (without TLS for dev environment)
-        var mispRedisPassword = builder.AddParameter("misp-redis-password", secret: true);
-
-        var mispRedis = builder.AddRedis("misp-redis", password: mispRedisPassword)
+        var mispRedis = builder.AddRedis("misp-redis")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-redis");
 
@@ -976,8 +976,9 @@ public static class BuilderExtensions
             .WithContainerName("misp")
             .WaitFor(mispMysql)
             .WaitFor(mispRedis)
-            .WithHttpsEndpoint(port: 8444, targetPort: 443, name: "https", isProxied: false)
+            .WithHttpEndpoint(port: 8444, targetPort: 80, name: "http", isProxied: false)
             .WithEnvironment("INIT", "true")
+            .WithEnvironment("DISABLE_SSL_REDIRECT", "true")
             .WithEnvironment("MYSQL_HOST", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("MYSQL_DATABASE", mispDb.Resource.DatabaseName)
             .WithEnvironment("MYSQL_USER", "root")
@@ -985,16 +986,25 @@ public static class BuilderExtensions
             .WithEnvironment("MYSQL_PORT", mispMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
             .WithEnvironment("REDIS_HOST", mispRedis.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("REDIS_PORT", "6380") // Use non-TLS port for dev environment
-            .WithEnvironment("REDIS_PASSWORD", mispRedisPassword)
-            .WithEnvironment("HOSTNAME", "https://localhost:8444")
+            .WithEnvironment("REDIS_PASSWORD", mispRedis.Resource.PasswordParameter)
+            .WithEnvironment("HOSTNAME", "http://localhost:8444")
             .WithEnvironment("MISP_ADMIN_EMAIL", "admin@admin.test")
             .WithEnvironment("MISP_ADMIN_PASSPHRASE", "admin")
-            .WithEnvironment("BASE_URL", "https://localhost:8444")
+            .WithEnvironment("BASE_URL", "http://localhost:8444")
             .WithEnvironment("TIMEZONE", "UTC")
             .WithEnvironment("CRON_USER_ID", "1")
             .WithEnvironment("USERID", "33")
             .WithEnvironment("GROUPID", "33")
-            .WithEnvironment("MOODLE_URL", "http://localhost:8081");
+            .WithEnvironment("MOODLE_URL", "http://localhost:8081")
+            // OIDC authentication via Keycloak
+            .WithEnvironment("OIDC_PROVIDER_URL", "http://keycloak:8080/realms/crucible")
+            .WithEnvironment("OIDC_ISSUER", "http://localhost:8080/realms/crucible")
+            .WithEnvironment("OIDC_CLIENT_ID", "misp")
+            .WithEnvironment("OIDC_CLIENT_SECRET", "misp-client-secret")
+            .WithEnvironment("OIDC_LOGOUT_URL", "http://localhost:8080/realms/crucible/protocol/openid-connect/logout");
+
+        // Training links JS panel — deployed to MISP webroot by customize_misp.sh
+        misp.WithBindMount("./resources/misp/custom_training_links.js", "/custom/files/custom_training_links.js", isReadOnly: true);
 
         // MISP modules with custom module mounted
         var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
@@ -1035,6 +1045,72 @@ public static class BuilderExtensions
         .WaitForCompletion(commonUiSetup);
 
         return commonUiSetup;
+    }
+
+    public static void AddSuperset(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        var supersetMode = ResolveMode(options.Superset, "Superset", options);
+
+        if (!options.AddAllApplications && !IsEnabled(supersetMode))
+            return;
+
+        var supersetDb = postgres.AddDatabase("supersetDb", "superset");
+
+        var superset = builder.AddContainer("superset", "superset-custom-image")
+            .WithDockerfile("./resources/superset", "Dockerfile.SupersetCustom")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("superset")
+            .WaitFor(postgres)
+            .WaitFor(keycloak)
+            .WithHttpEndpoint(port: 8088, targetPort: 8088)
+            .WithHttpHealthCheck(path: "/health", endpointName: "http")
+            .WithBindMount("./resources/superset/superset_config.py", "/app/superset_config.py", isReadOnly: true)
+            .WithBindMount("./resources/superset/init-superset.sh", "/app/init-superset.sh", isReadOnly: true)
+            .WithBindMount("./resources/superset/create-dashboard-orm.py", "/app/create-dashboard-orm.py", isReadOnly: true)
+            .WithEnvironment("SUPERSET_CONFIG_PATH", "/app/superset_config.py")
+            .WithEnvironment("SUPERSET_SECRET_KEY", "crucible-dev-superset-secret-key")
+            .WithEnvironment("KEYCLOAK_EXTERNAL_URL", "http://localhost:8080/realms/crucible")
+            .WithEnvironment(context =>
+            {
+                // Internal Keycloak URL for server-to-server communication
+                var keycloakEndpoint = keycloak.GetEndpoint("http");
+                var keycloakHost = keycloakEndpoint.Property(EndpointProperty.Host);
+                var keycloakPort = keycloakEndpoint.Property(EndpointProperty.Port);
+                context.EnvironmentVariables["KEYCLOAK_INTERNAL_URL"] =
+                    ReferenceExpression.Create($"http://{keycloakHost}:{keycloakPort}/realms/crucible");
+            })
+            .WithEnvironment("KEYCLOAK_CLIENT_ID", "superset")
+            .WithEnvironment("KEYCLOAK_CLIENT_SECRET", "superset-client-secret")
+            .WithEnvironment(context =>
+            {
+                var host = postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host);
+                var port = postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Port);
+                var user = postgres.Resource.UserNameReference;
+                var password = postgres.Resource.PasswordParameter;
+                var dbName = supersetDb.Resource.DatabaseName;
+
+                context.EnvironmentVariables["DATABASE_HOST"] = host;
+                context.EnvironmentVariables["DATABASE_PORT"] = port;
+                context.EnvironmentVariables["DATABASE_USER"] = user;
+                context.EnvironmentVariables["DATABASE_PASSWORD"] = password;
+                context.EnvironmentVariables["DATABASE_DB"] = dbName;
+
+                // Compose the SQLAlchemy URI for Superset metadata DB
+                context.EnvironmentVariables["SUPERSET_SQLALCHEMY_DATABASE_URI"] =
+                    ReferenceExpression.Create($"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbName}");
+
+                // LRsql database connection for xAPI analytics
+                context.EnvironmentVariables["LRSQL_SQLALCHEMY_URI"] =
+                    ReferenceExpression.Create($"postgresql+psycopg2://{user}:{password}@{host}:{port}/lrsql");
+            })
+            .WithEnvironment("SUPERSET_LOAD_EXAMPLES", "no")
+            .WithEnvironment("CYPRESS_CONFIG", "false")
+            .WithArgs("bash", "/app/init-superset.sh");
+
+        if (!IsEnabled(supersetMode))
+        {
+            superset.WithExplicitStart();
+        }
     }
 
     private static void ConfigureApiSecrets(

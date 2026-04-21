@@ -38,7 +38,7 @@ The MISP setup includes four containers:
 
 ### Accessing MISP
 
-- **Web Interface**: http://localhost:8082 or https://localhost:8443
+- **Web Interface**: http://localhost:8444
 - **Default Credentials**:
   - Email: `admin@admin.test`
   - Password: `admin`
@@ -85,7 +85,7 @@ Launch__Misp=true
 
 | Service | Container Name | Port | Purpose |
 |---------|---------------|------|---------|
-| MISP Core | misp | 8082 (HTTP), 8443 (HTTPS) | Main web application |
+| MISP Core | misp | 8444 | Main web application |
 | MISP Modules | misp-modules | 6666 | Expansion modules service |
 | MySQL | misp-mysql | 3306 | Database |
 | Redis | misp-redis | 6379 | Cache & jobs |
@@ -97,7 +97,7 @@ Launch__Misp=true
 Check the Aspire dashboard logs for the misp container. Common issues:
 - MySQL not ready (MISP will retry connection)
 - Redis not accessible
-- Port conflicts (8082 already in use)
+- Port conflicts (8444 already in use)
 
 ### Module not loading
 
