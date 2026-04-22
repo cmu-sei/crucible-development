@@ -91,8 +91,23 @@ public static class BuilderExtensions
         bool useAspireProxy,
         string distPath = "dist",
         string buildArgs = "",
-        IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+        IResourceBuilder<ExecutableResource>? commonUiSetup = null,
+        string? settingsConfigDir = "src/assets/config")
     {
+        if (settingsConfigDir != null)
+        {
+            var sharedTemplate = $"{builder.AppHostDirectory}/resources/ui/settings.shared.json.template";
+            var sharedLocal = $"{builder.AppHostDirectory}/resources/ui/settings.shared.json";
+            if (!File.Exists(sharedLocal))
+            {
+                File.Copy(sharedTemplate, sharedLocal);
+            }
+
+            var sharedTarget = $"{appRoot}/{settingsConfigDir}/settings.shared.json";
+            File.Delete(sharedTarget);
+            File.CreateSymbolicLink(sharedTarget, sharedLocal);
+        }
+
         IResourceBuilder<ExecutableResource> ui;
 
         if (mode == "dev")
@@ -128,7 +143,7 @@ public static class BuilderExtensions
                 }
             }
 
-            // Set up local common UI library: copy tsconfig.local-npm.json and use --configuration local
+            // Set up local common UI library: copy tsconfig.local-npm.json and use --configuration localNPM
             if (commonUiSetup != null)
             {
                 var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
@@ -290,7 +305,7 @@ public static class BuilderExtensions
 
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -333,13 +348,13 @@ public static class BuilderExtensions
 
         var vmUiRoot = "/mnt/data/crucible/player/vm.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
     }
@@ -396,7 +411,7 @@ public static class BuilderExtensions
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -446,7 +461,7 @@ public static class BuilderExtensions
 
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -492,7 +507,7 @@ public static class BuilderExtensions
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
 
         // Use AddAngularUI like other apps, but TopoMojo needs special dev mode args
         IResourceBuilder<ExecutableResource> topoUi;
@@ -584,7 +599,7 @@ public static class BuilderExtensions
 
         var steamfitterUiRoot = "/mnt/data/crucible/steamfitter/steamfitter.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -638,7 +653,7 @@ public static class BuilderExtensions
 
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -692,7 +707,7 @@ public static class BuilderExtensions
 
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -744,7 +759,7 @@ public static class BuilderExtensions
 
         var blueprintUiRoot = "/mnt/data/crucible/blueprint/blueprint.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -797,9 +812,9 @@ public static class BuilderExtensions
 
         var gameboardUiRoot = "/mnt/data/crucible/gameboard/gameboard-ui/";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
 
-        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options.UseAspireProxy, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: null);
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options.UseAspireProxy, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: null, settingsConfigDir: null);
 
         if (!IsEnabled(gameboardMode))
         {
