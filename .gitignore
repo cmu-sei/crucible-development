@@ -89,3 +89,9 @@ scripts/repos.local.json
 
 # Auto-generated xdebug filter (includes repos.local.json plugins)
 Crucible.AppHost/resources/moodle/xdebug_filter.php
+
+# Aspire build orchestration marker
+Crucible.AppHost/.common-ui-build-ready
+
+# Local shared UI settings (user-editable, symlinked into apps)
+Crucible.AppHost/resources/ui/settings.shared.json
