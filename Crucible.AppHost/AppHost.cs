@@ -958,7 +958,9 @@ public static class BuilderExtensions
             .WithEnvironment("LRSQL_DB_PASSWORD", postgres.Resource.PasswordParameter)
             .WithEnvironment("LRSQL_DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("LRSQL_DB_PORT", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Port))
-            .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName);
+            .WithEnvironment("LRSQL_DB_NAME", lrsqlDb.Resource.DatabaseName)
+            .WithEnvironment("LRSQL_AUTHORITY_URL", "http://localhost:9274")
+            .WithBindMount("resources/lrsql/authority.json.template", "/lrsql/config/authority.json.template", isReadOnly: true);
 
         if (!IsEnabled(lrsqlMode))
         {
