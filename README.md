@@ -20,6 +20,8 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
 - [Database Seeding and Backup](#database-seeding-and-backup)
 - [Moodle Configuration](#moodle-configuration)
 - [Library Development](#library-development)
+  - [.NET Libraries (crucible-common-dotnet)](#net-libraries-crucible-common-dotnet)
+  - [Angular Libraries (Crucible.Common.Ui)](#angular-libraries-cruciblecommonui)
 
 ## Getting Started
 
@@ -838,9 +840,11 @@ This is the preferred method to enable display of debug messages inside of the b
 
 ## Library Development
 
+### .NET Libraries (crucible-common-dotnet)
+
 The crucible-common-dotnet shared library is cloned into the `/mnt/data/crucible/libraries` directory. By default, APIs that use these libraries pull the published packages from NuGet. When developing or debugging these libraries, it is convenient to point the APIs to the local copy of the library. Developers can use the `scripts/toggle-local-library.sh` script to easily toggle between the default published NuGet packages and local Project References.
 
-### Usage
+#### Usage
 
 ```bash
 # Enable local library debugging (uses local EntityEvents source)
@@ -859,3 +863,44 @@ The crucible-common-dotnet shared library is cloned into the `/mnt/data/crucible
 A Directory.Build.props file is mounted to `/mnt/data`. This file defines a variable `<UseLocalEntityEvents>false</UseLocalEntityEvents>`. If you want to use the local version of the Crucible.Common.EntityEvents library, copy this file to `/mnt/data/crucible` and set `<UseLocalEntityEvents>true</UseLocalEntityEvents>`. This will tell MSBuild to use a local project reference instead of the NuGet package and this file will not get checked into git. The script automates this process for you.
 
 This pattern should be extended to the other libraries in crucible-common-dotnet as necessary in the future.
+
+### Angular Libraries (Crucible.Common.Ui)
+
+The `@cmusei/crucible-common` Angular library is cloned into `/mnt/data/crucible/libraries/Crucible.Common.Ui`. By default, Angular UIs install the published package from npm. To develop the library locally and have UIs use your local changes with live rebuilds, enable the `LinkCommonUI` launch option.
+
+#### Configuration
+
+Set `LinkCommonUI` to `true` in `appsettings.Development.json` (git-ignored):
+
+```json
+{
+  "Launch": {
+    "LinkCommonUI": true
+  }
+}
+```
+
+Or in a `.env` file:
+
+```bash
+Launch__LinkCommonUI=true
+```
+
+#### What it does
+
+When `LinkCommonUI` is enabled, the AppHost:
+
+1. **Builds and watches** the common library — runs `ng build crucible-common --watch`, which does an initial build then rebuilds automatically when source files change
+2. **Creates an npm link** — once the initial build completes, creates a global npm link to the built library
+3. **Links each UI** — each Angular UI runs `npm link @cmusei/crucible-common` to use the local build instead of the published npm package
+4. **Uses `--configuration localNPM`** — UIs are started with an Angular configuration that resolves the library from the local npm link
+
+The AppHost uses a health check to ensure UIs don't start until the library is fully built and linked, preventing race conditions during startup.
+
+#### Workflow
+
+1. Enable `LinkCommonUI` in your configuration
+2. Start the Aspire application (F5 or `aspire run`)
+3. Edit files in `/mnt/data/crucible/libraries/Crucible.Common.Ui`
+4. The watch process rebuilds the library automatically
+5. UIs using `ng serve` pick up the changes via the npm link
