@@ -1,1 +1,12 @@
-{}
+{
+  "HeaderBarSettings": {
+    "enabled": false,
+    "banner_background_color": "#007a33ff",
+    "classification_text": "UNCLASSIFIED",
+    "classification_text_color": "#ffffff",
+    "classification_text_fontsize": "14",
+    "message_text": "",
+    "message_text_color": "#ffff00",
+    "message_text_fontsize": "14"
+  }
+}
