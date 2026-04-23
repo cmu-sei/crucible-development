@@ -36,6 +36,36 @@
                 "${workspaceFolder}/Crucible.slnx"
             ],
             "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "aspire resource rebuild",
+            "type": "shell",
+            "command": "aspire",
+            "args": [
+                "resource",
+                "${input:aspireResource}",
+                "rebuild"
+            ],
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "aspireResource",
+            "type": "pickString",
+            "description": "Select the resource to rebuild",
+            "options": [
+                "player-api",
+                "player-vm-api",
+                "caster-api",
+                "alloy-api",
+                "topomojo",
+                "steamfitter-api",
+                "cite-api",
+                "gallery-api",
+                "blueprint-api",
+                "gameboard"
+            ]
         }
     ]
 }

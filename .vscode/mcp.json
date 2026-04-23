@@ -1,9 +1,9 @@
 {
   "servers": {
-    "playwright": {
+    "aspire": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
+      "command": "aspire",
+      "args": ["agent", "mcp"]
     }
   }
 }
