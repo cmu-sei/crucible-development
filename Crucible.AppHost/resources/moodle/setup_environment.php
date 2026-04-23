@@ -38,6 +38,10 @@ list($options, $unrecognized) = cli_get_params([
     'sessiontoken' => '',
     'region'          => '',
     'modelid'         => '',
+    'provider_api_key'  => '',
+    'provider_baseurl'  => '',
+    'provider_model'    => '',
+    'provider_name'     => '',
 ]);
 
 // Step dispatcher
@@ -62,6 +66,22 @@ switch ($options['step']) {
                 "  --modelid={$options['modelid']}");
         }
         configure_ai_bedrock($options);
+        break;
+
+    case 'configure_ai_provider':
+        $envApiKey = getenv('PROVIDER_API_KEY');
+        $envBaseURL = getenv('PROVIDER_BASEURL');
+        $envModel = getenv('PROVIDER_MODEL');
+
+        $options['provider_api_key'] = $options['provider_api_key'] ?: $envApiKey;
+        $options['provider_baseurl'] = $options['provider_baseurl'] ?: $envBaseURL;
+        $options['provider_model'] = $options['provider_model'] ?: $envModel;
+
+        if (empty($options['provider_api_key']) || empty($options['provider_baseurl'])) {
+            cli_error("Missing required parameters. Provide --provider_api_key and --provider_baseurl parameters, or set PROVIDER_API_KEY and PROVIDER_BASEURL environment variables.");
+        }
+
+        configure_ai_provider($options);
         break;
 
     default:
@@ -380,6 +400,111 @@ function configure_ai_bedrock(array $options): void
     cli_writeln("  - Actions configured: generate_text, summarise_text, explain_text, generate_image");
 
     // Purge caches
+    if (class_exists('\\cache_helper')) {
+        \cache_helper::purge_all();
+        cli_writeln("Purged caches.");
+    }
+}
+
+function configure_ai_provider(array $options): void
+{
+    global $CFG, $DB;
+
+    require_once($CFG->libdir . '/adminlib.php');
+    require_once($CFG->dirroot . '/user/lib.php');
+
+    \core\session\manager::set_user(get_admin());
+
+    $apiKey = $options['provider_api_key'];
+    $baseURL = rtrim($options['provider_baseurl'], '/');
+    $modelId = $options['provider_model'];
+    $providerName = $options['provider_name'] ?? getenv('PROVIDER_NAME') ?? 'AI Provider';
+
+    cli_writeln("Configuring AI provider: {$providerName}");
+
+    $endpoint = $baseURL . '/v1';
+
+    $existingProvider = $DB->get_record('ai_providers', [
+        'provider' => 'aiprovider_openai\\provider',
+        'name' => $providerName
+    ]);
+
+    $config = [
+        'aiprovider' => 'aiprovider_openai',
+        'name' => $providerName,
+        'endpoint' => $endpoint,
+        'apikey' => $apiKey,
+    ];
+
+    $actionconfig = [
+        'core_ai\\aiactions\\generate_text' => [
+            'enabled' => true,
+            'settings' => [
+                'model' => $modelId,
+                'endpoint' => $endpoint . '/chat/completions',
+                'systeminstruction' => 'Generate text based on the user request.'
+            ]
+        ],
+        'core_ai\\aiactions\\summarise_text' => [
+            'enabled' => true,
+            'settings' => [
+                'model' => $modelId,
+                'endpoint' => $endpoint . '/chat/completions',
+                'systeminstruction' => 'Summarize the provided text.'
+            ]
+        ],
+        'core_ai\\aiactions\\explain_text' => [
+            'enabled' => true,
+            'settings' => [
+                'model' => $modelId,
+                'endpoint' => $endpoint . '/chat/completions',
+                'systeminstruction' => 'Explain the provided text.'
+            ]
+        ],
+        'core_ai\\aiactions\\generate_image' => [
+            'enabled' => false,
+            'settings' => [
+                'model' => '',
+                'endpoint' => $endpoint . '/images/generations'
+            ]
+        ]
+    ];
+
+    if ($existingProvider) {
+        $config['updateandreturn'] = 'Update instance';
+        $config['id'] = $existingProvider->id;
+
+        $existingProvider->config = json_encode($config);
+        $existingProvider->actionconfig = json_encode($actionconfig);
+        $existingProvider->enabled = 1;
+
+        $DB->update_record('ai_providers', $existingProvider);
+        cli_writeln("Updated existing AI provider (ID: {$existingProvider->id})");
+    } else {
+        $config['createandreturn'] = 'Create instance';
+
+        $record = new stdClass();
+        $record->name = $providerName;
+        $record->provider = 'aiprovider_openai\\provider';
+        $record->enabled = 1;
+        $record->config = json_encode($config);
+        $record->actionconfig = json_encode($actionconfig);
+
+        $newid = $DB->insert_record('ai_providers', $record);
+        $record->id = $newid;
+        $record->actionconfig = json_encode($actionconfig);
+        $DB->update_record('ai_providers', $record);
+
+        cli_writeln("Created new AI provider (ID: {$newid})");
+    }
+
+    cli_writeln("AI provider configured successfully:");
+    cli_writeln("  - Provider Name: {$providerName}");
+    cli_writeln("  - Endpoint: {$endpoint}");
+    cli_writeln("  - Model: {$modelId}");
+    cli_writeln("  - API Key: " . substr($apiKey, 0, 8) . "...");
+    cli_writeln("  - Actions configured: generate_text, summarise_text, explain_text");
+
     if (class_exists('\\cache_helper')) {
         \cache_helper::purge_all();
         cli_writeln("Purged caches.");

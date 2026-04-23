@@ -1,0 +1,100 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "logLevel": "DEBUG",
+  "model": "@ai-sdk/main/llama-scout",
+  "small_model": "@ai-sdk/coder/qwen3-coder",
+  "provider": {
+    "amazon-bedrock": {
+      "options": {
+        "region": "us-east-1",
+        "profile": "default"
+      }
+    },
+    "@ai-sdk/main": {
+      "options": {
+        "name": "Main",
+        "apiKey": "your-api-key-here",
+        "baseURL": "https://your-llm-endpoint.example.com/api",
+        "includeUsage": false
+      },
+      "models": {
+        "llama-scout": {
+          "id": "RedHatAI/Llama-4-Scout-17B-16E-Instruct-quantized.w4a16",
+          "name": "Llama 4 Scout 17B",
+          "release_date": "2025-01-01",
+          "attachment": false,
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          }
+        }
+      }
+    },
+    "@ai-sdk/coder": {
+      "options": {
+        "name": "Coder",
+        "apiKey": "your-api-key-here",
+        "baseURL": "https://your-coder-endpoint.example.com/v1",
+        "includeUsage": false
+      },
+      "models": {
+        "qwen3-coder": {
+          "id": "Qwen/Qwen3-Coder-Next-FP8",
+          "name": "Qwen3 Coder Next (FP8)",
+          "release_date": "2025-01-01",
+          "attachment": false,
+          "reasoning": false,
+          "temperature": true,
+          "tool_call": true,
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          }
+        }
+      }
+    }
+  },
+  "permission": {
+    "external_directory": {
+      "/mnt/data/crucible/**": "allow"
+    },
+    "read": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "secrets.json": "deny"
+    },
+    "bash": {
+      "*": "ask",
+      "ls *": "allow",
+      "find *": "allow",
+      "grep *": "allow",
+      "head *": "allow",
+      "cat *": "allow",
+      "wc *": "allow",
+      "git status *": "allow",
+      "git log *": "allow",
+      "git diff *": "allow",
+      "git branch *": "allow",
+      "git show *": "allow",
+      "dotnet build *": "allow",
+      "npm run *": "allow",
+      "git commit *": "ask",
+      "git push *": "ask",
+      "git merge *": "ask",
+      "git checkout *": "ask",
+      "git reset *": "deny",
+      "rm -rf *": "deny"
+    },
+    "edit": {
+      "*": "ask"
+    },
+    "webfetch": "ask",
+    "glob": "allow",
+    "grep": "allow",
+    "task": "ask"
+  }
+}

@@ -9,6 +9,7 @@ mkdir -p /mnt/data/terraform/root
 sudo chown -R $(whoami): /home/vscode/.microsoft
 sudo chown -R $(whoami): /mnt/data/
 sudo chown -R $(whoami): /home/vscode/.claude
+sudo chown -R $(whoami): /home/vscode/.local/share/opencode
 
 scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh

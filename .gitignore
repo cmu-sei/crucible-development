@@ -89,3 +89,6 @@ scripts/repos.local.json
 
 # Auto-generated xdebug filter (includes repos.local.json plugins)
 Crucible.AppHost/resources/moodle/xdebug_filter.php
+
+# opencode user config (contains API keys)
+.opencode/opencode.json

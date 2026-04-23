@@ -376,6 +376,34 @@ configure_ai_bedrock() {
 }
 
 
+configure_ai_provider() {
+  log "Configuring AI provider..."
+
+  local PROVIDER_API_KEY="${PROVIDER_API_KEY:-}"
+  local PROVIDER_BASEURL="${PROVIDER_BASEURL:-}"
+  local PROVIDER_MODEL="${PROVIDER_MODEL:-}"
+  local PROVIDER_NAME="${PROVIDER_NAME:-AI Provider}"
+
+  if [ -z "$PROVIDER_API_KEY" ] || [ -z "$PROVIDER_BASEURL" ]; then
+    log "Provider credentials not set, skipping AI provider configuration"
+    return 0
+  fi
+
+  local out
+  if ! out=$(php /usr/local/bin/setup_environment.php \
+      --step=configure_ai_provider \
+      --provider_api_key="$PROVIDER_API_KEY" \
+      --provider_baseurl="$PROVIDER_BASEURL" \
+      --provider_model="$PROVIDER_MODEL" \
+      --provider_name="$PROVIDER_NAME" 2>&1); then
+    error "Configure AI Provider" "Failed to configure AI provider: $out"
+    return 1
+  fi
+  log "$out"
+
+  log "AI provider configuration completed"
+}
+
 create_course() {
   echo "Creating course"
   moosh course-list | grep -q 'Test Course' || moosh course-create 'Test Course';
@@ -402,6 +430,14 @@ if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_
     execute_section "Configure AWS Bedrock AI Provider" configure_ai_bedrock
 else
     log "AWS credentials not found, skipping Bedrock AI provider configuration"
+fi
+
+# Configure AI provider from opencode.json credentials
+if [ -n "$PROVIDER_API_KEY" ] && [ -n "$PROVIDER_BASEURL" ]; then
+    log "AI provider credentials found, configuring..."
+    execute_section "Configure AI Provider" configure_ai_provider
+else
+    log "AI provider credentials not found, skipping AI provider configuration"
 fi
 
 # On subsequent runs add admin user to the list of site admins

@@ -48,6 +48,8 @@
     "source=${localWorkspaceFolder}/.devcontainer/.aws,target=/home/vscode/.aws,type=bind",
     // Claude Code data (sessions, history, todos, etc.)
     "source=crucible-dev-claude,target=/home/vscode/.claude,type=volume",
+    // opencode data (sessions, database, etc.)
+    "source=crucible-dev-opencode,target=/home/vscode/.local/share/opencode,type=volume",
     // SSH keys and config
     "source=crucible-dev-ssh,target=/home/vscode/.ssh,type=volume",
     // GitHub CLI auth

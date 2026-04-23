@@ -827,6 +827,20 @@ public static class BuilderExtensions
                 .WithEnvironment("AWS_REGION", awsCreds["region"]);
         }
 
+        // Read and set AI provider credentials from opencode.json
+        var providerCreds = ReadAiProviderCredentials();
+        if (providerCreds != null)
+        {
+            if (providerCreds.ContainsKey("PROVIDER_API_KEY"))
+                moodle.WithEnvironment("PROVIDER_API_KEY", providerCreds["PROVIDER_API_KEY"]);
+            if (providerCreds.ContainsKey("PROVIDER_BASEURL"))
+                moodle.WithEnvironment("PROVIDER_BASEURL", providerCreds["PROVIDER_BASEURL"]);
+            if (providerCreds.ContainsKey("PROVIDER_MODEL"))
+                moodle.WithEnvironment("PROVIDER_MODEL", providerCreds["PROVIDER_MODEL"]);
+            if (providerCreds.ContainsKey("PROVIDER_NAME"))
+                moodle.WithEnvironment("PROVIDER_NAME", providerCreds["PROVIDER_NAME"]);
+        }
+
         moodle
             // Pass which Crucible services are enabled
             .WithEnvironment("CRUCIBLE_PLAYER_ENABLED", IsEnabled(playerMode) ? "1" : "0")
@@ -1215,6 +1229,92 @@ public static class BuilderExtensions
         }
 
         return creds;
+    }
+
+    private static Dictionary<string, string>? ReadAiProviderCredentials()
+    {
+        var opencodePath = Path.Combine(
+            Environment.GetEnvironmentVariable("HOME") ?? "",
+            "..",
+            "..",
+            "workspaces",
+            "crucible-development",
+            ".opencode",
+            "opencode.json");
+
+        if (!File.Exists(opencodePath))
+        {
+            Console.WriteLine("AI provider credentials file not found. AI provider environment variables will not be set.");
+            return null;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(opencodePath);
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("provider", out var provider))
+            {
+                Console.WriteLine("No provider section found in opencode.json. AI provider environment variables will not be set.");
+                return null;
+            }
+
+            var creds = new Dictionary<string, string>();
+
+            foreach (var providerElement in provider.EnumerateObject())
+            {
+                var providerName = providerElement.Name;
+
+                if (providerName == "amazon-bedrock")
+                    continue;
+
+                var options = providerElement.Value;
+
+                if (!options.TryGetProperty("options", out var opts))
+                    continue;
+
+                if (opts.TryGetProperty("apiKey", out var apiKey))
+                    creds["PROVIDER_API_KEY"] = apiKey.GetString() ?? "";
+
+                if (opts.TryGetProperty("baseURL", out var baseURL))
+                    creds["PROVIDER_BASEURL"] = baseURL.GetString() ?? "";
+
+                if (opts.TryGetProperty("name", out var name))
+                    creds["PROVIDER_NAME"] = name.GetString() ?? "";
+
+                if (options.TryGetProperty("models", out var models))
+                {
+                    foreach (var modelElement in models.EnumerateObject())
+                    {
+                        var model = modelElement.Value;
+
+                        if (model.TryGetProperty("id", out var modelId))
+                        {
+                            creds["PROVIDER_MODEL"] = modelId.GetString() ?? "";
+                            break;
+                        }
+                    }
+                }
+
+                if (creds.Count > 0)
+                    break;
+            }
+
+            if (creds.Count == 0)
+            {
+                Console.WriteLine("No custom AI providers found in opencode.json (excluding amazon-bedrock).");
+                return null;
+            }
+
+            Console.WriteLine($"AI provider credentials loaded from {opencodePath}");
+            return creds;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to parse AI provider credentials from {opencodePath}: {ex.Message}");
+            return null;
+        }
     }
 
     private class MoodlePlugin
