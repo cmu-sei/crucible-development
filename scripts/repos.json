@@ -44,10 +44,6 @@
         {
           "name": "Crucible-Github-Actions",
           "url": "https://github.com/cmu-sei/Crucible-Github-Actions"
-        },
-        {
-          "name": "crucible-tests",
-          "url": "https://github.com/cmu-sei/crucible-tests.git"
         }
       ]
     },
@@ -217,6 +213,10 @@
     {
       "name": "helm-charts",
       "url": "https://github.com/cmu-sei/helm-charts"
+    },
+    {
+      "name": "crucible-tests",
+      "url": "https://github.com/cmu-sei/crucible-tests.git"
     }
   ]
 }
