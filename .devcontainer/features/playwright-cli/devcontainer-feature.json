@@ -1,0 +1,14 @@
+{
+  "id": "playwright-cli",
+  "version": "1.0.0",
+  "name": "Playwright CLI",
+  "description": "Installs the Playwright CLI (@playwright/cli) globally via npm.",
+  "installsAfter": ["ghcr.io/devcontainers/features/node"],
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "latest",
+      "description": "Playwright CLI version to install"
+    }
+  }
+}

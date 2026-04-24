@@ -78,8 +78,9 @@ db-dumps/
 helm-charts/*/charts/*
 helm-charts/crucible/files/*.crt
 
-# playwright mcp logs
+# playwright logs
 .playwright-mcp/
+.playwright-cli/
 
 # Generated Playwright test agents
 .claude/agents/
