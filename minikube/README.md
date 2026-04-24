@@ -1,19 +1,19 @@
-# Helm Charts Deployment Scripts
+# Minikube Deployment
 
-This directory contains shell scripts for deploying and managing the Crucible stack on Minikube using Helm charts.
+This directory contains scripts and values files for deploying and managing the Crucible stack on Minikube using Helm charts.
 
-After running this script, you will have a full Crucible deployment that uses the values files in this directory and the umbrella charts for [crucible](https://github.com/cmu-sei/helm-charts/tree/main/charts/crucible), [crucible-infra](https://github.com/cmu-sei/helm-charts/tree/main/charts/crucible-infra), and [crucible-monitoring](https://github.com/cmu-sei/helm-charts/tree/main/charts/crucible-monitoring). The script will print URLs to access all of the web applications that are running in Minikube and configure port-forwarding to support browsing those sites from your host. **You will need to configure a hosts file entry on your host in order to browse the sites - configure the `crucible` hostname to resolve to `127.0.0.1` to allow the port-forwarding to handle traffic direction to the minikube ingress.**
+After running this script, you will have a full Crucible deployment that uses the values files in this directory and the umbrella charts for [crucible-apps](https://github.com/cmu-sei/helm-charts/tree/main/charts/crucible-apps), [crucible-infra](https://github.com/cmu-sei/helm-charts/tree/main/charts/crucible-infra), and [crucible-monitoring](https://github.com/cmu-sei/helm-charts/tree/main/charts/crucible-monitoring). The script will print URLs to access all of the web applications that are running in Minikube and configure port-forwarding to support browsing those sites from your host. **You will need to configure a hosts file entry on your host in order to browse the sites - configure the `crucible` hostname to resolve to `127.0.0.1` to allow the port-forwarding to handle traffic direction to the minikube ingress.**
 
 ## Scripts Overview
 
-### helm-deploy.sh
+### crucible-deploy.sh
 
 Deploys the Crucible stack to Minikube using Helm charts.
 
 **Purpose**: Main deployment script that orchestrates the installation of Crucible infrastructure, applications, and monitoring components to a Minikube cluster.
 
 **Key Features**:
-- Deploys three main chart releases in order: `crucible-infra` → `crucible` → `crucible-monitoring`
+- Deploys four chart releases in order: `crucible-operators` → `crucible-infra` → `crucible-apps` → `crucible-monitoring`
 - Manages Kubernetes secrets and ConfigMaps for TLS certificates and Keycloak realm configuration
 - Configures CoreDNS for internal hostname resolution
 - Sets up port forwarding for accessing web applications from the host
@@ -23,42 +23,39 @@ Deploys the Crucible stack to Minikube using Helm charts.
 
 **Options**:
 ```
---uninstall        Removes the Helm releases and associated resources
 --update-charts    Forces rebuilding Helm chart dependencies
 --purge            Deletes and recreates the minikube cluster before deploying
 --delete           Deletes and restarts minikube using cached artifacts
---no-install       Skips the install phase (useful for dependency building only)
+--local            Use local chart files instead of the SEI Helm repository
+--operators        Deploy crucible-operators chart (can be combined with other flags)
 --infra            Deploy crucible-infra chart (can be combined with other flags)
---apps             Deploy crucible (apps) chart (can be combined with other flags)
+--apps             Deploy crucible-apps chart (can be combined with other flags)
 --monitoring       Deploy crucible-monitoring chart (can be combined with other flags)
 ```
 
-**Default Behavior**: Without any chart selection flags, all three charts are deployed.
+**Default Behavior**: Without any chart selection flags, all four charts are deployed.
 
 **Examples**:
 ```bash
-# Deploy everything (infra + apps + monitoring)
-./helm-deploy.sh
+# Deploy everything (operators + infra + apps + monitoring)
+./crucible-deploy.sh
 
 # Deploy only infrastructure
-./helm-deploy.sh --infra
+./crucible-deploy.sh --infra
 
 # Deploy infrastructure and applications (skip monitoring)
-./helm-deploy.sh --infra --apps
+./crucible-deploy.sh --infra --apps
 
 # Rebuild chart dependencies and deploy
-./helm-deploy.sh --update-charts
+./crucible-deploy.sh --update-charts
 
 # Clean slate deployment (fresh minikube cluster)
-./helm-deploy.sh --purge
+./crucible-deploy.sh --purge
 
-# Uninstall Helm deployments
-./helm-deploy.sh --uninstall
 ```
 
 **Environment Variables**:
-- `HELM_UPGRADE_FLAGS` - Additional flags for helm upgrade/install (default: `--wait --timeout 15m --server-side=false`)
-- `MINIKUBE_FLAGS` - Additional flags for minikube start (default: `--mount-string=/mnt/data/terraform/root:/terraform/root --embed-certs`)
+- `HELM_DEPLOY_FLAGS` - Additional flags for helm upgrade/install (default: `--server-side=false`)
 
 **What It Does**:
 1. **Pre-deployment**:
@@ -66,23 +63,27 @@ Deploys the Crucible stack to Minikube using Helm charts.
    - Ensures Minikube cluster is running (starts it if not)
    - Stages custom CA certificates for Minikube nodes
 
-2. **Infrastructure Deployment** (`crucible-infra`):
+2. **Operator Deployment** (`crucible-operators`):
+   - Installs the Keycloak Operator and CloudNative-PG Operator
+   - Waits for operators to become available before proceeding
+
+3. **Infrastructure Deployment** (`crucible-infra`):
    - Creates TLS secrets from certificate files in `files/` directory
    - Creates CA certificate ConfigMaps for trust chain
-   - Deploys PostgreSQL, pgAdmin, ingress-nginx, and NFS storage provisioner
+   - Deploys CNPG PostgreSQL cluster, pgAdmin, ingress-nginx, and NFS storage provisioner
+   - Waits for CNPG PostgreSQL cluster to reach Ready state
    - Configures CoreDNS with ingress controller IP for hostname resolution
-   - Creates PostgreSQL credentials secret for use by application charts
 
-3. **Application Deployment** (`crucible`):
-   - Creates Keycloak realm ConfigMap from `files/crucible-realm.json`
-   - Deploys Keycloak, Player, Caster, Alloy, TopoMojo, Steamfitter, CITE, Gallery, Blueprint, and Gameboard services
+4. **Application Deployment** (`crucible-apps`):
+   - Deploys Keycloak (via Keycloak Operator CR), Player, Caster, Alloy, TopoMojo, Steamfitter, CITE, Gallery, Blueprint, Gameboard, and Moodle
+   - Auto-generates a Keycloak realm with OIDC client secrets
    - Configures each service with database connections and OAuth integration
 
-4. **Monitoring Deployment** (`crucible-monitoring`):
-   - Deploys Prometheus and Grafana for observability
+5. **Monitoring Deployment** (`crucible-monitoring`):
+   - Deploys Prometheus, Grafana, Loki, Tempo, and Grafana Alloy for observability
    - Configures Grafana with Keycloak authentication
 
-5. **Post-deployment**:
+6. **Post-deployment**:
    - Sets up port forwarding (host port 443 → ingress controller)
    - Prints web application URLs for easy navigation
    - Displays Keycloak admin and pgAdmin credentials
@@ -135,7 +136,7 @@ Builds a Docker image locally and loads it into the Minikube cache.
 - Build changes locally
 - Load them into Minikube
 - Update your Helm values file with `pullPolicy: Never`
-- Redeploy the service with `./helm-deploy.sh --apps`
+- Redeploy the service with `./crucible-deploy.sh --apps`
 
 ### clean-postgres.sh
 
@@ -177,15 +178,15 @@ Ensures all Minikube PostgreSQL data is deleted for a fresh deployment.
 ./clean-postgres.sh
 
 # Redeploy with fresh database
-./helm-deploy.sh --infra
+./crucible-deploy.sh --infra
 
 # Or uninstall first for complete clean slate
 ./clean-postgres.sh
-./helm-deploy.sh --uninstall && ./helm-deploy.sh
+./crucible-deploy.sh --uninstall && ./crucible-deploy.sh
 ```
 
 ## Additional Resources
 
-- **crucible-infra.values.yaml** - Infrastructure chart values (PostgreSQL, ingress, storage)
-- **crucible.values.yaml** - Application chart values (Keycloak, microservices)
-- **crucible-monitoring.values.yaml** - Monitoring chart values (Prometheus, Grafana)
+- **crucible-infra.values.yaml** - Infrastructure chart values (CNPG PostgreSQL, ingress-nginx, NFS storage)
+- **crucible-apps.values.yaml** - Application chart values (Keycloak, microservices)
+- **crucible-monitoring.values.yaml** - Monitoring chart values (Prometheus, Grafana, Loki, Tempo, Alloy)

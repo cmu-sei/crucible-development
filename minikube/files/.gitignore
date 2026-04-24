@@ -6,10 +6,6 @@
 *.p12
 *.pfx
 
-# Ignore realm configurations except the default crucible realm
-*realm*.json
-!crucible-realm.json
-
 # Ignore environment-specific files
 *.env
 *.local

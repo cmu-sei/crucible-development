@@ -55,7 +55,11 @@
     "source=crucible-dev-gh,target=/home/vscode/.config/gh,type=volume",
     // MSBuild files for local library development
     "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.props,target=/mnt/data/Directory.Build.props,type=bind",
-    "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.targets,target=/mnt/data/Directory.Build.targets,type=bind"
+    "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.targets,target=/mnt/data/Directory.Build.targets,type=bind",
+    // Minikube state config persists across container rebuilds
+    // Minikube feature uses a volume named minikube by default,
+    // but this conflicts if multiple containers on the system use minikube
+    "source=crucible-dev-minikube,target=/home/vscode/.minikube,type=volume"
   ],
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",

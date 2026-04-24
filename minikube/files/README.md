@@ -4,7 +4,7 @@ This directory stores configuration files and certificates for local development
 
 ## How It Works
 
-When you run `./helm-charts/helm-deploy.sh`, the script automatically:
+When you run `./minikube/crucible-deploy.sh`, the script automatically:
 
 1. Checks for certificate files in both `.devcontainer/certs` and `.devcontainer/dev-certs` directories
 2. **Creates Kubernetes secrets** from your certificate files using `kubectl`
@@ -53,7 +53,7 @@ ls -la /workspaces/crucible-development/.devcontainer/certs/
 
 ### Verify Secrets Were Created
 
-After running helm-deploy.sh, verify the secrets exist:
+After running crucible-deploy.sh, verify the secrets exist:
 
 ```bash
 # Check TLS secret
@@ -68,7 +68,7 @@ kubectl describe secret crucible-cert
 
 ### Manual Secret Creation
 
-If needed, you can manually create certificate secrets instead of relying on `helm-deploy.sh` to create them for you:
+If needed, you can manually create certificate secrets instead of relying on `crucible-deploy.sh` to create them for you:
 
 ```bash
 # TLS secret (adjust paths as needed)

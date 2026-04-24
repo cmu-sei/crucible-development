@@ -4,20 +4,16 @@
 global:
   # Domain name for the Crucible deployment
   domain: crucible
-
-  # Kubernetes namespace (use Release.Namespace in most cases)
   namespace: default
 
 # TLS Certificate Configuration
-# Reference existing Kubernetes secret created by helm-deploy.sh
 tls:
-  create: false  # Secret created by helm-deploy.sh before chart deployment
+  create: false # Secret created before chart deployment
   secretName: "crucible-cert"
 
 # Custom CA Certificates
-# Reference existing ConfigMap created by helm-deploy.sh
 caCerts:
-  create: false  # ConfigMap created by helm-deploy.sh before chart deployment
+  create: false # ConfigMap created before chart deployment
   configMapName: "crucible-ca-cert"
 
 # NFS Server Provisioner
@@ -27,6 +23,12 @@ nfs-server-provisioner:
   enabled: true
   persistence:
     enabled: true
+
+# NFS Persistent Volume Claims
+# namePrefix must match the crucible-apps release name so that
+# the app chart's {{ .Release.Name }}-*-nfs PVC references resolve
+nfs:
+  namePrefix: "crucible-apps"
 
 # Ingress NGINX Controller
 # Routes external traffic to services within the cluster
@@ -38,42 +40,33 @@ ingress-nginx:
       hsts: "false"
       annotations-risk-level: critical
     allowSnippetAnnotations: true
+    # Set the default TLS certificate so all ingresses get HTTPS without explicit TLS config
+    extraArgs:
+      default-ssl-certificate: "default/crucible-cert"
 
-# PostgreSQL Database
-# Primary database for Crucible applications
-# https://github.com/self-hosters-by-night/helm-charts/tree/main/charts/postgres
+# PostgreSQL via CloudNative-PG
+# Managed by the CNPG operator (install via crucible-operators chart first)
 postgresql:
   enabled: true
-  image:
-    registry: docker.io
-    repository: postgres
-    tag: "18.1"
-
-  # Environment variables for PostgreSQL
-  env:
-    vars:
-      # Default postgres superuser name
-      POSTGRES_USER: "postgres"
-      # Default postgres database
-      POSTGRES_DB: "postgres"
-      # Use a subdirectory so postgres owns the data dir without chmod on the mount root
-      PGDATA: "/var/lib/postgresql/18/docker/pgdata"
-
-    # Password is managed via secret (see templates/secret.yaml)
-    fromSecret:
-      POSTGRES_PASSWORD:
-        from: "{{ .Release.Name }}-postgresql"
-        key: postgres-password
-
-  # Persistent storage for database
+  instances: 1
   persistence:
-    enabled: true
-    annotations: {}
-    storageClass: null
-    accessModes:
-      - ReadWriteOnce
     size: "1Gi"
-    selector: null
+    storageClass: null
+  databases:
+    - name: keycloak
+    - name: alloy
+    - name: blueprint
+    - name: caster
+    - name: cite
+    - name: gallery
+    - name: gameboard
+    - name: player
+    - name: player_vm
+    - name: player_vm_logging
+      owner: player_vm
+    - name: steamfitter
+    - name: topomojo
+    - name: moodle
 
 # pgAdmin4
 # Web-based PostgreSQL administration tool
@@ -109,7 +102,7 @@ pgadmin4:
       crucible-postgres:
         Name: "Crucible PostgreSQL"
         Group: "Servers"
-        Host: "{{ .Release.Name }}-postgresql"
+        Host: "{{ .Release.Name }}-postgresql-rw"
         Port: "5432"
         Username: "postgres"
         SSLMode: "prefer"
