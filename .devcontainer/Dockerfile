@@ -123,4 +123,4 @@ USER vscode
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Install opencode
-RUN npm install -g opencode
+RUN npm install -g opencode-ai
