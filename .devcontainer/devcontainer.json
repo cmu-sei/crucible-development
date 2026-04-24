@@ -1,7 +1,7 @@
 {
   "name": "Crucible Development",
   "runArgs": ["--name", "crucible-dev", "--env-file", ".devcontainer/local-llm.env"],
-  "initializeCommand": "test -f .devcontainer/local-llm.env || touch .devcontainer/local-llm.env",
+  "initializeCommand": "test -f .devcontainer/local-llm.env || bash .devcontainer/setup-local-llm.sh",
   "build": {
     "dockerfile": "Dockerfile"
   },
