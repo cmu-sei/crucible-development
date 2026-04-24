@@ -193,7 +193,10 @@ configure_xapi() {
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=endpoint --set=http://host.docker.internal:9274/xapi
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=username --set=defaultkey
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=password --set=defaultsecret
-  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=mbox --set=1
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=mbox --set=0
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=send_name --set=1
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=send_user_idnumber --set=1
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=account_homepage --set=https://keycloak.dev.internal:8443/realms/crucible/
 }
 
 configure_site() {
