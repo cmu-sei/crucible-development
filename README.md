@@ -12,6 +12,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [Launch Profiles](#launch-profiles)
   - [Default Credentials](#default-credentials)
 - [Claude Code](#claude-code)
+- [Local LLM Provider (opencode & openclaude)](#local-llm-provider-opencode--openclaude)
 - [Playwright Testing](#playwright-testing)
 - [GitHub CLI](#github-cli)
 - [Memory Optimization](#memory-optimization)
@@ -146,6 +147,46 @@ The config file is mounted to `/home/vscode/.aws/config` inside the container an
 ### Usage
 
 Once the container is running with valid credentials, run `claude` in the terminal to start Claude Code.
+
+## Local LLM Provider (opencode & openclaude)
+
+The dev container includes two additional AI coding CLIs that support OpenAI-compatible LLM endpoints, allowing you to use on-premises or self-hosted models alongside Claude Code.
+
+| Tool | Provider Support | Tool Calling | Notes |
+|------|-----------------|-------------|-------|
+| `claude` | AWS Bedrock | Yes | Anthropic's official CLI |
+| `opencode` | Bedrock + OpenAI-compatible | Depends on server | Multi-provider, `/models` to switch |
+| `openclaude` | OpenAI-compatible | Yes | Claude Code UX on any backend |
+
+### Setup
+
+1. Copy the example env file:
+   ```bash
+   cp .devcontainer/local-llm.env.example .devcontainer/local-llm.env
+   ```
+
+2. Edit `.devcontainer/local-llm.env` with your provider details:
+   ```bash
+   LOCAL_LLM_BASE_URL=https://your-llm-endpoint.example.com/api
+   LOCAL_LLM_API_KEY=your-api-key-here
+   LOCAL_LLM_MODEL=Qwen/Qwen3-Coder-Next-FP8
+   ```
+
+3. Rebuild the dev container
+
+On first run, `opencode.json` is generated from the example template with your credentials injected. The `local-llm.env` file is gitignored.
+
+### Usage
+
+Shell aliases are configured automatically:
+
+- **`opencode`** — Launches opencode with local provider as default. Use `/models` to switch between local and Bedrock models during a session.
+- **`openclaude`** — Launches openclaude pointed at your local provider. Uses `LOCAL_LLM_BASE_URL`, `LOCAL_LLM_API_KEY`, and `LOCAL_LLM_MODEL` from your env file.
+- **`claude`** — Claude Code on Bedrock (unchanged, no alias).
+
+### Customizing opencode
+
+The opencode configuration lives at `.opencode/opencode.json` (gitignored). The checked-in example template is at `.opencode/opencode-example.json`. To add models, adjust permissions, or change provider settings, edit `opencode.json` directly. It will not be overwritten if it already exists.
 
 ## Playwright Testing
 

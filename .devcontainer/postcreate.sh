@@ -11,6 +11,19 @@ sudo chown -R $(whoami): /mnt/data/
 sudo chown -R $(whoami): /home/vscode/.claude
 sudo chown -R $(whoami): /home/vscode/.local/share/opencode
 
+# Generate opencode config from example template if it doesn't exist
+OPENCODE_CONFIG="/workspaces/crucible-development/.opencode/opencode.json"
+OPENCODE_EXAMPLE="/workspaces/crucible-development/.opencode/opencode-example.json"
+if [ ! -f "$OPENCODE_CONFIG" ] && [ -f "$OPENCODE_EXAMPLE" ]; then
+  if [ -n "${LOCAL_LLM_BASE_URL:-}" ] && [ -n "${LOCAL_LLM_API_KEY:-}" ]; then
+    envsubst < "$OPENCODE_EXAMPLE" > "$OPENCODE_CONFIG"
+    echo "Generated opencode.json from example template with local LLM provider."
+  else
+    cp "$OPENCODE_EXAMPLE" "$OPENCODE_CONFIG"
+    echo "Copied opencode-example.json to opencode.json (no local LLM configured)."
+  fi
+fi
+
 scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
 scripts/generate-xdebug-filter.sh

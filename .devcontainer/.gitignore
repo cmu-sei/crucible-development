@@ -2,3 +2,4 @@
 .aws/config
 .aws/sso*
 .aws/cli
+local-llm.env

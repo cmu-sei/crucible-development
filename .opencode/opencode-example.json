@@ -1,8 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "logLevel": "DEBUG",
-  "model": "@ai-sdk/main/llama-scout",
-  "small_model": "@ai-sdk/coder/qwen3-coder",
   "provider": {
     "amazon-bedrock": {
       "options": {
@@ -10,48 +7,20 @@
         "profile": "default"
       }
     },
-    "@ai-sdk/main": {
+    "local": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Local",
       "options": {
-        "name": "Main",
-        "apiKey": "your-api-key-here",
-        "baseURL": "https://your-llm-endpoint.example.com/api",
-        "includeUsage": false
-      },
-      "models": {
-        "llama-scout": {
-          "id": "RedHatAI/Llama-4-Scout-17B-16E-Instruct-quantized.w4a16",
-          "name": "Llama 4 Scout 17B",
-          "release_date": "2025-01-01",
-          "attachment": false,
-          "reasoning": false,
-          "temperature": true,
-          "tool_call": true,
-          "limit": {
-            "context": 131072,
-            "output": 32768
-          }
-        }
-      }
-    },
-    "@ai-sdk/coder": {
-      "options": {
-        "name": "Coder",
-        "apiKey": "your-api-key-here",
-        "baseURL": "https://your-llm-endpoint.example.com/api",
-        "includeUsage": false
+        "baseURL": "${LOCAL_LLM_BASE_URL}",
+        "apiKey": "${LOCAL_LLM_API_KEY}"
       },
       "models": {
         "qwen3-coder": {
-          "id": "Qwen/Qwen3-Coder-Next-FP8",
           "name": "Qwen3 Coder Next (FP8)",
-          "release_date": "2025-01-01",
-          "attachment": false,
-          "reasoning": false,
-          "temperature": true,
-          "tool_call": true,
+          "id": "Qwen/Qwen3-Coder-Next-FP8",
           "limit": {
             "context": 131072,
-            "output": 32768
+            "output": 16384
           }
         }
       }
