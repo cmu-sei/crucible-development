@@ -4,8 +4,19 @@
 
 claude update &
 opencode upgrade &
+npm update -g @gitlawb/openclaude &
 
 scripts/sync-repos.sh --pull
+
+# Shell aliases for local LLM provider support
+# Set LOCAL_LLM_BASE_URL, LOCAL_LLM_API_KEY, and LOCAL_LLM_MODEL in your
+# gitignored devcontainer.env or shell profile to enable these.
+if ! grep -q 'alias opencode=' ~/.zshrc 2>/dev/null; then
+cat >> ~/.zshrc <<'ALIASES'
+alias opencode='CLAUDE_CODE_USE_BEDROCK= AWS_REGION= command opencode'
+alias openclaude='CLAUDE_CODE_USE_OPENAI=1 OPENAI_BASE_URL=${LOCAL_LLM_BASE_URL} OPENAI_API_KEY=${LOCAL_LLM_API_KEY} OPENAI_MODEL=${LOCAL_LLM_MODEL} command openclaude'
+ALIASES
+fi
 
 # Welcome message
 cat <<'EOF'
