@@ -457,38 +457,6 @@ Settings are merged in order, with later files overriding earlier ones.
 
 The checked-in template at `Crucible.AppHost/resources/ui/settings.shared.json.template` is copied to `settings.shared.json` on first run. This local copy is git-ignored and symlinked into each UI's `src/assets/config/` directory. Edits are picked up immediately by `ng serve` — hard-refresh the browser (`Ctrl+Shift+R`) to see changes without restarting Aspire.
 
-### Configuration
-
-Edit `Crucible.AppHost/resources/ui/settings.shared.json`:
-
-```json
-{
-  "HeaderBarSettings": {
-    "enabled": true,
-    "banner_background_color": "#007a33ff",
-    "classification_text": "UNCLASSIFIED // FOR TRAINING USE ONLY",
-    "classification_text_color": "#ffffff",
-    "classification_text_fontsize": "14",
-    "message_text": "LOCAL DEVELOPMENT",
-    "message_text_color": "#ffff00",
-    "message_text_fontsize": "14"
-  }
-}
-```
-
-| Key | Description |
-|-----|-------------|
-| `enabled` | Show/hide the classification banner (`true`/`false`) |
-| `banner_background_color` | Banner background color (hex with alpha) |
-| `classification_text` | Primary classification text (e.g., `UNCLASSIFIED`) |
-| `classification_text_color` | Classification text color |
-| `classification_text_fontsize` | Classification text font size in px |
-| `message_text` | Secondary message below classification (empty string to hide) |
-| `message_text_color` | Message text color |
-| `message_text_fontsize` | Message text font size in px |
-
-To disable the banner, set `"enabled": false` or reset the file to `{}`.
-
 ## Database Seeding and Backup
 
 These examples use `blueprint` as the database name. Replace with the appropriate database name for your use case.
