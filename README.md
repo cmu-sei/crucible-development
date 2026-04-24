@@ -18,6 +18,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
 - [Memory Optimization](#memory-optimization)
   - [Intelephense PHP Extension](#intelephense-php-extension)
   - [UI Development vs Production Mode](#ui-development-vs-production-mode)
+- [Shared UI Settings](#shared-ui-settings)
 - [Database Seeding and Backup](#database-seeding-and-backup)
 - [Moodle Configuration](#moodle-configuration)
 - [Library Development](#library-development)
@@ -482,6 +483,20 @@ Moodle automatically configures itself based on which Crucible services are runn
 - Misp (threat intelligence platform)
 - PGAdmin (database administration)
 - Docs (MkDocs documentation server)
+
+## Shared UI Settings
+
+All Angular UIs (except Gameboard and TopoMojo) support a three-file settings merge chain:
+
+1. **`settings.json`** — App defaults (checked into each UI repo)
+2. **`settings.shared.json`** — Shared overrides applied to all UIs (your local file)
+3. **`settings.env.json`** — Aspire-injected per-app settings (generated at startup)
+
+Settings are merged in order, with later files overriding earlier ones.
+
+### How it works
+
+The checked-in template at `Crucible.AppHost/resources/ui/settings.shared.json.template` is copied to `settings.shared.json` on first run. This local copy is git-ignored and symlinked into each UI's `src/assets/config/` directory. Edits are picked up immediately by `ng serve` — hard-refresh the browser (`Ctrl+Shift+R`) to see changes without restarting Aspire.
 
 ## Database Seeding and Backup
 

@@ -74,12 +74,13 @@ Crucible.AppHost/resources/misp/certs/*.key
 # db dumps to restore into postgres
 db-dumps/
 
-# helm charts
-helm-charts/*/charts/*
-helm-charts/crucible/files/*.crt
+# minikube deployment
+minikube/*/charts/*
+minikube/crucible/files/*.crt
 
-# playwright mcp logs
+# playwright logs
 .playwright-mcp/
+.playwright-cli/
 
 # Generated Playwright test agents
 .claude/agents/

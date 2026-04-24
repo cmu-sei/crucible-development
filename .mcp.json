@@ -2,17 +2,7 @@
   "mcpServers": {
     "aspire": {
       "command": "aspire",
-      "args": [
-        "agent",
-        "mcp"
-      ]
-    },
-    "playwright": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@playwright/mcp@latest"
-      ]
+      "args": ["agent", "mcp"]
     },
     "playwright-test": {
       "command": "/mnt/data/crucible/crucible-tests/node_modules/.bin/playwright",

@@ -24,7 +24,7 @@ DOTNET_EF_PID=$!
 ANGULAR_PID=$!
 
 # Initialize Playwright test agents in the dev container
-PLAYWRIGHT_TESTING_DIR="/mnt/data/crucible/libraries/crucible-tests"
+PLAYWRIGHT_TESTING_DIR="/mnt/data/crucible/crucible-tests"
 if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
   (
     cd "$PLAYWRIGHT_TESTING_DIR" || exit 1
@@ -115,7 +115,6 @@ declare -A HELM_REPOS=(
   [prometheus-community]="https://prometheus-community.github.io/helm-charts"
   [ingress-nginx]="https://kubernetes.github.io/ingress-nginx"
   [kvaps]="https://kvaps.github.io/charts"
-  [selfhosters]="https://self-hosters-by-night.github.io/helm-charts"
   [runix]="https://helm.runix.net"
   [grafana]="https://grafana.github.io/helm-charts"
 )
