@@ -37,7 +37,7 @@
       "options": {
         "name": "Coder",
         "apiKey": "your-api-key-here",
-        "baseURL": "https://your-coder-endpoint.example.com/v1",
+        "baseURL": "https://your-llm-endpoint.example.com/api",
         "includeUsage": false
       },
       "models": {
