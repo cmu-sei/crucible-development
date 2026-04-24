@@ -137,3 +137,6 @@ for name in "${!HELM_REPOS[@]}"; do
   url="${HELM_REPOS[$name]}"
   helm repo add "$name" "$url"
 done
+
+# Prompt user to configure local LLM provider (skips if already configured)
+bash .devcontainer/setup-local-llm.sh
