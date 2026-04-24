@@ -122,5 +122,5 @@ USER vscode
 # Install Claude Code using native installer
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Install opencode and openclaude
-RUN npm install -g opencode-ai @gitlawb/openclaude
+# Install opencode
+RUN curl -fsSL https://opencode.ai/install | bash

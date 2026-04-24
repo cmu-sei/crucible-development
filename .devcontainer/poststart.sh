@@ -8,9 +8,15 @@ npm update -g @gitlawb/openclaude &
 
 scripts/sync-repos.sh --pull
 
+# Load local LLM provider env vars if configured
+LLM_ENV="/workspaces/crucible-development/.devcontainer/local-llm.env"
+if [ -f "$LLM_ENV" ] && [ -s "$LLM_ENV" ]; then
+  if ! grep -q "source.*local-llm.env" ~/.zshrc 2>/dev/null; then
+    echo "source $LLM_ENV" >> ~/.zshrc
+  fi
+fi
+
 # Shell aliases for local LLM provider support
-# Set LOCAL_LLM_BASE_URL, LOCAL_LLM_API_KEY, and LOCAL_LLM_MODEL in your
-# gitignored devcontainer.env or shell profile to enable these.
 if ! grep -q 'alias opencode=' ~/.zshrc 2>/dev/null; then
 cat >> ~/.zshrc <<'ALIASES'
 alias opencode='CLAUDE_CODE_USE_BEDROCK= AWS_REGION= command opencode'

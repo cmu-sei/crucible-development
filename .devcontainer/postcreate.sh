@@ -33,7 +33,7 @@ echo "Installing tools..."
 (dotnet tool install --global dotnet-ef --version 10) &
 DOTNET_EF_PID=$!
 
-(npm config -g set fund false && npm install -g @angular/cli@latest) &
+(npm config -g set fund false && npm install -g @angular/cli@latest @gitlawb/openclaude) &
 ANGULAR_PID=$!
 
 # Initialize Playwright test agents in the dev container
