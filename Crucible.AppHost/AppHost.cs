@@ -943,6 +943,7 @@ public static class BuilderExtensions
 
         var lrsql = builder.AddContainer("lrsql", "yetanalytics/lrsql")
             .WaitFor(postgres)
+            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("lrsql")
             .WithHttpEndpoint(port: 9274, targetPort: 8080)
             .WithHttpHealthCheck(endpointName: "http")
