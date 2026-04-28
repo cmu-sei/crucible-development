@@ -5,8 +5,8 @@ FROM erseco/alpine-moodle:v5.0.0
 
 USER root
 
-# Install Xdebug cleanly without apk update
-RUN apk add --no-cache php83-pecl-xdebug ca-certificates
+# Install Xdebug and ImageMagick for better image processing
+RUN apk add --no-cache php83-pecl-xdebug php83-pecl-imagick ca-certificates
 
 # Copy custom CA certificates
 COPY certs/ /usr/local/share/ca-certificates/custom/
