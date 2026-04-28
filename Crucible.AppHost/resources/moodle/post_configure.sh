@@ -407,6 +407,17 @@ else
     log "AWS credentials not found, skipping Bedrock AI provider configuration"
 fi
 
+# Increase PHP memory limit for large file operations (thumbnail generation)
+if ! grep -q '@ini_set("memory_limit"' /var/www/html/config.php; then
+    log "Adding memory_limit increase to config.php"
+    sed -i '/^\/\/ There is no php closing tag/i \
+\
+// Increase memory for large file operations (thumbnail generation, file uploads)\
+@ini_set("memory_limit", "1024M");' /var/www/html/config.php
+else
+    log "memory_limit already configured in config.php"
+fi
+
 # On subsequent runs add admin user to the list of site admins
 ADMINUSERID=$(moosh user-list | grep admin@localhost | sed -e "s/admin.*(\([0-9]\)),.*/\1/")
 if [ -n "$ADMINUSERID" ]; then
