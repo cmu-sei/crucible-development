@@ -418,6 +418,10 @@ else
     log "memory_limit already configured in config.php"
 fi
 
+# Configure Moodle to use ImageMagick for image processing (better PNG compatibility)
+log "Configuring ImageMagick as image processor"
+php /var/www/html/admin/cli/cfg.php --name=imageprocessor --set='\core\image\imagemagick_image_processor' 2>&1 | grep -v "Command line"
+
 # On subsequent runs add admin user to the list of site admins
 ADMINUSERID=$(moosh user-list | grep admin@localhost | sed -e "s/admin.*(\([0-9]\)),.*/\1/")
 if [ -n "$ADMINUSERID" ]; then
