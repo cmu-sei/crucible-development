@@ -59,9 +59,7 @@
     // Minikube state config persists across container rebuilds
     // Minikube feature uses a volume named minikube by default,
     // but this conflicts if multiple containers on the system use minikube
-    "source=crucible-dev-minikube,target=/home/vscode/.minikube,type=volume",
-    // Moodle data directory - persists uploads across container rebuilds
-    "source=crucible-dev-moodledata,target=/var/www/html/moodledata,type=volume"
+    "source=crucible-dev-minikube,target=/home/vscode/.minikube,type=volume"
   ],
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
