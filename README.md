@@ -499,6 +499,8 @@ debugging with xdebug. These files will be mounted alongside our repos under the
 `/mnt/data/crucible/moodle/moodle-core/`. The xAPI logstore plugin will also be configured
 automatically as will one default Moodle course with no activities within it.
 
+The Moodle data directory (`moodledata`) is mounted at `/var/www/moodledata` (outside the web root) and persists to `/mnt/data/crucible/moodle/moodledata` on the host. This directory stores user uploads, cache, sessions, and other runtime data and will persist across container rebuilds.
+
 ### Moodle Tasks
 
 Two Moodle task configurations are available:
