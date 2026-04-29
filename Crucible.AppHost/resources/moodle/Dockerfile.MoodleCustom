@@ -29,6 +29,11 @@ RUN mkdir -p /moodle/admin && \
     cp -pr /var/www/html/ai/classes /moodle/ai/ && \
     chown -R nobody:nobody /moodle
 
+# Create moodledata directory outside web root for bind mount
+RUN mkdir -p /var/www/moodledata && \
+    chown -R nobody:nobody /var/www/moodledata && \
+    chmod 777 /var/www/moodledata
+
 # Copy Xdebug configuration
 COPY xdebug.ini /etc/php83/conf.d/50_xdebug.ini
 

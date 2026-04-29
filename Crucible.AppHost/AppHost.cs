@@ -896,7 +896,8 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/lib", "/var/www/html/lib", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/provider", "/var/www/html/ai/provider", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false);
+            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false)
+            .WithBindMount("/mnt/data/crucible/moodle/moodledata", "/var/www/moodledata", isReadOnly: false);
 
         // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
         var moodlePlugins = ReadMoodlePlugins();
