@@ -846,10 +846,9 @@ public static class BuilderExtensions
         var blueprintMode = ResolveMode(options.Blueprint, "Blueprint", options);
         var gameboardMode = ResolveMode(options.Gameboard, "Gameboard", options);
 
-        var moodle = builder.AddContainer("moodle", "moodle-custom-image")
+        var moodle = builder.AddContainer("moodle", "moodle-custom:local")
             .WaitFor(postgres)
             .WaitFor(keycloak)
-            .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("moodle")
             .WithHttpEndpoint(port: 8081, targetPort: 8080)
@@ -992,8 +991,7 @@ public static class BuilderExtensions
         var mispDb = mispMysql.AddDatabase("mispDb", "misp");
 
         // MISP Core application with custom fast-startup image
-        var misp = builder.AddContainer("misp", "misp-custom-image")
-            .WithDockerfile("./resources/misp", "Dockerfile.MispCustom")
+        var misp = builder.AddContainer("misp", "misp-custom:local")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp")
             .WaitFor(mispMysql)
@@ -1029,8 +1027,7 @@ public static class BuilderExtensions
         misp.WithBindMount("./resources/misp/custom_training_links.js", "/custom/files/custom_training_links.js", isReadOnly: true);
 
         // MISP modules with custom module mounted
-        var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
-            .WithDockerfile("./resources/misp", "Dockerfile.MispModules")
+        var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom:local")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-modules")
             .WithHttpEndpoint(port: 8666, targetPort: 6666, isProxied: false)
@@ -1078,8 +1075,7 @@ public static class BuilderExtensions
 
         var supersetDb = postgres.AddDatabase("supersetDb", "superset");
 
-        var superset = builder.AddContainer("superset", "superset-custom-image")
-            .WithDockerfile("./resources/superset", "Dockerfile.SupersetCustom")
+        var superset = builder.AddContainer("superset", "superset-custom:local")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("superset")
             .WaitFor(postgres)

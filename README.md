@@ -501,6 +501,25 @@ automatically as will one default Moodle course with no activities within it.
 
 The Moodle data directory (`moodledata`) is mounted at `/var/www/moodledata` (outside the web root) and persists to `/mnt/data/crucible/moodle/moodledata` on the host. This directory stores user uploads, cache, sessions, and other runtime data and will persist across container rebuilds.
 
+### Rebuilding Custom Images
+
+Moodle (along with MISP and Superset) uses a custom Docker image. These images are pre-built once and reused on every Aspire restart for faster startup times. When you modify a Dockerfile or need to update the image, rebuild it using:
+
+```bash
+# Rebuild Moodle image only
+./scripts/rebuild-image.sh moodle
+
+# Rebuild other custom images
+./scripts/rebuild-image.sh misp
+./scripts/rebuild-image.sh misp-modules
+./scripts/rebuild-image.sh superset
+
+# Rebuild all custom images
+./scripts/rebuild-image.sh all
+```
+
+After rebuilding, restart Aspire to use the updated image. The moodledata directory persists independently of image rebuilds.
+
 ### Moodle Tasks
 
 Two Moodle task configurations are available:
