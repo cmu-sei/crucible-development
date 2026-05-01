@@ -303,6 +303,8 @@ public static class BuilderExtensions
             .WithEnvironment("SeedData__ApplicationTemplates__2__Icon", "assets/img/SP_Icon_Dashboard.png")
             .WithEnvironment("SeedData__ApplicationTemplates__2__Embeddable", "true");
 
+        ConfigureXApi(playerApi, "Player", "http://localhost:4300/api/", "http://localhost:4301/");
+
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
@@ -345,6 +347,8 @@ public static class BuilderExtensions
             .WithEnvironment("IdentityClient__ClientId", "player.vm.admin")
             .WithEnvironment("IdentityClient__UserName", "admin")
             .WithEnvironment("IdentityClient__Password", "admin");
+
+        ConfigureXApi(vmApi, "Player VM", "http://localhost:4302/api/", "http://localhost:4303/");
 
         var vmUiRoot = "/mnt/data/crucible/player/vm.ui";
 
