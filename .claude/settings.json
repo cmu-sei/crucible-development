@@ -8,6 +8,9 @@
     "additionalDirectories": [
       "/mnt/data/crucible"
     ],
+    "allow": [
+      "mcp__playwright-test__*"
+    ],
     "deny": [
       "Bash(gh api *)",
       "Bash(gh alias delete *)",
