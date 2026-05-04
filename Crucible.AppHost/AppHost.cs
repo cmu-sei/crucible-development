@@ -348,7 +348,7 @@ public static class BuilderExtensions
             .WithEnvironment("IdentityClient__UserName", "admin")
             .WithEnvironment("IdentityClient__Password", "admin");
 
-        ConfigureXApi(vmApi, "Player VM", "http://localhost:4302/api/", "http://localhost:4303/");
+        ConfigureXApi(vmApi, "Player VM", "http://localhost:4302", "http://localhost:4303/");
 
         var vmUiRoot = "/mnt/data/crucible/player/vm.ui";
 
@@ -1247,6 +1247,7 @@ public static class BuilderExtensions
             .WithEnvironment("XApiOptions__IssuerUrl", "https://localhost:8443/realms/crucible")
             .WithEnvironment("XApiOptions__ApiUrl", apiUrl)
             .WithEnvironment("XApiOptions__UiUrl", uiUrl)
+            .WithEnvironment("XApiOptions__PlayerApiUrl", "http://localhost:4300")
             .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
             .WithEnvironment("XApiOptions__Platform", platform);
     }

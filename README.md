@@ -457,6 +457,80 @@ Settings are merged in order, with later files overriding earlier ones.
 
 The checked-in template at `Crucible.AppHost/resources/ui/settings.shared.json.template` is copied to `settings.shared.json` on first run. This local copy is git-ignored and symlinked into each UI's `src/assets/config/` directory. Edits are picked up immediately by `ng serve` — hard-refresh the browser (`Ctrl+Shift+R`) to see changes without restarting Aspire.
 
+## Proxmox Configuration
+
+Crucible supports Proxmox as a hypervisor for VM-based exercises.
+
+### Quick Setup (Hyper-V on Windows)
+
+For development environments using Hyper-V, use the automated scripts in `scripts/`:
+
+1. **Create Proxmox VM in Hyper-V:**
+   ```powershell
+   .\scripts\create-proxmox-host-hyperv.ps1
+   ```
+   This creates a Proxmox VM with nested virtualization enabled and opens the console automatically. During installation:
+   - Use static IP: `172.22.69.122/24`
+   - Gateway: `172.22.69.1`
+   - DNS: `8.8.8.8`
+
+2. **Configure SSH access:**
+   ```bash
+   ./scripts/setup-proxmox-ssh.sh
+   ```
+
+3. **Create API token:**
+   ```bash
+   ./scripts/create-proxmox-api-token.sh
+   ```
+   Save the displayed token string.
+
+4. **Create a test VM:**
+   ```bash
+   PROXMOX_TOKEN="root@pam!crucible=<your-token>" ./scripts/create-proxmox-vm.sh
+   ```
+
+5. **Register VM in Player VM API:**
+   ```bash
+   ./scripts/create-vm-api-record.sh
+   ```
+
+### Manual Configuration
+
+Configuration is done via local (git-ignored) files:
+
+**Player VM API** - Edit `vm.api/src/Player.Vm.Api/appsettings.Development.json`:
+```json
+{
+  "Vsphere": {
+    "Hosts": [{ "Enabled": false }]
+  },
+  "Proxmox": {
+    "Enabled": true,
+    "Host": "172.22.69.122",
+    "Port": 8006,
+    "Token": "root@pam!crucible=<secret>"
+  }
+}
+```
+
+**Caster API** (Terraform provider) - Edit `caster.api/src/Caster.Api/appsettings.Development.json`:
+```json
+{
+  "Terraform": {
+    "EnvironmentVariables": {
+      "Direct": {
+        "PROXMOX_VE_ENDPOINT": "https://172.22.69.122:8006",
+        "PROXMOX_VE_API_TOKEN": "root@pam!crucible=<secret>",
+        "PROXMOX_VE_INSECURE": "true"
+      }
+    }
+  }
+}
+```
+
+Alternatively, set environment variables before starting Aspire (environment variables take precedence over appsettings).
+
 ## Database Seeding and Backup
 
 These examples use `blueprint` as the database name. Replace with the appropriate database name for your use case.
