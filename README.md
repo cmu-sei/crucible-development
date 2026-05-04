@@ -92,6 +92,20 @@ The default admin user credentials are:
 - **Username:** `admin`
 - **Password:** `admin`
 
+### Persistent Caches
+
+To speed up container rebuilds, several caches are stored in named Docker volumes and persist across rebuilds:
+
+- `crucible-dev-nuget` — NuGet package cache (`~/.nuget/packages`)
+- `crucible-dev-playwright` — Playwright browser binaries (`~/.cache/ms-playwright`)
+- `crucible-dev-npm` — npm cache (`~/.npm`)
+
+If one of these caches becomes corrupted or you need a fully clean rebuild, remove the volume(s) before rebuilding the dev container:
+
+```bash
+docker volume rm crucible-dev-nuget crucible-dev-playwright crucible-dev-npm
+```
+
 ## Claude Code
 
 The dev container includes [Claude Code](https://docs.anthropic.com/en/docs/claude-code), Anthropic's CLI for Claude, configured to use AWS Bedrock.  There are two setup methods that can be used to authenticate to AWS.  Select the one that fits your use case.
