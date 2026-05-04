@@ -29,7 +29,8 @@
     "ghcr.io/devcontainers/features/terraform:1": {},
     "ghcr.io/devcontainers-extra/features/go-task:1": {},
     "./features/desktop": {},
-    "./features/playwright-cli": {}
+    "./features/playwright-cli": {},
+    "./features/claude-code": {}
   },
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.
