@@ -1,9 +1,16 @@
 {
   "name": "Crucible Development",
-  "runArgs": ["--name", "crucible-dev"],
+  "runArgs": [
+    "--name",
+    "crucible-dev"
+  ],
   "build": {
     "dockerfile": "Dockerfile"
   },
+  // Features are ordered most-stable-first so that edits to a volatile
+  // feature don't invalidate the build cache for everything below it.
+  // Pinned-version and foundational runtimes come first; unpinned/"latest"
+  // tools come last.
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "configureZshAsDefaultShell": true
@@ -12,22 +19,22 @@
     "ghcr.io/devcontainers/features/dotnet:2": {
       "version": "8.0"
     },
-    "ghcr.io/devcontainers/features/node:1": {
-      "installYarnUsingApt": false
-    },
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
       "version": "1.35",
       "kubectl": "latest",
       "helm": "latest"
     },
-    "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {},
     "./features/aspire": {
       "version": "13.1.1"
     },
-    "ghcr.io/devcontainers/features/go:1": {},
     "ghcr.io/devcontainers/features/terraform:1": {},
+    "ghcr.io/devcontainers/features/go:1": {},
     "ghcr.io/devcontainers-extra/features/go-task:1": {},
+    "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "installYarnUsingApt": false
+    },
     "./features/desktop": {},
     "./features/playwright-cli": {},
     "./features/claude-code": {}
@@ -60,7 +67,13 @@
     // Minikube state config persists across container rebuilds
     // Minikube feature uses a volume named minikube by default,
     // but this conflicts if multiple containers on the system use minikube
-    "source=crucible-dev-minikube,target=/home/vscode/.minikube,type=volume"
+    "source=crucible-dev-minikube,target=/home/vscode/.minikube,type=volume",
+    // NuGet package cache persists across rebuilds
+    "source=crucible-dev-nuget,target=/home/vscode/.nuget/packages,type=volume",
+    // Playwright browser cache persists across rebuilds
+    "source=crucible-dev-playwright,target=/home/vscode/.cache/ms-playwright,type=volume",
+    // npm cache persists across rebuilds
+    "source=crucible-dev-npm,target=/home/vscode/.npm,type=volume"
   ],
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
