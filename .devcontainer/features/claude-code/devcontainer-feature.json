@@ -1,0 +1,7 @@
+{
+  "id": "claude-code",
+  "version": "1.0.0",
+  "name": "Claude Code",
+  "description": "Installs Claude Code via the official native installer for the remote user.",
+  "installsAfter": ["ghcr.io/devcontainers/features/common-utils"]
+}
