@@ -174,6 +174,10 @@ To use the agents, start Claude Code in the terminal and ask it to plan, generat
 - *"Generate tests for the Blueprint authentication section"* — invokes the **generator** to create spec files from the test plan
 - *"Fix the failing Blueprint tests"* — invokes the **healer** to debug and repair broken tests
 
+To generate comprehensive test coverage for an entire application in parallel, use a prompt like:
+
+> @"playwright-test-generator (agent)" look at the `<app>-test-plan.md` and generate all tests mentioned on the test plan with multiple agents running in parallel using the pre-established shared fixtures and authentication mechanism that other apps are using. Read and review the app documentation @/mnt/data/crucible/crucible-docs/docs/<app>/ for additional context on how the application works and to ensure maximum test coverage. Add more tests to the test plan as necessary for coverage.
+
 The agents require Crucible services to be running since they interact with the applications through a real browser.
 
 ### Running Tests from the Terminal
