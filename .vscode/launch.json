@@ -126,6 +126,16 @@
       }
     },
     {
+      "name": "Competition ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/competition.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
       "name": "Lrsql ",
       "type": "dotnet",
       "request": "launch",
@@ -339,6 +349,20 @@
       "debuggers": {
         "apphost": {
           "envFile": "${workspaceFolder}/.env/gameboard.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Competition (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/competition.env"
         }
       },
       "presentation": {
