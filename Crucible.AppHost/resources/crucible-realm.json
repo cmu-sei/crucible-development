@@ -1353,7 +1353,8 @@
         "profile",
         "roles",
         "email",
-        "player"
+        "player",
+        "player-vm"
       ],
       "optionalClientScopes": [
         "address",

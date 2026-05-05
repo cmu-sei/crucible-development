@@ -20,6 +20,12 @@ APPLICATION_ID="${APPLICATION_ID:-a3b4c5d6-8e9f-4f5a-1b2c-5f6a7b8c9d0e}"
 VM_ID="${VM_ID:-e9f0a1b2-6c7d-4d5e-9a0b-3e4f5a6b7c8d}"
 VM_NAME="${VM_NAME:-alpine-test}"
 PROXMOX_VM_ID="${PROXMOX_VM_ID:-101}"
+
+# If VM_ID looks like just a number, it's actually PROXMOX_VM_ID
+if [[ "$VM_ID" =~ ^[0-9]+$ ]]; then
+  PROXMOX_VM_ID="$VM_ID"
+  VM_ID="e9f0a1b2-6c7d-4d5e-9a0b-3e4f5a6b7c8d"
+fi
 PROXMOX_NODE="${PROXMOX_NODE:-pve}"
 KEYCLOAK_USER="${KEYCLOAK_USER:-admin}"
 KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-admin}"
