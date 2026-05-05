@@ -12,6 +12,7 @@ sudo chown -R $(whoami): /home/vscode/.claude
 sudo chown -R $(whoami): /home/vscode/.nuget
 sudo chown -R $(whoami): /home/vscode/.cache/ms-playwright
 sudo chown -R $(whoami): /home/vscode/.npm
+sudo chown -R $(whoami): /home/vscode/.config/gh
 
 scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
