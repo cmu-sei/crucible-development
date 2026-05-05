@@ -96,3 +96,4 @@ Crucible.AppHost/.common-ui-build-ready
 
 # Local shared UI settings (user-editable, symlinked into apps)
 Crucible.AppHost/resources/ui/settings.shared.json
+proxmox-ve_*.iso
