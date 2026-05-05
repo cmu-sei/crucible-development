@@ -81,6 +81,25 @@ else
 fi
 echo ""
 
+# Add Virtual Machines application to View
+echo "Adding Virtual Machines application to View..."
+APP_RESPONSE=$(timeout 5 curl -s -X POST "$PLAYER_API_URL/views/$VIEW_ID/applications" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -d "{
+    \"viewId\": \"$VIEW_ID\",
+    \"applicationTemplateId\": \"$APP_TEMPLATE_ID\"
+  }" 2>&1 || echo "timeout")
+
+if echo "$APP_RESPONSE" | grep -q "timeout\|409"; then
+  echo "✓ Application already added to view"
+elif echo "$APP_RESPONSE" | grep -q '"id"'; then
+  echo "✓ Application added to view"
+else
+  echo "⚠ Application response: $(echo "$APP_RESPONSE" | head -c 200)"
+fi
+echo ""
+
 # Create Team
 echo "Creating Team..."
 TEAM_RESPONSE=$(timeout 5 curl -s -X POST "$PLAYER_API_URL/teams" \
