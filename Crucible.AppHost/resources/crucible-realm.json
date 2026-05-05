@@ -1354,7 +1354,6 @@
         "roles",
         "email",
         "player",
-        "player-vm"
       ],
       "optionalClientScopes": [
         "address",
