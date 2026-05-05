@@ -303,7 +303,7 @@ public static class BuilderExtensions
             .WithEnvironment("SeedData__ApplicationTemplates__2__Icon", "assets/img/SP_Icon_Dashboard.png")
             .WithEnvironment("SeedData__ApplicationTemplates__2__Embeddable", "true");
 
-        ConfigureXApi(playerApi, "Player", "http://localhost:4300/api/", "http://localhost:4301/");
+        ConfigureXApi(playerApi, "Player", "http://localhost:4300/api", "http://localhost:4301");
 
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 

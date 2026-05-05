@@ -14,18 +14,11 @@ PLAYER_API_URL="${PLAYER_API_URL:-http://localhost:4300/api}"
 VM_API_URL="${VM_API_URL:-http://localhost:4302/api}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-https://localhost:8443}"
 VIEW_ID="${VIEW_ID:-b5e8f7a9-3c4d-4e5f-9a8b-1c2d3e4f5a6b}"
-TEAM_ID="${TEAM_ID:-d7f8a9b0-5e6f-4c5d-8b9a-2d3e4f5a6b7c}"
+TEAM_ID="${TEAM_ID:-c351c81c-ff56-4eb0-9eba-18f263f0b586}"
 APP_TEMPLATE_ID="${APP_TEMPLATE_ID:-00000000-0000-0000-0000-000000000301}"
 APPLICATION_ID="${APPLICATION_ID:-a3b4c5d6-8e9f-4f5a-1b2c-5f6a7b8c9d0e}"
-VM_ID="${VM_ID:-e9f0a1b2-6c7d-4d5e-9a0b-3e4f5a6b7c8d}"
 VM_NAME="${VM_NAME:-alpine-test}"
 PROXMOX_VM_ID="${PROXMOX_VM_ID:-101}"
-
-# If VM_ID looks like just a number, it's actually PROXMOX_VM_ID
-if [[ "$VM_ID" =~ ^[0-9]+$ ]]; then
-  PROXMOX_VM_ID="$VM_ID"
-  VM_ID="e9f0a1b2-6c7d-4d5e-9a0b-3e4f5a6b7c8d"
-fi
 PROXMOX_NODE="${PROXMOX_NODE:-pve}"
 KEYCLOAK_USER="${KEYCLOAK_USER:-admin}"
 KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-admin}"
@@ -33,7 +26,6 @@ KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-admin}"
 echo "Creating VM record in VM API"
 echo "  API URL: $VM_API_URL"
 echo "  Team ID: $TEAM_ID"
-echo "  VM ID: $VM_ID"
 echo "  VM Name: $VM_NAME"
 echo "  Proxmox VM ID: $PROXMOX_VM_ID"
 echo "  Proxmox Node: $PROXMOX_NODE"
@@ -44,7 +36,7 @@ echo ""
 echo "Obtaining auth token..."
 TOKEN_RESPONSE=$(curl -k -s -X POST "$KEYCLOAK_URL/realms/crucible/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=player.ui" \
+  -d "client_id=player.vm.admin" \
   -d "grant_type=password" \
   -d "username=$KEYCLOAK_USER" \
   -d "password=$KEYCLOAK_PASSWORD")
@@ -58,6 +50,11 @@ if [ -z "$ACCESS_TOKEN" ]; then
 fi
 
 echo "✓ Token obtained"
+echo ""
+
+# Generate new UUID for VM
+VM_ID=$(cat /proc/sys/kernel/random/uuid)
+echo "Generated VM ID: $VM_ID"
 echo ""
 
 # Create View if it doesn't exist
