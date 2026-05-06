@@ -115,13 +115,3 @@ EOF
 RUN echo '' >> /home/vscode/.zshrc && \
     echo '# GitHub MCP token from gh CLI' >> /home/vscode/.zshrc && \
     echo 'export GITHUB_PERSONAL_ACCESS_TOKEN=$(gh auth token 2>/dev/null)' >> /home/vscode/.zshrc
-
-# Switch back to vscode user
-USER vscode
-
-# Install Claude Code using native installer
-RUN curl -fsSL https://claude.ai/install.sh | bash
-
-# Install opencode (installer adds PATH to .bashrc; add to .zshrc for zsh shells)
-RUN curl -fsSL https://opencode.ai/install | bash \
-    && echo 'export PATH=/home/vscode/.opencode/bin:$PATH' >> /home/vscode/.zshrc

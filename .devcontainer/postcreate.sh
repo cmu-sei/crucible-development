@@ -10,6 +10,10 @@ sudo chown -R $(whoami): /home/vscode/.microsoft
 sudo chown -R $(whoami): /mnt/data/
 sudo chown -R $(whoami): /home/vscode/.claude
 sudo chown -R $(whoami): /home/vscode/.local/share/opencode
+sudo chown -R $(whoami): /home/vscode/.nuget
+sudo chown -R $(whoami): /home/vscode/.cache/ms-playwright
+sudo chown -R $(whoami): /home/vscode/.npm
+sudo chown -R $(whoami): /home/vscode/.config/gh
 
 scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
@@ -32,6 +36,8 @@ if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
     echo "Installing Playwright dependencies..."
     npm install
 
+    # Browser binaries install into ~/.cache/ms-playwright, which is a named
+    # volume so these persist across rebuilds.
     echo "Installing Playwright browser binaries..."
     npx playwright install chromium
     npx playwright install firefox
@@ -40,8 +46,9 @@ if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
     TMPDIR=$(mktemp -d)
     cd "$TMPDIR"
     npx --prefix "$PLAYWRIGHT_TESTING_DIR" playwright init-agents --loop=claude --config "$PLAYWRIGHT_TESTING_DIR/playwright.config.ts"
-    mkdir -p /workspaces/crucible-development/.claude/agents
-    cp "$TMPDIR/.claude/agents/"*.md /workspaces/crucible-development/.claude/agents/
+    AGENTS_DIR="/workspaces/crucible-development/.claude/agents"
+    mkdir -p "$AGENTS_DIR"
+    cp "$TMPDIR/.claude/agents/"*.md "$AGENTS_DIR/"
     rm -rf "$TMPDIR"
   ) &
   PLAYWRIGHT_AGENTS_PID=$!
