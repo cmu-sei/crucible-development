@@ -307,7 +307,7 @@ public static class BuilderExtensions
 
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        CopyUiSettingsWithXApi(builder.AppHostDirectory, "player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", xApiEnabled: true);
 
         var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -657,7 +657,7 @@ public static class BuilderExtensions
 
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        CopyUiSettingsWithXApi(builder.AppHostDirectory, "cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", xApiEnabled: true);
 
         var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -711,7 +711,7 @@ public static class BuilderExtensions
 
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        CopyUiSettingsWithXApi(builder.AppHostDirectory, "gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", xApiEnabled: true);
 
         var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -1249,6 +1249,31 @@ public static class BuilderExtensions
             .WithEnvironment("XApiOptions__UiUrl", uiUrl)
             .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
             .WithEnvironment("XApiOptions__Platform", platform);
+    }
+
+    private static void CopyUiSettingsWithXApi(string appHostDir, string settingsFileName, string targetPath, bool xApiEnabled)
+    {
+        var sourcePath = $"{appHostDir}/resources/ui/settings/{settingsFileName}";
+        var json = File.ReadAllText(sourcePath);
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        using var stream = new MemoryStream();
+        using var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions { Indented = true });
+
+        writer.WriteStartObject();
+
+        // Copy all existing properties
+        foreach (var property in doc.RootElement.EnumerateObject())
+        {
+            property.WriteTo(writer);
+        }
+
+        // Add or override XApiEnabled
+        writer.WriteBoolean("XApiEnabled", xApiEnabled);
+
+        writer.WriteEndObject();
+        writer.Flush();
+
+        File.WriteAllBytes(targetPath, stream.ToArray());
     }
 
     private static Dictionary<string, string>? ReadAwsCredentials()
