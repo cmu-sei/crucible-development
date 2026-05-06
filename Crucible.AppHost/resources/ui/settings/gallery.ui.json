@@ -16,5 +16,6 @@
   "AppTopBarText": "Gallery  -  Exercise Information Sharing",
   "AppTopBarImage": "/assets/img/monitor-dashboard-white.png",
   "IsEmailActive": false,
-  "useAccessTokenExpirationRedirect": true
+  "useAccessTokenExpirationRedirect": true,
+  "XApiEnabled": true
 }

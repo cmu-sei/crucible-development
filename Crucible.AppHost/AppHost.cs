@@ -657,7 +657,7 @@ public static class BuilderExtensions
 
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
 
-        CopyUiSettingsWithXApi(builder.AppHostDirectory, "cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", xApiEnabled: true);
+        CopyUiSettingsWithXApi(builder.AppHostDirectory, "cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", xApiEnabled: IsEnabled(lrsqlMode));
 
         var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -711,7 +711,7 @@ public static class BuilderExtensions
 
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
 
-        CopyUiSettingsWithXApi(builder.AppHostDirectory, "gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", xApiEnabled: true);
+        CopyUiSettingsWithXApi(builder.AppHostDirectory, "gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", xApiEnabled: IsEnabled(lrsqlMode));
 
         var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 

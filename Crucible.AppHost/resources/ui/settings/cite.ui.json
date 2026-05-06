@@ -15,5 +15,6 @@
   "AppTopBarHexTextColor": "#FFFFFF",
   "AppTopBarText": "CITE - Collaborative Incident Threat Evaluator",
   "AppTopBarImage": "/assets/img/account-group-white.png",
-  "useAccessTokenExpirationRedirect": true
+  "useAccessTokenExpirationRedirect": true,
+  "XApiEnabled": true
 }
