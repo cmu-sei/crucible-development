@@ -1247,7 +1247,6 @@ public static class BuilderExtensions
             .WithEnvironment("XApiOptions__IssuerUrl", "https://localhost:8443/realms/crucible")
             .WithEnvironment("XApiOptions__ApiUrl", apiUrl)
             .WithEnvironment("XApiOptions__UiUrl", uiUrl)
-            .WithEnvironment("XApiOptions__PlayerApiUrl", "http://localhost:4300")
             .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
             .WithEnvironment("XApiOptions__Platform", platform);
     }
