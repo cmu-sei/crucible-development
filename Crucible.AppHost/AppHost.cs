@@ -603,7 +603,7 @@ public static class BuilderExtensions
 
         var steamfitterUiRoot = "/mnt/data/crucible/steamfitter/steamfitter.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        CopyUiSettingsWithXApi(builder.AppHostDirectory, "steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", xApiEnabled: IsEnabled(lrsqlMode));
 
         var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -763,7 +763,7 @@ public static class BuilderExtensions
 
         var blueprintUiRoot = "/mnt/data/crucible/blueprint/blueprint.ui";
 
-        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        CopyUiSettingsWithXApi(builder.AppHostDirectory, "blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", xApiEnabled: IsEnabled(lrsqlMode));
 
         var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 

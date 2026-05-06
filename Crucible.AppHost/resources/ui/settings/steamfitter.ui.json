@@ -12,5 +12,6 @@
   },
   "AppTitle": "Steamfitter",
   "AppTopBarHexColor": "#BB0000",
-  "AppTopBarHexTextColor": "#FFFFFF"
+  "AppTopBarHexTextColor": "#FFFFFF",
+  "XApiEnabled": true
 }

@@ -63,5 +63,6 @@
   "DarkThemeTint": 0.7,
   "LightThemeTint": 0.4,
   "DefaultXlsxRowHeight": 15,
-  "useAccessTokenExpirationRedirect": true
+  "useAccessTokenExpirationRedirect": true,
+  "XApiEnabled": true
 }
