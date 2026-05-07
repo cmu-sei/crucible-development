@@ -3,12 +3,32 @@
 
 set -e
 
-PROXMOX_HOST="${PROXMOX_HOST:-172.22.64.132}"
+PROXMOX_HOST="${PROXMOX_HOST}"
 PROXMOX_TOKEN="${PROXMOX_TOKEN}"
+
+if [ -z "$PROXMOX_HOST" ]; then
+  echo "Error: PROXMOX_HOST environment variable is required"
+  echo ""
+  echo "Export variables:"
+  echo "  export PROXMOX_HOST='your-proxmox-ip'"
+  echo "  export PROXMOX_TOKEN='root@pam!crucible=your-token-here'"
+  echo ""
+  echo "Then run this script:"
+  echo "  ./scripts/update-proxmox-appsettings.sh"
+  exit 1
+fi
 
 if [ -z "$PROXMOX_TOKEN" ]; then
   echo "Error: PROXMOX_TOKEN environment variable is required"
-  echo "Usage: PROXMOX_HOST=<ip> PROXMOX_TOKEN=<token> ./scripts/update-proxmox-appsettings.sh"
+  echo ""
+  echo "IMPORTANT: Use single quotes to prevent bash ! expansion"
+  echo ""
+  echo "Export variables:"
+  echo "  export PROXMOX_HOST='$PROXMOX_HOST'"
+  echo "  export PROXMOX_TOKEN='root@pam!crucible=your-token-here'"
+  echo ""
+  echo "Then run this script:"
+  echo "  ./scripts/update-proxmox-appsettings.sh"
   exit 1
 fi
 

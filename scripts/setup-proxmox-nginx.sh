@@ -5,20 +5,42 @@
 set -e
 
 # Configuration
-PROXMOX_HOST="${PROXMOX_HOST:-172.22.71.38}"
+PROXMOX_HOST="${PROXMOX_HOST}"
 PROXMOX_USER="${PROXMOX_USER:-root}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/crucible_proxmox}"
 PROXMOX_API_TOKEN="${PROXMOX_API_TOKEN}"
 
 echo "Setting up NGINX proxy on Proxmox (TopoMojo pattern)"
+echo ""
+
+# Check for required variables
+if [ -z "$PROXMOX_HOST" ]; then
+  echo "Error: PROXMOX_HOST environment variable not set"
+  echo ""
+  echo "Export variables:"
+  echo "  export PROXMOX_HOST='your-proxmox-ip'"
+  echo "  export PROXMOX_API_TOKEN='root@pam!crucible=your-token-here'"
+  echo ""
+  echo "Then run this script:"
+  echo "  ./scripts/setup-proxmox-nginx.sh"
+  exit 1
+fi
+
 echo "  Host: $PROXMOX_HOST"
 echo ""
 
 # Check for API token
 if [ -z "$PROXMOX_API_TOKEN" ]; then
   echo "Error: PROXMOX_API_TOKEN environment variable not set"
-  echo "Set it to your Proxmox API token in format: user@system!TokenId=Secret"
-  echo "Example: export PROXMOX_API_TOKEN='root@pam!crucible=4c4fbe1e-b31e-55a9-9fg0-2de4a411cd23'"
+  echo ""
+  echo "IMPORTANT: Use single quotes to prevent bash ! expansion"
+  echo ""
+  echo "Export variables:"
+  echo "  export PROXMOX_HOST='$PROXMOX_HOST'"
+  echo "  export PROXMOX_API_TOKEN='root@pam!crucible=your-token-here'"
+  echo ""
+  echo "Then run this script:"
+  echo "  ./scripts/setup-proxmox-nginx.sh"
   exit 1
 fi
 
@@ -50,7 +72,8 @@ systemctl enable nginx
 HOSTNAME=\$(hostname)
 
 # Create NGINX configuration following TopoMojo pattern
-cat > /etc/nginx/sites-available/proxmox-reverse-proxy << 'EOF'
+# Note: Using unquoted EOF to allow PROXMOX_API_TOKEN variable expansion
+cat > /etc/nginx/sites-available/proxmox-reverse-proxy << EOF
 # Proxmox Reverse Proxy
 # Based on TopoMojo Proxmox documentation
 # Provides API and console access on port 443

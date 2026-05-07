@@ -3,7 +3,7 @@
 
 set -e
 
-PROXMOX_HOST="${PROXMOX_HOST:-172.22.71.38}"
+PROXMOX_HOST="${PROXMOX_HOST}"
 ALPINE_VERSION="${ALPINE_VERSION:-3.19.0}"
 ALPINE_ISO="alpine-virt-${ALPINE_VERSION}-x86_64.iso"
 ALPINE_URL="https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/${ALPINE_ISO}"

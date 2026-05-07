@@ -5,7 +5,7 @@
 set -e
 
 # Configuration
-PROXMOX_HOST="${PROXMOX_HOST:-172.22.69.122}"
+PROXMOX_HOST="${PROXMOX_HOST}"
 PROXMOX_USER="${PROXMOX_USER:-root}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/crucible_proxmox}"
 TOKEN_USER="${TOKEN_USER:-root@pam}"

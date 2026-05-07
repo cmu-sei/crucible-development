@@ -5,12 +5,26 @@
 set -e
 
 # Configuration
-PROXMOX_HOST="${PROXMOX_HOST:-172.22.69.122}"
+PROXMOX_HOST="${PROXMOX_HOST}"
 PROXMOX_USER="${PROXMOX_USER:-root}"
 SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/crucible_proxmox}"
 SSH_KEY_TYPE="${SSH_KEY_TYPE:-ed25519}"
 
 echo "Setting up SSH key authentication to Proxmox host"
+echo ""
+
+# Check for required variables
+if [ -z "$PROXMOX_HOST" ]; then
+  echo "Error: PROXMOX_HOST environment variable not set"
+  echo ""
+  echo "Export variable:"
+  echo "  export PROXMOX_HOST='your-proxmox-ip'"
+  echo ""
+  echo "Then run this script:"
+  echo "  ./scripts/setup-proxmox-ssh.sh"
+  exit 1
+fi
+
 echo "  Host: $PROXMOX_HOST"
 echo "  User: $PROXMOX_USER"
 echo "  Key Path: $SSH_KEY_PATH"

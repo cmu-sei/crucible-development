@@ -4,7 +4,7 @@
 set -e
 
 # Configuration (override with environment variables)
-PROXMOX_HOST="${PROXMOX_HOST:-172.22.69.122}"
+PROXMOX_HOST="${PROXMOX_HOST}"
 PROXMOX_PORT="${PROXMOX_PORT:-8006}"
 PROXMOX_TOKEN="${PROXMOX_TOKEN:-root@pam!crucible=your-token-here}"
 PROXMOX_NODE="${PROXMOX_NODE:-pve}"

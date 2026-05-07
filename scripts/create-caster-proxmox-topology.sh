@@ -3,6 +3,8 @@
 
 set -e
 
+PROXMOX_HOST="${PROXMOX_HOST}"
+PROXMOX_API_TOKEN="${PROXMOX_API_TOKEN}"
 CASTER_API_URL="${CASTER_API_URL:-http://localhost:4309/api}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-https://localhost:8443}"
 KEYCLOAK_USER="${KEYCLOAK_USER:-admin}"
@@ -11,6 +13,24 @@ PROJECT_NAME="${PROJECT_NAME:-Proxmox Test}"
 DIRECTORY_NAME="${DIRECTORY_NAME:-Basic Topology}"
 
 echo "Creating Caster topology with existing Proxmox VMs"
+echo ""
+
+# Check for required variables
+if [ -z "$PROXMOX_HOST" ] || [ -z "$PROXMOX_API_TOKEN" ]; then
+  echo "Error: PROXMOX_HOST and PROXMOX_API_TOKEN environment variables are required"
+  echo ""
+  echo "IMPORTANT: Use single quotes to prevent bash ! expansion"
+  echo ""
+  echo "Export variables:"
+  echo "  export PROXMOX_HOST='your-proxmox-ip'"
+  echo "  export PROXMOX_API_TOKEN='root@pam!crucible=your-token-here'"
+  echo ""
+  echo "Then run this script:"
+  echo "  ./scripts/create-caster-proxmox-topology.sh"
+  exit 1
+fi
+
+echo "  Proxmox Host: $PROXMOX_HOST"
 echo "  Caster API: $CASTER_API_URL"
 echo "  Project: $PROJECT_NAME"
 echo "  Directory: $DIRECTORY_NAME"
@@ -334,8 +354,8 @@ else
 fi
 
 # Create terraform.tfvars with Crucible variables
-TERRAFORM_TFVARS='proxmox_endpoint = "https://172.22.64.132:8006"
-proxmox_api_token = "root@pam!crucible=6d803e6b-5af5-4c02-bb9e-19f57094875c"
+TERRAFORM_TFVARS="proxmox_endpoint = \"https://${PROXMOX_HOST}:8006\"
+proxmox_api_token = \"${PROXMOX_API_TOKEN}\"
 proxmox_insecure = true
 
 crucible_username = "admin"
@@ -349,7 +369,7 @@ player_api_url = "http://localhost:4302"
 vm_api_url = "http://localhost:4302"
 caster_api_url = "http://localhost:4309"
 
-team_id = "c351c81c-ff56-4eb0-9eba-18f263f0b586"'
+team_id = \"c351c81c-ff56-4eb0-9eba-18f263f0b586\""
 
 FILE_ID=$(cat /proc/sys/kernel/random/uuid)
 FILE_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/files" \
