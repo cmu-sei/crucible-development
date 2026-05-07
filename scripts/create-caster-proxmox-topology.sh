@@ -3,14 +3,14 @@
 
 set -e
 
-CASTER_API_URL="${CASTER_API_URL:-http://localhost:4310/api}"
+CASTER_API_URL="${CASTER_API_URL:-http://localhost:4309/api}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-https://localhost:8443}"
 KEYCLOAK_USER="${KEYCLOAK_USER:-admin}"
 KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-admin}"
 PROJECT_NAME="${PROJECT_NAME:-Proxmox Test}"
 DIRECTORY_NAME="${DIRECTORY_NAME:-Basic Topology}"
 
-echo "Creating Caster topology with Proxmox VMs"
+echo "Creating Caster topology with existing Proxmox VMs"
 echo "  Caster API: $CASTER_API_URL"
 echo "  Project: $PROJECT_NAME"
 echo "  Directory: $DIRECTORY_NAME"
@@ -20,7 +20,7 @@ echo ""
 echo "Obtaining auth token..."
 TOKEN_RESPONSE=$(curl -k -s -X POST "$KEYCLOAK_URL/realms/crucible/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=player.ui" \
+  -d "client_id=caster.ui" \
   -d "grant_type=password" \
   -d "username=$KEYCLOAK_USER" \
   -d "password=$KEYCLOAK_PASSWORD")
@@ -91,60 +91,132 @@ else
 fi
 echo ""
 
-# Create main.tf file with Proxmox provider and VMs
+# Create main.tf file with Proxmox and Crucible providers
 echo "Creating Terraform configuration..."
 MAIN_TF='terraform {
   required_providers {
     proxmox = {
-      source  = "Telmate/proxmox"
-      version = "~> 2.9"
+      source  = "bpg/proxmox"
+      version = "0.106.0"
+    }
+    crucible = {
+      source  = "cmu-sei/crucible"
+      version = "~> 2.5"
     }
   }
 }
 
 provider "proxmox" {
-  pm_api_url          = var.proxmox_endpoint
-  pm_api_token_id     = split("=", var.proxmox_token)[0]
-  pm_api_token_secret = split("=", var.proxmox_token)[1]
-  pm_tls_insecure     = var.proxmox_insecure
+  endpoint = var.proxmox_endpoint
+  api_token = var.proxmox_api_token
+  insecure = var.proxmox_insecure
 }
 
-resource "proxmox_vm_qemu" "alpine" {
-  name        = "alpine-caster-test"
-  target_node = "pve"
-  clone       = "alpine-test"
-  full_clone  = false
+provider "crucible" {
+  username       = var.crucible_username
+  password       = var.crucible_password
+  auth_url       = var.crucible_auth_url
+  token_url      = var.crucible_token_url
+  client_id      = var.crucible_client_id
+  client_secret  = var.crucible_client_secret
+  client_scopes  = ["player", "vm"]
+  vm_api_url     = var.vm_api_url
+  player_api_url = var.player_api_url
+  caster_api_url = var.caster_api_url
+}
 
-  cores   = 1
-  memory  = 512
+# Create VMs in Proxmox using bpg provider
+resource "proxmox_virtual_environment_vm" "alpine" {
+  name      = "alpine-caster-test"
+  node_name = "pve"
 
-  network {
-    model  = "virtio"
-    bridge = "vmbr0"
+  clone {
+    vm_id = 101
+  }
+
+  cpu {
+    cores = 1
+  }
+
+  memory {
+    dedicated = 512
   }
 }
 
-resource "proxmox_vm_qemu" "tinycore" {
-  name        = "tinycore-caster-test"
-  target_node = "pve"
-  clone       = "tinycore-test"
-  full_clone  = false
+resource "proxmox_virtual_environment_vm" "tinycore" {
+  name      = "tinycore-caster-test"
+  node_name = "pve"
 
-  cores   = 1
-  memory  = 512
+  clone {
+    vm_id = 102
+  }
 
-  network {
-    model  = "virtio"
-    bridge = "vmbr0"
+  cpu {
+    cores = 1
+  }
+
+  memory {
+    dedicated = 512
   }
 }
 
-output "alpine_id" {
-  value = proxmox_vm_qemu.alpine.id
+# Create Player View with Teams
+resource "crucible_player_view" "proxmox_test" {
+  name              = "Proxmox Test View"
+  description       = "Test view for Proxmox VMs created via Caster"
+  status            = "Active"
+  create_admin_team = true
+
+  team {
+    name = "Test Team"
+  }
 }
 
-output "tinycore_id" {
-  value = proxmox_vm_qemu.tinycore.id
+# Register VMs in Player VM API
+resource "crucible_player_virtual_machine" "alpine" {
+  name       = proxmox_virtual_environment_vm.alpine.name
+  team_ids   = [var.team_id]
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.alpine.vm_id
+    node = "pve"
+  }
+
+  depends_on = [crucible_player_view.proxmox_test]
+}
+
+resource "crucible_player_virtual_machine" "tinycore" {
+  name       = proxmox_virtual_environment_vm.tinycore.name
+  team_ids   = [var.team_id]
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.tinycore.vm_id
+    node = "pve"
+  }
+
+  depends_on = [crucible_player_view.proxmox_test]
+}
+
+output "view_id" {
+  value = crucible_player_view.proxmox_test.id
+}
+
+output "alpine_vmid" {
+  value = proxmox_virtual_environment_vm.alpine.vm_id
+}
+
+output "tinycore_vmid" {
+  value = proxmox_virtual_environment_vm.tinycore.vm_id
+}
+
+output "alpine_player_id" {
+  value = crucible_player_virtual_machine.alpine.id
+}
+
+output "tinycore_player_id" {
+  value = crucible_player_virtual_machine.tinycore.id
 }'
 
 FILE_ID=$(cat /proc/sys/kernel/random/uuid)
@@ -173,8 +245,8 @@ VARIABLES_TF='variable "proxmox_endpoint" {
   type        = string
 }
 
-variable "proxmox_token" {
-  description = "Proxmox API token (format: user@realm!tokenid=secret)"
+variable "proxmox_api_token" {
+  description = "Proxmox API token"
   type        = string
   sensitive   = true
 }
@@ -183,6 +255,62 @@ variable "proxmox_insecure" {
   description = "Skip TLS verification"
   type        = bool
   default     = true
+}
+
+variable "crucible_username" {
+  description = "Crucible username"
+  type        = string
+}
+
+variable "crucible_password" {
+  description = "Crucible password"
+  type        = string
+  sensitive   = true
+}
+
+variable "crucible_auth_url" {
+  description = "Crucible auth URL"
+  type        = string
+}
+
+variable "crucible_token_url" {
+  description = "Crucible token URL"
+  type        = string
+}
+
+variable "crucible_client_id" {
+  description = "Crucible OAuth client ID"
+  type        = string
+  default     = "player.ui"
+}
+
+variable "crucible_client_secret" {
+  description = "Crucible OAuth client secret"
+  type        = string
+  default     = ""
+}
+
+variable "player_api_url" {
+  description = "Player API URL"
+  type        = string
+  default     = "http://localhost:4302"
+}
+
+variable "vm_api_url" {
+  description = "VM API URL"
+  type        = string
+  default     = "http://localhost:4302"
+}
+
+variable "caster_api_url" {
+  description = "Caster API URL"
+  type        = string
+  default     = "http://localhost:4309"
+}
+
+variable "team_id" {
+  description = "Player Team ID to assign VMs to"
+  type        = string
 }'
 
 FILE_ID=$(cat /proc/sys/kernel/random/uuid)
@@ -205,14 +333,60 @@ else
   exit 1
 fi
 
+# Create terraform.tfvars with Crucible variables
+TERRAFORM_TFVARS='proxmox_endpoint = "https://172.22.64.132:8006"
+proxmox_api_token = "root@pam!crucible=6d803e6b-5af5-4c02-bb9e-19f57094875c"
+proxmox_insecure = true
+
+crucible_username = "admin"
+crucible_password = "admin"
+crucible_auth_url = "http://localhost:8080/realms/crucible/protocol/openid-connect/auth"
+crucible_token_url = "http://localhost:8080/realms/crucible/protocol/openid-connect/token"
+crucible_client_id = "player.ui"
+crucible_client_secret = ""
+
+player_api_url = "http://localhost:4302"
+vm_api_url = "http://localhost:4302"
+caster_api_url = "http://localhost:4309"
+
+team_id = "c351c81c-ff56-4eb0-9eba-18f263f0b586"'
+
+FILE_ID=$(cat /proc/sys/kernel/random/uuid)
+FILE_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/files" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"id\": \"$FILE_ID\",
+    \"directoryId\": \"$DIRECTORY_ID\",
+    \"name\": \"terraform.tfvars\",
+    \"content\": $(echo "$TERRAFORM_TFVARS" | jq -Rs .)
+  }")
+
+HTTP_CODE=$(echo "$FILE_RESPONSE" | tail -n1)
+
+if [ "$HTTP_CODE" = "201" ]; then
+  echo "✓ Created terraform.tfvars"
+else
+  echo "✗ Failed to create terraform.tfvars"
+  exit 1
+fi
+
 echo ""
 echo "✓ Caster topology created successfully!"
 echo ""
 echo "Project: $PROJECT_NAME ($PROJECT_ID)"
 echo "Directory: $DIRECTORY_NAME ($DIRECTORY_ID)"
 echo ""
-echo "Access Caster UI:"
-echo "  http://localhost:4311"
+echo "Next steps:"
+echo "  1. Access Caster UI: http://localhost:4311"
+echo "  2. Terraform variables are pre-configured with defaults (admin/admin)"
+echo "  3. Run Terraform plan/apply"
 echo ""
-echo "Note: Environment variables for Proxmox are already configured in Caster API"
-echo "The topology will clone the existing VMs (101, 102) as templates"
+echo "What this topology creates:"
+echo "  - New Player View: 'Proxmox Test View' with 'Test Team'"
+echo "  - 2 new Proxmox VMs (cloned from 101: alpine-test, 102: tinycore-test)"
+echo "  - Auto-registers VMs in Player VM API"
+echo ""
+echo "Providers used:"
+echo "  - Proxmox provider v0.106.0 (bpg/proxmox)"
+echo "  - Crucible provider v2.5 (manages Views, Teams, VMs)"
