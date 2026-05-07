@@ -1241,6 +1241,7 @@ public static class BuilderExtensions
     private static void ConfigureXApi<T>(IResourceBuilder<T> resource, string platform, string apiUrl, string uiUrl) where T : IResourceWithEnvironment
     {
         resource
+            .WithEnvironment("XApiOptions__Enabled", "true")
             .WithEnvironment("XApiOptions__Endpoint", "http://localhost:9274/xapi")
             .WithEnvironment("XApiOptions__Username", "defaultkey")
             .WithEnvironment("XApiOptions__Password", "defaultsecret")
