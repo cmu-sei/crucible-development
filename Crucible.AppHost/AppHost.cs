@@ -316,10 +316,10 @@ public static class BuilderExtensions
 
         var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
-        builder.AddPlayerVm(postgres, keycloak, options, playerMode, commonUiSetup);
+        builder.AddPlayerVm(postgres, keycloak, options, playerMode, lrsqlMode, commonUiSetup);
     }
 
-    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, string playerMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, string playerMode, string lrsqlMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm")
             .WithDevSettings();
