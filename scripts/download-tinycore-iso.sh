@@ -4,16 +4,32 @@
 set -e
 
 PROXMOX_HOST="${PROXMOX_HOST}"
+PROXMOX_USER="${PROXMOX_USER:-root}"
+SSH_KEY_PATH="${SSH_KEY_PATH:-$HOME/.ssh/crucible_proxmox}"
 TINYCORE_ISO="TinyCorePure64-14.0.iso"
 TINYCORE_URL="http://www.tinycorelinux.net/14.x/x86_64/release/${TINYCORE_ISO}"
 
 echo "Downloading Tiny Core Linux ISO to Proxmox host"
+echo ""
+
+# Check for required variables
+if [ -z "$PROXMOX_HOST" ]; then
+  echo "Error: PROXMOX_HOST environment variable not set"
+  echo ""
+  echo "Export variable:"
+  echo "  export PROXMOX_HOST='your-proxmox-ip'"
+  echo ""
+  echo "Then run this script:"
+  echo "  ./scripts/download-tinycore-iso.sh"
+  exit 1
+fi
+
 echo "  Host: $PROXMOX_HOST"
 echo "  ISO: $TINYCORE_ISO"
 echo ""
 
 echo "Checking if ISO already exists..."
-EXISTING=$(ssh -i /home/vscode/.ssh/crucible_proxmox root@$PROXMOX_HOST \
+EXISTING=$(ssh -i "$SSH_KEY_PATH" "$PROXMOX_USER@$PROXMOX_HOST" \
   "test -f /var/lib/vz/template/iso/${TINYCORE_ISO} && echo 'exists' || echo 'not found'")
 
 if [ "$EXISTING" = "exists" ]; then
@@ -22,7 +38,7 @@ if [ "$EXISTING" = "exists" ]; then
 fi
 
 echo "Downloading ISO to Proxmox (this may take a few minutes)..."
-ssh -i /home/vscode/.ssh/crucible_proxmox root@$PROXMOX_HOST \
+ssh -i "$SSH_KEY_PATH" "$PROXMOX_USER@$PROXMOX_HOST" \
   "cd /var/lib/vz/template/iso && wget -q --show-progress -O ${TINYCORE_ISO} ${TINYCORE_URL}"
 
 echo ""
