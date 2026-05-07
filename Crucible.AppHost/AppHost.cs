@@ -307,7 +307,7 @@ public static class BuilderExtensions
 
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 
-        CopyUiSettingsWithXApi(builder.AppHostDirectory, "player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", xApiEnabled: true);
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -603,7 +603,7 @@ public static class BuilderExtensions
 
         var steamfitterUiRoot = "/mnt/data/crucible/steamfitter/steamfitter.ui";
 
-        CopyUiSettingsWithXApi(builder.AppHostDirectory, "steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", xApiEnabled: IsEnabled(lrsqlMode));
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -657,7 +657,7 @@ public static class BuilderExtensions
 
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
 
-        CopyUiSettingsWithXApi(builder.AppHostDirectory, "cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", xApiEnabled: IsEnabled(lrsqlMode));
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -711,7 +711,7 @@ public static class BuilderExtensions
 
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
 
-        CopyUiSettingsWithXApi(builder.AppHostDirectory, "gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", xApiEnabled: IsEnabled(lrsqlMode));
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -763,7 +763,7 @@ public static class BuilderExtensions
 
         var blueprintUiRoot = "/mnt/data/crucible/blueprint/blueprint.ui";
 
-        CopyUiSettingsWithXApi(builder.AppHostDirectory, "blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", xApiEnabled: IsEnabled(lrsqlMode));
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -1251,30 +1251,6 @@ public static class BuilderExtensions
             .WithEnvironment("XApiOptions__Platform", platform);
     }
 
-    private static void CopyUiSettingsWithXApi(string appHostDir, string settingsFileName, string targetPath, bool xApiEnabled)
-    {
-        var sourcePath = $"{appHostDir}/resources/ui/settings/{settingsFileName}";
-        var json = File.ReadAllText(sourcePath);
-        using var doc = System.Text.Json.JsonDocument.Parse(json);
-        using var stream = new MemoryStream();
-        using var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions { Indented = true });
-
-        writer.WriteStartObject();
-
-        // Copy all existing properties
-        foreach (var property in doc.RootElement.EnumerateObject())
-        {
-            property.WriteTo(writer);
-        }
-
-        // Add or override XApiEnabled
-        writer.WriteBoolean("XApiEnabled", xApiEnabled);
-
-        writer.WriteEndObject();
-        writer.Flush();
-
-        File.WriteAllBytes(targetPath, stream.ToArray());
-    }
 
     private static Dictionary<string, string>? ReadAwsCredentials()
     {
