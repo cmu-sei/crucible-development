@@ -25,11 +25,13 @@ if [ -f "$PLAYER_VM_SETTINGS" ]; then
   echo "Updating Player VM API settings..."
 
   # Use jq to update or add the Proxmox section
+  # Port 443 is used when Proxmox has nginx reverse proxy configured (see setup-proxmox-nginx.sh)
+  # Port 8006 would be direct access, but websocket auth requires nginx proxy for token injection
   jq --arg host "$PROXMOX_HOST" --arg token "$PROXMOX_TOKEN" \
     '.Proxmox = {
       "Enabled": true,
       "Host": $host,
-      "Port": 8006,
+      "Port": 443,
       "Token": $token,
       "StateRefreshIntervalSeconds": 60
     }' "$PLAYER_VM_SETTINGS" > "$PLAYER_VM_SETTINGS.tmp" && \
