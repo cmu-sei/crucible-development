@@ -48,7 +48,7 @@
       "installYarnUsingApt": false
     },
     "./features/playwright-cli": {
-      "version": "1.59"
+      "version": "0.1"
     },
     "./features/aspire": {
       "version": "13.1.1"

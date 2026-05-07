@@ -303,16 +303,23 @@ public static class BuilderExtensions
             .WithEnvironment("SeedData__ApplicationTemplates__2__Icon", "assets/img/SP_Icon_Dashboard.png")
             .WithEnvironment("SeedData__ApplicationTemplates__2__Embeddable", "true");
 
+        // Configure xAPI if LRS is enabled
+        var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
+        if (IsEnabled(lrsqlMode))
+        {
+            ConfigureXApi(playerApi, "Player", "http://localhost:4300/api/", "http://localhost:4301/");
+        }
+
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
-        builder.AddPlayerVm(postgres, keycloak, options, playerMode, commonUiSetup);
+        builder.AddPlayerVm(postgres, keycloak, options, playerMode, lrsqlMode, commonUiSetup);
     }
 
-    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, string playerMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, string playerMode, string lrsqlMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm")
             .WithDevSettings();
@@ -345,6 +352,12 @@ public static class BuilderExtensions
             .WithEnvironment("IdentityClient__ClientId", "player.vm.admin")
             .WithEnvironment("IdentityClient__UserName", "admin")
             .WithEnvironment("IdentityClient__Password", "admin");
+
+        // Configure xAPI if LRS is enabled
+        if (IsEnabled(lrsqlMode))
+        {
+            ConfigureXApi(vmApi, "Player VM", "http://localhost:4302/api/", "http://localhost:4303/");
+        }
 
         var vmUiRoot = "/mnt/data/crucible/player/vm.ui";
 
@@ -1251,6 +1264,7 @@ public static class BuilderExtensions
     private static void ConfigureXApi<T>(IResourceBuilder<T> resource, string platform, string apiUrl, string uiUrl) where T : IResourceWithEnvironment
     {
         resource
+            .WithEnvironment("XApiOptions__Enabled", "true")
             .WithEnvironment("XApiOptions__Endpoint", "http://localhost:9274/xapi")
             .WithEnvironment("XApiOptions__Username", "defaultkey")
             .WithEnvironment("XApiOptions__Password", "defaultsecret")
@@ -1260,6 +1274,7 @@ public static class BuilderExtensions
             .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
             .WithEnvironment("XApiOptions__Platform", platform);
     }
+
 
     private static Dictionary<string, string>? ReadAwsCredentials()
     {
