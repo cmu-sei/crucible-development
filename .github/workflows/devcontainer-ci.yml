@@ -1,0 +1,47 @@
+name: Devcontainer CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: devcontainer-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build devcontainer and verify tools
+        uses: devcontainers/ci@v0.3
+        env:
+          CRUCIBLE_CI_SKIP_CLONE: "1"
+        with:
+          imageName: ghcr.io/${{ github.repository }}-devcontainer
+          imageTag: main-${{ matrix.arch }}
+          cacheFrom: ghcr.io/${{ github.repository }}-devcontainer:main-${{ matrix.arch }}
+          push: filter
+          refFilterForPush: refs/heads/main
+          runCmd: bash .devcontainer/ci-verify-tools.sh

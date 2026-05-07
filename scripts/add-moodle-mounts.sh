@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ -n "${CRUCIBLE_CI_SKIP_CLONE:-}" ]; then
+  echo "CRUCIBLE_CI_SKIP_CLONE set; skipping moodle mount setup."
+  exit 0
+fi
+
 # Define an array of directories
 DIRS=(
     "/mnt/data/crucible/moodle/moodle-core/"
