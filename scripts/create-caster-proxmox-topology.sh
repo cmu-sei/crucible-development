@@ -166,7 +166,7 @@ resource "proxmox_virtual_environment_vm" "alpine" {
   node_name = "pve"
 
   clone {
-    vm_id = 101
+    vm_id = 105
   }
 
   cpu {

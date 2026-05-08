@@ -521,12 +521,13 @@ public static class BuilderExtensions
             // Proxmox hypervisor configuration
             .WithEnvironment("Pod__Type", "Proxmox")
             .WithEnvironment("Pod__HypervisorType", "Proxmox")
-            .WithEnvironment("Pod__Url", "https://172.22.64.132:8006")
-            .WithEnvironment("Pod__AccessToken", "root@pam!topomojo=5246cb49-35ed-45c0-a8c7-20d85e1f6bb6")
+            .WithEnvironment("Pod__Url", "https://172.22.64.132:443")
+            .WithEnvironment("Pod__AccessToken", "root@pam!crucible=6d803e6b-5af5-4c02-bb9e-19f57094875c")
             .WithEnvironment("Pod__VmStore", "local-lvm")
             .WithEnvironment("Pod__DiskStore", "local-lvm")
             .WithEnvironment("Pod__IsoStore", "local:iso")
-            .WithEnvironment("Pod__IgnoreCertificateErrors", "true");
+            .WithEnvironment("Pod__IgnoreCertificateErrors", "true")
+            .WithEnvironment("Pod__TicketUrlHandler", "none");
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
 
