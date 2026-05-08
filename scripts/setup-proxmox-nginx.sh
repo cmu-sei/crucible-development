@@ -94,8 +94,9 @@ server {
     ssl_certificate_key /etc/pve/local/pve-ssl.key;
     proxy_redirect off;
 
-    # VNC WebSocket - pass through ticket authentication
+    # VNC WebSocket with API token injection
     location ~ /api2/json/nodes/.+/qemu/.+/vncwebsocket.* {
+        proxy_set_header Authorization "PVEAPIToken=__PROXMOX_TOKEN__";
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
