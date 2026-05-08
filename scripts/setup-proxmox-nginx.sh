@@ -72,8 +72,8 @@ systemctl enable nginx
 HOSTNAME=\$(hostname)
 
 # Create NGINX configuration following TopoMojo pattern
-# Note: Using unquoted EOF to allow PROXMOX_API_TOKEN variable expansion
-cat > /etc/nginx/sites-available/proxmox-reverse-proxy << EOF
+# Note: Using quoted 'EOF' to prevent variable expansion, then manually substitute token
+cat > /etc/nginx/sites-available/proxmox-reverse-proxy << 'EOF'
 # Proxmox Reverse Proxy
 # Based on TopoMojo Proxmox documentation
 # Provides API and console access on port 443
@@ -94,9 +94,8 @@ server {
     ssl_certificate_key /etc/pve/local/pve-ssl.key;
     proxy_redirect off;
 
-    # VNC WebSocket with API token injection
+    # VNC WebSocket - pass through ticket authentication
     location ~ /api2/json/nodes/.+/qemu/.+/vncwebsocket.* {
-        proxy_set_header "Authorization" "PVEAPIToken=${PROXMOX_API_TOKEN}";
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -125,8 +124,9 @@ server {
 }
 EOF
 
-# Replace hostname placeholder
+# Replace hostname and token placeholders
 sed -i "s/\\\$HOSTNAME/\$HOSTNAME/g" /etc/nginx/sites-available/proxmox-reverse-proxy
+sed -i "s|__PROXMOX_TOKEN__|${PROXMOX_API_TOKEN}|g" /etc/nginx/sites-available/proxmox-reverse-proxy
 
 # Remove old config if it exists
 rm -f /etc/nginx/sites-enabled/default
