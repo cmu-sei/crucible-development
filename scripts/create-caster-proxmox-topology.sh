@@ -202,8 +202,22 @@ resource "crucible_player_view" "proxmox_test" {
   status            = "Active"
   create_admin_team = true
 
+  application {
+    name               = "Virtual Machines"
+    app_template_id    = "ace19f19-8916-4169-84de-ad00565d8456"
+  }
+
   team {
     name = "Test Team"
+
+    user {
+      user_id = "9b3b331c-10c1-448b-8114-21b2586d8e38"
+    }
+
+    app_instance {
+      name          = "Virtual Machines"
+      display_order = 1
+    }
   }
 }
 
