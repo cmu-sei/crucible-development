@@ -54,10 +54,33 @@ fi
 echo "✓ Token obtained"
 echo ""
 
-# Create or get Project
+# Find next available project name
+echo "Finding available project name..."
+ALL_PROJECTS=$(curl -k -s -X GET "$CASTER_API_URL/projects" \
+  -H "Authorization: Bearer $ACCESS_TOKEN")
+
+# Check if base name exists
+EXISTING_PROJECT=$(echo "$ALL_PROJECTS" | jq -r ".[] | select(.name == \"$PROJECT_NAME\") | .name" | head -1)
+
+if [ -n "$EXISTING_PROJECT" ] && [ "$EXISTING_PROJECT" != "null" ]; then
+  # Find highest numbered project
+  COUNTER=2
+  while true; do
+    TEST_NAME="${PROJECT_NAME} ${COUNTER}"
+    EXISTS=$(echo "$ALL_PROJECTS" | jq -r ".[] | select(.name == \"$TEST_NAME\") | .name" | head -1)
+    if [ -z "$EXISTS" ] || [ "$EXISTS" = "null" ]; then
+      PROJECT_NAME="$TEST_NAME"
+      break
+    fi
+    COUNTER=$((COUNTER + 1))
+  done
+  echo "✓ Using name: $PROJECT_NAME"
+fi
+
+# Create new project
 echo "Creating project..."
 PROJECT_ID=$(cat /proc/sys/kernel/random/uuid)
-PROJECT_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/projects" \
+PROJECT_RESPONSE=$(curl -k -s -X POST "$CASTER_API_URL/projects" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
@@ -66,24 +89,16 @@ PROJECT_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/proje
     \"description\": \"Test project for Proxmox VMs\"
   }")
 
-HTTP_CODE=$(echo "$PROJECT_RESPONSE" | tail -n1)
-RESPONSE=$(echo "$PROJECT_RESPONSE" | head -n-1)
-
-if [ "$HTTP_CODE" = "201" ] || echo "$RESPONSE" | grep -q '"id"'; then
-  PROJECT_ID=$(echo "$RESPONSE" | jq -r '.id' 2>/dev/null || echo "$PROJECT_ID")
+if echo "$PROJECT_RESPONSE" | jq -e '.id' > /dev/null 2>&1; then
+  PROJECT_ID=$(echo "$PROJECT_RESPONSE" | jq -r '.id')
   echo "✓ Project created: $PROJECT_ID"
-elif echo "$RESPONSE" | grep -q "409\|already exists"; then
-  # Get existing project
-  ALL_PROJECTS=$(curl -k -s -X GET "$CASTER_API_URL/projects" \
-    -H "Authorization: Bearer $ACCESS_TOKEN")
-  PROJECT_ID=$(echo "$ALL_PROJECTS" | jq -r ".[] | select(.name == \"$PROJECT_NAME\") | .id" | head -1)
-  echo "✓ Using existing project: $PROJECT_ID"
 else
   echo "✗ Failed to create project"
-  echo "$RESPONSE"
+  echo "$PROJECT_RESPONSE"
   exit 1
 fi
 echo ""
+
 
 # Create Directory
 echo "Creating directory..."
@@ -139,7 +154,7 @@ provider "crucible" {
   token_url      = var.crucible_token_url
   client_id      = var.crucible_client_id
   client_secret  = var.crucible_client_secret
-  client_scopes  = ["player", "vm"]
+  client_scopes  = ["player", "player-vm"]
   vm_api_url     = var.vm_api_url
   player_api_url = var.player_api_url
   caster_api_url = var.caster_api_url
@@ -195,7 +210,7 @@ resource "crucible_player_view" "proxmox_test" {
 # Register VMs in Player VM API
 resource "crucible_player_virtual_machine" "alpine" {
   name       = proxmox_virtual_environment_vm.alpine.name
-  team_ids   = [var.team_id]
+  team_ids   = [crucible_player_view.proxmox_test.team[0].team_id]
   embeddable = true
 
   proxmox_vm_info {
@@ -208,7 +223,7 @@ resource "crucible_player_virtual_machine" "alpine" {
 
 resource "crucible_player_virtual_machine" "tinycore" {
   name       = proxmox_virtual_environment_vm.tinycore.name
-  team_ids   = [var.team_id]
+  team_ids   = [crucible_player_view.proxmox_test.team[0].team_id]
   embeddable = true
 
   proxmox_vm_info {
@@ -326,11 +341,6 @@ variable "caster_api_url" {
   description = "Caster API URL"
   type        = string
   default     = "http://localhost:4309"
-}
-
-variable "team_id" {
-  description = "Player Team ID to assign VMs to"
-  type        = string
 }'
 
 FILE_ID=$(cat /proc/sys/kernel/random/uuid)
@@ -358,18 +368,17 @@ TERRAFORM_TFVARS="proxmox_endpoint = \"https://${PROXMOX_HOST}:8006\"
 proxmox_api_token = \"${PROXMOX_API_TOKEN}\"
 proxmox_insecure = true
 
-crucible_username = "admin"
-crucible_password = "admin"
-crucible_auth_url = "http://localhost:8080/realms/crucible/protocol/openid-connect/auth"
-crucible_token_url = "http://localhost:8080/realms/crucible/protocol/openid-connect/token"
-crucible_client_id = "player.ui"
-crucible_client_secret = ""
+crucible_username = \"admin\"
+crucible_password = \"admin\"
+crucible_auth_url = \"https://host.docker.internal:8443/realms/crucible/protocol/openid-connect/auth\"
+crucible_token_url = \"https://host.docker.internal:8443/realms/crucible/protocol/openid-connect/token\"
+crucible_client_id = \"crucible.provider\"
+crucible_client_secret = \"\"
 
-player_api_url = "http://localhost:4302"
-vm_api_url = "http://localhost:4302"
-caster_api_url = "http://localhost:4309"
-
-team_id = \"c351c81c-ff56-4eb0-9eba-18f263f0b586\""
+player_api_url = \"http://host.docker.internal:4300/api\"
+vm_api_url = \"http://host.docker.internal:4302/api\"
+caster_api_url = \"http://localhost:4309\"
+"
 
 FILE_ID=$(cat /proc/sys/kernel/random/uuid)
 FILE_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/files" \
@@ -398,7 +407,7 @@ echo "Project: $PROJECT_NAME ($PROJECT_ID)"
 echo "Directory: $DIRECTORY_NAME ($DIRECTORY_ID)"
 echo ""
 echo "Next steps:"
-echo "  1. Access Caster UI: http://localhost:4311"
+echo "  1. Access Caster UI: http://localhost:4310"
 echo "  2. Terraform variables are pre-configured with defaults (admin/admin)"
 echo "  3. Run Terraform plan/apply"
 echo ""
