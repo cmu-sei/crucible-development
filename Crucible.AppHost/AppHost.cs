@@ -516,7 +516,17 @@ public static class BuilderExtensions
             .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201") // for topo-ui
             .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
             .WithEnvironment("Headers__Cors__Methods__0", "*")
-            .WithEnvironment("Headers__Cors__Headers__0", "*");
+            .WithEnvironment("Headers__Cors__Headers__0", "*")
+            .WithEnvironment("Headers__Cors__AllowCredentials", "true")
+            // Proxmox hypervisor configuration
+            .WithEnvironment("Pod__Type", "Proxmox")
+            .WithEnvironment("Pod__HypervisorType", "Proxmox")
+            .WithEnvironment("Pod__Url", "https://172.22.64.132:8006")
+            .WithEnvironment("Pod__AccessToken", "root@pam!topomojo=5246cb49-35ed-45c0-a8c7-20d85e1f6bb6")
+            .WithEnvironment("Pod__VmStore", "local-lvm")
+            .WithEnvironment("Pod__DiskStore", "local-lvm")
+            .WithEnvironment("Pod__IsoStore", "local:iso")
+            .WithEnvironment("Pod__IgnoreCertificateErrors", "true");
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
 

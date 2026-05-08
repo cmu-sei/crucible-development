@@ -30,4 +30,9 @@ public class LaunchOptions
     public bool AddAllApplications { get; set; }
     public bool UseAspireProxy { get; set; }
     public bool LinkCommonUI { get; set; }
+
+    // Proxmox hypervisor configuration
+    public bool UseProxmox { get; set; }
+    public string ProxmoxHost { get; set; } = "";
+    public string ProxmoxApiToken { get; set; } = "";
 }
