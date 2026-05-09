@@ -872,7 +872,31 @@ public static class BuilderExtensions
 
         var moodle = builder.AddContainer("moodle", "moodle-custom-image")
             .WaitFor(postgres)
-            .WaitFor(keycloak)
+            .WaitFor(keycloak);
+
+        // If TopoMojo is enabled, get/create API key before starting Moodle
+        if (IsEnabled(topoMojoMode))
+        {
+            // Find the TopoMojo API resource builder by display name
+            var topoMojoApiBuilder = builder.Resources
+                .OfType<IResourceBuilder<ProjectResource>>()
+                .FirstOrDefault(r => r.Resource.Name.StartsWith("topomojo") && !r.Resource.Name.Contains("ui"));
+
+            if (topoMojoApiBuilder != null)
+            {
+                // Run script to get or create API key after TopoMojo starts, before Moodle starts
+                var getApiKeyScript = builder.AddExecutable("get-topomojo-apikey", "bash",
+                    builder.AppHostDirectory,
+                    "-c",
+                    $"bash {builder.AppHostDirectory}/scripts/get-or-create-topomojo-apikey.sh")
+                    .WaitFor(topoMojoApiBuilder);
+
+                // Make Moodle wait for the API key script to complete
+                moodle.WaitForCompletion(getApiKeyScript);
+            }
+        }
+
+        moodle
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("moodle")
@@ -919,7 +943,8 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/lib", "/var/www/html/lib", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/provider", "/var/www/html/ai/provider", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false);
+            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false)
+            .WithBindMount("/tmp/crucible", "/tmp/crucible", isReadOnly: true);
 
         // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
         var moodlePlugins = ReadMoodlePlugins();
