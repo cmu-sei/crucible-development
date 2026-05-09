@@ -8,8 +8,9 @@ KEYCLOAK_URL="${KEYCLOAK_URL:-https://localhost:8443}"
 KEYCLOAK_USER="${KEYCLOAK_USER:-admin}"
 KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-admin}"
 VIEW_NAME="${VIEW_NAME:-Proxmox VM Template}"
-VIEW_DESCRIPTION="${VIEW_DESCRIPTION:-Template view with Virtual Machines application}"
+VIEW_DESCRIPTION="${VIEW_DESCRIPTION:-Template view with Virtual Machines and Dashboard applications}"
 VM_APP_TEMPLATE_ID="${VM_APP_TEMPLATE_ID:-ace19f19-8916-4169-84de-ad00565d8456}"
+DASHBOARD_APP_TEMPLATE_ID="${DASHBOARD_APP_TEMPLATE_ID:-a4c361cc-b43f-4c44-99a7-7e2e2b3a9f88}"
 
 echo "Creating Player View Template"
 echo ""
@@ -152,6 +153,55 @@ if [ "$HTTP_CODE" = "201" ] || echo "$RESPONSE" | grep -q '"id"'; then
   echo "✓ Application instance added: $APP_INSTANCE_ID"
 else
   echo "✗ Failed to add application instance"
+  echo "$RESPONSE"
+  exit 1
+fi
+echo ""
+
+# Add Dashboard application to view
+echo "Adding Dashboard application..."
+DASHBOARD_APP_ID=$(cat /proc/sys/kernel/random/uuid)
+DASHBOARD_APP_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$PLAYER_API_URL/views/$VIEW_ID/applications" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"id\": \"$DASHBOARD_APP_ID\",
+    \"viewId\": \"$VIEW_ID\",
+    \"applicationTemplateId\": \"$DASHBOARD_APP_TEMPLATE_ID\"
+  }")
+
+HTTP_CODE=$(echo "$DASHBOARD_APP_RESPONSE" | tail -n1)
+RESPONSE=$(echo "$DASHBOARD_APP_RESPONSE" | head -n-1)
+
+if [ "$HTTP_CODE" = "201" ] || echo "$RESPONSE" | grep -q '"id"'; then
+  DASHBOARD_APP_ID=$(echo "$RESPONSE" | jq -r '.id' 2>/dev/null || echo "$DASHBOARD_APP_ID")
+  echo "✓ Dashboard application added: $DASHBOARD_APP_ID"
+else
+  echo "✗ Failed to add Dashboard application"
+  echo "$RESPONSE"
+  exit 1
+fi
+echo ""
+
+# Add Dashboard application instance to Admin team (embeddable)
+echo "Adding Dashboard to Admin team..."
+DASHBOARD_INSTANCE_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$PLAYER_API_URL/teams/$ADMIN_TEAM_ID/application-instances" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"teamId\": \"$ADMIN_TEAM_ID\",
+    \"applicationId\": \"$DASHBOARD_APP_ID\",
+    \"displayOrder\": 1
+  }")
+
+HTTP_CODE=$(echo "$DASHBOARD_INSTANCE_RESPONSE" | tail -n1)
+RESPONSE=$(echo "$DASHBOARD_INSTANCE_RESPONSE" | head -n-1)
+
+if [ "$HTTP_CODE" = "201" ] || echo "$RESPONSE" | grep -q '"id"'; then
+  DASHBOARD_INSTANCE_ID=$(echo "$RESPONSE" | jq -r '.id' 2>/dev/null || echo "$DASHBOARD_INSTANCE_ID")
+  echo "✓ Dashboard instance added: $DASHBOARD_INSTANCE_ID"
+else
+  echo "✗ Failed to add Dashboard instance"
   echo "$RESPONSE"
   exit 1
 fi
