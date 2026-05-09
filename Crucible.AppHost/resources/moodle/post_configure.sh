@@ -212,6 +212,7 @@ configure_crucible() {
   # Configure mod_crucible
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=issuerid --set=$OAUTH2_ISSUER_ID;
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=alloyapiurl --set=http://host.docker.internal:4402/api;
+  php /var/www/html/admin/cli/cfg.php --component=crucible --name=alloyapiclienturl --set=http://localhost:4402/api;
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=playerappurl --set=http://localhost:4301;
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=vmappurl --set=http://localhost:4303;
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=steamfitterapiurl --set=http://host.docker.internal:4400/api
@@ -356,9 +357,20 @@ configure_topomojo() {
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=topomojobaseurl --set=http://localhost:4201;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableapikey --set=1;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enablemanagername --set=1;
-  php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';
-  echo "TopoMojo API KEY needs to be generated and set manually"
-  #php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
+  php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Moodle Service Account';
+
+  # Read API key from file if it exists
+  if [ -f /tmp/crucible/topomojo-apikey.txt ]; then
+    TOPOMOJO_API_KEY=$(cat /tmp/crucible/topomojo-apikey.txt)
+    if [ -n "$TOPOMOJO_API_KEY" ] && [ "$TOPOMOJO_API_KEY" != "EXISTING_KEY_NEEDS_MANUAL_CONFIG" ]; then
+      log "Setting TopoMojo API key from file"
+      php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set="$TOPOMOJO_API_KEY"
+    else
+      log "TopoMojo API key file exists but contains placeholder - skipping"
+    fi
+  else
+    log "TopoMojo API key file not found at /tmp/crucible/topomojo-apikey.txt - may need manual configuration"
+  fi
 }
 
 
