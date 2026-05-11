@@ -1,6 +1,6 @@
 #!/bin/bash
-# Create an Alloy Event Template (without Caster directory)
-# For simple on-demand exercises with just a Player View
+# Create an Alloy Event Template without Caster directory
+# For simple on-demand exercises with only a Player View (no infrastructure orchestration)
 
 set -e
 
@@ -8,11 +8,11 @@ ALLOY_API_URL="${ALLOY_API_URL:-http://localhost:4402/api}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-https://localhost:8443}"
 KEYCLOAK_USER="${KEYCLOAK_USER:-admin}"
 KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-admin}"
-EVENT_TEMPLATE_NAME="${EVENT_TEMPLATE_NAME:-Simple Alloy Event}"
+EVENT_TEMPLATE_NAME="${EVENT_TEMPLATE_NAME:-Alloy Event (No Caster)}"
 PLAYER_VIEW_ID="${PLAYER_VIEW_ID}"
 DURATION_HOURS="${DURATION_HOURS:-4}"
 
-echo "Creating Simple Alloy Event Template (View Only)"
+echo "Creating Alloy Event Template (View Only, No Caster)"
 echo ""
 
 # Show current environment variables
@@ -32,7 +32,7 @@ if [ -z "$PLAYER_VIEW_ID" ]; then
   echo "  export DURATION_HOURS='8'"
   echo ""
   echo "Then run this script:"
-  echo "  ./scripts/create-alloy-event-simple.sh"
+  echo "  ./scripts/create-alloy-event-without-caster.sh"
   exit 1
 fi
 
