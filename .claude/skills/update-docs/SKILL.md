@@ -141,7 +141,14 @@ After user approval, apply the plan directly from the main agent using `Edit` (a
 
 Work through the plan's Execution Checklist in order. Preserve existing style (heading depth, table/list conventions, admonition usage). Do not make changes outside what the plan prescribes.
 
-**Screenshot replacements:** for each stale screenshot approved in the plan, copy the file from `plans/img/<filename>.png` into `docs/<app>/img/<filename>.png`, overwriting the old file. Use `cp` via Bash — the old file is replaced in place and the markdown reference doesn't need to change since filenames are preserved. Leave `plans/img/` intact as an audit trail until the user cleans the plans directory.
+**Screenshot replacements:** for each stale screenshot approved in the plan, replace the old file with a versioned copy:
+
+1. Determine the new filename by incrementing the version suffix. If the existing file has no version suffix (e.g. `screenshot.png`), the new name is `screenshot-v2.png`. If it already has a suffix (e.g. `screenshot-v2.png`), increment it (`screenshot-v3.png`).
+2. Copy `plans/img/<filename>.png` to `docs/<app>/img/<new-versioned-filename>.png` via Bash `cp`.
+3. Delete the old file via Bash `rm`.
+4. Update every `![...](img/<old-filename>.png)` reference in the doc to `![...](img/<new-versioned-filename>.png)`.
+
+Leave `plans/img/` intact as an audit trail until the user cleans the plans directory.
 
 ## Step 5 — Lint validation
 
@@ -156,7 +163,7 @@ This runs `vale` and `markdownlint-cli2`. If either fails:
 - **Fix by editing content.** Rephrase, break long lines, add alt text, correct heading levels.
 - **Do NOT edit `.vale.ini`, `.vale/` styles, or `.markdownlint-cli2.yaml` unless there is no reasonable content fix.** If you absolutely must touch a rule, tell the user why and what you changed before committing.
 
-Re-run until clean. Report final status and the path of the updated doc.
+Re-run until clean. Report final status and the path of the updated doc. **Do not delete the plan document** — leave `plans/<app>-update-plan.md` in place after implementation so it can be referenced later.
 
 ## Quick reference — typical discrepancies
 
