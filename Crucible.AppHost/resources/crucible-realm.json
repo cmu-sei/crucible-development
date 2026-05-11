@@ -2828,8 +2828,12 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "misp-client-secret",
-      "redirectUris": ["http://localhost:8444/*"],
-      "webOrigins": ["http://localhost:8444"],
+      "redirectUris": [
+        "http://localhost:8444/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8444"
+      ],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -4717,7 +4721,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "ogadmin@localhost"
     },
     {
       "id": "8037bdb5-1abd-45a7-aaa1-c8dce0da86d8",
@@ -4750,7 +4755,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "contentdev@localhost"
     },
     {
       "id": "3d8332fa-2e35-4823-b83f-732eb9483690",
@@ -4782,7 +4788,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "crucible-admin@localhost"
     },
     {
       "id": "a0c8dc48-c501-4362-bef2-945cf1695bd0",
@@ -4816,7 +4823,8 @@
       "notBefore": 0,
       "groups": [
         "/White Cell"
-      ]
+      ],
+      "email": "demo-user@localhost"
     },
     {
       "id": "987b237f-764e-460f-a80d-b761321d9e98",
@@ -4848,7 +4856,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "rangetech@localhost"
     },
     {
       "id": "6b2541f3-7b60-4c09-ba0a-d421bfbabb46",
@@ -4880,7 +4889,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "readonly@localhost"
     },
     {
       "id": "6ae23f9b-26d0-4c15-a399-1a94b7d10f90",
@@ -4931,7 +4941,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "user1@localhost"
     },
     {
       "id": "c0ce45b2-5634-4f5e-9a6a-87a0738e814c",
@@ -4962,7 +4973,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "user2@localhost"
     }
   ]
 }
