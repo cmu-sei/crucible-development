@@ -18,11 +18,12 @@ LogLaunchOptions(launchOptions);
 var postgres = builder.AddPostgres(launchOptions);
 var keycloak = builder.AddKeycloak(postgres);
 var commonUiDev = builder.AddCommonUIDev(launchOptions);
+var consoleForgeUiDev = builder.AddConsoleForgeUIDev(launchOptions);
 
 builder.AddPlayer(postgres, keycloak, launchOptions, commonUiDev);
 builder.AddCaster(postgres, keycloak, launchOptions, commonUiDev);
 builder.AddAlloy(postgres, keycloak, launchOptions, commonUiDev);
-builder.AddTopoMojo(postgres, keycloak, launchOptions);
+builder.AddTopoMojo(postgres, keycloak, launchOptions, consoleForgeUiDev);
 builder.AddSteamfitter(postgres, keycloak, launchOptions, commonUiDev);
 builder.AddCite(postgres, keycloak, launchOptions, commonUiDev);
 builder.AddGallery(postgres, keycloak, launchOptions, commonUiDev);
@@ -485,7 +486,7 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? consoleForgeSetup = null)
     {
         var topoMojoMode = ResolveMode(options.TopoMojo, "TopoMojo", options);
 
@@ -531,6 +532,27 @@ public static class BuilderExtensions
                 .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
                 .WithArgs("topomojo-work")
                 .WithHttpHealthCheck();
+
+            if (consoleForgeSetup != null)
+            {
+                topoUi = topoUi.WithArgs("--", "--configuration", "localNPM");
+
+                var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
+                    .FirstOrDefault(r => r.Name == "topomojo-ui-installer");
+
+                if (installerResource != null)
+                {
+                    var setupLocal = builder.AddExecutable("topomojo-ui-setup-console-forge", "bash", topoUiRoot, [
+                        "-c",
+                        $"npm link @cmusei/console-forge && cp {builder.AppHostDirectory}/resources/tsconfig.local-console-forge.json ."
+                    ])
+                    .WithParentRelationship(installerResource);
+
+                    setupLocal.Resource.Annotations.Add(new WaitAnnotation(installerResource, WaitType.WaitForCompletion));
+                    setupLocal.WaitFor(consoleForgeSetup);
+                    topoUi.WaitForCompletion(setupLocal);
+                }
+            }
         }
         else
         {
@@ -1078,6 +1100,32 @@ public static class BuilderExtensions
         .WithHealthCheck("common-ui-healthy");
 
         return commonUi;
+    }
+
+    public static IResourceBuilder<ExecutableResource>? AddConsoleForgeUIDev(this IDistributedApplicationBuilder builder, LaunchOptions options)
+    {
+        if (!options.LinkConsoleForge)
+        {
+            return null;
+        }
+
+        var consoleForgeRoot = "/mnt/data/crucible/libraries/console-forge";
+        var markerFile = $"{builder.AppHostDirectory}/.console-forge-build-ready";
+
+        builder.Services.AddHealthChecks().AddCheck("console-forge-healthy", () =>
+        {
+            return File.Exists(markerFile)
+                ? HealthCheckResult.Healthy()
+                : HealthCheckResult.Unhealthy("Initial build not yet complete");
+        });
+
+        var consoleForge = builder.AddExecutable("console-forge-dev", "bash", consoleForgeRoot, [
+            "-c",
+            $"rm -f {markerFile} && npm install && npx ng build console-forge --watch | while IFS= read -r line; do echo \"$line\"; if echo \"$line\" | grep -q 'Compilation complete' && [ ! -f {markerFile} ]; then npm link ./dist/console-forge && touch {markerFile}; fi; done"
+        ])
+        .WithHealthCheck("console-forge-healthy");
+
+        return consoleForge;
     }
 
     public static void AddSuperset(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)

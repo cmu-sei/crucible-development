@@ -1,0 +1,6 @@
+{
+  "extends": "./projects/topomojo-work/tsconfig.app.json",
+  "compilerOptions": {
+    "preserveSymlinks": true
+  }
+}

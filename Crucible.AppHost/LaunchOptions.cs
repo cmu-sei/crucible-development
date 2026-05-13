@@ -30,4 +30,5 @@ public class LaunchOptions
     public bool AddAllApplications { get; set; }
     public bool UseAspireProxy { get; set; }
     public bool LinkCommonUI { get; set; }
+    public bool LinkConsoleForge { get; set; }
 }
