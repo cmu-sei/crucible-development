@@ -26,6 +26,7 @@ declare -A PROXMOX=(
     [vm_store]="local-lvm"
     [disk_store]="local-lvm"
     [iso_store]="local"
+    [iso_root]="/mnt/proxmox-iso"
     [pool_path]=""
     [ignore_cert_errors]="true"
     [ticket_url_handler]="none"
@@ -43,6 +44,7 @@ declare -A VSPHERE=(
     [vm_store]="[datastore] topomojo"
     [disk_store]="[datastore] topomojo"
     [iso_store]="[datastore] topomojo"
+    [iso_root]="/mnt/isos"
     [pool_path]="Datacenter/Cluster"
     [ignore_cert_errors]="true"
     [ticket_url_handler]="querystring"
@@ -52,17 +54,19 @@ declare -A VSPHERE=(
 
 declare -A VMC=(
     [name]="VMware Cloud on AWS"
-    [type]="Vsphere"
+    [type]="vSphere"
     [url]="https://vcenter.sddc-xx-xx-xx-xx.vmwarevmc.com/sdk"
     [user]="cloudadmin@vmc.local"
     [password]="your-vmc-password-here"
     [access_token]=""
-    [vm_store]="[WorkloadDatastore] topomojo"
-    [disk_store]="[WorkloadDatastore] topomojo"
-    [iso_store]="[WorkloadDatastore] topomojo"
+    [vm_store]="[WorkloadDatastore] topomojo/"
+    [disk_store]="[WorkloadDatastore] topomojo/"
+    [iso_store]="[WorkloadDatastore] topomojo/"
+    [file_iso_store]="[WorkloadDatastore] topomojo/"
+    [iso_root]="/mnt/vmc-iso"
     [pool_path]="SDDC-Datacenter/Cluster-1/Compute-ResourcePool"
     [ignore_cert_errors]="true"
-    [ticket_url_handler]="querystring"
+    [ticket_url_handler]="none"
     [use_datastore_api]="true"
     [temp_root]="/tmp/topoiso"
 )
@@ -236,6 +240,15 @@ Pod__TicketUrlHandler = ${config[ticket_url_handler]}
 ####################
 ## File Upload Configuration
 ####################
+FileUpload__IsoRoot = ${config[iso_root]}
+EOF
+
+    # Add FileUpload__IsoStore for VMC only
+    if [ -n "${config[file_iso_store]}" ]; then
+        echo "FileUpload__IsoStore = ${config[file_iso_store]}" >> "$APPSETTINGS_DEV"
+    fi
+
+    cat >> "$APPSETTINGS_DEV" <<EOF
 FileUpload__UseDatastoreApi = ${config[use_datastore_api]}
 FileUpload__TempRoot = ${config[temp_root]}
 EOF
@@ -265,6 +278,16 @@ apply_config() {
     echo "  VM Store:   ${config[vm_store]}"
     echo "  ISO API:    ${config[use_datastore_api]}"
     echo ""
+
+    # Show VMC-specific instructions
+    if [ "$profile" == "VMC" ]; then
+        echo -e "${YELLOW}✓ VMC Configuration Notes:${NC}"
+        echo "  • TopoMojo will create 'topomojo/' folder on WorkloadDatastore"
+        echo "  • ISOs stored in: [WorkloadDatastore] topomojo/00000000.../*.iso"
+        echo "  • Uses vSphere API for uploads (NFS not required)"
+        echo ""
+    fi
+
     echo -e "${BLUE}Next steps:${NC}"
     echo "  1. Review config: cat $APPSETTINGS_DEV"
     echo "  2. Restart Aspire: aspire run"
