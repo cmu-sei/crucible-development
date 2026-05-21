@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+if [ -n "${CRUCIBLE_CI_SKIP_CLONE:-}" ]; then
+  echo "CRUCIBLE_CI_SKIP_CLONE set; skipping repo clone."
+  exit 0
+fi
+
 MANIFEST=scripts/repos.json
 LOCAL_MANIFEST=scripts/repos.local.json
 

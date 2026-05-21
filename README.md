@@ -23,6 +23,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
 - [Library Development](#library-development)
   - [.NET Libraries (crucible-common-dotnet)](#net-libraries-crucible-common-dotnet)
   - [Angular Libraries (Crucible.Common.Ui)](#angular-libraries-cruciblecommonui)
+- [Devcontainer CI](#devcontainer-ci)
 
 ## Getting Started
 
@@ -937,3 +938,7 @@ The AppHost uses a health check to ensure UIs don't start until the library is f
 3. Edit files in `/mnt/data/crucible/libraries/Crucible.Common.Ui`
 4. The watch process rebuilds the library automatically
 5. UIs using `ng serve` pick up the changes via the npm link
+
+## Devcontainer CI
+
+A GitHub Actions workflow (`.github/workflows/devcontainer-ci.yml`) builds the dev container on every pull request and on pushes to `main` (amd64 and arm64) using the [`devcontainers/ci`](https://github.com/devcontainers/ci) action, then runs `.devcontainer/ci-verify-tools.sh` inside it to confirm the core developer tools are installed. Repo cloning is skipped in CI via `CRUCIBLE_CI_SKIP_CLONE=1`. Builds on `main` are cached to GHCR so PR runs are faster.
