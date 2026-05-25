@@ -237,29 +237,19 @@ if [ "$CREATE_TOPOMOJO_WORKSPACES" = "true" ]; then
   fi
 
   echo ""
-  echo -e "${CYAN}Creating workspace with variants...${NC}"
+  echo -e "${CYAN}Creating workspace with question variants...${NC}"
   if [ -f "$SCRIPT_DIR/create-topomojo-workspace-with-variants.sh" ]; then
     VARIANTS_OUTPUT=$(bash "$SCRIPT_DIR/create-topomojo-workspace-with-variants.sh" 2>&1) || {
       echo -e "${YELLOW}⚠ Variants workspace creation failed, continuing...${NC}"
     }
     echo "$VARIANTS_OUTPUT"
     # Extract additional workspace name and ID
-    VARIANTS_NAME=$(echo "$VARIANTS_OUTPUT" | grep "^Workspace:" | head -1 | cut -d: -f2- | xargs)
-    VARIANTS_ID=$(echo "$VARIANTS_OUTPUT" | grep -oE "Workspace (created|already exists): [a-f0-9-]+" | grep -oE "[a-f0-9-]{32,36}" | head -1 || true)
-    # Extract variant template lines
-    VARIANT_TEMPLATE_LINES=$(echo "$VARIANTS_OUTPUT" | grep "TopoMojo template created:" || true)
+    VARIANTS_NAME=$(echo "$VARIANTS_OUTPUT" | grep "Workspace Name:" | sed 's/Workspace Name: //')
+    VARIANTS_ID=$(echo "$VARIANTS_OUTPUT" | grep "Workspace ID:" | sed 's/Workspace ID: //')
 
-    if [ -n "$VARIANTS_ID" ]; then
+    if [ -n "$VARIANTS_ID" ] && [ "$VARIANTS_ID" != "Workspace" ]; then
       CREATED_WORKSPACES="${CREATED_WORKSPACES}
 $VARIANTS_NAME ($VARIANTS_ID)"
-    fi
-    if [ -n "$VARIANT_TEMPLATE_LINES" ]; then
-      VARIANT_TEMPLATES=$(echo "$VARIANT_TEMPLATE_LINES" | while read line; do
-        TMPL_INFO=$(echo "$line" | sed 's/.*created: //')
-        echo "$TMPL_INFO"
-      done)
-      CREATED_TEMPLATES="${CREATED_TEMPLATES}
-${VARIANT_TEMPLATES}"
     fi
   else
     echo -e "${YELLOW}⚠ create-topomojo-workspace-with-variants.sh not found${NC}"
@@ -297,6 +287,24 @@ if [ "$CREATE_CASTER_PROJECTS" = "true" ]; then
 
   echo ""
   echo -e "${GREEN}✓ Caster projects created${NC}"
+  echo ""
+
+  # Create second Caster project for Alloy integration
+  echo -e "${CYAN}Creating Caster project for Alloy...${NC}"
+  export PROJECT_NAME="Proxmox Test with Alloy"
+  export CLEAN_SETUP
+  CASTER_ALLOY_OUTPUT=$(bash "$SCRIPT_DIR/create-caster-proxmox-topology.sh" 2>&1) || {
+    echo -e "${YELLOW}⚠ Caster Alloy project creation failed, continuing...${NC}"
+  }
+  echo "$CASTER_ALLOY_OUTPUT"
+  CASTER_ALLOY_PROJECT=$(echo "$CASTER_ALLOY_OUTPUT" | grep -oE "Project:.*\([a-f0-9-]+\)" || true)
+  CASTER_ALLOY_DIR_ID=$(echo "$CASTER_ALLOY_OUTPUT" | grep -oE "Directory created: [a-f0-9-]+" | grep -oE "[a-f0-9-]{36}" || true)
+
+  if [ -n "$CASTER_ALLOY_PROJECT" ]; then
+    CREATED_CASTER_PROJECTS="${CREATED_CASTER_PROJECTS}
+${CASTER_ALLOY_PROJECT}"
+  fi
+
   echo ""
 else
   echo -e "${YELLOW}Skipping Caster project creation${NC}"
@@ -341,22 +349,63 @@ if [ "$CREATE_ALLOY_EVENTS" = "true" ]; then
   echo -e "${BLUE}════════════════════════════════════════════════${NC}"
   echo ""
 
+  # Create Alloy event without Caster
   if [ -f "$SCRIPT_DIR/create-alloy-event-without-caster.sh" ]; then
-    echo -e "${CYAN}Creating example Alloy event...${NC}"
+    echo -e "${CYAN}Creating Alloy event (view only, no Caster)...${NC}"
     # Extract Player View ID from previous step
     PLAYER_VIEW_GUID=$(echo "$PLAYER_OUTPUT" | grep -oE "View created: [a-f0-9-]+" | grep -oE "[a-f0-9-]{36}" || true)
+    if [ -z "$PLAYER_VIEW_GUID" ]; then
+      # Check if view already exists and extract existing ID
+      PLAYER_VIEW_GUID=$(echo "$PLAYER_OUTPUT" | grep -oE "View already exists:.*\([a-f0-9-]{36}\)" | grep -oE "[a-f0-9-]{36}" || true)
+    fi
     if [ -n "$PLAYER_VIEW_GUID" ]; then
       export PLAYER_VIEW_ID="$PLAYER_VIEW_GUID"
       echo "Using Player View ID: $PLAYER_VIEW_ID"
     fi
     export CLEAN_SETUP
-    ALLOY_OUTPUT=$(bash "$SCRIPT_DIR/create-alloy-event-without-caster.sh" 2>&1) || {
-      echo -e "${YELLOW}⚠ Alloy event creation failed, continuing...${NC}"
+    ALLOY_NO_CASTER_OUTPUT=$(bash "$SCRIPT_DIR/create-alloy-event-without-caster.sh" 2>&1) || {
+      echo -e "${YELLOW}⚠ Alloy event (no Caster) creation failed, continuing...${NC}"
     }
-    echo "$ALLOY_OUTPUT"
-    CREATED_ALLOY_EVENTS=$(echo "$ALLOY_OUTPUT" | grep -oE "Event:.*\([a-f0-9-]+\)" || true)
+    echo "$ALLOY_NO_CASTER_OUTPUT"
+    ALLOY_NO_CASTER_EVENT=$(echo "$ALLOY_NO_CASTER_OUTPUT" | grep -oE "Event Template Name:.*" | sed 's/Event Template Name: //' || true)
+    ALLOY_NO_CASTER_ID=$(echo "$ALLOY_NO_CASTER_OUTPUT" | grep -oE "Event Template ID:.*" | sed 's/Event Template ID: *//' | xargs || true)
+    if [ -n "$ALLOY_NO_CASTER_EVENT" ] && [ -n "$ALLOY_NO_CASTER_ID" ]; then
+      CREATED_ALLOY_EVENTS="$ALLOY_NO_CASTER_EVENT ($ALLOY_NO_CASTER_ID)"
+    fi
   else
     echo -e "${YELLOW}⚠ create-alloy-event-without-caster.sh not found${NC}"
+  fi
+
+  echo ""
+
+  # Create Alloy event with Caster
+  if [ -f "$SCRIPT_DIR/create-alloy-event.sh" ]; then
+    echo -e "${CYAN}Creating Alloy event (with Caster directory)...${NC}"
+    # Use Player View ID from Phase 6 and Caster Directory ID from Phase 5b
+    if [ -n "$PLAYER_VIEW_GUID" ]; then
+      export PLAYER_VIEW_ID="$PLAYER_VIEW_GUID"
+    fi
+    if [ -n "$CASTER_ALLOY_DIR_ID" ]; then
+      export CASTER_DIRECTORY_ID="$CASTER_ALLOY_DIR_ID"
+      echo "Using Caster Directory ID: $CASTER_DIRECTORY_ID"
+      echo "Using Player View ID: $PLAYER_VIEW_ID"
+
+      export CLEAN_SETUP
+      ALLOY_WITH_CASTER_OUTPUT=$(bash "$SCRIPT_DIR/create-alloy-event.sh" 2>&1) || {
+        echo -e "${YELLOW}⚠ Alloy event (with Caster) creation failed, continuing...${NC}"
+      }
+      echo "$ALLOY_WITH_CASTER_OUTPUT"
+      ALLOY_WITH_CASTER_EVENT=$(echo "$ALLOY_WITH_CASTER_OUTPUT" | grep -oE "Event Template Name:.*" | sed 's/Event Template Name: //' || true)
+      ALLOY_WITH_CASTER_ID=$(echo "$ALLOY_WITH_CASTER_OUTPUT" | grep -oE "Event Template ID:.*" | sed 's/Event Template ID: *//' | xargs || true)
+      if [ -n "$ALLOY_WITH_CASTER_EVENT" ] && [ -n "$ALLOY_WITH_CASTER_ID" ]; then
+        CREATED_ALLOY_EVENTS="${CREATED_ALLOY_EVENTS}
+$ALLOY_WITH_CASTER_EVENT ($ALLOY_WITH_CASTER_ID)"
+      fi
+    else
+      echo -e "${YELLOW}⚠ Caster Directory ID not found, skipping Alloy with Caster${NC}"
+    fi
+  else
+    echo -e "${YELLOW}⚠ create-alloy-event.sh not found${NC}"
   fi
 
   echo ""

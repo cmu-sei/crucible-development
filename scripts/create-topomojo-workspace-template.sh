@@ -67,12 +67,16 @@ ISO_TEMPLATE_ISO="${ISO_TEMPLATE_ISO:-local:iso/TinyCore-current.iso}"
 DISK_TEMPLATE_NAME="${DISK_TEMPLATE_NAME:-Alpine-Disk}"
 DISK_TEMPLATE_DESCRIPTION="${DISK_TEMPLATE_DESCRIPTION:-Alpine with disk}"
 DISK_TEMPLATE_ISO="${DISK_TEMPLATE_ISO:-local:iso/TinyCore-current.iso}"
+PUPPY_TEMPLATE_NAME="${PUPPY_TEMPLATE_NAME:-Puppy-Linux}"
+PUPPY_TEMPLATE_DESCRIPTION="${PUPPY_TEMPLATE_DESCRIPTION:-Puppy Linux with GUI}"
+PUPPY_TEMPLATE_ISO="${PUPPY_TEMPLATE_ISO:-local:iso/fossapup64-9.5.iso}"
 TEMPLATE_NETWORKS="${TEMPLATE_NETWORKS:-lan}"
 PROXMOX_USER="${PROXMOX_USER:-root}"
 PROXMOX_NODE="${PROXMOX_NODE:-pve}"
 PROXMOX_STORAGE="${PROXMOX_STORAGE:-local-lvm}"
 ISO_PROXMOX_VMID="${ISO_PROXMOX_VMID:-9001}"
 DISK_PROXMOX_VMID="${DISK_PROXMOX_VMID:-9002}"
+PUPPY_PROXMOX_VMID="${PUPPY_PROXMOX_VMID:-103}"
 
 echo "Creating TopoMojo workspace with Proxmox-backed templates..."
 echo "API URL: $TOPOMOJO_API_URL"
@@ -252,12 +256,82 @@ DISK_TEMPLATE_ID=$(echo "$DISK_TEMPLATE_RESPONSE" | jq -r '.id')
 echo "✓ TopoMojo template created: $DISK_TEMPLATE_NAME ($DISK_TEMPLATE_ID)"
 echo ""
 
+# ======================================
+# Template 3: Puppy Linux
+# ======================================
+echo "Creating Puppy Linux TopoMojo template..."
+
+PUPPY_PROXMOX_NAME="puppy-test"
+
+PUPPY_DETAIL_JSON=$(jq -n \
+  --arg template "$PUPPY_PROXMOX_NAME" \
+  --arg iso "$PUPPY_TEMPLATE_ISO" \
+  '{
+    template: $template,
+    iso: $iso,
+    ram: 0.5,
+    cpu: "1x1",
+    eth: [{net: "lan"}],
+    disks: []
+  }')
+
+PUPPY_TEMPLATE_RESPONSE=$(curl -k -s -X POST "${TOPOMOJO_API_URL}/api/template-detail" \
+  -H "Authorization: Bearer ${KEYCLOAK_TOKEN}" \
+  -H "Content-Type: application/json" \
+  --data-binary @- <<JSON_EOF
+{
+  "name": "${PUPPY_TEMPLATE_NAME}",
+  "description": "${PUPPY_TEMPLATE_DESCRIPTION}",
+  "networks": "${TEMPLATE_NETWORKS}",
+  "guestinfo": "",
+  "detail": $(echo "$PUPPY_DETAIL_JSON" | jq -Rs .),
+  "isPublished": true,
+  "workspaceId": null
+}
+JSON_EOF
+)
+
+PUPPY_TEMPLATE_ID=$(echo "$PUPPY_TEMPLATE_RESPONSE" | jq -r '.id')
+echo "✓ TopoMojo template created: $PUPPY_TEMPLATE_NAME ($PUPPY_TEMPLATE_ID)"
+echo ""
+
+# ======================================
+# Add Templates to Workspace
+# ======================================
+echo "Adding templates to workspace..."
+
+# Add ISO template to workspace
+curl -k -s -X POST "${TOPOMOJO_API_URL}/api/workspace/${WORKSPACE_ID}/template" \
+  -H "Authorization: Bearer ${KEYCLOAK_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"templateId\": \"${ISO_TEMPLATE_ID}\"}" > /dev/null
+
+echo "✓ Added $ISO_TEMPLATE_NAME to workspace"
+
+# Add Disk template to workspace
+curl -k -s -X POST "${TOPOMOJO_API_URL}/api/workspace/${WORKSPACE_ID}/template" \
+  -H "Authorization: Bearer ${KEYCLOAK_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"templateId\": \"${DISK_TEMPLATE_ID}\"}" > /dev/null
+
+echo "✓ Added $DISK_TEMPLATE_NAME to workspace"
+
+# Add Puppy template to workspace
+curl -k -s -X POST "${TOPOMOJO_API_URL}/api/workspace/${WORKSPACE_ID}/template" \
+  -H "Authorization: Bearer ${KEYCLOAK_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "{\"templateId\": \"${PUPPY_TEMPLATE_ID}\"}" > /dev/null
+
+echo "✓ Added $PUPPY_TEMPLATE_NAME to workspace"
+echo ""
+
 echo "==============================================="
 echo "SUCCESS!"
 echo "==============================================="
 echo "Workspace ID: $WORKSPACE_ID"
 echo "ISO Template: $ISO_TEMPLATE_ID (Proxmox VM ${ISO_PROXMOX_VMID})"
 echo "Disk Template: $DISK_TEMPLATE_ID (Proxmox VM ${DISK_PROXMOX_VMID})"
+echo "Puppy Template: $PUPPY_TEMPLATE_ID (Proxmox VM ${PUPPY_PROXMOX_VMID})"
 echo ""
 echo "View in TopoMojo: http://localhost:5000/topo/workspace/${WORKSPACE_ID}"
 echo ""

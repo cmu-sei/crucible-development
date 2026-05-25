@@ -218,67 +218,40 @@ else
 fi
 echo ""
 
-# Create templates and link to workspace
-echo "Creating and linking templates to workspace..."
+# Find and link global templates to workspace
+echo "Finding global templates and linking to workspace..."
 
-# Template names for each variant
-TEMPLATE_NAMES=("Linux-Box-V1" "Network-Node-V2" "File-Server-V3")
-TEMPLATE_DESCS=("Linux VM for variant 1" "Network node for variant 2" "File server for variant 3")
+# Get all global templates
+ALL_TEMPLATES=$(curl -k -s -X GET "${TOPOMOJO_API_URL}/api/templates" \
+  -H "Authorization: Bearer ${KEYCLOAK_TOKEN}")
+
+# Template names we want to use for each variant
+TEMPLATE_NAMES=("TinyCore-ISO" "Alpine-Disk" "Puppy-Linux")
 TEMPLATE_IDS=()
 
 for i in {0..2}; do
     VARIANT=$((i + 1))
     TEMPLATE_NAME="${TEMPLATE_NAMES[$i]}"
-    TEMPLATE_DESC="${TEMPLATE_DESCS[$i]}"
 
-    echo "Creating template ${VARIANT}: ${TEMPLATE_NAME}..."
+    echo "Finding template ${VARIANT}: ${TEMPLATE_NAME}..."
 
-    # Simple template JSON - minimal VM config
-    DETAIL_JSON=$(jq -n \
-      --arg name "$TEMPLATE_NAME" \
-      '{
-        name: $name,
-        ram: 1,
-        cpu: "1x1",
-        eth: [{net: "lan"}],
-        disks: []
-      }')
-
-    TEMPLATE_RESPONSE=$(curl -k -s -X POST "${TOPOMOJO_API_URL}/api/template-detail" \
-      -H "Authorization: Bearer ${KEYCLOAK_TOKEN}" \
-      -H "Content-Type: application/json" \
-      --data-binary @- <<JSON_EOF
-{
-  "name": "${TEMPLATE_NAME}",
-  "description": "${TEMPLATE_DESC}",
-  "networks": "lan",
-  "guestinfo": "",
-  "detail": $(echo "$DETAIL_JSON" | jq -Rs .),
-  "isPublished": true,
-  "workspaceId": null
-}
-JSON_EOF
-    )
-
-    TEMPLATE_ID=$(echo "$TEMPLATE_RESPONSE" | jq -r '.id')
+    # Find template ID by name
+    TEMPLATE_ID=$(echo "$ALL_TEMPLATES" | jq -r ".[] | select(.name == \"$TEMPLATE_NAME\") | .id" | head -1)
 
     if [ -n "$TEMPLATE_ID" ] && [ "$TEMPLATE_ID" != "null" ]; then
-        echo "  ✓ Template created: $TEMPLATE_ID"
+        echo "  ✓ Found template: $TEMPLATE_ID"
         TEMPLATE_IDS+=("$TEMPLATE_ID")
 
         # Link template to workspace
-        LINK_RESPONSE=$(curl -k -s -X POST "${TOPOMOJO_API_URL}/api/template" \
+        curl -k -s -X POST "${TOPOMOJO_API_URL}/api/workspace/${WORKSPACE_ID}/template" \
           -H "Authorization: Bearer ${KEYCLOAK_TOKEN}" \
           -H "Content-Type: application/json" \
-          -d "{
-            \"templateId\": \"${TEMPLATE_ID}\",
-            \"workspaceId\": \"${WORKSPACE_ID}\"
-          }")
+          -d "{\"templateId\": \"${TEMPLATE_ID}\"}" > /dev/null
 
         echo "  ✓ Template linked to workspace"
     else
-        echo "  ⚠ Warning: Failed to create template"
-        echo "  Response: $TEMPLATE_RESPONSE"
+        echo "  ⚠ Warning: Template not found: $TEMPLATE_NAME"
+        echo "  Make sure to run create-topomojo-workspace-template.sh first to create global templates"
     fi
 done
 
@@ -294,10 +267,10 @@ echo "  Variant 1: Linux Basics (3 questions about basic commands)"
 echo "  Variant 2: Network Tools (3 questions about network commands)"
 echo "  Variant 3: File Operations (3 questions about file management)"
 echo ""
-echo "Templates Created:"
-echo "  Variant 1: Linux-Box-V1"
-echo "  Variant 2: Network-Node-V2"
-echo "  Variant 3: File-Server-V3"
+echo "Templates Linked:"
+echo "  Variant 1: TinyCore-ISO"
+echo "  Variant 2: Alpine-Disk"
+echo "  Variant 3: Puppy-Linux"
 echo ""
 echo "View in TopoMojo UI:"
 echo "  ${TOPOMOJO_API_URL}/topo/workspace/${WORKSPACE_ID}"

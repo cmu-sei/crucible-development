@@ -84,7 +84,12 @@ fi
 
 # Create new project with hardcoded GUID for idempotency
 echo "Creating project..."
-PROJECT_ID="3584598e-bebe-4ecb-9f5e-2c52a2971a68"
+# Use different GUIDs for different project names
+if [ "$PROJECT_NAME" = "Proxmox Test with Alloy" ]; then
+  PROJECT_ID="7fa5b814-d57b-494f-96e8-51c34471c2c1"
+else
+  PROJECT_ID="3584598e-bebe-4ecb-9f5e-2c52a2971a68"
+fi
 PROJECT_RESPONSE=$(curl -k -s -X POST "$CASTER_API_URL/projects" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -107,7 +112,12 @@ echo ""
 
 # Create Directory
 echo "Creating directory..."
-DIRECTORY_ID="62bd916e-dceb-42cd-9f74-c5e219637c47"
+# Use different GUIDs for different projects
+if [ "$PROJECT_NAME" = "Proxmox Test with Alloy" ]; then
+  DIRECTORY_ID="704808b2-b864-4997-b4c6-2d25220c5445"
+else
+  DIRECTORY_ID="62bd916e-dceb-42cd-9f74-c5e219637c47"
+fi
 DIRECTORY_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/directories" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -273,7 +283,11 @@ output "tinycore_player_id" {
   value = crucible_player_virtual_machine.tinycore.id
 }'
 
-FILE_ID="f9b489fe-5bf6-4baa-8840-5e900e5b90d5"
+if [ "$PROJECT_NAME" = "Proxmox Test with Alloy" ]; then
+  FILE_ID="c0574f10-73fc-474e-a64b-d358370967c8"
+else
+  FILE_ID="f9b489fe-5bf6-4baa-8840-5e900e5b90d5"
+fi
 FILE_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/files" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -362,7 +376,11 @@ variable "caster_api_url" {
   default     = "http://localhost:4309"
 }'
 
-FILE_ID="a43bc816-be98-410e-bd53-def3522f5bb5"
+if [ "$PROJECT_NAME" = "Proxmox Test with Alloy" ]; then
+  FILE_ID="21c1f0a6-61b4-463b-8391-a007dfe326f3"
+else
+  FILE_ID="a43bc816-be98-410e-bd53-def3522f5bb5"
+fi
 FILE_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/files" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -399,7 +417,11 @@ vm_api_url = \"http://host.docker.internal:4302/api\"
 caster_api_url = \"http://localhost:4309\"
 "
 
-FILE_ID="9a52310f-56e5-4ac5-b856-ceddbb653ff4"
+if [ "$PROJECT_NAME" = "Proxmox Test with Alloy" ]; then
+  FILE_ID="20927122-097d-49f5-8696-552a0bdb413f"
+else
+  FILE_ID="9a52310f-56e5-4ac5-b856-ceddbb653ff4"
+fi
 FILE_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/files" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
