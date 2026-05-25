@@ -50,6 +50,48 @@ EOF
 echo "$TOKEN_OUTPUT"
 echo ""
 
+# Setup NFS export for ISO storage
+echo "Setting up NFS export for ISO storage..."
+DEVCONTAINER_IP=$(hostname -I | awk '{print $1}')
+DEVCONTAINER_NETWORK="${DEVCONTAINER_IP%.*}.0/24"
+
+ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "${PROXMOX_USER}@${PROXMOX_HOST}" bash <<NFSEOF
+set -e
+
+# Install NFS server if not already installed
+if ! dpkg -l | grep -q nfs-kernel-server; then
+    echo "Installing NFS server..."
+    apt-get update -qq
+    apt-get install -y nfs-kernel-server
+fi
+
+# Backup existing exports
+if [ -f /etc/exports ]; then
+    if [ ! -f /etc/exports.backup ]; then
+        cp /etc/exports /etc/exports.backup
+    fi
+fi
+
+# Add ISO export if not already present
+if ! grep -q "/var/lib/vz/template/iso" /etc/exports; then
+    echo "/var/lib/vz/template/iso ${DEVCONTAINER_NETWORK}(rw,sync,no_subtree_check,no_root_squash,insecure)" >> /etc/exports
+    echo "✓ Added NFS export to /etc/exports"
+else
+    echo "✓ NFS export already exists in /etc/exports"
+fi
+
+# Export the filesystem
+exportfs -ra
+echo "✓ Exported filesystems"
+
+# Enable and restart NFS server
+systemctl enable nfs-kernel-server
+systemctl restart nfs-kernel-server
+echo "✓ NFS server configured and running"
+NFSEOF
+
+echo ""
+
 # Extract token from output
 TOKEN_VALUE=$(echo "$TOKEN_OUTPUT" | grep -E "│ value\s+│" | awk -F'│' '{print $3}' | xargs)
 
@@ -80,6 +122,14 @@ echo ""
 echo "Configuration:"
 echo "  Host: ${PROXMOX_HOST}"
 echo "  VM/Disk Storage: local-lvm"
-echo "  ISO Storage: local:iso"
+echo "  ISO Storage: local"
+echo "  NFS Export: ${PROXMOX_HOST}:/var/lib/vz/template/iso"
+echo ""
+echo "Next steps:"
+echo "  1. Mount NFS in devcontainer:"
+echo "     sudo mkdir -p /mnt/proxmox-iso"
+echo "     sudo mount -t nfs ${PROXMOX_HOST}:/var/lib/vz/template/iso /mnt/proxmox-iso"
+echo "  2. Update TopoMojo config to use mounted path:"
+echo "     FileUpload__IsoRoot = /mnt/proxmox-iso"
 echo ""
 echo "Restart TopoMojo API from Aspire dashboard for changes to take effect."

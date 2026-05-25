@@ -19,10 +19,10 @@ NC='\033[0m' # No Color
 declare -A PROXMOX=(
     [name]="Proxmox (Local)"
     [type]="Proxmox"
-    [url]="https://172.22.64.132:443"
+    [url]="https://172.29.24.139:443"
     [user]=""
     [password]=""
-    [access_token]="root@pam!crucible=6d803e6b-5af5-4c02-bb9e-19f57094875c"
+    [access_token]="root@pam!CRUCIBLE=12ff6f1f-2622-430c-9a66-573e8ec909b9"
     [vm_store]="local-lvm"
     [disk_store]="local-lvm"
     [iso_store]="local"

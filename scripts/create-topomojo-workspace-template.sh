@@ -63,10 +63,10 @@ WORKSPACE_DESCRIPTION="${WORKSPACE_DESCRIPTION:-Test workspace with Proxmox-base
 WORKSPACE_TAGS="${WORKSPACE_TAGS:-test}"
 ISO_TEMPLATE_NAME="${ISO_TEMPLATE_NAME:-TinyCore-ISO}"
 ISO_TEMPLATE_DESCRIPTION="${ISO_TEMPLATE_DESCRIPTION:-TinyCore boots from ISO}"
-ISO_TEMPLATE_ISO="${ISO_TEMPLATE_ISO:-local:iso/9f2f2a82d0af427caa71ab6c1676d039#TinyCore-current.iso}"
+ISO_TEMPLATE_ISO="${ISO_TEMPLATE_ISO:-local:iso/TinyCore-current.iso}"
 DISK_TEMPLATE_NAME="${DISK_TEMPLATE_NAME:-Alpine-Disk}"
 DISK_TEMPLATE_DESCRIPTION="${DISK_TEMPLATE_DESCRIPTION:-Alpine with disk}"
-DISK_TEMPLATE_ISO="${DISK_TEMPLATE_ISO:-local:iso/9f2f2a82d0af427caa71ab6c1676d039#TinyCore-current.iso}"
+DISK_TEMPLATE_ISO="${DISK_TEMPLATE_ISO:-local:iso/TinyCore-current.iso}"
 TEMPLATE_NETWORKS="${TEMPLATE_NETWORKS:-lan}"
 PROXMOX_USER="${PROXMOX_USER:-root}"
 PROXMOX_NODE="${PROXMOX_NODE:-pve}"
@@ -174,7 +174,7 @@ JSON_EOF
 )
 
 ISO_TEMPLATE_ID=$(echo "$ISO_TEMPLATE_RESPONSE" | jq -r '.id')
-echo "✓ TopoMojo template created: $ISO_TEMPLATE_ID"
+echo "✓ TopoMojo template created: $ISO_TEMPLATE_NAME ($ISO_TEMPLATE_ID)"
 echo ""
 
 # ======================================
@@ -249,7 +249,7 @@ JSON_EOF
 )
 
 DISK_TEMPLATE_ID=$(echo "$DISK_TEMPLATE_RESPONSE" | jq -r '.id')
-echo "✓ TopoMojo template created: $DISK_TEMPLATE_ID"
+echo "✓ TopoMojo template created: $DISK_TEMPLATE_NAME ($DISK_TEMPLATE_ID)"
 echo ""
 
 echo "==============================================="

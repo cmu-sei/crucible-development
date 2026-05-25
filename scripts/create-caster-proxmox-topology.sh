@@ -59,27 +59,32 @@ echo "Finding available project name..."
 ALL_PROJECTS=$(curl -k -s -X GET "$CASTER_API_URL/projects" \
   -H "Authorization: Bearer $ACCESS_TOKEN")
 
-# Check if base name exists
-EXISTING_PROJECT=$(echo "$ALL_PROJECTS" | jq -r ".[] | select(.name == \"$PROJECT_NAME\") | .name" | head -1)
+# Check if project already exists
+EXISTING_PROJECT_ID=$(echo "$ALL_PROJECTS" | jq -r ".[] | select(.name == \"$PROJECT_NAME\") | .id" | head -1)
 
-if [ -n "$EXISTING_PROJECT" ] && [ "$EXISTING_PROJECT" != "null" ]; then
-  # Find highest numbered project
-  COUNTER=2
-  while true; do
-    TEST_NAME="${PROJECT_NAME} ${COUNTER}"
-    EXISTS=$(echo "$ALL_PROJECTS" | jq -r ".[] | select(.name == \"$TEST_NAME\") | .name" | head -1)
-    if [ -z "$EXISTS" ] || [ "$EXISTS" = "null" ]; then
-      PROJECT_NAME="$TEST_NAME"
-      break
-    fi
-    COUNTER=$((COUNTER + 1))
-  done
-  echo "✓ Using name: $PROJECT_NAME"
+if [ -n "$EXISTING_PROJECT_ID" ] && [ "$EXISTING_PROJECT_ID" != "null" ]; then
+  if [ "${CLEAN_SETUP}" = "true" ]; then
+    echo "Deleting existing project: $PROJECT_NAME ($EXISTING_PROJECT_ID)"
+    curl -k -s -X DELETE "$CASTER_API_URL/projects/$EXISTING_PROJECT_ID" \
+      -H "Authorization: Bearer $ACCESS_TOKEN" > /dev/null
+    echo "✓ Project deleted"
+  else
+    echo "✓ Project already exists: $PROJECT_NAME ($EXISTING_PROJECT_ID)"
+    PROJECT_ID="$EXISTING_PROJECT_ID"
+    echo ""
+    echo "✓ Caster project ready!"
+    echo ""
+    echo "═══════════════════════════════════════════════════════════"
+    echo "Project Name: $PROJECT_NAME"
+    echo "Project ID:   $PROJECT_ID"
+    echo "═══════════════════════════════════════════════════════════"
+    exit 0
+  fi
 fi
 
-# Create new project
+# Create new project with hardcoded GUID for idempotency
 echo "Creating project..."
-PROJECT_ID=$(cat /proc/sys/kernel/random/uuid)
+PROJECT_ID="3584598e-bebe-4ecb-9f5e-2c52a2971a68"
 PROJECT_RESPONSE=$(curl -k -s -X POST "$CASTER_API_URL/projects" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -102,7 +107,7 @@ echo ""
 
 # Create Directory
 echo "Creating directory..."
-DIRECTORY_ID=$(cat /proc/sys/kernel/random/uuid)
+DIRECTORY_ID="62bd916e-dceb-42cd-9f74-c5e219637c47"
 DIRECTORY_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/directories" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -268,7 +273,7 @@ output "tinycore_player_id" {
   value = crucible_player_virtual_machine.tinycore.id
 }'
 
-FILE_ID=$(cat /proc/sys/kernel/random/uuid)
+FILE_ID="f9b489fe-5bf6-4baa-8840-5e900e5b90d5"
 FILE_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/files" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -357,7 +362,7 @@ variable "caster_api_url" {
   default     = "http://localhost:4309"
 }'
 
-FILE_ID=$(cat /proc/sys/kernel/random/uuid)
+FILE_ID="a43bc816-be98-410e-bd53-def3522f5bb5"
 FILE_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/files" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -394,7 +399,7 @@ vm_api_url = \"http://host.docker.internal:4302/api\"
 caster_api_url = \"http://localhost:4309\"
 "
 
-FILE_ID=$(cat /proc/sys/kernel/random/uuid)
+FILE_ID="9a52310f-56e5-4ac5-b856-ceddbb653ff4"
 FILE_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$CASTER_API_URL/files" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \

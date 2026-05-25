@@ -76,7 +76,12 @@ if [ -n "$ACCESS_TOKEN" ]; then
   if [ -n "$EXISTING_NAME" ]; then
     echo "⚠ Warning: A VM named '$VM_NAME' already exists in the database"
     echo ""
-    read -p "Continue and create VM with duplicate name? (y/N): " CONTINUE
+    if [ "$AUTO_CONFIRM" = "y" ] || [ "$AUTO_CONFIRM" = "yes" ]; then
+      CONTINUE="y"
+      echo "AUTO_CONFIRM set, continuing..."
+    else
+      read -p "Continue and create VM with duplicate name? (y/N): " CONTINUE
+    fi
     if [[ "$CONTINUE" != "y" && "$CONTINUE" != "Y" ]]; then
       echo "Cancelled by user"
       exit 0
@@ -87,6 +92,14 @@ fi
 
 echo "✓ Ready to create VM on Proxmox"
 echo ""
+
+# Delete VM if it exists on Proxmox
+echo "Checking if VM exists on Proxmox..."
+VM_EXISTS_CHECK=$(ssh -i /home/vscode/.ssh/crucible_proxmox root@$PROXMOX_HOST "qm list | grep -q '^\s*$VM_ID' && echo 'exists' || echo 'not found'")
+if [ "$VM_EXISTS_CHECK" = "exists" ]; then
+  echo "Deleting existing VM $VM_ID from Proxmox..."
+  ssh -i /home/vscode/.ssh/crucible_proxmox root@$PROXMOX_HOST "qm stop $VM_ID || true; qm destroy $VM_ID"
+fi
 
 # Create VM
 echo "Creating VM..."

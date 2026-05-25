@@ -65,27 +65,32 @@ echo "Finding available event template name..."
 ALL_TEMPLATES=$(curl -k -s -m 10 -X GET "$ALLOY_API_URL/eventtemplates" \
   -H "Authorization: Bearer $ACCESS_TOKEN")
 
-# Check if base name exists
-EXISTING_TEMPLATE=$(echo "$ALL_TEMPLATES" | jq -r ".[] | select(.name == \"$EVENT_TEMPLATE_NAME\") | .name" | head -1)
+# Check if event template already exists
+EXISTING_TEMPLATE_ID=$(echo "$ALL_TEMPLATES" | jq -r ".[] | select(.name == \"$EVENT_TEMPLATE_NAME\") | .id" | head -1)
 
-if [ -n "$EXISTING_TEMPLATE" ] && [ "$EXISTING_TEMPLATE" != "null" ]; then
-  # Find highest numbered template
-  COUNTER=2
-  while true; do
-    TEST_NAME="${EVENT_TEMPLATE_NAME} ${COUNTER}"
-    EXISTS=$(echo "$ALL_TEMPLATES" | jq -r ".[] | select(.name == \"$TEST_NAME\") | .name" | head -1)
-    if [ -z "$EXISTS" ] || [ "$EXISTS" = "null" ]; then
-      EVENT_TEMPLATE_NAME="$TEST_NAME"
-      break
-    fi
-    COUNTER=$((COUNTER + 1))
-  done
-  echo "✓ Using name: $EVENT_TEMPLATE_NAME"
+if [ -n "$EXISTING_TEMPLATE_ID" ] && [ "$EXISTING_TEMPLATE_ID" != "null" ]; then
+  if [ "${CLEAN_SETUP}" = "true" ]; then
+    echo "Deleting existing event template: $EVENT_TEMPLATE_NAME ($EXISTING_TEMPLATE_ID)"
+    curl -k -s -X DELETE "$ALLOY_API_URL/eventtemplates/$EXISTING_TEMPLATE_ID" \
+      -H "Authorization: Bearer $ACCESS_TOKEN" > /dev/null
+    echo "✓ Event template deleted"
+  else
+    echo "✓ Event template already exists: $EVENT_TEMPLATE_NAME ($EXISTING_TEMPLATE_ID)"
+    TEMPLATE_ID="$EXISTING_TEMPLATE_ID"
+    echo ""
+    echo "✓ Alloy event template ready!"
+    echo ""
+    echo "═══════════════════════════════════════════════════════════"
+    echo "Event Template Name: $EVENT_TEMPLATE_NAME"
+    echo "Event Template ID:   $TEMPLATE_ID"
+    echo "═══════════════════════════════════════════════════════════"
+    exit 0
+  fi
 fi
 
-# Create new Event Template (view only, no Caster directory)
+# Create new Event Template with hardcoded GUID for idempotency
 echo "Creating event template..."
-TEMPLATE_ID=$(cat /proc/sys/kernel/random/uuid)
+TEMPLATE_ID="e8bd8940-023f-4d6e-8255-9538dc21ad4a"
 TEMPLATE_RESPONSE=$(curl -k -s -X POST "$ALLOY_API_URL/eventtemplates" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \

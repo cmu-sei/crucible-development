@@ -50,27 +50,32 @@ echo "Finding available view name..."
 ALL_VIEWS=$(curl -k -s -X GET "$PLAYER_API_URL/views" \
   -H "Authorization: Bearer $ACCESS_TOKEN")
 
-# Check if base name exists
-EXISTING_VIEW=$(echo "$ALL_VIEWS" | jq -r ".[] | select(.name == \"$VIEW_NAME\") | .name" | head -1)
+# Check if view already exists
+EXISTING_VIEW_ID=$(echo "$ALL_VIEWS" | jq -r ".[] | select(.name == \"$VIEW_NAME\") | .id" | head -1)
 
-if [ -n "$EXISTING_VIEW" ] && [ "$EXISTING_VIEW" != "null" ]; then
-  # Find highest numbered view
-  COUNTER=2
-  while true; do
-    TEST_NAME="${VIEW_NAME} ${COUNTER}"
-    EXISTS=$(echo "$ALL_VIEWS" | jq -r ".[] | select(.name == \"$TEST_NAME\") | .name" | head -1)
-    if [ -z "$EXISTS" ] || [ "$EXISTS" = "null" ]; then
-      VIEW_NAME="$TEST_NAME"
-      break
-    fi
-    COUNTER=$((COUNTER + 1))
-  done
-  echo "✓ Using name: $VIEW_NAME"
+if [ -n "$EXISTING_VIEW_ID" ] && [ "$EXISTING_VIEW_ID" != "null" ]; then
+  if [ "${CLEAN_SETUP}" = "true" ]; then
+    echo "Deleting existing view: $VIEW_NAME ($EXISTING_VIEW_ID)"
+    curl -k -s -X DELETE "$PLAYER_API_URL/views/$EXISTING_VIEW_ID" \
+      -H "Authorization: Bearer $ACCESS_TOKEN" > /dev/null
+    echo "✓ View deleted"
+  else
+    echo "✓ View already exists: $VIEW_NAME ($EXISTING_VIEW_ID)"
+    VIEW_ID="$EXISTING_VIEW_ID"
+    echo ""
+    echo "✓ Player view template ready!"
+    echo ""
+    echo "═══════════════════════════════════════════════════════════"
+    echo "View Name: $VIEW_NAME"
+    echo "View ID:   $VIEW_ID"
+    echo "═══════════════════════════════════════════════════════════"
+    exit 0
+  fi
 fi
 
-# Create View Template
+# Create View Template with hardcoded GUID for idempotency
 echo "Creating view template..."
-VIEW_ID=$(cat /proc/sys/kernel/random/uuid)
+VIEW_ID="8ab5b8c5-63f6-427b-b3f5-076ed2cfdfd2"
 VIEW_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$PLAYER_API_URL/views" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -111,7 +116,7 @@ echo ""
 
 # Add Virtual Machines application to view
 echo "Adding Virtual Machines application..."
-APP_ID=$(cat /proc/sys/kernel/random/uuid)
+APP_ID="18229b03-873e-4288-9c30-d4eace3bd042"
 APP_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$PLAYER_API_URL/views/$VIEW_ID/applications" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -160,7 +165,7 @@ echo ""
 
 # Add Dashboard application to view
 echo "Adding Dashboard application..."
-DASHBOARD_APP_ID=$(cat /proc/sys/kernel/random/uuid)
+DASHBOARD_APP_ID="635f5bd3-624e-4ab9-ac20-fbbf20b0fd04"
 DASHBOARD_APP_RESPONSE=$(curl -k -s -w "\n%{http_code}" -X POST "$PLAYER_API_URL/views/$VIEW_ID/applications" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
