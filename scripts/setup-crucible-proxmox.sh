@@ -14,6 +14,12 @@ NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Load saved Proxmox config if exists
+PROXMOX_CONFIG_FILE="$HOME/.crucible-proxmox"
+if [ -f "$PROXMOX_CONFIG_FILE" ]; then
+    source "$PROXMOX_CONFIG_FILE"
+fi
+
 # Track created resources
 CREATED_VMS=""
 CREATED_TEMPLATES=""

@@ -8,6 +8,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOPOMOJO_API_DIR="/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api"
 APPSETTINGS_DEV="$TOPOMOJO_API_DIR/appsettings.Development.conf"
 
+# Load saved Proxmox config if exists
+PROXMOX_CONFIG_FILE="$HOME/.crucible-proxmox"
+if [ -f "$PROXMOX_CONFIG_FILE" ]; then
+    source "$PROXMOX_CONFIG_FILE"
+fi
+
 # Color output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -19,10 +25,10 @@ NC='\033[0m' # No Color
 declare -A PROXMOX=(
     [name]="Proxmox (Local)"
     [type]="Proxmox"
-    [url]="https://172.29.24.139:443"
+    [url]="https://${PROXMOX_HOST:-proxmox.local}:443"
     [user]=""
     [password]=""
-    [access_token]="root@pam!CRUCIBLE=12ff6f1f-2622-430c-9a66-573e8ec909b9"
+    [access_token]="${PROXMOX_API_TOKEN:-root@pam!CRUCIBLE=your-token-here}"
     [vm_store]="local-lvm"
     [disk_store]="local-lvm"
     [iso_store]="local"
@@ -31,6 +37,7 @@ declare -A PROXMOX=(
     [ignore_cert_errors]="true"
     [ticket_url_handler]="none"
     [use_datastore_api]="false"
+    [supports_subfolders]="false"
     [temp_root]="/tmp/topoiso"
 )
 
@@ -49,6 +56,7 @@ declare -A VSPHERE=(
     [ignore_cert_errors]="true"
     [ticket_url_handler]="querystring"
     [use_datastore_api]="false"
+    [supports_subfolders]="true"
     [temp_root]="/tmp/topoiso"
 )
 
@@ -68,6 +76,7 @@ declare -A VMC=(
     [ignore_cert_errors]="true"
     [ticket_url_handler]="none"
     [use_datastore_api]="true"
+    [supports_subfolders]="true"
     [temp_root]="/tmp/topoiso"
 )
 
@@ -250,6 +259,7 @@ EOF
 
     cat >> "$APPSETTINGS_DEV" <<EOF
 FileUpload__UseDatastoreApi = ${config[use_datastore_api]}
+FileUpload__SupportsSubfolders = ${config[supports_subfolders]}
 FileUpload__TempRoot = ${config[temp_root]}
 EOF
 
