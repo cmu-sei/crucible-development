@@ -383,14 +383,13 @@ if [ "$CREATE_ALLOY_EVENTS" = "true" ]; then
   # Create Alloy event without Caster
   if [ -f "$SCRIPT_DIR/create-alloy-event-without-caster.sh" ]; then
     echo -e "${CYAN}Creating Alloy event (view only, no Caster)...${NC}"
-    # Extract Player View ID from previous step
-    PLAYER_VIEW_GUID=$(echo "$PLAYER_OUTPUT" | grep -oE "View created: [a-f0-9-]+" | grep -oE "[a-f0-9-]{36}" || true)
-    if [ -z "$PLAYER_VIEW_GUID" ]; then
-      # Check if view already exists and extract existing ID
-      PLAYER_VIEW_GUID=$(echo "$PLAYER_OUTPUT" | grep -oE "View already exists:.*\([a-f0-9-]{36}\)" | grep -oE "[a-f0-9-]{36}" || true)
+    # Use Player Template ID from Phase 6a for Alloy
+    if [ -z "$PLAYER_TEMPLATE_ID" ]; then
+      # Fallback: try to extract from output
+      PLAYER_TEMPLATE_ID=$(echo "$PLAYER_OUTPUT" | grep -oE "View ID:.*" | sed 's/View ID: *//' | xargs || true)
     fi
-    if [ -n "$PLAYER_VIEW_GUID" ]; then
-      export PLAYER_VIEW_ID="$PLAYER_VIEW_GUID"
+    if [ -n "$PLAYER_TEMPLATE_ID" ]; then
+      export PLAYER_VIEW_ID="$PLAYER_TEMPLATE_ID"
       echo "Using Player View ID: $PLAYER_VIEW_ID"
     fi
     export CLEAN_SETUP
@@ -413,8 +412,8 @@ if [ "$CREATE_ALLOY_EVENTS" = "true" ]; then
   if [ -f "$SCRIPT_DIR/create-alloy-event.sh" ]; then
     echo -e "${CYAN}Creating Alloy event (with Caster directory)...${NC}"
     # Use Player View ID from Phase 6 and Caster Directory ID from Phase 5b
-    if [ -n "$PLAYER_VIEW_GUID" ]; then
-      export PLAYER_VIEW_ID="$PLAYER_VIEW_GUID"
+    if [ -n "$PLAYER_TEMPLATE_ID" ]; then
+      export PLAYER_VIEW_ID="$PLAYER_TEMPLATE_ID"
     fi
     if [ -n "$CASTER_ALLOY_DIR_ID" ]; then
       export CASTER_DIRECTORY_ID="$CASTER_ALLOY_DIR_ID"
@@ -511,13 +510,29 @@ fi
 
 if [ -n "$CREATED_PLAYER_VIEWS" ]; then
   echo -e "${YELLOW}Player Views:${NC}"
-  echo "  $CREATED_PLAYER_VIEWS"
+  echo "$CREATED_PLAYER_VIEWS" | while read -r line; do
+    if [ -n "$line" ]; then
+      VIEW_ID=$(echo "$line" | grep -oE "\([a-f0-9-]{36}\)" | tr -d '()')
+      echo "  View: $line"
+      if [ -n "$VIEW_ID" ]; then
+        echo "    → http://localhost:4303/views/$VIEW_ID?theme=light-theme"
+      fi
+    fi
+  done
   echo ""
 fi
 
 if [ -n "$CREATED_ALLOY_EVENTS" ]; then
   echo -e "${YELLOW}Alloy Events:${NC}"
-  echo "  $CREATED_ALLOY_EVENTS"
+  echo "$CREATED_ALLOY_EVENTS" | while read -r line; do
+    if [ -n "$line" ]; then
+      EVENT_ID=$(echo "$line" | grep -oE "\([a-f0-9-]{36}\)" | tr -d '()')
+      echo "  Event: $line"
+      if [ -n "$EVENT_ID" ]; then
+        echo "    → http://localhost:4403/templates/$EVENT_ID"
+      fi
+    fi
+  done
   echo ""
 fi
 
