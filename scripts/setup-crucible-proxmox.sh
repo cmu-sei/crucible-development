@@ -326,16 +326,41 @@ if [ "$CREATE_PLAYER_VIEWS" = "true" ]; then
   echo -e "${BLUE}════════════════════════════════════════════════${NC}"
   echo ""
 
+  # Create view template (for Alloy/Caster)
   if [ -f "$SCRIPT_DIR/create-player-view-template.sh" ]; then
-    echo -e "${CYAN}Creating example Player view...${NC}"
+    echo -e "${CYAN}Creating Player view template (for Alloy/Caster)...${NC}"
     export CLEAN_SETUP
     PLAYER_OUTPUT=$(bash "$SCRIPT_DIR/create-player-view-template.sh" 2>&1) || {
       echo -e "${YELLOW}⚠ Player view creation failed, continuing...${NC}"
     }
     echo "$PLAYER_OUTPUT"
-    CREATED_PLAYER_VIEWS=$(echo "$PLAYER_OUTPUT" | grep -oE "View:.*\([a-f0-9-]+\)" || true)
+    PLAYER_TEMPLATE_VIEW=$(echo "$PLAYER_OUTPUT" | grep -oE "View Name:.*" | sed 's/View Name: //' || true)
+    PLAYER_TEMPLATE_ID=$(echo "$PLAYER_OUTPUT" | grep -oE "View ID:.*" | sed 's/View ID: *//' | xargs || true)
+    if [ -n "$PLAYER_TEMPLATE_VIEW" ] && [ -n "$PLAYER_TEMPLATE_ID" ]; then
+      CREATED_PLAYER_VIEWS="$PLAYER_TEMPLATE_VIEW ($PLAYER_TEMPLATE_ID)"
+    fi
   else
     echo -e "${YELLOW}⚠ create-player-view-template.sh not found${NC}"
+  fi
+
+  echo ""
+
+  # Create live view with VMs
+  if [ -f "$SCRIPT_DIR/create-player-view-with-vms.sh" ]; then
+    echo -e "${CYAN}Creating live Player view with VMs...${NC}"
+    export CLEAN_SETUP
+    PLAYER_LIVE_OUTPUT=$(bash "$SCRIPT_DIR/create-player-view-with-vms.sh" 2>&1) || {
+      echo -e "${YELLOW}⚠ Live Player view creation failed, continuing...${NC}"
+    }
+    echo "$PLAYER_LIVE_OUTPUT"
+    PLAYER_LIVE_VIEW=$(echo "$PLAYER_LIVE_OUTPUT" | grep -oE "View Name:.*" | sed 's/View Name: //' || true)
+    PLAYER_LIVE_ID=$(echo "$PLAYER_LIVE_OUTPUT" | grep -oE "View ID:.*" | sed 's/View ID: *//' | xargs || true)
+    if [ -n "$PLAYER_LIVE_VIEW" ] && [ -n "$PLAYER_LIVE_ID" ]; then
+      CREATED_PLAYER_VIEWS="${CREATED_PLAYER_VIEWS}
+$PLAYER_LIVE_VIEW ($PLAYER_LIVE_ID)"
+    fi
+  else
+    echo -e "${YELLOW}⚠ create-player-view-with-vms.sh not found${NC}"
   fi
 
   echo ""
