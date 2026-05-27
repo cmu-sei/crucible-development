@@ -3,21 +3,22 @@
 
 set -e
 
-PLAYER_API_URL="${PLAYER_API_URL:-http://localhost:4301/api}"
+PLAYER_API_URL="${PLAYER_API_URL:-http://localhost:4300/api}"
 VM_API_URL="${VM_API_URL:-http://localhost:4302/api}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-https://localhost:8443}"
 KEYCLOAK_USER="${KEYCLOAK_USER:-admin}"
 KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-admin}"
-VIEW_NAME="${VIEW_NAME:-Proxmox VMs - Live}"
+VIEW_NAME="${VIEW_NAME:-Proxmox Demo}"
 VIEW_DESCRIPTION="${VIEW_DESCRIPTION:-Live view with running Proxmox VMs}"
 PROXMOX_NODE="${PROXMOX_NODE:-pve}"
 
 # Stable GUIDs for idempotency
-VIEW_ID="dd000000-0000-0000-0000-000000000001"
-VM_APP_ID="dd000001-0000-0000-0000-000000000001"
-PUPPY_VM_ID="dd000010-0000-0000-0000-000000000001"
-ALPINE_VM_ID="dd000011-0000-0000-0000-000000000001"
-TINYCORE_VM_ID="dd000012-0000-0000-0000-000000000001"
+VIEW_ID="3c7e9a2f-8b4d-4e1a-9f5c-2d8b6e3a7c1f"
+VM_APP_ID="4d8f0b3e-9c5e-4f2b-af6d-3e9c7f4b8d2a"
+MAP_APP_ID="5e9g1c4f-ad6f-5g3c-bg7e-4fad8g5c9e3b"
+PUPPY_VM_ID="6fah2d5g-be7g-6h4d-ch8f-5gbe9h6daf4c"
+ALPINE_VM_ID="7gbi3e6h-cf8h-7i5e-di9g-6hcfai7ebg5d"
+TINYCORE_VM_ID="8hcj4f7i-dg9i-8j6f-ej0h-7idgbj8fch6e"
 
 # Proxmox VM IDs
 PUPPY_PROXMOX_ID="${PUPPY_PROXMOX_ID:-103}"
@@ -32,7 +33,7 @@ echo ""
 echo "Obtaining auth token..."
 TOKEN_RESPONSE=$(curl -k -s -X POST "$KEYCLOAK_URL/realms/crucible/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=player.ui" \
+  -d "client_id=player.vm.admin" \
   -d "grant_type=password" \
   -d "username=$KEYCLOAK_USER" \
   -d "password=$KEYCLOAK_PASSWORD")
@@ -167,6 +168,41 @@ curl -k -s -X POST "$VM_API_URL/vms" \
   }" > /dev/null
 
 echo "✓ TinyCore VM registered"
+echo ""
+
+# Add Virtual Machines application to view
+echo "Adding Virtual Machines application..."
+VM_APP_TEMPLATE_ID="ace19f19-8916-4169-84de-ad00565d8456"
+VM_APP_RESPONSE=$(curl -k -s -X POST "$PLAYER_API_URL/views/$VIEW_ID/applications" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"id\": \"$VM_APP_ID\",
+    \"applicationTemplateId\": \"$VM_APP_TEMPLATE_ID\"
+  }")
+
+if echo "$VM_APP_RESPONSE" | jq -e '.id' > /dev/null 2>&1; then
+  echo "✓ VM application added"
+else
+  echo "⚠ Failed to add VM application"
+fi
+
+# Add Map application to view
+echo "Adding Map application..."
+MAP_APP_TEMPLATE_ID="a4c361cc-b43f-4c44-99a7-7e2e2b3a9f88"
+MAP_APP_RESPONSE=$(curl -k -s -X POST "$PLAYER_API_URL/views/$VIEW_ID/applications" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"id\": \"$MAP_APP_ID\",
+    \"applicationTemplateId\": \"$MAP_APP_TEMPLATE_ID\"
+  }")
+
+if echo "$MAP_APP_RESPONSE" | jq -e '.id' > /dev/null 2>&1; then
+  echo "✓ Map application added"
+else
+  echo "⚠ Failed to add Map application"
+fi
 echo ""
 
 echo "✓ Player view with VMs created successfully!"

@@ -7,7 +7,7 @@ PLAYER_API_URL="${PLAYER_API_URL:-http://localhost:4300/api}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-https://localhost:8443}"
 KEYCLOAK_USER="${KEYCLOAK_USER:-admin}"
 KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-admin}"
-VIEW_NAME="${VIEW_NAME:-Proxmox VM Template}"
+VIEW_NAME="${VIEW_NAME:-Proxmox On-Demand Template}"
 VIEW_DESCRIPTION="${VIEW_DESCRIPTION:-Template view with Virtual Machines and Dashboard applications}"
 VM_APP_TEMPLATE_ID="${VM_APP_TEMPLATE_ID:-ace19f19-8916-4169-84de-ad00565d8456}"
 DASHBOARD_APP_TEMPLATE_ID="${DASHBOARD_APP_TEMPLATE_ID:-a4c361cc-b43f-4c44-99a7-7e2e2b3a9f88}"
@@ -31,12 +31,12 @@ echo ""
 echo "Obtaining auth token..."
 TOKEN_RESPONSE=$(curl -k -s -X POST "$KEYCLOAK_URL/realms/crucible/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=player.ui" \
+  -d "client_id=player.vm.admin" \
   -d "grant_type=password" \
   -d "username=$KEYCLOAK_USER" \
   -d "password=$KEYCLOAK_PASSWORD")
 
-ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+ACCESS_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.access_token')
 
 if [ -z "$ACCESS_TOKEN" ]; then
   echo "✗ Failed to obtain token"

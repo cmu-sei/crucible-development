@@ -208,7 +208,18 @@ echo ""
 echo -e "${BLUE}[3/6] Creating Proxmox API token${NC}"
 echo ""
 
-TOKEN_OUTPUT=$(ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << TOKENEOF
+# Check if token already exists in config file
+if [ -f "$HOME/.crucible-proxmox" ]; then
+    source "$HOME/.crucible-proxmox"
+    if [ -n "$PROXMOX_API_TOKEN" ]; then
+        echo "✓ Using existing API token from config"
+        FULL_TOKEN="$PROXMOX_API_TOKEN"
+        TOKEN_EXISTS=true
+    fi
+fi
+
+if [ -z "$TOKEN_EXISTS" ]; then
+    TOKEN_OUTPUT=$(ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << TOKENEOF
 set -e
 
 if pveum user token list root@pam | grep -q "$TOKEN_NAME"; then
@@ -222,21 +233,26 @@ pveum user token add root@pam $TOKEN_NAME --privsep 0
 TOKENEOF
 )
 
-echo "$TOKEN_OUTPUT"
+    echo "$TOKEN_OUTPUT"
 
-# Extract token value
-TOKEN_VALUE=$(echo "$TOKEN_OUTPUT" | grep -E "│ value\s+│" | awk -F'│' '{print $3}' | xargs)
+    # Extract token value (from row where first column is "value", not header)
+    TOKEN_VALUE=$(echo "$TOKEN_OUTPUT" | grep -E "│\s+value\s+│" | awk -F'│' '{print $3}' | xargs)
 
-if [ -z "$TOKEN_VALUE" ]; then
-    echo -e "${RED}Error: Failed to extract token value${NC}"
-    exit 1
+    if [ -z "$TOKEN_VALUE" ]; then
+        echo -e "${RED}Error: Failed to extract token value${NC}"
+        exit 1
+    fi
+
+    # Full token format: root@pam!tokenname=value
+    FULL_TOKEN="root@pam!${TOKEN_NAME}=${TOKEN_VALUE}"
 fi
 
-# Full token format: root@pam!tokenname=value
-FULL_TOKEN="root@pam!${TOKEN_NAME}=${TOKEN_VALUE}"
-
 echo ""
-echo -e "${GREEN}✓ API token created${NC}"
+if [ -z "$TOKEN_EXISTS" ]; then
+    echo -e "${GREEN}✓ API token created${NC}"
+else
+    echo -e "${GREEN}✓ API token reused from config${NC}"
+fi
 echo "  Token: $FULL_TOKEN"
 echo ""
 

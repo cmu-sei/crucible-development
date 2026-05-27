@@ -76,14 +76,6 @@ echo "  Create Player Views: $CREATE_PLAYER_VIEWS"
 echo "  Create Alloy Events: $CREATE_ALLOY_EVENTS"
 echo ""
 
-read -p "Continue with setup? (yes/no): " confirm
-if [ "$confirm" != "yes" ]; then
-  echo "Setup cancelled"
-  exit 0
-fi
-
-echo ""
-
 # ============================================================
 # Phase 1: Proxmox Infrastructure Setup
 # ============================================================
@@ -281,35 +273,47 @@ if [ "$CREATE_CASTER_PROJECTS" = "true" ]; then
   if [ -f "$SCRIPT_DIR/create-caster-proxmox-topology.sh" ]; then
     echo -e "${CYAN}Creating example Caster project...${NC}"
     export PROXMOX_API_TOKEN=$(grep "^Pod__AccessToken" /mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/appsettings.Development.conf | cut -d= -f2 | xargs)
+    export PROXMOX_HOST
     export CLEAN_SETUP
     CASTER_OUTPUT=$(bash "$SCRIPT_DIR/create-caster-proxmox-topology.sh" 2>&1) || {
       echo -e "${YELLOW}⚠ Caster project creation failed, continuing...${NC}"
     }
     echo "$CASTER_OUTPUT"
-    CREATED_CASTER_PROJECTS=$(echo "$CASTER_OUTPUT" | grep -oE "Project:.*\([a-f0-9-]+\)" || true)
+    CASTER_PROJECT=$(echo "$CASTER_OUTPUT" | grep -oE "Project Name:.*" | sed 's/Project Name: //' || true)
+    CASTER_PROJECT_ID=$(echo "$CASTER_OUTPUT" | grep -oE "Project ID:.*" | sed 's/Project ID: *//' | xargs || true)
+    if [ -n "$CASTER_PROJECT" ] && [ -n "$CASTER_PROJECT_ID" ]; then
+      CREATED_CASTER_PROJECTS="Project: $CASTER_PROJECT ($CASTER_PROJECT_ID)"
+    fi
   else
     echo -e "${YELLOW}⚠ create-caster-proxmox-topology.sh not found${NC}"
   fi
 
   echo ""
-  echo -e "${GREEN}✓ Caster projects created${NC}"
-  echo ""
 
   # Create second Caster project for Alloy integration
   echo -e "${CYAN}Creating Caster project for Alloy...${NC}"
   export PROJECT_NAME="Proxmox Test with Alloy"
+  export PROXMOX_HOST
+  export PROXMOX_API_TOKEN=$(grep "^Pod__AccessToken" /mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/appsettings.Development.conf | cut -d= -f2 | xargs)
   export CLEAN_SETUP
   CASTER_ALLOY_OUTPUT=$(bash "$SCRIPT_DIR/create-caster-proxmox-topology.sh" 2>&1) || {
     echo -e "${YELLOW}⚠ Caster Alloy project creation failed, continuing...${NC}"
   }
   echo "$CASTER_ALLOY_OUTPUT"
-  CASTER_ALLOY_PROJECT=$(echo "$CASTER_ALLOY_OUTPUT" | grep -oE "Project:.*\([a-f0-9-]+\)" || true)
-  CASTER_ALLOY_DIR_ID=$(echo "$CASTER_ALLOY_OUTPUT" | grep -oE "Directory created: [a-f0-9-]+" | grep -oE "[a-f0-9-]{36}" || true)
+  CASTER_ALLOY_PROJECT=$(echo "$CASTER_ALLOY_OUTPUT" | grep -oE "Project Name:.*" | sed 's/Project Name: //' || true)
+  CASTER_ALLOY_PROJECT_ID=$(echo "$CASTER_ALLOY_OUTPUT" | grep -oE "Project ID:.*" | sed 's/Project ID: *//' | xargs || true)
+  CASTER_ALLOY_DIR_ID=$(echo "$CASTER_ALLOY_OUTPUT" | grep -oE "Directory:.*\([a-f0-9-]+\)" | grep -oE "[a-f0-9-]{36}" || true)
 
-  if [ -n "$CASTER_ALLOY_PROJECT" ]; then
-    CREATED_CASTER_PROJECTS="${CREATED_CASTER_PROJECTS}
-${CASTER_ALLOY_PROJECT}"
+  if [ -n "$CASTER_ALLOY_PROJECT" ] && [ -n "$CASTER_ALLOY_PROJECT_ID" ]; then
+    if [ -n "$CREATED_CASTER_PROJECTS" ]; then
+      CREATED_CASTER_PROJECTS="${CREATED_CASTER_PROJECTS}
+Project: $CASTER_ALLOY_PROJECT ($CASTER_ALLOY_PROJECT_ID)"
+    else
+      CREATED_CASTER_PROJECTS="Project: $CASTER_ALLOY_PROJECT ($CASTER_ALLOY_PROJECT_ID)"
+    fi
   fi
+
+  echo -e "${GREEN}✓ Caster projects created${NC}"
 
   echo ""
 else
