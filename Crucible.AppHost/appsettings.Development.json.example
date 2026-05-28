@@ -17,8 +17,8 @@
 
     // === Proxmox Configuration ===
     "HypervisorType": "Proxmox",
-    "HypervisorUrl": "https://172.29.24.139:443",
-    "HypervisorToken": "root@pam!CRUCIBLE=your-token-here",
+    "HypervisorUrl": "https://proxmox.local:443",
+    "HypervisorToken": "root@pam!CRUCIBLE=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
     "HypervisorVmStore": "local-lvm",
     "HypervisorDiskStore": "local-lvm",
     "HypervisorIsoStore": "local"
