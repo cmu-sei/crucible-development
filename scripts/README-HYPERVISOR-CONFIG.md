@@ -4,12 +4,22 @@ Configure TopoMojo, Player VM, and Caster hypervisor settings centrally via `app
 
 ## Overview
 
-The AppHost now supports configuring three hypervisor types:
+The AppHost now supports configuring three hypervisor types across all Crucible infrastructure apps:
 1. **Proxmox** - Local Proxmox VE server
-2. **vSphere** - Traditional VMware vCenter on-premises
+2. **vSphere** - Traditional VMware vCenter on-premises  
 3. **VMC** - VMware Cloud on AWS
 
 Configuration is done via `Launch` settings in `Crucible.AppHost/appsettings.Development.json`.
+
+## Application Coverage
+
+| Application | Proxmox | vSphere | VMC | Purpose |
+|-------------|---------|---------|-----|---------|
+| **TopoMojo** | ✅ | ✅ | ✅ | VM orchestration, workspaces, templates |
+| **Player VM** | ✅ | ❌ | ❌ | VM console access, state monitoring |
+| **Caster** | ✅ | ✅ | ✅ | Terraform-based infrastructure automation |
+
+**All three hypervisors fully supported for development!**
 
 ## How It Works
 
@@ -130,13 +140,28 @@ When you configure hypervisor settings in appsettings.json:
 | `Proxmox__Token` | `HypervisorToken` |
 | `Proxmox__StateRefreshIntervalSeconds` | `60` |
 
-### Caster API (Proxmox only)
+### Caster API (Terraform Providers)
+
+**Proxmox Provider:**
 
 | Environment Variable | Set From |
 |---------------------|----------|
 | `Terraform__EnvironmentVariables__Direct__PROXMOX_VE_ENDPOINT` | `HypervisorUrl` |
 | `Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN` | `HypervisorToken` |
 | `Terraform__EnvironmentVariables__Direct__PROXMOX_VE_INSECURE` | `true` |
+
+**vSphere Provider (on-prem and VMC):**
+
+| Environment Variable | Set From |
+|---------------------|----------|
+| `Terraform__EnvironmentVariables__Direct__VSPHERE_SERVER` | Extracted from `HypervisorUrl` |
+| `Terraform__EnvironmentVariables__Direct__VSPHERE_USER` | `HypervisorUser` |
+| `Terraform__EnvironmentVariables__Direct__VSPHERE_PASSWORD` | `HypervisorPassword` |
+| `Terraform__EnvironmentVariables__Direct__VSPHERE_ALLOW_UNVERIFIED_SSL` | `true` |
+| `Terraform__EnvironmentVariables__Direct__VSPHERE_DATACENTER` | Parsed from `HypervisorPoolPath` (1st part) |
+| `Terraform__EnvironmentVariables__Direct__VSPHERE_CLUSTER` | Parsed from `HypervisorPoolPath` (2nd part) |
+| `Terraform__EnvironmentVariables__Direct__VSPHERE_RESOURCE_POOL` | Parsed from `HypervisorPoolPath` (3rd part) |
+| `Terraform__EnvironmentVariables__Direct__VSPHERE_DATASTORE` | Extracted from `HypervisorVmStore` |
 
 ## Auto-Detection
 

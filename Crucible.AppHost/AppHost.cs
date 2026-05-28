@@ -438,15 +438,64 @@ public static class BuilderExtensions
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
             .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
 
-        // Configure Proxmox for Terraform if enabled
-        if (options.HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true &&
-            !string.IsNullOrEmpty(options.HypervisorUrl) &&
-            !string.IsNullOrEmpty(options.HypervisorToken))
+        // Configure hypervisor for Terraform
+        if (!string.IsNullOrEmpty(options.HypervisorType) && !string.IsNullOrEmpty(options.HypervisorUrl))
         {
-            casterApi
-                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_ENDPOINT", options.HypervisorUrl)
-                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN", options.HypervisorToken)
-                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_INSECURE", "true");
+            if (options.HypervisorType.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrEmpty(options.HypervisorToken))
+            {
+                // Proxmox Terraform Provider
+                casterApi
+                    .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_ENDPOINT", options.HypervisorUrl)
+                    .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN", options.HypervisorToken)
+                    .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_INSECURE", "true");
+            }
+            else if (options.HypervisorType.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) ||
+                     options.HypervisorType.Equals("vSphere", StringComparison.OrdinalIgnoreCase))
+            {
+                // vSphere Terraform Provider (works for both on-prem and VMC)
+                if (!string.IsNullOrEmpty(options.HypervisorUser) &&
+                    !string.IsNullOrEmpty(options.HypervisorPassword))
+                {
+                    casterApi
+                        .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_SERVER",
+                            options.HypervisorUrl.Replace("https://", "").Replace("/sdk", "").Split(':')[0])
+                        .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_USER", options.HypervisorUser)
+                        .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_PASSWORD", options.HypervisorPassword)
+                        .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_ALLOW_UNVERIFIED_SSL", "true");
+
+                    // Add datacenter/cluster info if pool path is provided
+                    if (!string.IsNullOrEmpty(options.HypervisorPoolPath))
+                    {
+                        // Parse pool path: "Datacenter/Cluster" or "SDDC-Datacenter/Cluster-1/Compute-ResourcePool"
+                        var pathParts = options.HypervisorPoolPath.Split('/');
+                        if (pathParts.Length >= 1)
+                        {
+                            casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_DATACENTER", pathParts[0]);
+                        }
+                        if (pathParts.Length >= 2)
+                        {
+                            casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_CLUSTER", pathParts[1]);
+                        }
+                        if (pathParts.Length >= 3)
+                        {
+                            casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_RESOURCE_POOL", pathParts[2]);
+                        }
+                    }
+
+                    // Add datastore if provided
+                    if (!string.IsNullOrEmpty(options.HypervisorVmStore))
+                    {
+                        // Extract datastore name from "[datastore] path" format
+                        var datastoreName = options.HypervisorVmStore;
+                        if (datastoreName.StartsWith("["))
+                        {
+                            datastoreName = datastoreName.Substring(1, datastoreName.IndexOf(']') - 1);
+                        }
+                        casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_DATASTORE", datastoreName);
+                    }
+                }
+            }
         }
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
