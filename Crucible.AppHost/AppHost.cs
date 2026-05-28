@@ -354,14 +354,18 @@ public static class BuilderExtensions
             .WithEnvironment("IdentityClient__UserName", "admin")
             .WithEnvironment("IdentityClient__Password", "admin");
 
-        // Configure Proxmox if enabled
-        if (options.UseProxmox && !string.IsNullOrEmpty(options.ProxmoxHost))
+        // Configure Proxmox if enabled (Player VM API only supports Proxmox)
+        if (options.HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true &&
+            !string.IsNullOrEmpty(options.HypervisorUrl))
         {
+            // Extract host from URL (remove https:// and port)
+            var host = options.HypervisorUrl.Replace("https://", "").Replace("http://", "").Split(':')[0];
+
             vmApi
                 .WithEnvironment("Proxmox__Enabled", "true")
-                .WithEnvironment("Proxmox__Host", options.ProxmoxHost)
+                .WithEnvironment("Proxmox__Host", host)
                 .WithEnvironment("Proxmox__Port", "443")
-                .WithEnvironment("Proxmox__Token", options.ProxmoxApiToken)
+                .WithEnvironment("Proxmox__Token", options.HypervisorToken)
                 .WithEnvironment("Proxmox__StateRefreshIntervalSeconds", "60");
         }
 
@@ -433,6 +437,17 @@ public static class BuilderExtensions
             .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
             .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
+
+        // Configure Proxmox for Terraform if enabled
+        if (options.HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true &&
+            !string.IsNullOrEmpty(options.HypervisorUrl) &&
+            !string.IsNullOrEmpty(options.HypervisorToken))
+        {
+            casterApi
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_ENDPOINT", options.HypervisorUrl)
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN", options.HypervisorToken)
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_INSECURE", "true");
+        }
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 

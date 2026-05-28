@@ -1,0 +1,46 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Aspire.Hosting.Dcp": "Warning"
+    }
+  },
+  "Launch": {
+    "Prod": ["PGAdmin", "Lrsql", "Moodle"],
+    "Dev": ["Topomojo", "Player", "Alloy", "Caster", "Steamfitter", "Cite", "Gallery"],
+    "XdebugMode": "off",
+    "AddAllApplications": false,
+
+    // Hypervisor Configuration (optional)
+    // Uncomment and configure one of the following profiles:
+
+    // === Proxmox Configuration ===
+    "HypervisorType": "Proxmox",
+    "HypervisorUrl": "https://172.29.24.139:443",
+    "HypervisorToken": "root@pam!CRUCIBLE=your-token-here",
+    "HypervisorVmStore": "local-lvm",
+    "HypervisorDiskStore": "local-lvm",
+    "HypervisorIsoStore": "local"
+
+    // === vSphere On-Premises Configuration ===
+    // "HypervisorType": "Vsphere",
+    // "HypervisorUrl": "https://vcenter.example.com/sdk",
+    // "HypervisorUser": "administrator@vsphere.local",
+    // "HypervisorPassword": "your-password",
+    // "HypervisorVmStore": "[datastore] topomojo",
+    // "HypervisorDiskStore": "[datastore] topomojo",
+    // "HypervisorIsoStore": "[datastore] topomojo",
+    // "HypervisorPoolPath": "Datacenter/Cluster"
+
+    // === VMware Cloud on AWS (VMC) Configuration ===
+    // "HypervisorType": "Vsphere",
+    // "HypervisorUrl": "https://vcenter.sddc-xx-xx-xx-xx.vmwarevmc.com/sdk",
+    // "HypervisorUser": "cloudadmin@vmc.local",
+    // "HypervisorPassword": "your-vmc-password",
+    // "HypervisorVmStore": "[WorkloadDatastore] topomojo/",
+    // "HypervisorDiskStore": "[WorkloadDatastore] topomojo/",
+    // "HypervisorIsoStore": "[WorkloadDatastore] topomojo/",
+    // "HypervisorPoolPath": "SDDC-Datacenter/Cluster-1/Compute-ResourcePool"
+  }
+}
