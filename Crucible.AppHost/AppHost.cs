@@ -238,7 +238,7 @@ public static class BuilderExtensions
             .WithEnvironment("KC_DB_URL_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("KC_DB_USERNAME", postgres.Resource.UserNameReference)
             .WithEnvironment("KC_DB_PASSWORD", postgres.Resource.PasswordParameter)
-            .WithEnvironment("KC_HOSTNAME", "keycloak")
+            // Allow request-based hostname (localhost, keycloak, IPs)
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
             .WithEnvironment("KC_HOSTNAME_STRICT_BACKCHANNEL", "false")
             .WithEnvironment("KC_HTTP_ENABLED", "true")
@@ -1067,6 +1067,9 @@ public static class BuilderExtensions
             .WithEnvironment("CRUCIBLE_GALLERY_ENABLED", IsEnabled(galleryMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_BLUEPRINT_ENABLED", IsEnabled(blueprintMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_GAMEBOARD_ENABLED", IsEnabled(gameboardMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_PROXMOX_ENABLED", !string.IsNullOrEmpty(options.HypervisorUrl) &&
+                options.HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_PROXMOX_URL", options.HypervisorUrl ?? "")
             .WithEnvironment("PLUGINS", @"tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"/usr/local/bin/post_configure.sh")

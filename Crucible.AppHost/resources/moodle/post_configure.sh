@@ -346,6 +346,17 @@ configure_crucible() {
     log "Caster disabled"
   fi
 
+  # Proxmox
+  if [ "${CRUCIBLE_PROXMOX_ENABLED:-0}" = "1" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=proxmoxappurl --set="${CRUCIBLE_PROXMOX_URL:-}";
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showproxmox --set=1;
+    log "Proxmox enabled: ${CRUCIBLE_PROXMOX_URL:-}"
+  else
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=proxmoxappurl --set='';
+    php /var/www/html/admin/cli/cfg.php --component=block_crucible --name=showproxmox --set=0;
+    log "Proxmox disabled"
+  fi
+
   log "Crucible block configured with enabled services only"
 }
 
