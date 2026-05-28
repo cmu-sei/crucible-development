@@ -54,17 +54,7 @@ if ($fwRule8080) {
 New-NetFirewallRule -DisplayName "Keycloak HTTPS" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8443 | Out-Null
 New-NetFirewallRule -DisplayName "Keycloak HTTP" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 | Out-Null
 
-# Hosts file
-$hostsPath = "$env:SystemRoot\System32\drivers\etc\hosts"
-$hostsContent = Get-Content $hostsPath -Raw
-
-if ($hostsContent -notmatch "\bkeycloak\b") {
-    Write-Host "  Adding keycloak entry to hosts file..." -ForegroundColor Gray
-    Add-Content -Path $hostsPath -Value "`n$keycloakHost keycloak"
-    Write-Host "  Added: $keycloakHost keycloak" -ForegroundColor Green
-} else {
-    Write-Host "  keycloak already in hosts file" -ForegroundColor Gray
-}
+# Note: No hosts file entry needed - Keycloak accepts requests on any hostname
 
 Write-Host ""
 Write-Host "Configuration complete!" -ForegroundColor Green
