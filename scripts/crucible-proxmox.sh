@@ -532,6 +532,240 @@ NFSEOF
     log_success "NFS export configured"
 }
 
+setup_proxmox_oidc() {
+    log_step "Configuring Proxmox OIDC authentication realm..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would configure OIDC realm"
+        return 0
+    fi
+
+    # Detect Keycloak host IP (Hyper-V switch IP that Proxmox can reach)
+    # User can override with KEYCLOAK_HOST environment variable
+    local KEYCLOAK_HOST="${KEYCLOAK_HOST:-}"
+
+    if [ -z "$KEYCLOAK_HOST" ]; then
+        # Try to detect from routing table
+        KEYCLOAK_HOST=$(ip route get "$PROXMOX_HOST" 2>/dev/null | awk '{print $7}' | head -1)
+
+        if [ -z "$KEYCLOAK_HOST" ]; then
+            log_warning "Could not auto-detect Keycloak host IP"
+            log_warning "Please set KEYCLOAK_HOST environment variable"
+            log_warning "Example: export KEYCLOAK_HOST=172.29.16.1"
+            log_warning "Skipping OIDC configuration"
+            return 0
+        fi
+    fi
+
+    log_info "Using Keycloak host: $KEYCLOAK_HOST"
+
+    # Use HTTP (8080) instead of HTTPS (8443) to avoid SSL certificate issues
+    local KEYCLOAK_ISSUER="http://${KEYCLOAK_HOST}:8080/realms/crucible"
+    local OIDC_CLIENT_ID="proxmox-web"
+    local OIDC_CLIENT_SECRET="proxmox-oidc-secret-change-me"
+    local OIDC_REALM_NAME="keycloak-crucible"
+
+    # First, verify Keycloak is accessible from Proxmox
+    log_info "Verifying Keycloak accessibility from Proxmox..."
+
+    if ! ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" \
+        "curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 ${KEYCLOAK_ISSUER}/.well-known/openid-configuration | grep -q '200'"; then
+        log_warning "Keycloak not accessible at $KEYCLOAK_ISSUER"
+        log_warning "Please ensure:"
+        log_warning "  1. Keycloak is running (aspire run)"
+        log_warning "  2. Port forwarding is configured on Windows host:"
+        log_warning "     netsh interface portproxy add v4tov4 listenaddress=$KEYCLOAK_HOST listenport=8080 connectaddress=127.0.0.1 connectport=8080"
+        log_warning "Skipping OIDC configuration"
+        return 0
+    fi
+
+    log_success "Keycloak is accessible from Proxmox"
+
+    # Configure OIDC realm on Proxmox
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash <<OIDCEOF
+set -e
+
+REALM_NAME="$OIDC_REALM_NAME"
+ISSUER_URL="$KEYCLOAK_ISSUER"
+CLIENT_ID="$OIDC_CLIENT_ID"
+CLIENT_SECRET="$OIDC_CLIENT_SECRET"
+
+echo "════════════════════════════════════════════════"
+echo "Proxmox OIDC Configuration"
+echo "════════════════════════════════════════════════"
+echo "Realm Name: \$REALM_NAME"
+echo "Issuer URL: \$ISSUER_URL"
+echo "Client ID: \$CLIENT_ID"
+echo ""
+
+# Check if realm already exists
+if pveum realm list | grep -q "^\${REALM_NAME}"; then
+    echo "⚠ OIDC realm '\${REALM_NAME}' already exists"
+    echo "  Removing existing realm..."
+    pveum realm delete "\${REALM_NAME}" || true
+fi
+
+echo "✓ Creating OIDC realm: \${REALM_NAME}"
+
+# Add OpenID realm
+pveum realm add "\${REALM_NAME}" \\
+    --type openid \\
+    --issuer-url "\${ISSUER_URL}" \\
+    --client-id "\${CLIENT_ID}" \\
+    --client-key "\${CLIENT_SECRET}" \\
+    --username-claim "preferred_username" \\
+    --scopes "openid email profile" \\
+    --prompt "login" \\
+    --autocreate 1 \\
+    --default 1
+
+echo "✓ OIDC realm created successfully"
+echo ""
+
+# Create Proxmox groups for role mapping
+echo "Creating Proxmox groups for Keycloak role mapping..."
+echo ""
+
+# Administrators group (full access)
+if ! pveum group list | grep -q "^crucible-admins"; then
+    pveum group add crucible-admins -comment "Crucible Administrators via Keycloak"
+    echo "✓ Created group: crucible-admins"
+else
+    echo "  Group already exists: crucible-admins"
+fi
+pveum acl modify / -group crucible-admins -role Administrator
+
+# Content Developers group (VM operator access)
+if ! pveum group list | grep -q "^crucible-developers"; then
+    pveum group add crucible-developers -comment "Crucible Content Developers via Keycloak"
+    echo "✓ Created group: crucible-developers"
+else
+    echo "  Group already exists: crucible-developers"
+fi
+pveum acl modify / -group crucible-developers -role PVEVMAdmin
+
+# Test/Observer group (read-only)
+if ! pveum group list | grep -q "^crucible-observers"; then
+    pveum group add crucible-observers -comment "Crucible Test/Observer users via Keycloak"
+    echo "✓ Created group: crucible-observers"
+else
+    echo "  Group already exists: crucible-observers"
+fi
+pveum acl modify / -group crucible-observers -role PVEAuditor
+
+echo ""
+echo "✓ Proxmox groups created and ACLs configured"
+echo ""
+
+# Create group sync script
+cat > /usr/local/bin/oidc-group-sync.sh << 'SYNCEOF'
+#!/bin/bash
+# Sync Keycloak groups to Proxmox groups
+# Usage: oidc-group-sync.sh <username@keycloak-crucible> [group1,group2,...]
+
+USER="\$1"
+KEYCLOAK_GROUPS="\$2"
+
+if [ -z "\$USER" ]; then
+    echo "Usage: \$0 <username@keycloak-crucible> [Administrators,Content Developer,Test]"
+    echo ""
+    echo "Example:"
+    echo "  \$0 admin@keycloak-crucible Administrators"
+    echo "  \$0 developer@keycloak-crucible 'Content Developer'"
+    echo "  \$0 observer@keycloak-crucible Test"
+    exit 1
+fi
+
+# Extract username without realm
+USERNAME=\${USER%@*}
+
+echo "Syncing groups for user: \$USER"
+echo ""
+
+# Remove user from all crucible groups first
+for group in crucible-admins crucible-developers crucible-observers; do
+    if pveum user list | grep -q "^\$USER"; then
+        # Check if user is in group
+        if pveum user list | grep "^\$USER" | grep -q "\$group"; then
+            echo "  Removing from: \$group"
+            pveum user modify "\$USER" -delete 1 -group "\$group" 2>/dev/null || true
+        fi
+    fi
+done
+
+# Assign groups based on Keycloak membership
+if [ -z "\$KEYCLOAK_GROUPS" ]; then
+    echo ""
+    echo "No groups specified. User will have default permissions."
+    echo ""
+    echo "To assign groups, specify them as second argument:"
+    echo "  \$0 \$USER 'Administrators'"
+    echo "  \$0 \$USER 'Content Developer'"
+    echo "  \$0 \$USER 'Test'"
+else
+    if echo "\$KEYCLOAK_GROUPS" | grep -qi "Administrator"; then
+        echo "✓ Adding to: crucible-admins (Administrator role)"
+        pveum user modify "\$USER" -group crucible-admins
+    fi
+
+    if echo "\$KEYCLOAK_GROUPS" | grep -qi "Content Developer"; then
+        echo "✓ Adding to: crucible-developers (PVEVMAdmin role)"
+        pveum user modify "\$USER" -group crucible-developers
+    fi
+
+    if echo "\$KEYCLOAK_GROUPS" | grep -qi "Test"; then
+        echo "✓ Adding to: crucible-observers (PVEAuditor role)"
+        pveum user modify "\$USER" -group crucible-observers
+    fi
+fi
+
+echo ""
+echo "Group sync completed for \$USER"
+echo ""
+echo "Current group memberships:"
+pveum user list | grep "^\$USER"
+SYNCEOF
+
+chmod +x /usr/local/bin/oidc-group-sync.sh
+
+echo "✓ Group sync script installed: /usr/local/bin/oidc-group-sync.sh"
+echo ""
+
+# Display configuration summary
+echo "════════════════════════════════════════════════"
+echo "OIDC Configuration Complete"
+echo "════════════════════════════════════════════════"
+echo ""
+echo "Configured Realms:"
+pveum realm list
+echo ""
+echo "Proxmox Groups:"
+pveum group list | grep crucible
+echo ""
+echo "ACL Permissions:"
+pveum acl list | grep crucible
+echo ""
+echo "To test OIDC login:"
+echo "  1. Navigate to: https://\$(hostname -I | awk '{print \$1}'):8006"
+echo "  2. Select 'Keycloak Crucible Realm' from dropdown"
+echo "  3. Login with Keycloak credentials (admin/admin)"
+echo "  4. After first login, run group sync:"
+echo "     /usr/local/bin/oidc-group-sync.sh <username@keycloak-crucible> <groups>"
+echo ""
+echo "Example group sync commands:"
+echo "  /usr/local/bin/oidc-group-sync.sh admin@keycloak-crucible Administrators"
+echo "  /usr/local/bin/oidc-group-sync.sh developer@keycloak-crucible 'Content Developer'"
+echo "  /usr/local/bin/oidc-group-sync.sh observer@keycloak-crucible Test"
+echo ""
+echo "════════════════════════════════════════════════"
+
+OIDCEOF
+
+    log_success "Proxmox OIDC realm configured"
+    log_info "OIDC realm: $OIDC_REALM_NAME"
+    log_info "Issuer URL: $KEYCLOAK_ISSUER"
+}
+
 toggle_topomojo_hypervisor() {
     log_step "Configuring TopoMojo for Proxmox..."
 
@@ -1793,6 +2027,7 @@ phase1_proxmox_infrastructure() {
     setup_proxmox_nginx || return 1
     setup_proxmox_token || return 1
     setup_proxmox_nfs || return 1
+    setup_proxmox_oidc || log_warning "OIDC configuration skipped (see warnings above)"
     toggle_topomojo_hypervisor || return 1
 
     log_success "Proxmox infrastructure configured"

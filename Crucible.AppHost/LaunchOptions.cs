@@ -31,8 +31,19 @@ public class LaunchOptions
     public bool UseAspireProxy { get; set; }
     public bool LinkCommonUI { get; set; }
 
-    // Proxmox hypervisor configuration
-    public bool UseProxmox { get; set; }
-    public string ProxmoxHost { get; set; } = "";
-    public string ProxmoxApiToken { get; set; } = "";
+    // Hypervisor configuration
+    public string HypervisorType { get; set; } = ""; // Proxmox, Vsphere, or empty for none
+    public string HypervisorUrl { get; set; } = "";
+    public string HypervisorUser { get; set; } = "";
+    public string HypervisorPassword { get; set; } = "";
+    public string HypervisorToken { get; set; } = "";
+    public string HypervisorVmStore { get; set; } = "";
+    public string HypervisorDiskStore { get; set; } = "";
+    public string HypervisorIsoStore { get; set; } = "";
+    public string HypervisorPoolPath { get; set; } = "";
+
+    // Backward compatibility
+    public bool UseProxmox => HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true;
+    public string ProxmoxHost => HypervisorUrl;
+    public string ProxmoxApiToken => HypervisorToken;
 }

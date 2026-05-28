@@ -238,9 +238,10 @@ public static class BuilderExtensions
             .WithEnvironment("KC_DB_URL_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("KC_DB_USERNAME", postgres.Resource.UserNameReference)
             .WithEnvironment("KC_DB_PASSWORD", postgres.Resource.PasswordParameter)
-            .WithEnvironment("KC_HOSTNAME", "localhost")
-            .WithEnvironment("KC_HTTPS_PORT", "8443")
+            .WithEnvironment("KC_HOSTNAME", "keycloak")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
+            .WithEnvironment("KC_HOSTNAME_STRICT_BACKCHANNEL", "false")
+            .WithEnvironment("KC_HTTP_ENABLED", "true")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
@@ -352,6 +353,17 @@ public static class BuilderExtensions
             .WithEnvironment("IdentityClient__ClientId", "player.vm.admin")
             .WithEnvironment("IdentityClient__UserName", "admin")
             .WithEnvironment("IdentityClient__Password", "admin");
+
+        // Configure Proxmox if enabled
+        if (options.UseProxmox && !string.IsNullOrEmpty(options.ProxmoxHost))
+        {
+            vmApi
+                .WithEnvironment("Proxmox__Enabled", "true")
+                .WithEnvironment("Proxmox__Host", options.ProxmoxHost)
+                .WithEnvironment("Proxmox__Port", "443")
+                .WithEnvironment("Proxmox__Token", options.ProxmoxApiToken)
+                .WithEnvironment("Proxmox__StateRefreshIntervalSeconds", "60");
+        }
 
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
@@ -517,17 +529,73 @@ public static class BuilderExtensions
             .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
-            .WithEnvironment("Headers__Cors__AllowCredentials", "true")
-            // Proxmox hypervisor configuration
-            .WithEnvironment("Pod__Type", "Proxmox")
-            .WithEnvironment("Pod__HypervisorType", "Proxmox")
-            .WithEnvironment("Pod__Url", "https://172.22.64.132:443")
-            .WithEnvironment("Pod__AccessToken", "root@pam!crucible=6d803e6b-5af5-4c02-bb9e-19f57094875c")
-            .WithEnvironment("Pod__VmStore", "local-lvm")
-            .WithEnvironment("Pod__DiskStore", "local-lvm")
-            .WithEnvironment("Pod__IsoStore", "local:iso")
-            .WithEnvironment("Pod__IgnoreCertificateErrors", "true")
-            .WithEnvironment("Pod__TicketUrlHandler", "none");
+            .WithEnvironment("Headers__Cors__AllowCredentials", "true");
+
+        // Configure hypervisor if specified
+        if (!string.IsNullOrEmpty(options.HypervisorType) && !string.IsNullOrEmpty(options.HypervisorUrl))
+        {
+            topoApi
+                .WithEnvironment("Pod__Type", options.HypervisorType)
+                .WithEnvironment("Pod__HypervisorType", options.HypervisorType)
+                .WithEnvironment("Pod__Url", options.HypervisorUrl);
+
+            // Authentication (token for Proxmox, user/pass for vSphere)
+            if (!string.IsNullOrEmpty(options.HypervisorToken))
+            {
+                topoApi.WithEnvironment("Pod__AccessToken", options.HypervisorToken);
+            }
+            if (!string.IsNullOrEmpty(options.HypervisorUser))
+            {
+                topoApi.WithEnvironment("Pod__User", options.HypervisorUser);
+            }
+            if (!string.IsNullOrEmpty(options.HypervisorPassword))
+            {
+                topoApi.WithEnvironment("Pod__Password", options.HypervisorPassword);
+            }
+
+            // Storage configuration
+            if (!string.IsNullOrEmpty(options.HypervisorVmStore))
+            {
+                topoApi.WithEnvironment("Pod__VmStore", options.HypervisorVmStore);
+            }
+            if (!string.IsNullOrEmpty(options.HypervisorDiskStore))
+            {
+                topoApi.WithEnvironment("Pod__DiskStore", options.HypervisorDiskStore);
+            }
+            if (!string.IsNullOrEmpty(options.HypervisorIsoStore))
+            {
+                topoApi.WithEnvironment("Pod__IsoStore", options.HypervisorIsoStore);
+            }
+            if (!string.IsNullOrEmpty(options.HypervisorPoolPath))
+            {
+                topoApi.WithEnvironment("Pod__PoolPath", options.HypervisorPoolPath);
+            }
+
+            // Hypervisor-specific settings
+            if (options.HypervisorType.Equals("Proxmox", StringComparison.OrdinalIgnoreCase))
+            {
+                topoApi
+                    .WithEnvironment("Pod__IgnoreCertificateErrors", "true")
+                    .WithEnvironment("Pod__SupportsSubfolders", "false")
+                    .WithEnvironment("FileUpload__IsoRoot", "/mnt/proxmox-iso")
+                    .WithEnvironment("FileUpload__UseDatastoreApi", "false")
+                    .WithEnvironment("FileUpload__TempRoot", "/tmp/topoiso");
+            }
+            else if (options.HypervisorType.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) ||
+                     options.HypervisorType.Equals("vSphere", StringComparison.OrdinalIgnoreCase))
+            {
+                // Check if it's VMC based on URL
+                bool isVmc = options.HypervisorUrl.Contains("vmwarevmc.com");
+
+                topoApi
+                    .WithEnvironment("Pod__IgnoreCertificateErrors", "true")
+                    .WithEnvironment("Pod__TicketUrlHandler", isVmc ? "none" : "querystring")
+                    .WithEnvironment("Pod__SupportsSubfolders", "true")
+                    .WithEnvironment("FileUpload__IsoRoot", isVmc ? "/mnt/vmc-iso" : "/mnt/isos")
+                    .WithEnvironment("FileUpload__UseDatastoreApi", isVmc ? "true" : "false")
+                    .WithEnvironment("FileUpload__TempRoot", "/tmp/topoiso");
+            }
+        }
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
 

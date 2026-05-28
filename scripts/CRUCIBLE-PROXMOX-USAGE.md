@@ -1,12 +1,31 @@
 # Crucible Proxmox Environment Manager
 
-**Single consolidated script for all Proxmox test environment management**
+**Two-script setup: Windows prerequisites + Proxmox configuration**
 
 ## Quick Start
+
+### Step 1: Windows Prerequisites (One-time setup)
+
+Run from **Windows PowerShell as Administrator**:
+
+```powershell
+cd C:\path\to\crucible-development
+.\scripts\setup-keycloak-portforward.ps1
+```
+
+This configures:
+- Port forwarding for Keycloak (8080, 8443)
+- Firewall rules
+- Windows hosts file entry for `keycloak`
+
+### Step 2: Proxmox Configuration
+
+Run from **WSL/Linux/Dev Container**:
 
 ```bash
 # Setup complete environment
 export PROXMOX_HOST='192.168.1.100'
+export KEYCLOAK_HOST='172.29.16.1'  # Optional, auto-detected
 ./scripts/crucible-proxmox.sh setup
 
 # Check status
@@ -270,3 +289,80 @@ Current: `1.0.0`
 ## Author
 
 Consolidated from 38 scripts on 2026-05-27
+
+## Proxmox OIDC Authentication
+
+The setup script automatically configures Proxmox to authenticate users via Keycloak OIDC.
+
+### Architecture
+
+```
+Windows Browser
+    ↓
+Proxmox (172.29.24.139) → redirects to → http://keycloak:8080
+    ↓
+Windows hosts file: keycloak = 172.29.16.1
+    ↓
+Windows port forward: 172.29.16.1:8080 → 127.0.0.1:8080
+    ↓
+Keycloak container in Aspire
+```
+
+### OIDC Configuration
+
+- **Realm:** `keycloak-crucible`
+- **Issuer URL:** `http://keycloak:8080/realms/crucible`
+- **Client ID:** `proxmox-web`
+- **Client Secret:** `proxmox-oidc-secret-change-me`
+
+### Role-Based Access Control
+
+Three Proxmox groups are created automatically:
+
+| Keycloak Role | Proxmox Group | Proxmox Role | Access Level |
+|---------------|---------------|--------------|--------------|
+| Administrators | crucible-admins | Administrator | Full datacenter access |
+| Content Developer | crucible-developers | PVEVMAdmin | VM operator (create/manage VMs) |
+| Test | crucible-observers | PVEAuditor | Read-only |
+
+### Login Flow
+
+1. Navigate to Proxmox: `https://172.29.24.139:8006`
+2. Select **"Keycloak Crucible Realm"** from dropdown
+3. Click Login → redirects to Keycloak
+4. Login with Keycloak credentials (e.g., `admin`/`admin`)
+5. Redirected back to Proxmox
+
+### Group Assignment
+
+After first OIDC login, assign groups via SSH:
+
+```bash
+ssh -i ~/.ssh/crucible_proxmox root@172.29.24.139
+
+# Assign Administrator role
+/usr/local/bin/oidc-group-sync.sh admin@keycloak-crucible Administrators
+
+# Assign VM Operator role
+/usr/local/bin/oidc-group-sync.sh developer@keycloak-crucible "Content Developer"
+
+# Assign Read-only role
+/usr/local/bin/oidc-group-sync.sh observer@keycloak-crucible Test
+```
+
+Log out and back in for permissions to take effect.
+
+### Troubleshooting
+
+**OIDC redirect fails:**
+- Verify Keycloak is running: `aspire run`
+- Check port forwarding: `netsh interface portproxy show v4tov4` (Windows)
+- Test DNS: `ping keycloak` (should resolve to 172.29.16.1)
+
+**Certificate errors:**
+- OIDC uses HTTP (port 8080) to avoid SSL issues
+- Admin console still uses HTTPS (port 8443)
+
+**Invalid redirect_uri:**
+- Run: `./scripts/crucible-proxmox.sh setup` to update Keycloak client with correct URIs
+- Verify in Keycloak admin console: Clients → proxmox-web → Settings → Valid Redirect URIs
