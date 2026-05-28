@@ -2207,6 +2207,21 @@ mode_setup() {
     echo "  • Caster UI: http://localhost:4310/projects/${RESOURCE_IDS[caster_project1]}"
     echo "  • TopoMojo UI: http://localhost:4201"
     echo ""
+
+    # Configure AppHost to use Proxmox
+    local toggle_script="$(dirname "$0")/toggle-topomojo-hypervisor.sh"
+    if [ -f "$toggle_script" ]; then
+        log_info "Configuring AppHost to use Proxmox..."
+        if [ -n "$PROXMOX_TOKEN" ]; then
+            "$toggle_script" proxmox --non-interactive
+        else
+            log_warning "PROXMOX_TOKEN not set - AppHost configuration skipped"
+            log_warning "Run manually: ./scripts/toggle-topomojo-hypervisor.sh proxmox"
+        fi
+    else
+        log_warning "toggle-topomojo-hypervisor.sh not found - AppHost configuration skipped"
+    fi
+    echo ""
 }
 
 mode_reset() {
