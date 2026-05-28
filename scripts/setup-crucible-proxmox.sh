@@ -2515,9 +2515,14 @@ main() {
     # Parse command-line arguments
     parse_args "$@"
 
+    # Try to load config if PROXMOX_HOST not set
+    if [ "$command" != "help" ] && [ -z "$PROXMOX_HOST" ]; then
+        load_config || true
+    fi
+
     # Validate PROXMOX_HOST for commands that need it
     if [ "$command" != "help" ] && [ -z "$PROXMOX_HOST" ]; then
-        log_error "PROXMOX_HOST is required. Use -h or --proxmox-host option."
+        log_error "PROXMOX_HOST is required. Use -h or --proxmox-host option or run setup first."
         echo ""
         show_usage
         exit 1
