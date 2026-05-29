@@ -1584,15 +1584,20 @@ create_topomojo_templates() {
             ;;
     esac
 
-    # Delete ALL templates matching this name (with or without suffix)
+    # Check how many workspace-specific templates exist (unpublished only)
     if [ -n "$target_template_name" ]; then
-        local existing_ids=$(echo "$all_templates" | jq -r ".[] | select(.name | test(\"^${target_template_name}(-[0-9]+)?\$\")) | .id")
-        if [ -n "$existing_ids" ]; then
-            log_info "Removing existing $target_template_name templates for clean recreation..."
+        local existing_ids=$(echo "$all_templates" | jq -r ".[] | select(.name | test(\"^${target_template_name}(-[0-9]+)?\$\") and .isPublished == false) | .id")
+        local existing_count=$(echo "$existing_ids" | grep -c . || echo "0")
+
+        if [ $existing_count -eq 1 ]; then
+            log_success "Exactly one $target_template_name template exists, skipping creation"
+            return 0
+        elif [ $existing_count -gt 1 ]; then
+            log_info "Found $existing_count duplicate $target_template_name templates, removing all..."
             local delete_count=0
             while IFS= read -r template_id; do
                 if [ -n "$template_id" ]; then
-                    log_info "Deleting template: $target_template_name ($template_id)"
+                    log_info "Deleting duplicate: $target_template_name ($template_id)"
                     local delete_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X DELETE "$TOPOMOJO_API_URL/api/template/$template_id" \
                         -H "Authorization: Bearer $token" 2>&1)
                     local delete_code=$(echo "$delete_response" | grep "HTTP_CODE:" | cut -d: -f2)
@@ -1605,9 +1610,11 @@ create_topomojo_templates() {
             done <<< "$existing_ids"
 
             if [ $delete_count -gt 0 ]; then
-                log_success "Deleted $delete_count existing template(s)"
-                sleep 2  # Wait for deletions to complete
+                log_success "Deleted $delete_count duplicate template(s)"
+                sleep 2
             fi
+        else
+            log_info "No existing $target_template_name templates found, will create new one"
         fi
     fi
 
