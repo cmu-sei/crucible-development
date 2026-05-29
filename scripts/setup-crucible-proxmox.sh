@@ -1583,13 +1583,25 @@ create_topomojo_templates() {
         local existing_ids=$(echo "$all_templates" | jq -r ".[] | select(.name | test(\"^${target_template_name}(-[0-9]+)?\$\")) | .id")
         if [ -n "$existing_ids" ]; then
             log_info "Removing existing $target_template_name templates for clean recreation..."
+            local delete_count=0
             while IFS= read -r template_id; do
                 if [ -n "$template_id" ]; then
                     log_info "Deleting template: $target_template_name ($template_id)"
-                    curl -k -s -X DELETE "$TOPOMOJO_API_URL/api/template/$template_id" \
-                        -H "Authorization: Bearer $token" >/dev/null 2>&1
+                    local delete_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X DELETE "$TOPOMOJO_API_URL/api/template/$template_id" \
+                        -H "Authorization: Bearer $token" 2>&1)
+                    local delete_code=$(echo "$delete_response" | grep "HTTP_CODE:" | cut -d: -f2)
+                    if [ "$delete_code" = "204" ] || [ "$delete_code" = "200" ]; then
+                        delete_count=$((delete_count + 1))
+                    else
+                        log_warning "Failed to delete template $template_id (HTTP $delete_code)"
+                    fi
                 fi
             done <<< "$existing_ids"
+
+            if [ $delete_count -gt 0 ]; then
+                log_success "Deleted $delete_count existing template(s)"
+                sleep 2  # Wait for deletions to complete
+            fi
         fi
     fi
 
