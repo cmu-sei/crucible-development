@@ -1856,6 +1856,9 @@ create_caster_project() {
     # Get fresh token (old token doesn't have project claims yet)
     token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[caster]}")
 
+    # Wait for DB transaction to fully commit
+    sleep 2
+
     # Create directory
     local directory_response=$(curl -k -s -X POST "$CASTER_API_URL/directories" \
         -H "Authorization: Bearer $token" \
