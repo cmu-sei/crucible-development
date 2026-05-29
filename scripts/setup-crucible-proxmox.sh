@@ -2437,7 +2437,7 @@ mode_setup() {
         echo "  TopoMojo Workspaces: $workspace_count"
 
         local templates=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/templates" -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
-        local template_count=$(echo "$templates" | jq -r '.[] | select(.name | test("TinyCore-ISO|Alpine-Disk|Puppy-Linux")) | .id' | wc -l)
+        local template_count=$(echo "$templates" | jq -r '.[] | select(.name | test("tinycore-workspace|alpine-workspace|TinyCore-ISO-Stock|Alpine-Disk-Stock|Puppy-Linux"; "i")) | .id' | wc -l)
         echo "  TopoMojo Templates: $template_count"
     fi
 
@@ -2610,7 +2610,7 @@ mode_status() {
 
         # Count templates
         local templates=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/templates" -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
-        local template_count=$(echo "$templates" | jq -r '.[] | select(.name | test("TinyCore-ISO|Alpine-Disk|Puppy-Linux")) | .id' | wc -l)
+        local template_count=$(echo "$templates" | jq -r '.[] | select(.name | test("tinycore-workspace|alpine-workspace|TinyCore-ISO-Stock|Alpine-Disk-Stock|Puppy-Linux"; "i")) | .id' | wc -l)
         echo "  TopoMojo Templates: $template_count"
     fi
 
