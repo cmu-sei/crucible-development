@@ -57,6 +57,10 @@ VERSION="1.0.0"
 readonly WORKSPACE_BASIC_ID="a0000000-0000-0000-0000-000000000001"
 readonly WORKSPACE_VARIANTS_ID="a0000000-0000-0000-0000-000000000002"
 
+# Stock Templates (only 2)
+readonly TEMPLATE_TINYCORE_STOCK_ID="b0000000-0000-0000-0000-000000000001"
+readonly TEMPLATE_ALPINE_STOCK_ID="b0000000-0000-0000-0000-000000000002"
+
 # Config file location
 CONFIG_FILE="$HOME/.crucible-proxmox"
 
@@ -1420,6 +1424,7 @@ create_stock_templates_once() {
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
             -d "{
+                \"id\": \"$TEMPLATE_TINYCORE_STOCK_ID\",
                 \"name\": \"TinyCore-ISO-Stock\",
                 \"description\": \"Stock TinyCore template (boots from ISO)\",
                 \"networks\": \"lan\",
@@ -1454,6 +1459,7 @@ create_stock_templates_once() {
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
             -d "{
+                \"id\": \"$TEMPLATE_ALPINE_STOCK_ID\",
                 \"name\": \"Alpine-Disk-Stock\",
                 \"description\": \"Stock Alpine template (with disk)\",
                 \"networks\": \"lan\",
