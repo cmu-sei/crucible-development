@@ -1509,19 +1509,34 @@ create_topomojo_templates() {
                     disks: [{size: "10G"}]
                 }')
 
+            # Build the request payload
+            local alpine_payload=$(jq -n \
+                --arg name "alpine-workspace" \
+                --arg desc "Workspace-specific Alpine (not linked)" \
+                --arg networks "lan" \
+                --arg detail "$alpine_detail" \
+                --argjson published false \
+                '{
+                    name: $name,
+                    description: $desc,
+                    networks: $networks,
+                    detail: $detail,
+                    isPublished: $published
+                }')
+
             local alpine_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "$TOPOMOJO_API_URL/api/template-detail" \
                 -H "Authorization: Bearer $token" \
                 -H "Content-Type: application/json" \
-                -d "{
-                    \"name\": \"alpine-workspace\",
-                    \"description\": \"Workspace-specific Alpine (not linked)\",
-                    \"networks\": \"lan\",
-                    \"detail\": $(echo "$alpine_detail" | jq -Rs .),
-                    \"isPublished\": false
-                }" 2>&1)
+                -d "$alpine_payload" 2>&1)
 
             local http_code=$(echo "$alpine_response" | grep "HTTP_CODE:" | cut -d: -f2)
             local response_body=$(echo "$alpine_response" | sed '/HTTP_CODE:/d')
+
+            # Debug: log the response if it fails
+            if [ "$http_code" != "200" ] && [ "$http_code" != "201" ]; then
+                log_info "DEBUG - Alpine response body: ${response_body:0:1000}"
+            fi
+
             local alpine_id=$(echo "$response_body" | jq -r '.id' 2>/dev/null)
 
             if [ -n "$alpine_id" ] && [ "$alpine_id" != "null" ]; then
