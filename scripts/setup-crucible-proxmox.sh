@@ -1564,6 +1564,10 @@ create_topomojo_templates() {
     local all_templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
         -H "Authorization: Bearer $token" 2>/dev/null)
 
+    # Debug: show what templates are found
+    local template_count=$(echo "$all_templates" | jq -r 'length' 2>/dev/null || echo "0")
+    log_info "Found $template_count templates in workspace"
+
     # Determine which template name to look for based on type
     local target_template_name=""
     case "$template_type" in
