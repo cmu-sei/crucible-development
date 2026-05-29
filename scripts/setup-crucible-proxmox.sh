@@ -1587,7 +1587,10 @@ create_topomojo_templates() {
     # Check how many workspace-specific templates exist (unpublished only)
     if [ -n "$target_template_name" ]; then
         local existing_ids=$(echo "$all_templates" | jq -r ".[] | select(.name | test(\"^${target_template_name}(-[0-9]+)?\$\") and .isPublished == false) | .id")
-        local existing_count=$(echo "$existing_ids" | grep -c . || echo "0")
+        local existing_count=0
+        if [ -n "$existing_ids" ]; then
+            existing_count=$(echo "$existing_ids" | wc -l)
+        fi
 
         if [ $existing_count -eq 1 ]; then
             log_success "Exactly one $target_template_name template exists, skipping creation"
