@@ -1309,18 +1309,21 @@ create_topomojo_workspace_with_variants() {
                 challenge: $challenge
             }')
 
-        local update_response=$(curl -k -s -X PUT "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
+        local update_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X PUT "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
             -d "$workspace_update" 2>&1)
 
+        local http_code=$(echo "$update_response" | grep "HTTP_CODE:" | cut -d: -f2)
+        local response_body=$(echo "$update_response" | sed '/HTTP_CODE:/d')
+
         # Verify challenge was added
-        if echo "$update_response" | jq -e '.challenge.variants' > /dev/null 2>&1; then
-            local variant_count=$(echo "$update_response" | jq -r '.challenge.variants | length')
+        if echo "$response_body" | jq -e '.challenge.variants' > /dev/null 2>&1; then
+            local variant_count=$(echo "$response_body" | jq -r '.challenge.variants | length')
             log_success "Challenge spec with $variant_count variants added"
         else
-            local error_msg=$(echo "$update_response" | jq -r '.message // .title // .detail // "Response: " + (. | tostring | .[0:200])' 2>/dev/null)
-            log_warning "Challenge spec may not have been added: $error_msg"
+            local error_msg=$(echo "$response_body" | jq -r '.message // .title // .detail // .' 2>/dev/null || echo "${response_body:0:200}")
+            log_warning "Challenge spec may not have been added (HTTP $http_code): $error_msg"
         fi
     fi
 
@@ -1520,7 +1523,7 @@ create_topomojo_templates() {
                     disks: [{size: "10G"}]
                 }')
 
-            local alpine_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template-detail" \
+            local alpine_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "$TOPOMOJO_API_URL/api/template-detail" \
                 -H "Authorization: Bearer $token" \
                 -H "Content-Type: application/json" \
                 -d "{
@@ -1531,17 +1534,29 @@ create_topomojo_templates() {
                     \"isPublished\": false
                 }" 2>&1)
 
-            local alpine_id=$(echo "$alpine_response" | jq -r '.id' 2>/dev/null)
+            local http_code=$(echo "$alpine_response" | grep "HTTP_CODE:" | cut -d: -f2)
+            local response_body=$(echo "$alpine_response" | sed '/HTTP_CODE:/d')
+            local alpine_id=$(echo "$response_body" | jq -r '.id' 2>/dev/null)
+
             if [ -n "$alpine_id" ] && [ "$alpine_id" != "null" ]; then
                 # Link to workspace
-                curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
+                local link_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "$TOPOMOJO_API_URL/api/template" \
                     -H "Authorization: Bearer $token" \
                     -H "Content-Type: application/json" \
-                    -d "{\"templateId\": \"$alpine_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
-                log_success "Workspace template created and linked: alpine-workspace ($alpine_id)"
+                    -d "{\"templateId\": \"$alpine_id\", \"workspaceId\": \"$workspace_id\"}" 2>&1)
+
+                local link_http_code=$(echo "$link_response" | grep "HTTP_CODE:" | cut -d: -f2)
+                local link_body=$(echo "$link_response" | sed '/HTTP_CODE:/d')
+                local link_id=$(echo "$link_body" | jq -r '.id' 2>/dev/null)
+
+                if [ -n "$link_id" ] && [ "$link_id" != "null" ]; then
+                    log_success "Workspace template created and linked: alpine-workspace ($link_id)"
+                else
+                    log_warning "Template created ($alpine_id) but link failed (HTTP $link_http_code): $(echo "$link_body" | jq -r '.message // .' 2>/dev/null)"
+                fi
             else
-                local error_detail=$(echo "$alpine_response" | jq -r '.message // .title // .detail // .')
-                log_warning "Failed to create Alpine workspace template: $error_detail"
+                local error_detail=$(echo "$response_body" | jq -r '.message // .title // .detail // .' 2>/dev/null || echo "$response_body")
+                log_warning "Failed to create Alpine workspace template (HTTP $http_code): ${error_detail:0:200}"
             fi
         fi
     else
@@ -1576,11 +1591,20 @@ create_topomojo_templates() {
             local tinycore_id=$(echo "$tinycore_response" | jq -r '.id' 2>/dev/null)
             if [ -n "$tinycore_id" ] && [ "$tinycore_id" != "null" ]; then
                 # Link to workspace
-                curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
+                local link_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "$TOPOMOJO_API_URL/api/template" \
                     -H "Authorization: Bearer $token" \
                     -H "Content-Type: application/json" \
-                    -d "{\"templateId\": \"$tinycore_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
-                log_success "Workspace template created and linked: tinycore-workspace ($tinycore_id)"
+                    -d "{\"templateId\": \"$tinycore_id\", \"workspaceId\": \"$workspace_id\"}" 2>&1)
+
+                local link_http_code=$(echo "$link_response" | grep "HTTP_CODE:" | cut -d: -f2)
+                local link_body=$(echo "$link_response" | sed '/HTTP_CODE:/d')
+                local link_id=$(echo "$link_body" | jq -r '.id' 2>/dev/null)
+
+                if [ -n "$link_id" ] && [ "$link_id" != "null" ]; then
+                    log_success "Workspace template created and linked: tinycore-workspace ($link_id)"
+                else
+                    log_warning "Template created ($tinycore_id) but link failed (HTTP $link_http_code): $(echo "$link_body" | jq -r '.message // .' 2>/dev/null)"
+                fi
             else
                 log_warning "Failed to create TinyCore workspace template: $(echo "$tinycore_response" | jq -r '.message // .title // "Unknown error"' 2>/dev/null)"
             fi
