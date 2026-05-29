@@ -1851,13 +1851,22 @@ create_caster_project() {
         return 1
     fi
 
+    # Extract the actual project ID from the response (API generates its own ID)
+    project_id=$(echo "$project_response" | jq -r '.id')
     log_success "Caster project created: $project_id"
 
     # Get fresh token (old token doesn't have project claims yet)
     token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[caster]}")
 
-    # Wait for DB transaction to fully commit
-    sleep 2
+    # Debug: Verify project exists via LIST endpoint (GET by ID requires project-specific permissions)
+    local verify_response=$(curl -k -s -X GET "$CASTER_API_URL/projects" \
+        -H "Authorization: Bearer $token" 2>/dev/null)
+    local found_project=$(echo "$verify_response" | jq -r ".[] | select(.id == \"$project_id\") | .id")
+    if [ "$found_project" = "$project_id" ]; then
+        log_info "✓ Project verified in API: $project_id"
+    else
+        log_warning "⚠ Project not found in LIST response"
+    fi
 
     # Debug: show what we're sending
     log_info "Creating directory with projectId: $project_id"
