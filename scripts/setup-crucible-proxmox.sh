@@ -1500,7 +1500,7 @@ create_topomojo_templates() {
         else
             log_info "Creating Puppy Linux workspace template..."
             local puppy_detail=$(jq -n \
-                --arg template "Puppy-Linux" \
+                --arg template "puppy-test" \
                 --arg iso "local:iso/fossapup64-9.5.iso" \
                 '{
                     template: $template,
