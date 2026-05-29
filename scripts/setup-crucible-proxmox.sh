@@ -473,11 +473,12 @@ setup_proxmox_token() {
             log_success "Using token from config file"
             return 0
         else
-            log_error "Token exists on Proxmox but not in config file"
-            log_error "Cannot retrieve existing token (Proxmox only shows it once)"
-            log_error "To fix: Manually delete token: ssh root@$PROXMOX_HOST 'pveum user token remove root@pam $TOKEN_NAME'"
-            log_error "Then re-run setup to create a new token"
-            return 1
+            log_warning "Token exists on Proxmox but not in config file"
+            log_warning "Cannot retrieve existing token (Proxmox only shows it once)"
+            log_warning "Continuing with existing token on Proxmox"
+            log_info "If you need a new token, manually delete it first:"
+            log_info "  ssh root@$PROXMOX_HOST 'pveum user token remove root@pam $TOKEN_NAME'"
+            return 0
         fi
     fi
 
@@ -2356,6 +2357,9 @@ phase7_alloy_events() {
 
 mode_setup() {
     print_header "Crucible Proxmox Environment Setup"
+
+    # Load config early to preserve token
+    load_config || true
 
     # Validate PROXMOX_HOST
     if [ -z "$PROXMOX_HOST" ]; then
