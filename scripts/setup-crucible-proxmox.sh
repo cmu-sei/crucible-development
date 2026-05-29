@@ -1853,25 +1853,9 @@ create_caster_project() {
 
     log_success "Caster project created: $project_id"
 
-    # Wait and verify project exists before creating directory
-    local max_attempts=10
-    local attempt=0
-    local project_exists=false
-    while [ $attempt -lt $max_attempts ]; do
-        local verify_response=$(curl -k -s "$CASTER_API_URL/projects/$project_id" \
-            -H "Authorization: Bearer $token" 2>/dev/null)
-        if echo "$verify_response" | jq -e '.id' > /dev/null 2>&1; then
-            project_exists=true
-            break
-        fi
-        sleep 1
-        attempt=$((attempt + 1))
-    done
-
-    if [ "$project_exists" = false ]; then
-        log_warning "Project created but not retrievable, skipping directory creation"
-        return 1
-    fi
+    # Brief wait for database commit
+    # Note: Can't verify via GET /projects/{id} due to partition isolation
+    sleep 3
 
     # Create directory
     local directory_response=$(curl -k -s -X POST "$CASTER_API_URL/directories" \
