@@ -1570,6 +1570,12 @@ create_topomojo_templates() {
     local template_count=$(echo "$all_templates" | jq -r 'length' 2>/dev/null || echo "0")
     log_info "Found $template_count total templates across all workspaces"
 
+    # Debug: show template names matching our pattern
+    if [ -n "$target_template_name" ]; then
+        log_info "Searching for templates matching: ^${target_template_name}(-[0-9]+)?\$"
+        echo "$all_templates" | jq -r ".[] | select(.name | test(\"^${target_template_name}(-[0-9]+)?\$\")) | \"  - \\(.name) (isPublished: \\(.isPublished // \"null\"))\"" 2>/dev/null || true
+    fi
+
     # Determine which template name to look for based on type
     local target_template_name=""
     case "$template_type" in
