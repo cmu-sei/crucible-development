@@ -1057,6 +1057,9 @@ create_topomojo_workspace_basic() {
 
     if [ -n "$existing_id" ] && [ "$existing_id" != "null" ]; then
         log_success "TopoMojo workspace already exists: $existing_id"
+        # Still create templates if they don't exist
+        create_stock_templates_once "$token"
+        create_topomojo_templates "$existing_id" "$token"
         return 0
     fi
 
@@ -1114,6 +1117,9 @@ create_topomojo_workspace_with_variants() {
 
     if [ -n "$existing_id" ] && [ "$existing_id" != "null" ]; then
         log_success "TopoMojo workspace with variants already exists: $existing_id"
+        # Still create templates if they don't exist
+        create_stock_templates_once "$token"
+        create_topomojo_templates "$existing_id" "$token"
         return 0
     fi
 
