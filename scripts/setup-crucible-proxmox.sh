@@ -1304,12 +1304,13 @@ create_topomojo_workspace_with_variants() {
         return 1
     fi
 
-    # Verify challenge was created
-    local variant_count=$(echo "$response_body" | jq -r '.challenge.variants | length' 2>/dev/null)
+    # Verify challenge was created (challenge is a JSON string, so parse it)
+    local challenge_str=$(echo "$response_body" | jq -r '.challenge' 2>/dev/null)
+    local variant_count=$(echo "$challenge_str" | jq -r '.variants | length' 2>/dev/null)
     if [ "$variant_count" = "3" ]; then
         log_success "Workspace with $variant_count challenge variants created: $workspace_id"
     else
-        log_warning "Workspace created ($workspace_id) but may not have variants (got $variant_count)"
+        log_warning "Workspace created ($workspace_id) but may not have variants (got $variant_count, challenge length: ${#challenge_str})"
     fi
 
     # Create stock templates (once, globally)
@@ -1540,8 +1541,11 @@ create_topomojo_templates() {
                     log_warning "Template created ($alpine_id) but link failed (HTTP $link_http_code): $(echo "$link_body" | jq -r '.message // .' 2>/dev/null)"
                 fi
             else
-                local error_detail=$(echo "$response_body" | jq -r '.message // .title // .detail // .' 2>/dev/null || echo "$response_body")
-                log_warning "Failed to create Alpine workspace template (HTTP $http_code): ${error_detail:0:200}"
+                local error_detail=$(echo "$response_body" | jq -r '.message // .title // .detail // empty' 2>/dev/null)
+                if [ -z "$error_detail" ]; then
+                    error_detail="${response_body:0:500}"
+                fi
+                log_warning "Failed to create Alpine workspace template (HTTP $http_code): $error_detail"
             fi
         fi
     else
