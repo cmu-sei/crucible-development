@@ -1865,7 +1865,9 @@ create_caster_project() {
         }" 2>/dev/null)
 
     if ! echo "$directory_response" | jq -e '.id' > /dev/null 2>&1; then
-        log_warning "Failed to create directory"
+        local error_msg=$(echo "$directory_response" | jq -r '.message // .title // .error // "Unknown error"' 2>/dev/null)
+        log_warning "Failed to create directory: $error_msg"
+        log_warning "Response: ${directory_response:0:200}"
         return 1
     fi
 
