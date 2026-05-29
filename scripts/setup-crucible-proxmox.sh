@@ -54,12 +54,19 @@ VERSION="1.0.0"
 # Note: TopoMojo API may ignore these and generate its own IDs
 # but we'll try to pass them anyway
 
-readonly WORKSPACE_BASIC_ID="a0000000-0000-0000-0000-000000000001"
-readonly WORKSPACE_VARIANTS_ID="a0000000-0000-0000-0000-000000000002"
+readonly WORKSPACE_BASIC_ID="a5a4504b-8aa6-465f-adf5-b043f3813cd5"
+readonly WORKSPACE_VARIANTS_ID="af41d5dd-84b1-4672-8439-f03138c0f86e"
 
 # Stock Templates (only 2)
-readonly TEMPLATE_TINYCORE_STOCK_ID="b0000000-0000-0000-0000-000000000001"
-readonly TEMPLATE_ALPINE_STOCK_ID="b0000000-0000-0000-0000-000000000002"
+readonly TEMPLATE_TINYCORE_STOCK_ID="4ab31ef8-73c9-4dc3-be25-c9c7fb920951"
+readonly TEMPLATE_ALPINE_STOCK_ID="491ffca2-67ae-46c1-acb8-dcda80dd70b8"
+
+# Linked Templates (in basic workspace, referencing stock templates)
+readonly TEMPLATE_TINYCORE_LINKED_ID="1b40e03a-80ef-4653-a080-a0e8811c23a8"
+readonly TEMPLATE_ALPINE_LINKED_ID="bebd2ca6-fa2b-4cc8-aa80-847677ee9e03"
+
+# Workspace-Specific Template (in variants workspace, from Puppy VM 103)
+readonly TEMPLATE_PUPPY_WORKSPACE_ID="75f5f11e-2b9d-4e26-9585-0fb16297ced6"
 
 # Config file location
 CONFIG_FILE="$HOME/.crucible-proxmox"
@@ -1543,7 +1550,7 @@ create_topomojo_templates() {
         local link_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
-            -d "{\"templateId\": \"${RESOURCE_IDS[stock_tinycore]}\", \"workspaceId\": \"$workspace_id\"}" 2>/dev/null)
+            -d "{\"id\": \"$TEMPLATE_TINYCORE_LINKED_ID\", \"templateId\": \"${RESOURCE_IDS[stock_tinycore]}\", \"workspaceId\": \"$workspace_id\"}" 2>/dev/null)
 
         local linked_tiny_id=$(echo "$link_response" | jq -r '.id' 2>/dev/null)
         if [ -n "$linked_tiny_id" ] && [ "$linked_tiny_id" != "null" ]; then
@@ -1594,12 +1601,14 @@ create_topomojo_templates() {
     fi
 
     # Template 4: Link stock Alpine to workspace (if exists)
-    if [ -n "${RESOURCE_IDS[stock_alpine]}" ]; then
+    if template_exists "Alpine-Disk-Stock"; then
+        log_info "Stock Alpine already linked, skipping"
+    elif [ -n "${RESOURCE_IDS[stock_alpine]}" ]; then
         log_info "Linking stock Alpine to workspace..."
         local link_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
-            -d "{\"templateId\": \"${RESOURCE_IDS[stock_alpine]}\", \"workspaceId\": \"$workspace_id\"}" 2>/dev/null)
+            -d "{\"id\": \"$TEMPLATE_ALPINE_LINKED_ID\", \"templateId\": \"${RESOURCE_IDS[stock_alpine]}\", \"workspaceId\": \"$workspace_id\"}" 2>/dev/null)
 
         local linked_alpine_id=$(echo "$link_response" | jq -r '.id' 2>/dev/null)
         if [ -n "$linked_alpine_id" ] && [ "$linked_alpine_id" != "null" ]; then
@@ -1609,30 +1618,38 @@ create_topomojo_templates() {
         fi
     fi
 
-    # Template 5: Puppy-Linux workspace template
-    log_info "Creating Puppy Linux workspace template..."
-    local puppy_detail=$(jq -n \
-        --arg template "puppy-test" \
-        --arg iso "local:iso/fossapup64-9.5.iso" \
-        '{
-            template: $template,
-            iso: $iso,
-            ram: 0.5,
-            cpu: "1x1",
-            eth: [{net: "lan"}],
-            disks: []
-        }')
+    # Template 5: Puppy-Linux workspace template (only in variants workspace)
+    local workspace_name=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
+        -H "Authorization: Bearer $token" | jq -r '.name' 2>/dev/null)
 
-    local puppy_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template-detail" \
-        -H "Authorization: Bearer $token" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"name\": \"Puppy-Linux-$workspace_id\",
-            \"description\": \"Puppy Linux with GUI\",
-            \"networks\": \"lan\",
-            \"detail\": $(echo "$puppy_detail" | jq -Rs .),
-            \"isPublished\": false
-        }" 2>/dev/null)
+    if [[ "$workspace_name" == *"Variants"* ]]; then
+        if template_exists "Puppy-Linux-Workspace"; then
+            log_info "Puppy workspace template already exists, skipping"
+        else
+            log_info "Creating Puppy Linux workspace template..."
+            local puppy_detail=$(jq -n \
+                --arg template "puppy-test" \
+                --arg iso "local:iso/fossapup64-9.5.iso" \
+                '{
+                    template: $template,
+                    iso: $iso,
+                    ram: 0.5,
+                    cpu: "1x1",
+                    eth: [{net: "lan"}],
+                    disks: []
+                }')
+
+            local puppy_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template-detail" \
+                -H "Authorization: Bearer $token" \
+                -H "Content-Type: application/json" \
+                -d "{
+                    \"id\": \"$TEMPLATE_PUPPY_WORKSPACE_ID\",
+                    \"name\": \"Puppy-Linux-Workspace\",
+                    \"description\": \"Puppy Linux with GUI (workspace-specific)\",
+                    \"networks\": \"lan\",
+                    \"detail\": $(echo "$puppy_detail" | jq -Rs .),
+                    \"isPublished\": false
+                }" 2>/dev/null)
 
     local puppy_id=$(echo "$puppy_response" | jq -r '.id' 2>/dev/null)
 
