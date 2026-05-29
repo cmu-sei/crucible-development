@@ -357,8 +357,15 @@ configure_topomojo() {
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableapikey --set=1;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enablemanagername --set=1;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';
-  echo "TopoMojo API KEY needs to be generated and set manually"
-  #php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
+
+  # Read API key from file created by get-or-create-topomojo-apikey.sh
+  if [ -f /tmp/crucible/topomojo-apikey.txt ]; then
+    TOPOMOJO_APIKEY=$(cat /tmp/crucible/topomojo-apikey.txt)
+    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set="$TOPOMOJO_APIKEY";
+    echo "TopoMojo API key configured from /tmp/crucible/topomojo-apikey.txt"
+  else
+    echo "Warning: TopoMojo API key file not found at /tmp/crucible/topomojo-apikey.txt"
+  fi
 }
 
 
