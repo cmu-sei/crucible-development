@@ -391,6 +391,23 @@ configure_ai_bedrock() {
 create_course() {
   echo "Creating course"
   moosh course-list | grep -q 'Test Course' || moosh course-create 'Test Course';
+
+  # Get course ID
+  COURSE_ID=$(moosh course-list | grep 'Test Course' | awk '{print $1}')
+
+  if [ -n "$COURSE_ID" ]; then
+    echo "Enrolling users in Test Course (ID: $COURSE_ID)"
+
+    # Enroll demo-user as student (role ID 5)
+    moosh user-list --email=demo-user@email.com | grep -q demo-user && \
+      moosh course-enrol -r 5 "$COURSE_ID" demo-user || \
+      echo "demo-user not found, skipping enrollment"
+
+    # Enroll contentdev user as teacher (role ID 3)
+    moosh user-list --email=contentdev@email.com | grep -q contentdev && \
+      moosh course-enrol -r 3 "$COURSE_ID" contentdev || \
+      echo "contentdev user not found, skipping enrollment"
+  fi
 }
 
 # Main execution
