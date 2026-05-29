@@ -1451,8 +1451,8 @@ create_stock_templates_once() {
             '{
                 template: $template,
                 iso: $iso,
-                ram: 2,
-                cpu: "1x2",
+                ram: 1,
+                cpu: "1x1",
                 eth: [{net: "lan"}],
                 disks: []
             }')
