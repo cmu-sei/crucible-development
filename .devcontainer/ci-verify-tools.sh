@@ -30,6 +30,7 @@ check gh         gh --version
 check kubectl    kubectl version --client=true
 check helm       helm version --short
 check minikube   minikube version --short
+check kubefwd    kubefwd version
 check docker     docker --version
 check terraform  terraform version
 check go         go version
