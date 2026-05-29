@@ -357,14 +357,16 @@ configure_topomojo() {
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableapikey --set=1;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enablemanagername --set=1;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';
+  php /var/www/html/admin/cli/cfg.php --component=topomojo --name=usingconsoleforge --set=1;
 
   # Read API key from file created by get-or-create-topomojo-apikey.sh
-  if [ -f /tmp/crucible/topomojo-apikey.txt ]; then
-    TOPOMOJO_APIKEY=$(cat /tmp/crucible/topomojo-apikey.txt)
+  TOPOMOJO_APIKEY_FILE="/home/vscode/.topomojo-apikey"
+  if [ -f "$TOPOMOJO_APIKEY_FILE" ]; then
+    TOPOMOJO_APIKEY=$(cat "$TOPOMOJO_APIKEY_FILE")
     php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set="$TOPOMOJO_APIKEY";
-    echo "TopoMojo API key configured from /tmp/crucible/topomojo-apikey.txt"
+    echo "TopoMojo API key configured from $TOPOMOJO_APIKEY_FILE"
   else
-    echo "Warning: TopoMojo API key file not found at /tmp/crucible/topomojo-apikey.txt"
+    echo "Warning: TopoMojo API key file not found at $TOPOMOJO_APIKEY_FILE"
   fi
 }
 
