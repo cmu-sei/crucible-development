@@ -48,8 +48,14 @@ set -e
 # Version
 VERSION="1.0.0"
 
-# Note: TopoMojo API does not accept custom IDs - it generates its own
-# To maintain consistent GUIDs, cleanup preserves workspaces and setup reuses existing IDs
+# ============================================================
+# HARDCODED RESOURCE IDS
+# ============================================================
+# Note: TopoMojo API may ignore these and generate its own IDs
+# but we'll try to pass them anyway
+
+readonly WORKSPACE_BASIC_ID="a0000000-0000-0000-0000-000000000001"
+readonly WORKSPACE_VARIANTS_ID="a0000000-0000-0000-0000-000000000002"
 
 # Config file location
 CONFIG_FILE="$HOME/.crucible-proxmox"
@@ -1096,11 +1102,12 @@ create_topomojo_workspace_basic() {
         return 0
     fi
 
-    # Create workspace
+    # Create workspace with hardcoded ID
     local workspace_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
         -d "{
+            \"id\": \"$WORKSPACE_BASIC_ID\",
             \"name\": \"$workspace_name\",
             \"description\": \"Test workspace with Proxmox-based templates\",
             \"tags\": \"test\"
@@ -1153,6 +1160,7 @@ create_topomojo_workspace_with_variants() {
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
             -d "{
+                \"id\": \"$WORKSPACE_VARIANTS_ID\",
                 \"name\": \"$workspace_name\",
                 \"description\": \"Test workspace with 3 variants for mod_topomojo testing\",
                 \"tags\": \"test,moodle,variants\"
