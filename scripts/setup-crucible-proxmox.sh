@@ -1526,6 +1526,8 @@ create_topomojo_templates() {
                     isPublished: $published
                 }')
 
+            log_info "DEBUG - Puppy payload: $(echo "$puppy_payload" | jq -c .)"
+
             local puppy_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "$TOPOMOJO_API_URL/api/template-detail" \
                 -H "Authorization: Bearer $token" \
                 -H "Content-Type: application/json" \
