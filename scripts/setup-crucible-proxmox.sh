@@ -2318,10 +2318,10 @@ mode_setup() {
     local toggle_script="$(dirname "$0")/toggle-topomojo-hypervisor.sh"
     if [ -f "$toggle_script" ]; then
         log_info "Configuring AppHost to use Proxmox..."
-        if [ -n "$PROXMOX_TOKEN" ]; then
+        if [ -n "$PROXMOX_API_TOKEN" ]; then
             "$toggle_script" proxmox --non-interactive
         else
-            log_warning "PROXMOX_TOKEN not set - AppHost configuration skipped"
+            log_warning "PROXMOX_API_TOKEN not set - AppHost configuration skipped"
             log_warning "Run manually: ./scripts/toggle-topomojo-hypervisor.sh proxmox"
         fi
     else
