@@ -1104,7 +1104,7 @@ create_topomojo_workspace_basic() {
         log_success "TopoMojo workspace already exists: $existing_id"
         # Still create templates if they don't exist
         create_stock_templates_once "$token"
-        create_topomojo_templates "$existing_id" "$token"
+        create_topomojo_templates "$existing_id" "$token" "puppy"
         return 0
     fi
 
@@ -1140,7 +1140,7 @@ create_topomojo_workspace_basic() {
     create_stock_templates_once "$token"
 
     # Create workspace-specific templates (some linked, some not)
-    create_topomojo_templates "$workspace_id" "$token"
+    create_topomojo_templates "$workspace_id" "$token" "puppy"
 
     return 0
 }
