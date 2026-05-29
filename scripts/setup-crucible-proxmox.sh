@@ -60,6 +60,7 @@ readonly WORKSPACE_VARIANTS_ID="af41d5dd-84b1-4672-8439-f03138c0f86e"
 # Stock Templates (only 2)
 readonly TEMPLATE_TINYCORE_STOCK_ID="4ab31ef8-73c9-4dc3-be25-c9c7fb920951"
 readonly TEMPLATE_ALPINE_STOCK_ID="491ffca2-67ae-46c1-acb8-dcda80dd70b8"
+readonly TEMPLATE_PUPPY_STOCK_ID="5c72d3f9-84ba-4ef2-a9c3-f1e8a2b3d4c5"
 
 # Linked Templates (in basic workspace, referencing stock templates)
 readonly TEMPLATE_TINYCORE_LINKED_ID="1b40e03a-80ef-4653-a080-a0e8811c23a8"
@@ -1439,6 +1440,7 @@ create_stock_templates_once() {
 
     local tinycore_stock=$(echo "$all_templates" | jq -r '.[] | select(.name == "TinyCore-ISO-Stock") | .id' | head -1)
     local alpine_stock=$(echo "$all_templates" | jq -r '.[] | select(.name == "Alpine-Disk-Stock") | .id' | head -1)
+    local puppy_stock=$(echo "$all_templates" | jq -r '.[] | select(.name == "Puppy-Linux-Stock") | .id' | head -1)
 
     # Create TinyCore stock template if doesn't exist
     if [ -z "$tinycore_stock" ] || [ "$tinycore_stock" = "null" ]; then
@@ -1510,6 +1512,43 @@ create_stock_templates_once() {
     else
         log_success "Stock template exists: Alpine-Disk-Stock ($alpine_stock)"
         RESOURCE_IDS[stock_alpine]="$alpine_stock"
+    fi
+
+    # Create Puppy stock template if doesn't exist
+    if [ -z "$puppy_stock" ] || [ "$puppy_stock" = "null" ]; then
+        log_step "Creating stock template: Puppy-Linux-Stock"
+        local puppy_detail=$(jq -n \
+            --arg template "Puppy-Linux" \
+            --arg iso "local:iso/fossapup64-9.5.iso" \
+            '{
+                template: $template,
+                iso: $iso,
+                ram: 1,
+                cpu: "1x1",
+                eth: [{net: "lan"}],
+                disks: []
+            }')
+
+        local puppy_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"id\": \"$TEMPLATE_PUPPY_STOCK_ID\",
+                \"name\": \"Puppy-Linux-Stock\",
+                \"description\": \"Stock Puppy Linux template (boots from ISO)\",
+                \"networks\": \"lan\",
+                \"detail\": $(echo "$puppy_detail" | jq -Rs .),
+                \"isPublished\": true
+            }" 2>/dev/null)
+
+        puppy_stock=$(echo "$puppy_response" | jq -r '.id' 2>/dev/null)
+        if [ -n "$puppy_stock" ] && [ "$puppy_stock" != "null" ]; then
+            log_success "Stock template created: Puppy-Linux-Stock ($puppy_stock)"
+            RESOURCE_IDS[stock_puppy]="$puppy_stock"
+        fi
+    else
+        log_success "Stock template exists: Puppy-Linux-Stock ($puppy_stock)"
+        RESOURCE_IDS[stock_puppy]="$puppy_stock"
     fi
 }
 
