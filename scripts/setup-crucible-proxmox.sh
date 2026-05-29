@@ -558,21 +558,20 @@ setup_proxmox_oidc() {
         return 0
     fi
 
-    # Detect Keycloak host IP (Hyper-V switch IP that Proxmox can reach)
+    # Detect Keycloak host IP (Windows Hyper-V switch IP that Proxmox can reach)
     # User can override with KEYCLOAK_HOST environment variable
     local KEYCLOAK_HOST="${KEYCLOAK_HOST:-}"
 
     if [ -z "$KEYCLOAK_HOST" ]; then
-        # Try to detect from routing table
-        KEYCLOAK_HOST=$(ip route get "$PROXMOX_HOST" 2>/dev/null | awk '{print $7}' | head -1)
+        # For Proxmox OIDC, we need the Windows host IP (Hyper-V switch) not Docker IP
+        # Standard Hyper-V Default Switch uses x.x.16.1 gateway pattern
+        # Extract first 2 octets from PROXMOX_HOST and assume .16.1 gateway
+        # e.g., 172.29.24.139 -> 172.29.16.1 (Hyper-V Default Switch gateway)
+        local proxmox_subnet=$(echo "$PROXMOX_HOST" | cut -d. -f1-2)
+        KEYCLOAK_HOST="${proxmox_subnet}.16.1"
 
-        if [ -z "$KEYCLOAK_HOST" ]; then
-            log_warning "Could not auto-detect Keycloak host IP"
-            log_warning "Please set KEYCLOAK_HOST environment variable"
-            log_warning "Example: export KEYCLOAK_HOST=172.29.16.1"
-            log_warning "Skipping OIDC configuration"
-            return 0
-        fi
+        log_info "Auto-detected KEYCLOAK_HOST: $KEYCLOAK_HOST (Hyper-V Default Switch gateway)"
+        log_info "If this is incorrect, set KEYCLOAK_HOST environment variable before running setup"
     fi
 
     log_info "Using Keycloak host: $KEYCLOAK_HOST"
