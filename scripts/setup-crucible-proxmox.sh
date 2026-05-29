@@ -1561,12 +1561,14 @@ create_topomojo_templates() {
 
     # Remove ALL existing templates of the type we're about to create (idempotent)
     log_info "Checking for existing templates to ensure idempotency..."
-    local all_templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
+
+    # Query ALL templates (not just workspace-linked) to catch orphaned templates
+    local all_templates=$(curl -k -s "$TOPOMOJO_API_URL/api/templates" \
         -H "Authorization: Bearer $token" 2>/dev/null)
 
     # Debug: show what templates are found
     local template_count=$(echo "$all_templates" | jq -r 'length' 2>/dev/null || echo "0")
-    log_info "Found $template_count templates in workspace"
+    log_info "Found $template_count total templates across all workspaces"
 
     # Determine which template name to look for based on type
     local target_template_name=""
