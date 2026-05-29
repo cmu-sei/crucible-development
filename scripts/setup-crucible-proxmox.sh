@@ -1319,7 +1319,8 @@ create_topomojo_workspace_with_variants() {
             local variant_count=$(echo "$update_response" | jq -r '.challenge.variants | length')
             log_success "Challenge spec with $variant_count variants added"
         else
-            log_warning "Challenge spec may not have been added correctly"
+            local error_msg=$(echo "$update_response" | jq -r '.message // .title // .detail // "Response: " + (. | tostring | .[0:200])' 2>/dev/null)
+            log_warning "Challenge spec may not have been added: $error_msg"
         fi
     fi
 
@@ -1528,7 +1529,7 @@ create_topomojo_templates() {
                     \"networks\": \"lan\",
                     \"detail\": $(echo "$alpine_detail" | jq -Rs .),
                     \"isPublished\": false
-                }" 2>/dev/null)
+                }" 2>&1)
 
             local alpine_id=$(echo "$alpine_response" | jq -r '.id' 2>/dev/null)
             if [ -n "$alpine_id" ] && [ "$alpine_id" != "null" ]; then
@@ -1539,7 +1540,8 @@ create_topomojo_templates() {
                     -d "{\"templateId\": \"$alpine_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
                 log_success "Workspace template created and linked: alpine-workspace ($alpine_id)"
             else
-                log_warning "Failed to create Alpine workspace template: $(echo "$alpine_response" | jq -r '.message // .title // "Unknown error"' 2>/dev/null)"
+                local error_detail=$(echo "$alpine_response" | jq -r '.message // .title // .detail // .')
+                log_warning "Failed to create Alpine workspace template: $error_detail"
             fi
         fi
     else
