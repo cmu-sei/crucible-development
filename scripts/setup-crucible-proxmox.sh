@@ -1116,35 +1116,33 @@ create_topomojo_workspace_with_variants() {
 
     if [ -n "$existing_id" ] && [ "$existing_id" != "null" ]; then
         log_success "TopoMojo workspace with variants already exists: $existing_id"
-        # Still create templates if they don't exist
-        create_stock_templates_once "$token"
-        create_topomojo_templates "$existing_id" "$token"
-        return 0
+        workspace_id="$existing_id"
+        # Continue to ensure templates and challenge spec are configured
+    else
+        # Create new workspace
+        local workspace_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"name\": \"$workspace_name\",
+                \"description\": \"Test workspace with 3 variants for mod_topomojo testing\",
+                \"tags\": \"test,moodle,variants\"
+            }" 2>/dev/null)
+
+        workspace_id=$(echo "$workspace_response" | jq -r '.id' 2>/dev/null)
+
+        if [ -z "$workspace_id" ] || [ "$workspace_id" = "null" ]; then
+            log_error "Failed to create TopoMojo workspace with variants"
+            return 1
+        fi
+
+        log_success "TopoMojo workspace with variants created: $workspace_id"
     fi
 
     if [ "$DRY_RUN" = "true" ]; then
         log_info "[DRY RUN] Would create TopoMojo workspace with variants"
         return 0
     fi
-
-    # Create workspace
-    local workspace_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace" \
-        -H "Authorization: Bearer $token" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"name\": \"$workspace_name\",
-            \"description\": \"Test workspace with 3 variants for mod_topomojo testing\",
-            \"tags\": \"test,moodle,variants\"
-        }" 2>/dev/null)
-
-    local workspace_id=$(echo "$workspace_response" | jq -r '.id' 2>/dev/null)
-
-    if [ -z "$workspace_id" ] || [ "$workspace_id" = "null" ]; then
-        log_error "Failed to create TopoMojo workspace with variants"
-        return 1
-    fi
-
-    log_success "TopoMojo workspace with variants created: $workspace_id"
 
     # Create challenge spec with 3 variants
     local challenge_json='{
