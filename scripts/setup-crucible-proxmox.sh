@@ -127,12 +127,7 @@ PROXMOX_API_TOKEN="${PROXMOX_API_TOKEN:-}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-https://localhost:8443}"
 KEYCLOAK_USER="${KEYCLOAK_USER:-admin}"
 KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-admin}"
-SKIP_INFRASTRUCTURE=false
-SKIP_VMS=false
-SKIP_TOPOMOJO=false
-SKIP_CASTER=false
-SKIP_PLAYER=false
-SKIP_ALLOY=false
+# Removed skip flags - setup always runs all phases
 DRY_RUN=false
 
 # ============================================================
@@ -2282,10 +2277,6 @@ cleanup_all() {
 # ============================================================
 
 phase1_proxmox_infrastructure() {
-    if [ "$SKIP_INFRASTRUCTURE" = "true" ]; then
-        log_warning "Skipping Proxmox infrastructure setup"
-        return 0
-    fi
 
     print_section "Phase 1/7: Proxmox Infrastructure Setup"
 
@@ -2300,10 +2291,6 @@ phase1_proxmox_infrastructure() {
 }
 
 phase2_vm_templates() {
-    if [ "$SKIP_VMS" = "true" ]; then
-        log_warning "Skipping VM template creation"
-        return 0
-    fi
 
     print_section "Phase 2/7: VM Template Creation"
 
@@ -2324,10 +2311,6 @@ phase3_wait_aspire() {
 }
 
 phase4_topomojo_workspaces() {
-    if [ "$SKIP_TOPOMOJO" = "true" ]; then
-        log_warning "Skipping TopoMojo workspace creation"
-        return 0
-    fi
 
     print_section "Phase 4/7: TopoMojo Workspaces"
 
@@ -2338,10 +2321,6 @@ phase4_topomojo_workspaces() {
 }
 
 phase5_caster_projects() {
-    if [ "$SKIP_CASTER" = "true" ]; then
-        log_warning "Skipping Caster project creation"
-        return 0
-    fi
 
     print_section "Phase 5/7: Caster Projects"
 
@@ -2352,10 +2331,6 @@ phase5_caster_projects() {
 }
 
 phase6_player_views() {
-    if [ "$SKIP_PLAYER" = "true" ]; then
-        log_warning "Skipping Player view creation"
-        return 0
-    fi
 
     print_section "Phase 6/7: Player Views"
 
@@ -2366,10 +2341,6 @@ phase6_player_views() {
 }
 
 phase7_alloy_events() {
-    if [ "$SKIP_ALLOY" = "true" ]; then
-        log_warning "Skipping Alloy event creation"
-        return 0
-    fi
 
     print_section "Phase 7/7: Alloy Events"
 
@@ -2656,43 +2627,22 @@ Commands:
   fix      - Repair broken state
   help     - Show this help message
 
-Options:
-  -h, --proxmox-host HOST        Proxmox IP/hostname (required)
-  --keycloak-url URL             Keycloak URL (default: https://localhost:8443)
-  --keycloak-user USER           Keycloak username (default: admin)
-  --keycloak-password PASS       Keycloak password (default: admin)
-  --skip-infrastructure          Skip Proxmox setup
-  --skip-vms                     Skip VM template creation
-  --skip-topomojo                Skip TopoMojo workspaces
-  --skip-caster                  Skip Caster projects
-  --skip-player                  Skip Player views
-  --skip-alloy                   Skip Alloy events
-  --dry-run                      Show what would be done
-  --help                         Show this help message
-
-Environment Variables (fallback if not specified on command line):
-  PROXMOX_HOST          - Proxmox IP/hostname
-  KEYCLOAK_URL          - Keycloak URL
-  KEYCLOAK_USER         - Keycloak username
-  KEYCLOAK_PASSWORD     - Keycloak password
+Environment Variables:
+  PROXMOX_HOST          - Proxmox IP/hostname (required)
 
 Examples:
   # Full setup
-  $0 setup --proxmox-host 192.168.1.100
-
-  # Setup without VM creation
-  $0 setup -h 192.168.1.100 --skip-vms
+  export PROXMOX_HOST='192.168.1.100'
+  $0 setup
 
   # Check current status
-  $0 status -h 192.168.1.100
+  $0 status
 
-  # Reset environment
-  $0 reset --proxmox-host 192.168.1.100
+  # Reset environment (clean + setup)
+  $0 reset
 
-  # Dry run
-  $0 setup -h 192.168.1.100 --dry-run
-
-For more information, see: /workspaces/crucible-development/TODO/proxmox-scripts-overview.md
+  # Clean all resources
+  $0 clean
 EOF
 }
 
@@ -2719,34 +2669,6 @@ parse_args() {
             --keycloak-password)
                 KEYCLOAK_PASSWORD="$2"
                 shift 2
-                ;;
-            --skip-infrastructure)
-                SKIP_INFRASTRUCTURE=true
-                shift
-                ;;
-            --skip-vms)
-                SKIP_VMS=true
-                shift
-                ;;
-            --skip-topomojo)
-                SKIP_TOPOMOJO=true
-                shift
-                ;;
-            --skip-caster)
-                SKIP_CASTER=true
-                shift
-                ;;
-            --skip-player)
-                SKIP_PLAYER=true
-                shift
-                ;;
-            --skip-alloy)
-                SKIP_ALLOY=true
-                shift
-                ;;
-            --dry-run)
-                DRY_RUN=true
-                shift
                 ;;
             --help)
                 show_usage
