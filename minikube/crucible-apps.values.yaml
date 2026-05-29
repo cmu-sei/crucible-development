@@ -57,6 +57,10 @@ alloy:
         - hosts:
             - "{{ .Values.global.domain }}"
           secretName: crucible-cert
+    # Optional: Use a configmap to define a custom CA certificate (enabled for local development)
+    # Only needed if you use self-signed certificates or corporate proxies (e.g., Zscaler)
+    # You must create the ConfigMap separately before enabling this
+    certificateMap: "crucible-ca-cert"
     # This secret contains the postgres connection string
     existingSecret: "{{ .Release.Name }}-alloy-api-custom"
     # Values placed into the {{ .Release.Name }}-alloy-api-custom secret
