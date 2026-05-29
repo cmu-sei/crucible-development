@@ -473,12 +473,13 @@ setup_proxmox_token() {
             log_success "Using token from config file"
             return 0
         else
-            log_warning "Token exists on Proxmox but not in config file"
-            log_warning "Cannot retrieve existing token (Proxmox only shows it once)"
-            log_warning "Continuing with existing token on Proxmox"
-            log_info "If you need a new token, manually delete it first:"
-            log_info "  ssh root@$PROXMOX_HOST 'pveum user token remove root@pam $TOKEN_NAME'"
-            return 0
+            log_error "Token exists on Proxmox but secret not in config file"
+            log_error "Proxmox only shows token secret once during creation"
+            log_error ""
+            log_error "To fix: Delete the existing token and re-run setup:"
+            log_error "  ssh root@$PROXMOX_HOST 'pveum user token remove root@pam $TOKEN_NAME'"
+            log_error "  ./scripts/setup-crucible-proxmox.sh setup"
+            return 1
         fi
     fi
 
