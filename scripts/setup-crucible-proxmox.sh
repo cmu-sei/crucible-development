@@ -1482,14 +1482,32 @@ create_topomojo_templates() {
 
     log_step "Creating TopoMojo templates for workspace ($template_type)..."
 
-    # Get existing templates in this workspace
-    local existing_templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
+    # Remove duplicate templates from previous runs
+    log_info "Checking for duplicate templates..."
+    local all_templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
         -H "Authorization: Bearer $token" 2>/dev/null)
+
+    # Find and remove duplicates (keep only the first occurrence of each name pattern)
+    local template_names=$(echo "$all_templates" | jq -r '.[].name' | sed 's/-[0-9]\+$//' | sort | uniq -d)
+    if [ -n "$template_names" ]; then
+        while IFS= read -r base_name; do
+            # Get all IDs for templates with this base name
+            local duplicate_ids=$(echo "$all_templates" | jq -r ".[] | select(.name | test(\"^${base_name}(-[0-9]+)?\$\")) | .id" | tail -n +2)
+            for dup_id in $duplicate_ids; do
+                log_info "Removing duplicate template: $base_name ($dup_id)"
+                curl -k -s -X DELETE "$TOPOMOJO_API_URL/api/template/$dup_id" \
+                    -H "Authorization: Bearer $token" >/dev/null 2>&1
+            done
+        done <<< "$template_names"
+    fi
 
     # Helper function to check if template exists by name (or name with suffix like -377)
     template_exists() {
         local name="$1"
-        echo "$existing_templates" | jq -r ".[].name" | grep -q "^${name}\(-[0-9]\+\)\?$"
+        # Fetch fresh template list each time to catch newly created templates
+        local current_templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
+            -H "Authorization: Bearer $token" 2>/dev/null)
+        echo "$current_templates" | jq -r ".[].name" | grep -q "^${name}\(-[0-9]\+\)\?$"
     }
 
     # Create workspace-specific template based on type
