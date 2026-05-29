@@ -1559,41 +1559,44 @@ create_topomojo_templates() {
 
     log_step "Creating TopoMojo templates for workspace ($template_type)..."
 
-    # Remove duplicate templates from previous runs
-    log_info "Checking for duplicate templates..."
+    # Remove ALL existing templates of the type we're about to create (idempotent)
+    log_info "Checking for existing templates to ensure idempotency..."
     local all_templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
         -H "Authorization: Bearer $token" 2>/dev/null)
 
-    # Find and remove duplicates (keep only the first occurrence of each name pattern)
-    local template_names=$(echo "$all_templates" | jq -r '.[].name' | sed 's/-[0-9]\+$//' | sort | uniq -d)
-    if [ -n "$template_names" ]; then
-        while IFS= read -r base_name; do
-            # Get all IDs for templates with this base name
-            local duplicate_ids=$(echo "$all_templates" | jq -r ".[] | select(.name | test(\"^${base_name}(-[0-9]+)?\$\")) | .id" | tail -n +2)
-            for dup_id in $duplicate_ids; do
-                log_info "Removing duplicate template: $base_name ($dup_id)"
-                curl -k -s -X DELETE "$TOPOMOJO_API_URL/api/template/$dup_id" \
-                    -H "Authorization: Bearer $token" >/dev/null 2>&1
-            done
-        done <<< "$template_names"
+    # Determine which template name to look for based on type
+    local target_template_name=""
+    case "$template_type" in
+        puppy)
+            target_template_name="puppy-workspace"
+            ;;
+        tinycore)
+            target_template_name="tinycore-workspace"
+            ;;
+        alpine)
+            target_template_name="alpine-workspace"
+            ;;
+    esac
+
+    # Delete ALL templates matching this name (with or without suffix)
+    if [ -n "$target_template_name" ]; then
+        local existing_ids=$(echo "$all_templates" | jq -r ".[] | select(.name | test(\"^${target_template_name}(-[0-9]+)?\$\")) | .id")
+        if [ -n "$existing_ids" ]; then
+            log_info "Removing existing $target_template_name templates for clean recreation..."
+            while IFS= read -r template_id; do
+                if [ -n "$template_id" ]; then
+                    log_info "Deleting template: $target_template_name ($template_id)"
+                    curl -k -s -X DELETE "$TOPOMOJO_API_URL/api/template/$template_id" \
+                        -H "Authorization: Bearer $token" >/dev/null 2>&1
+                fi
+            done <<< "$existing_ids"
+        fi
     fi
 
-    # Helper function to check if template exists by name (or name with suffix like -377)
-    template_exists() {
-        local name="$1"
-        # Fetch fresh template list each time to catch newly created templates
-        local current_templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
-            -H "Authorization: Bearer $token" 2>/dev/null)
-        echo "$current_templates" | jq -r ".[].name" | grep -q "^${name}\(-[0-9]\+\)\?$"
-    }
-
-    # Create workspace-specific template based on type
+    # Create workspace-specific template based on type (existing ones already deleted above)
     if [ "$template_type" = "puppy" ]; then
-        # Puppy Linux template for Variants workspace
-        if template_exists "puppy-workspace"; then
-            log_info "Puppy workspace template already exists, skipping"
-        else
-            log_info "Creating Puppy Linux workspace template..."
+        # Puppy Linux template
+        log_info "Creating Puppy Linux workspace template..."
             local puppy_detail=$(jq -n \
                 --arg template "Puppy-Linux" \
                 --arg iso "local:iso/fossapup64-9.5.iso" \
@@ -1655,11 +1658,8 @@ create_topomojo_templates() {
             fi
         fi
     elif [ "$template_type" = "alpine" ]; then
-        # Alpine template for Variants workspace
-        if template_exists "alpine-workspace"; then
-            log_info "Alpine workspace template already exists, skipping"
-        else
-            log_info "Creating Alpine workspace template..."
+        # Alpine template
+        log_info "Creating Alpine workspace template..."
             local alpine_detail=$(jq -n \
                 --arg template "Alpine-Disk" \
                 '{
@@ -1719,11 +1719,8 @@ create_topomojo_templates() {
             fi
         fi
     else
-        # TinyCore template for Basic workspace (default)
-        if template_exists "tinycore-workspace"; then
-            log_info "TinyCore workspace template already exists, skipping"
-        else
-            log_info "Creating TinyCore workspace template..."
+        # TinyCore template (default)
+        log_info "Creating TinyCore workspace template..."
             local tinycore_detail=$(jq -n \
                 --arg template "TinyCore-ISO" \
                 --arg iso "local:iso/TinyCore-current.iso" \
