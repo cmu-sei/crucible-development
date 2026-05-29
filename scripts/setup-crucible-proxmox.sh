@@ -582,6 +582,22 @@ setup_proxmox_oidc() {
 
     log_success "Keycloak is accessible from Proxmox"
 
+    # Ensure Proxmox can resolve "keycloak" hostname (if using hostname in issuer)
+    log_step "Configuring Proxmox hosts file for Keycloak..."
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash <<HOSTSEOF
+set -e
+# Add keycloak to /etc/hosts if using hostname
+if ! grep -q "keycloak" /etc/hosts; then
+    echo "$KEYCLOAK_HOST keycloak" >> /etc/hosts
+    echo "✓ Added keycloak to /etc/hosts"
+else
+    # Update existing entry
+    sed -i '/keycloak/d' /etc/hosts
+    echo "$KEYCLOAK_HOST keycloak" >> /etc/hosts
+    echo "✓ Updated keycloak in /etc/hosts"
+fi
+HOSTSEOF
+
     # Configure OIDC realm on Proxmox
     ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash <<OIDCEOF
 set -e
@@ -762,7 +778,59 @@ echo "════════════════════════�
 
 OIDCEOF
 
-    log_success "Proxmox OIDC realm configured"
+    # Verify configuration
+    log_step "Verifying Proxmox OIDC configuration..."
+
+    local verify_output=$(ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash <<VERIFYEOF
+# Check realm exists
+if pveum realm list | grep -q "$OIDC_REALM_NAME"; then
+    echo "✓ OIDC realm exists: $OIDC_REALM_NAME"
+else
+    echo "✗ OIDC realm NOT found: $OIDC_REALM_NAME"
+    exit 1
+fi
+
+# Check groups exist
+for group in crucible-admins crucible-developers crucible-observers; do
+    if pveum group list | grep -q "\$group"; then
+        echo "✓ Group exists: \$group"
+    else
+        echo "✗ Group NOT found: \$group"
+        exit 1
+    fi
+done
+
+# Check keycloak hostname resolves
+if grep -q "keycloak" /etc/hosts; then
+    echo "✓ Keycloak in /etc/hosts: \$(grep keycloak /etc/hosts)"
+else
+    echo "✗ Keycloak NOT in /etc/hosts"
+    exit 1
+fi
+
+# Test Keycloak accessibility
+if curl -s -o /dev/null -w '%{http_code}' --connect-timeout 5 http://keycloak:8080/realms/crucible/.well-known/openid-configuration | grep -q '200'; then
+    echo "✓ Keycloak accessible from Proxmox"
+else
+    echo "✗ Keycloak NOT accessible from Proxmox"
+    exit 1
+fi
+
+echo "✓ All OIDC configuration verified"
+VERIFYEOF
+)
+
+    if [ $? -eq 0 ]; then
+        log_success "Proxmox OIDC configuration verified"
+        echo "$verify_output" | while read line; do
+            log_info "  $line"
+        done
+    else
+        log_error "Proxmox OIDC configuration verification FAILED"
+        echo "$verify_output"
+        return 1
+    fi
+
     log_info "OIDC realm: $OIDC_REALM_NAME"
     log_info "Issuer URL: $KEYCLOAK_ISSUER"
 }
