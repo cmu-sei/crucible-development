@@ -1656,7 +1656,6 @@ create_topomojo_templates() {
                 fi
                 log_warning "Failed to create Puppy workspace template (HTTP $http_code): $error_detail"
             fi
-        fi
     elif [ "$template_type" = "alpine" ]; then
         # Alpine template
         log_info "Creating Alpine workspace template..."
@@ -1717,7 +1716,6 @@ create_topomojo_templates() {
                 fi
                 log_warning "Failed to create Alpine workspace template (HTTP $http_code): $error_detail"
             fi
-        fi
     else
         # TinyCore template (default)
         log_info "Creating TinyCore workspace template..."
@@ -1764,7 +1762,6 @@ create_topomojo_templates() {
             else
                 log_warning "Failed to create TinyCore workspace template: $(echo "$tinycore_response" | jq -r '.message // .title // "Unknown error"' 2>/dev/null)"
             fi
-        fi
     fi
 
     log_success "TopoMojo templates configured for workspace"
