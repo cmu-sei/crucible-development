@@ -459,8 +459,19 @@ setup_proxmox_token() {
 
     if [ "$token_exists" = "yes" ]; then
         log_info "API token already exists, keeping existing token"
-        log_warning "Note: Cannot retrieve existing token value - using value from config file"
-        # Token already exists but we can't retrieve it, must use what's in config
+
+        # Load token from config if not in environment
+        if [ -z "$PROXMOX_API_TOKEN" ] && [ -f "$CONFIG_FILE" ]; then
+            source "$CONFIG_FILE" 2>/dev/null || true
+        fi
+
+        if [ -n "$PROXMOX_API_TOKEN" ]; then
+            log_success "Using token from config file"
+        else
+            log_error "Token exists on Proxmox but not found in config file"
+            log_error "Delete token on Proxmox and re-run, or manually set PROXMOX_API_TOKEN"
+            return 1
+        fi
         return 0
     fi
 
