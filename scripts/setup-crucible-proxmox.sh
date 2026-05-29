@@ -2234,14 +2234,26 @@ cleanup_topomojo_resources() {
     local all_templates=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/templates" \
         -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
 
+    # Show what templates exist
+    local all_template_names=$(echo "$all_templates" | jq -r '.[].name' 2>/dev/null)
+    if [ -n "$all_template_names" ]; then
+        log_info "Found templates: $(echo "$all_template_names" | tr '\n' ', ' | sed 's/,$//')"
+    fi
+
     local template_ids=$(echo "$all_templates" | jq -r '.[] | select(.name | test("tinycore|alpine|puppy"; "i")) | .id')
 
     local template_count=0
     for template_id in $template_ids; do
         if [ -n "$template_id" ]; then
-            curl -k -s -X DELETE "$TOPOMOJO_API_URL/api/template/$template_id" \
-                -H "Authorization: Bearer $token" > /dev/null 2>&1
-            template_count=$((template_count + 1))
+            local del_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X DELETE "$TOPOMOJO_API_URL/api/template/$template_id" \
+                -H "Authorization: Bearer $token" 2>&1)
+            local del_code=$(echo "$del_response" | grep "HTTP_CODE:" | cut -d: -f2)
+
+            if [ "$del_code" = "204" ] || [ "$del_code" = "200" ]; then
+                template_count=$((template_count + 1))
+            else
+                log_warning "Failed to delete template $template_id (HTTP $del_code)"
+            fi
         fi
     done
 
