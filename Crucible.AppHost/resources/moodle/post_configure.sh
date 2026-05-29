@@ -359,14 +359,12 @@ configure_topomojo() {
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=usingconsoleforge --set=1;
 
-  # Read API key from file created by get-or-create-topomojo-apikey.sh
-  TOPOMOJO_APIKEY_FILE="/home/vscode/.topomojo-apikey"
-  if [ -f "$TOPOMOJO_APIKEY_FILE" ]; then
-    TOPOMOJO_APIKEY=$(cat "$TOPOMOJO_APIKEY_FILE")
+  # Read API key from environment variable (set by AppHost from ~/.topomojo-apikey)
+  if [ -n "$TOPOMOJO_APIKEY" ]; then
     php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set="$TOPOMOJO_APIKEY";
-    echo "TopoMojo API key configured from $TOPOMOJO_APIKEY_FILE"
+    echo "TopoMojo API key configured from environment variable"
   else
-    echo "Warning: TopoMojo API key file not found at $TOPOMOJO_APIKEY_FILE"
+    echo "Warning: TOPOMOJO_APIKEY environment variable not set"
   fi
 }
 

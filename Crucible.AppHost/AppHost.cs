@@ -1025,6 +1025,14 @@ public static class BuilderExtensions
 
                 // Make Moodle wait for the API key script to complete
                 moodle.WaitForCompletion(getApiKeyScript);
+
+                // Read the API key file and pass as environment variable to Moodle
+                var apiKeyFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".topomojo-apikey");
+                if (File.Exists(apiKeyFilePath))
+                {
+                    var apiKey = File.ReadAllText(apiKeyFilePath).Trim();
+                    moodle.WithEnvironment("TOPOMOJO_APIKEY", apiKey);
+                }
             }
         }
 

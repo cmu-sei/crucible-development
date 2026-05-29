@@ -65,10 +65,10 @@ EOF
 echo "API key created successfully" >&2
 
 # Write API key to a file that Moodle can read
-mkdir -p /tmp/crucible
-echo "$API_KEY" > /tmp/crucible/topomojo-apikey.txt
-chmod 644 /tmp/crucible/topomojo-apikey.txt
+API_KEY_FILE="$HOME/.topomojo-apikey"
+echo "$API_KEY" > "$API_KEY_FILE"
+chmod 600 "$API_KEY_FILE"
 
-echo "API key written to /tmp/crucible/topomojo-apikey.txt" >&2
+echo "API key written to $API_KEY_FILE" >&2
 # Also output to stdout
 echo "$API_KEY"
