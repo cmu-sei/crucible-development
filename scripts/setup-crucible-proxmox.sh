@@ -1293,7 +1293,11 @@ create_topomojo_workspace_with_variants() {
     workspace_id=$(echo "$response_body" | jq -r '.id' 2>/dev/null)
 
     if [ -z "$workspace_id" ] || [ "$workspace_id" = "null" ]; then
-        local error_msg=$(echo "$response_body" | jq -r '.message // .title // .detail // .' 2>/dev/null || echo "${response_body:0:200}")
+        local error_msg=$(echo "$response_body" | jq -r '.message // .title // .detail // .' 2>/dev/null || echo "${response_body:0:500}")
+        local errors=$(echo "$response_body" | jq -r '.errors // empty' 2>/dev/null)
+        if [ -n "$errors" ]; then
+            error_msg="$error_msg | Errors: $errors"
+        fi
         log_error "Failed to create workspace (HTTP $http_code): $error_msg"
         return 1
     fi
