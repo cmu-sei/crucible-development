@@ -48,6 +48,27 @@ set -e
 # Version
 VERSION="1.0.0"
 
+# ============================================================
+# HARDCODED RESOURCE IDS (for consistency across runs)
+# ============================================================
+# These GUIDs ensure resources have the same ID every time
+
+# TopoMojo Workspaces
+readonly WORKSPACE_BASIC_ID="10000000-0000-0000-0000-000000000001"
+readonly WORKSPACE_VARIANTS_ID="10000000-0000-0000-0000-000000000002"
+
+# Caster Projects
+readonly CASTER_PROJECT1_ID="20000000-0000-0000-0000-000000000001"
+readonly CASTER_PROJECT2_ID="20000000-0000-0000-0000-000000000002"
+
+# Player Views
+readonly PLAYER_VIEW_TEMPLATE_ID="30000000-0000-0000-0000-000000000001"
+readonly PLAYER_VIEW_LIVE_ID="30000000-0000-0000-0000-000000000002"
+
+# Alloy Events
+readonly ALLOY_EVENT1_ID="40000000-0000-0000-0000-000000000001"
+readonly ALLOY_EVENT2_ID="40000000-0000-0000-0000-000000000002"
+
 # Config file location
 CONFIG_FILE="$HOME/.crucible-proxmox"
 
@@ -1075,11 +1096,12 @@ create_topomojo_workspace_basic() {
         return 0
     fi
 
-    # Create workspace
+    # Create workspace with hardcoded ID
     local workspace_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
         -d "{
+            \"id\": \"$WORKSPACE_BASIC_ID\",
             \"name\": \"$workspace_name\",
             \"description\": \"Test workspace with Proxmox-based templates\",
             \"tags\": \"test\"
@@ -1132,6 +1154,7 @@ create_topomojo_workspace_with_variants() {
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
             -d "{
+                \"id\": \"$WORKSPACE_VARIANTS_ID\",
                 \"name\": \"$workspace_name\",
                 \"description\": \"Test workspace with 3 variants for mod_topomojo testing\",
                 \"tags\": \"test,moodle,variants\"
