@@ -1410,9 +1410,10 @@ create_topomojo_templates() {
     local workspace_id="$1"
     local token="$2"
 
-    log_step "Creating TopoMojo templates in workspace..."
+    log_step "Creating TopoMojo templates for workspace..."
 
-    # Template 1: Workspace-specific TinyCore (NOT linked to stock)
+    # Template 1: Create workspace-specific TinyCore template (global, not published)
+    log_info "Creating TinyCore workspace template..."
     local tinycore_detail=$(jq -n \
         --arg template "TinyCore-ISO" \
         --arg iso "local:iso/TinyCore-current.iso" \
@@ -1425,39 +1426,47 @@ create_topomojo_templates() {
             disks: []
         }')
 
-    local tinycore_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace/$workspace_id/template" \
+    local tinycore_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template-detail" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
         -d "{
-            \"name\": \"TinyCore-Workspace\",
+            \"name\": \"TinyCore-Workspace-$workspace_id\",
             \"description\": \"Workspace-specific TinyCore (not linked)\",
             \"networks\": \"lan\",
-            \"detail\": $(echo "$tinycore_detail" | jq -Rs .)
+            \"detail\": $(echo "$tinycore_detail" | jq -Rs .),
+            \"isPublished\": false
         }" 2>/dev/null)
 
     local tinycore_id=$(echo "$tinycore_response" | jq -r '.id' 2>/dev/null)
     if [ -n "$tinycore_id" ] && [ "$tinycore_id" != "null" ]; then
-        log_success "Workspace template created: TinyCore-Workspace ($tinycore_id)"
-    fi
-
-    # Template 2: Linked from stock TinyCore
-    if [ -n "${RESOURCE_IDS[stock_tinycore]}" ]; then
-        local linked_tiny_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace/$workspace_id/template" \
+        # Link to workspace
+        curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
-            -d "{
-                \"name\": \"TinyCore-Linked\",
-                \"description\": \"Linked from stock TinyCore template\",
-                \"parentId\": \"${RESOURCE_IDS[stock_tinycore]}\"
-            }" 2>/dev/null)
+            -d "{\"templateId\": \"$tinycore_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
+        log_success "Workspace template created and linked: TinyCore-Workspace ($tinycore_id)"
+    else
+        log_warning "Failed to create TinyCore workspace template: $(echo "$tinycore_response" | jq -r '.message // .title // "Unknown error"' 2>/dev/null)"
+    fi
 
-        local linked_tiny_id=$(echo "$linked_tiny_response" | jq -r '.id' 2>/dev/null)
+    # Template 2: Link stock TinyCore to workspace (if exists)
+    if [ -n "${RESOURCE_IDS[stock_tinycore]}" ]; then
+        log_info "Linking stock TinyCore to workspace..."
+        local link_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "{\"templateId\": \"${RESOURCE_IDS[stock_tinycore]}\", \"workspaceId\": \"$workspace_id\"}" 2>/dev/null)
+
+        local linked_tiny_id=$(echo "$link_response" | jq -r '.id' 2>/dev/null)
         if [ -n "$linked_tiny_id" ] && [ "$linked_tiny_id" != "null" ]; then
-            log_success "Linked template created: TinyCore-Linked ($linked_tiny_id)"
+            log_success "Stock template linked: TinyCore-ISO-Stock ($linked_tiny_id)"
+        else
+            log_warning "Failed to link stock TinyCore: $(echo "$link_response" | jq -r '.message // .title // "Unknown error"' 2>/dev/null)"
         fi
     fi
 
-    # Template 3: Workspace-specific Alpine (NOT linked)
+    # Template 3: Create workspace-specific Alpine template
+    log_info "Creating Alpine workspace template..."
     local alpine_detail=$(jq -n \
         --arg template "Alpine-Disk" \
         '{
@@ -1468,39 +1477,47 @@ create_topomojo_templates() {
             disks: [{size: "10G"}]
         }')
 
-    local alpine_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace/$workspace_id/template" \
+    local alpine_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template-detail" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
         -d "{
-            \"name\": \"Alpine-Workspace\",
+            \"name\": \"Alpine-Workspace-$workspace_id\",
             \"description\": \"Workspace-specific Alpine (not linked)\",
             \"networks\": \"lan\",
-            \"detail\": $(echo "$alpine_detail" | jq -Rs .)
+            \"detail\": $(echo "$alpine_detail" | jq -Rs .),
+            \"isPublished\": false
         }" 2>/dev/null)
 
     local alpine_id=$(echo "$alpine_response" | jq -r '.id' 2>/dev/null)
     if [ -n "$alpine_id" ] && [ "$alpine_id" != "null" ]; then
-        log_success "Workspace template created: Alpine-Workspace ($alpine_id)"
-    fi
-
-    # Template 4: Linked from stock Alpine
-    if [ -n "${RESOURCE_IDS[stock_alpine]}" ]; then
-        local linked_alpine_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace/$workspace_id/template" \
+        # Link to workspace
+        curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
-            -d "{
-                \"name\": \"Alpine-Linked\",
-                \"description\": \"Linked from stock Alpine template\",
-                \"parentId\": \"${RESOURCE_IDS[stock_alpine]}\"
-            }" 2>/dev/null)
+            -d "{\"templateId\": \"$alpine_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
+        log_success "Workspace template created and linked: Alpine-Workspace ($alpine_id)"
+    else
+        log_warning "Failed to create Alpine workspace template: $(echo "$alpine_response" | jq -r '.message // .title // "Unknown error"' 2>/dev/null)"
+    fi
 
-        local linked_alpine_id=$(echo "$linked_alpine_response" | jq -r '.id' 2>/dev/null)
+    # Template 4: Link stock Alpine to workspace (if exists)
+    if [ -n "${RESOURCE_IDS[stock_alpine]}" ]; then
+        log_info "Linking stock Alpine to workspace..."
+        local link_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "{\"templateId\": \"${RESOURCE_IDS[stock_alpine]}\", \"workspaceId\": \"$workspace_id\"}" 2>/dev/null)
+
+        local linked_alpine_id=$(echo "$link_response" | jq -r '.id' 2>/dev/null)
         if [ -n "$linked_alpine_id" ] && [ "$linked_alpine_id" != "null" ]; then
-            log_success "Linked template created: Alpine-Linked ($linked_alpine_id)"
+            log_success "Stock template linked: Alpine-Disk-Stock ($linked_alpine_id)"
+        else
+            log_warning "Failed to link stock Alpine: $(echo "$link_response" | jq -r '.message // .title // "Unknown error"' 2>/dev/null)"
         fi
     fi
 
-    # Template 5: Puppy-Linux (workspace-specific)
+    # Template 5: Puppy-Linux workspace template
+    log_info "Creating Puppy Linux workspace template..."
     local puppy_detail=$(jq -n \
         --arg template "puppy-test" \
         --arg iso "local:iso/fossapup64-9.5.iso" \
@@ -1513,25 +1530,31 @@ create_topomojo_templates() {
             disks: []
         }')
 
-    local puppy_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace/$workspace_id/template" \
+    local puppy_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/template-detail" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
         -d "{
-            \"name\": \"Puppy-Linux\",
+            \"name\": \"Puppy-Linux-$workspace_id\",
             \"description\": \"Puppy Linux with GUI\",
             \"networks\": \"lan\",
-            \"detail\": $(echo "$puppy_detail" | jq -Rs .)
+            \"detail\": $(echo "$puppy_detail" | jq -Rs .),
+            \"isPublished\": false
         }" 2>/dev/null)
 
     local puppy_id=$(echo "$puppy_response" | jq -r '.id' 2>/dev/null)
 
     if [ -n "$puppy_id" ] && [ "$puppy_id" != "null" ]; then
-        curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace/$workspace_id/template" \
+        # Link to workspace
+        curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
-            -d "{\"templateId\": \"$puppy_id\"}" > /dev/null 2>&1
-        log_success "TopoMojo template created: Puppy-Linux ($puppy_id)"
+            -d "{\"templateId\": \"$puppy_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
+        log_success "Workspace template created and linked: Puppy-Linux ($puppy_id)"
+    else
+        log_warning "Failed to create Puppy workspace template: $(echo "$puppy_response" | jq -r '.message // .title // "Unknown error"' 2>/dev/null)"
     fi
+
+    log_success "TopoMojo templates configured for workspace"
 }
 
 # ============================================================
