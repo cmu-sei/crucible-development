@@ -453,13 +453,19 @@ setup_proxmox_token() {
         return 0
     fi
 
+    # Check if token already exists - don't regenerate if it does
+    local token_exists=$(ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" \
+        "pveum user token list root@pam | grep -q '$TOKEN_NAME' && echo 'yes' || echo 'no'")
+
+    if [ "$token_exists" = "yes" ]; then
+        log_info "API token already exists, keeping existing token"
+        log_warning "Note: Cannot retrieve existing token value - using value from config file"
+        # Token already exists but we can't retrieve it, must use what's in config
+        return 0
+    fi
+
     local token_output=$(ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << TOKENEOF
 set -e
-
-if pveum user token list root@pam | grep -q "$TOKEN_NAME"; then
-    echo "Removing existing token..."
-    pveum user token remove root@pam $TOKEN_NAME
-fi
 
 echo "Creating API token..."
 pveum user token add root@pam $TOKEN_NAME --privsep 0
