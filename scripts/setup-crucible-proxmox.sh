@@ -2254,7 +2254,7 @@ cleanup_topomojo_resources() {
         return 1
     fi
 
-    # Clean workspace templates and challenge specs (but keep workspaces for consistent GUIDs)
+    # Delete all workspaces
     local all_workspaces=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/workspaces" \
         -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
 
@@ -2263,29 +2263,13 @@ cleanup_topomojo_resources() {
     local count=0
     for workspace_id in $workspace_ids; do
         if [ -n "$workspace_id" ]; then
-            # Delete templates in this workspace
-            local templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
-                -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
-
-            local template_ids=$(echo "$templates" | jq -r '.[].id')
-            for template_id in $template_ids; do
-                curl -k -s -X POST "$TOPOMOJO_API_URL/api/template/unlink" \
-                    -H "Authorization: Bearer $token" \
-                    -H "Content-Type: application/json" \
-                    -d "{\"templateId\": \"$template_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
-            done
-
-            # Clear challenge spec
-            curl -k -s -X PUT "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
-                -H "Authorization: Bearer $token" \
-                -H "Content-Type: application/json" \
-                -d "{\"id\": \"$workspace_id\", \"name\": \"$(echo "$all_workspaces" | jq -r ".[] | select(.id == \"$workspace_id\") | .name")\", \"challenge\": null}" > /dev/null 2>&1
-
+            curl -k -s -X DELETE "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
+                -H "Authorization: Bearer $token" > /dev/null 2>&1
             count=$((count + 1))
         fi
     done
 
-    log_info "Cleaned $count workspaces (removed templates and challenges, kept workspace for consistent GUID)"
+    log_info "Deleted $count workspaces"
 
     # Clean all templates (global and workspace-specific)
     local all_templates=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/templates" \
