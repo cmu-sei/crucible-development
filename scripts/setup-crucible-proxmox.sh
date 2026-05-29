@@ -467,12 +467,14 @@ setup_proxmox_token() {
 
         if [ -n "$PROXMOX_API_TOKEN" ]; then
             log_success "Using token from config file"
+            return 0
         else
-            log_error "Token exists on Proxmox but not found in config file"
-            log_error "Delete token on Proxmox and re-run, or manually set PROXMOX_API_TOKEN"
-            return 1
+            log_warning "Token exists on Proxmox but not in config file"
+            log_warning "Deleting and recreating token..."
+            ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" \
+                "pveum user token remove root@pam $TOKEN_NAME" 2>/dev/null || true
+            # Fall through to create new token
         fi
-        return 0
     fi
 
     local token_output=$(ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << TOKENEOF
