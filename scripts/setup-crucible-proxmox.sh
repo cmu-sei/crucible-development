@@ -1156,6 +1156,11 @@ create_topomojo_workspace_with_variants() {
         return 1
     fi
 
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create TopoMojo workspace with variants"
+        return 0
+    fi
+
     # Check if workspace exists
     local all_workspaces=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/workspaces" \
         -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
@@ -1164,31 +1169,9 @@ create_topomojo_workspace_with_variants() {
     if [ -n "$existing_id" ] && [ "$existing_id" != "null" ]; then
         log_success "TopoMojo workspace with variants already exists: $existing_id"
         workspace_id="$existing_id"
-        # Continue to ensure templates and challenge spec are configured
-    else
-        # Create new workspace
-        local workspace_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace" \
-            -H "Authorization: Bearer $token" \
-            -H "Content-Type: application/json" \
-            -d "{
-                \"id\": \"$WORKSPACE_VARIANTS_ID\",
-                \"name\": \"$workspace_name\",
-                \"description\": \"Test workspace with 3 variants for mod_topomojo testing\",
-                \"tags\": \"test,moodle,variants\"
-            }" 2>/dev/null)
-
-        workspace_id=$(echo "$workspace_response" | jq -r '.id' 2>/dev/null)
-
-        if [ -z "$workspace_id" ] || [ "$workspace_id" = "null" ]; then
-            log_error "Failed to create TopoMojo workspace with variants"
-            return 1
-        fi
-
-        log_success "TopoMojo workspace with variants created: $workspace_id"
-    fi
-
-    if [ "$DRY_RUN" = "true" ]; then
-        log_info "[DRY RUN] Would create TopoMojo workspace with variants"
+        # Continue to ensure templates are configured
+        create_stock_templates_once "$token"
+        create_topomojo_templates "$workspace_id" "$token" "alpine"
         return 0
     fi
 
@@ -1283,48 +1266,44 @@ create_topomojo_workspace_with_variants() {
   ]
 }'
 
-    # Check if workspace already has challenge variants
-    local current_workspace=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
-        -H "Authorization: Bearer $token" 2>/dev/null)
+    # Create workspace WITH challenge included in initial POST
+    log_info "Creating workspace with 3 challenge variants..."
+    local workspace_payload=$(jq -n \
+        --arg id "$WORKSPACE_VARIANTS_ID" \
+        --arg name "$workspace_name" \
+        --arg desc "Test workspace with 3 variants for mod_topomojo testing" \
+        --arg tags "test,moodle,variants" \
+        --argjson challenge "$challenge_json" \
+        '{
+            id: $id,
+            name: $name,
+            description: $desc,
+            tags: $tags,
+            challenge: $challenge
+        }')
 
-    local existing_variants=$(echo "$current_workspace" | jq -r '.challenge.variants | length' 2>/dev/null)
+    local workspace_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "$TOPOMOJO_API_URL/api/workspace" \
+        -H "Authorization: Bearer $token" \
+        -H "Content-Type: application/json" \
+        -d "$workspace_payload" 2>&1)
 
-    if [ "$existing_variants" = "3" ] 2>/dev/null; then
-        log_info "Workspace already has 3 challenge variants, skipping"
+    local http_code=$(echo "$workspace_response" | grep "HTTP_CODE:" | cut -d: -f2)
+    local response_body=$(echo "$workspace_response" | sed '/HTTP_CODE:/d')
+
+    workspace_id=$(echo "$response_body" | jq -r '.id' 2>/dev/null)
+
+    if [ -z "$workspace_id" ] || [ "$workspace_id" = "null" ]; then
+        local error_msg=$(echo "$response_body" | jq -r '.message // .title // .detail // .' 2>/dev/null || echo "${response_body:0:200}")
+        log_error "Failed to create workspace (HTTP $http_code): $error_msg"
+        return 1
+    fi
+
+    # Verify challenge was created
+    local variant_count=$(echo "$response_body" | jq -r '.challenge.variants | length' 2>/dev/null)
+    if [ "$variant_count" = "3" ]; then
+        log_success "Workspace with $variant_count challenge variants created: $workspace_id"
     else
-        log_info "Adding challenge spec with 3 variants..."
-
-        # Build the workspace update JSON with challenge object embedded
-        local workspace_update=$(jq -n \
-            --arg id "$workspace_id" \
-            --arg name "$workspace_name" \
-            --arg desc "Test workspace with 3 variants for mod_topomojo testing" \
-            --arg tags "test,moodle,variants" \
-            --argjson challenge "$challenge_json" \
-            '{
-                id: $id,
-                name: $name,
-                description: $desc,
-                tags: $tags,
-                challenge: $challenge
-            }')
-
-        local update_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X PUT "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
-            -H "Authorization: Bearer $token" \
-            -H "Content-Type: application/json" \
-            -d "$workspace_update" 2>&1)
-
-        local http_code=$(echo "$update_response" | grep "HTTP_CODE:" | cut -d: -f2)
-        local response_body=$(echo "$update_response" | sed '/HTTP_CODE:/d')
-
-        # Verify challenge was added
-        if echo "$response_body" | jq -e '.challenge.variants' > /dev/null 2>&1; then
-            local variant_count=$(echo "$response_body" | jq -r '.challenge.variants | length')
-            log_success "Challenge spec with $variant_count variants added"
-        else
-            local error_msg=$(echo "$response_body" | jq -r '.message // .title // .detail // .' 2>/dev/null || echo "${response_body:0:200}")
-            log_warning "Challenge spec may not have been added (HTTP $http_code): $error_msg"
-        fi
+        log_warning "Workspace created ($workspace_id) but may not have variants (got $variant_count)"
     fi
 
     # Create stock templates (once, globally)
@@ -2255,7 +2234,7 @@ cleanup_topomojo_resources() {
     local all_templates=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/templates" \
         -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
 
-    local template_ids=$(echo "$all_templates" | jq -r '.[] | select(.name | test("TinyCore|Alpine|Puppy")) | .id')
+    local template_ids=$(echo "$all_templates" | jq -r '.[] | select(.name | test("tinycore|alpine|puppy"; "i")) | .id')
 
     local template_count=0
     for template_id in $template_ids; do
