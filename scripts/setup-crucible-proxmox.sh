@@ -1171,7 +1171,7 @@ create_topomojo_workspace_with_variants() {
         workspace_id="$existing_id"
         # Continue to ensure templates are configured
         create_stock_templates_once "$token"
-        create_topomojo_templates "$workspace_id" "$token" "alpine"
+        create_topomojo_templates "$workspace_id" "$token" "puppy"
         return 0
     fi
 
