@@ -1859,16 +1859,15 @@ create_caster_project() {
     # Wait for DB transaction to fully commit
     sleep 2
 
+    # Debug: show what we're sending
+    log_info "Creating directory with projectId: $project_id"
+
     # Create directory
+    local directory_payload="{\"id\": \"$directory_id\", \"projectId\": \"$project_id\", \"name\": \"Basic Topology\", \"terraformVersion\": \"1.5.0\"}"
     local directory_response=$(curl -k -s -X POST "$CASTER_API_URL/directories" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
-        -d "{
-            \"id\": \"$directory_id\",
-            \"projectId\": \"$project_id\",
-            \"name\": \"Basic Topology\",
-            \"terraformVersion\": \"1.5.0\"
-        }" 2>/dev/null)
+        -d "$directory_payload" 2>/dev/null)
 
     if ! echo "$directory_response" | jq -e '.id' > /dev/null 2>&1; then
         local error_msg=$(echo "$directory_response" | jq -r '.message // .title // .error // "Unknown error"' 2>/dev/null)
