@@ -1526,8 +1526,6 @@ create_topomojo_templates() {
                     isPublished: $published
                 }')
 
-            log_info "DEBUG - Puppy payload: $(echo "$puppy_payload" | jq -c .)"
-
             local puppy_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "$TOPOMOJO_API_URL/api/template-detail" \
                 -H "Authorization: Bearer $token" \
                 -H "Content-Type: application/json" \
@@ -1535,12 +1533,6 @@ create_topomojo_templates() {
 
             local http_code=$(echo "$puppy_response" | grep "HTTP_CODE:" | cut -d: -f2)
             local response_body=$(echo "$puppy_response" | sed '/HTTP_CODE:/d')
-
-            # Debug: log the response if it fails
-            if [ "$http_code" != "200" ] && [ "$http_code" != "201" ]; then
-                log_info "DEBUG - Puppy response body: ${response_body:0:1000}"
-            fi
-
             local puppy_id=$(echo "$response_body" | jq -r '.id' 2>/dev/null)
 
             if [ -n "$puppy_id" ] && [ "$puppy_id" != "null" ]; then
@@ -1605,12 +1597,6 @@ create_topomojo_templates() {
 
             local http_code=$(echo "$alpine_response" | grep "HTTP_CODE:" | cut -d: -f2)
             local response_body=$(echo "$alpine_response" | sed '/HTTP_CODE:/d')
-
-            # Debug: log the response if it fails
-            if [ "$http_code" != "200" ] && [ "$http_code" != "201" ]; then
-                log_info "DEBUG - Alpine response body: ${response_body:0:1000}"
-            fi
-
             local alpine_id=$(echo "$response_body" | jq -r '.id' 2>/dev/null)
 
             if [ -n "$alpine_id" ] && [ "$alpine_id" != "null" ]; then
