@@ -2318,6 +2318,12 @@ mode_setup() {
     local toggle_script="$(dirname "$0")/toggle-topomojo-hypervisor.sh"
     if [ -f "$toggle_script" ]; then
         log_info "Configuring AppHost to use Proxmox..."
+
+        # Load config to get PROXMOX_API_TOKEN if not already set
+        if [ -z "$PROXMOX_API_TOKEN" ]; then
+            load_config || true
+        fi
+
         if [ -n "$PROXMOX_API_TOKEN" ]; then
             bash "$toggle_script" proxmox --non-interactive
         else
