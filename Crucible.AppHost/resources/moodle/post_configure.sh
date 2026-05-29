@@ -111,8 +111,8 @@ configure_oauth2() {
     --loginscopes="$KEYCLOAK_LOGINSCOPES" \
     --loginscopesoffline="$KEYCLOAK_LOGINSCOPESOFFLINE" \
     --name="$KEYCLOAK_NAME" \
-    --tokenendpoint="https://keycloak.dev.internal:8443/realms/crucible/protocol/openid-connect/token" \
-    --userinfoendpoint="https://keycloak.dev.internal:8443/realms/crucible/protocol/openid-connect/userinfo" \
+    --tokenendpoint="http://keycloak.dev.internal:8080/realms/crucible/protocol/openid-connect/token" \
+    --userinfoendpoint="http://keycloak.dev.internal:8080/realms/crucible/protocol/openid-connect/userinfo" \
     --image="$KEYCLOAK_IMAGE" \
     --requireconfirmation=0 \
     --showonloginpage=1 \
@@ -196,7 +196,7 @@ configure_xapi() {
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=mbox --set=0
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=send_name --set=1
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=send_user_idnumber --set=1
-  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=account_homepage --set=https://keycloak.dev.internal:8443/realms/crucible/
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=account_homepage --set=http://keycloak.dev.internal:8080/realms/crucible/
 }
 
 configure_site() {
