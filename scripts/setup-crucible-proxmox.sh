@@ -1853,6 +1853,9 @@ create_caster_project() {
 
     log_success "Caster project created: $project_id"
 
+    # Wait for project to be committed to database
+    sleep 2
+
     # Create directory
     local directory_response=$(curl -k -s -X POST "$CASTER_API_URL/directories" \
         -H "Authorization: Bearer $token" \
