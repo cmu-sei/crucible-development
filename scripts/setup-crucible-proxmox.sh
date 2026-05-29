@@ -1651,18 +1651,20 @@ create_topomojo_templates() {
                     \"isPublished\": false
                 }" 2>/dev/null)
 
-    local puppy_id=$(echo "$puppy_response" | jq -r '.id' 2>/dev/null)
+            local puppy_id=$(echo "$puppy_response" | jq -r '.id' 2>/dev/null)
 
-    if [ -n "$puppy_id" ] && [ "$puppy_id" != "null" ]; then
-        # Link to workspace
-        curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
-            -H "Authorization: Bearer $token" \
-            -H "Content-Type: application/json" \
-            -d "{\"templateId\": \"$puppy_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
-        log_success "Workspace template created and linked: Puppy-Linux ($puppy_id)"
-    else
-        local error_msg=$(echo "$puppy_response" | jq -r '.message // .title // .detail // .' 2>/dev/null)
-        log_warning "Failed to create Puppy workspace template: $error_msg"
+            if [ -n "$puppy_id" ] && [ "$puppy_id" != "null" ]; then
+                # Link to workspace
+                curl -k -s -X POST "$TOPOMOJO_API_URL/api/template" \
+                    -H "Authorization: Bearer $token" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"templateId\": \"$puppy_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
+                log_success "Workspace template created and linked: Puppy-Linux ($puppy_id)"
+            else
+                local error_msg=$(echo "$puppy_response" | jq -r '.message // .title // .detail // .' 2>/dev/null)
+                log_warning "Failed to create Puppy workspace template: $error_msg"
+            fi
+        fi
     fi
 
     log_success "TopoMojo templates configured for workspace"
