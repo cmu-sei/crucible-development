@@ -48,26 +48,8 @@ set -e
 # Version
 VERSION="1.0.0"
 
-# ============================================================
-# HARDCODED RESOURCE IDS (for consistency across runs)
-# ============================================================
-# These GUIDs ensure resources have the same ID every time
-
-# TopoMojo Workspaces
-readonly WORKSPACE_BASIC_ID="10000000-0000-0000-0000-000000000001"
-readonly WORKSPACE_VARIANTS_ID="10000000-0000-0000-0000-000000000002"
-
-# Caster Projects
-readonly CASTER_PROJECT1_ID="20000000-0000-0000-0000-000000000001"
-readonly CASTER_PROJECT2_ID="20000000-0000-0000-0000-000000000002"
-
-# Player Views
-readonly PLAYER_VIEW_TEMPLATE_ID="30000000-0000-0000-0000-000000000001"
-readonly PLAYER_VIEW_LIVE_ID="30000000-0000-0000-0000-000000000002"
-
-# Alloy Events
-readonly ALLOY_EVENT1_ID="40000000-0000-0000-0000-000000000001"
-readonly ALLOY_EVENT2_ID="40000000-0000-0000-0000-000000000002"
+# Note: TopoMojo API does not accept custom IDs - it generates its own
+# To maintain consistent GUIDs, cleanup preserves workspaces and setup reuses existing IDs
 
 # Config file location
 CONFIG_FILE="$HOME/.crucible-proxmox"
@@ -1114,12 +1096,11 @@ create_topomojo_workspace_basic() {
         return 0
     fi
 
-    # Create workspace with hardcoded ID
+    # Create workspace
     local workspace_response=$(curl -k -s -X POST "$TOPOMOJO_API_URL/api/workspace" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
         -d "{
-            \"id\": \"$WORKSPACE_BASIC_ID\",
             \"name\": \"$workspace_name\",
             \"description\": \"Test workspace with Proxmox-based templates\",
             \"tags\": \"test\"
@@ -1172,7 +1153,6 @@ create_topomojo_workspace_with_variants() {
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
             -d "{
-                \"id\": \"$WORKSPACE_VARIANTS_ID\",
                 \"name\": \"$workspace_name\",
                 \"description\": \"Test workspace with 3 variants for mod_topomojo testing\",
                 \"tags\": \"test,moodle,variants\"
@@ -2274,7 +2254,7 @@ cleanup_topomojo_resources() {
         return 1
     fi
 
-    # Delete workspaces
+    # Clean workspace templates and challenge specs (but keep workspaces for consistent GUIDs)
     local all_workspaces=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/workspaces" \
         -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
 
@@ -2283,37 +2263,46 @@ cleanup_topomojo_resources() {
     local count=0
     for workspace_id in $workspace_ids; do
         if [ -n "$workspace_id" ]; then
-            if [ "$DRY_RUN" = "true" ]; then
-                log_info "[DRY RUN] Would delete TopoMojo workspace: $workspace_id"
-            else
-                curl -k -s -X DELETE "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
-                    -H "Authorization: Bearer $token" > /dev/null 2>&1
-            fi
+            # Delete templates in this workspace
+            local templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
+                -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
+
+            local template_ids=$(echo "$templates" | jq -r '.[].id')
+            for template_id in $template_ids; do
+                curl -k -s -X POST "$TOPOMOJO_API_URL/api/template/unlink" \
+                    -H "Authorization: Bearer $token" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"templateId\": \"$template_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
+            done
+
+            # Clear challenge spec
+            curl -k -s -X PUT "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
+                -H "Authorization: Bearer $token" \
+                -H "Content-Type: application/json" \
+                -d "{\"id\": \"$workspace_id\", \"name\": \"$(echo "$all_workspaces" | jq -r ".[] | select(.id == \"$workspace_id\") | .name")\", \"challenge\": null}" > /dev/null 2>&1
+
             count=$((count + 1))
         fi
     done
 
-    log_info "Deleted $count workspaces"
+    log_info "Cleaned $count workspaces (removed templates and challenges, kept workspace for consistent GUID)"
 
-    # Clean global templates
+    # Clean all templates (global and workspace-specific)
     local all_templates=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/templates" \
         -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
 
-    local template_ids=$(echo "$all_templates" | jq -r '.[] | select(.name | test("TinyCore-ISO|Alpine-Disk|Puppy-Linux")) | .id')
+    local template_ids=$(echo "$all_templates" | jq -r '.[] | select(.name | test("TinyCore|Alpine|Puppy")) | .id')
 
+    local template_count=0
     for template_id in $template_ids; do
         if [ -n "$template_id" ]; then
-            if [ "$DRY_RUN" = "true" ]; then
-                log_info "[DRY RUN] Would delete TopoMojo template: $template_id"
-            else
-                curl -k -s -X DELETE "$TOPOMOJO_API_URL/api/template/$template_id" \
-                    -H "Authorization: Bearer $token" > /dev/null
-            fi
-            count=$((count + 1))
+            curl -k -s -X DELETE "$TOPOMOJO_API_URL/api/template/$template_id" \
+                -H "Authorization: Bearer $token" > /dev/null 2>&1
+            template_count=$((template_count + 1))
         fi
     done
 
-    log_success "Cleaned $count TopoMojo resources"
+    log_success "Cleaned $count workspaces and $template_count templates"
 }
 
 cleanup_all() {
