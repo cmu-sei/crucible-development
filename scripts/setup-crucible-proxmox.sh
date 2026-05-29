@@ -1730,7 +1730,7 @@ create_topomojo_templates() {
                 '{
                     template: $template,
                     iso: $iso,
-                    ram: 0.25,
+                    ram: 1,
                     cpu: "1x1",
                     eth: [{net: "lan"}],
                     disks: []
