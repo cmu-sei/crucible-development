@@ -1417,6 +1417,16 @@ create_topomojo_templates() {
 
     log_step "Creating TopoMojo templates for workspace..."
 
+    # Check if templates already exist in this workspace
+    local existing_templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
+        -H "Authorization: Bearer $token" 2>/dev/null)
+
+    local template_count=$(echo "$existing_templates" | jq -r 'length' 2>/dev/null)
+    if [ "$template_count" -gt 0 ] 2>/dev/null; then
+        log_info "Workspace already has $template_count templates, skipping creation"
+        return 0
+    fi
+
     # Template 1: Create workspace-specific TinyCore template (global, not published)
     log_info "Creating TinyCore workspace template..."
     local tinycore_detail=$(jq -n \
