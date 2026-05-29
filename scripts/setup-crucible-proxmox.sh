@@ -1316,8 +1316,8 @@ create_topomojo_workspace_with_variants() {
     # Create stock templates (once, globally)
     create_stock_templates_once "$token"
 
-    # Create TopoMojo templates for this workspace (Alpine for variants)
-    create_topomojo_templates "$workspace_id" "$token" "alpine"
+    # Create TopoMojo templates for this workspace (Puppy for variants)
+    create_topomojo_templates "$workspace_id" "$token" "puppy"
 
     return 0
 }
@@ -1493,7 +1493,79 @@ create_topomojo_templates() {
     }
 
     # Create workspace-specific template based on type
-    if [ "$template_type" = "alpine" ]; then
+    if [ "$template_type" = "puppy" ]; then
+        # Puppy Linux template for Variants workspace
+        if template_exists "puppy-workspace"; then
+            log_info "Puppy workspace template already exists, skipping"
+        else
+            log_info "Creating Puppy Linux workspace template..."
+            local puppy_detail=$(jq -n \
+                --arg template "Puppy-Linux" \
+                --arg iso "local:iso/fossapup64-9.5.iso" \
+                '{
+                    template: $template,
+                    iso: $iso,
+                    ram: 0.5,
+                    cpu: "1x1",
+                    eth: [{net: "lan"}],
+                    disks: []
+                }')
+
+            # Build the request payload
+            local puppy_payload=$(jq -n \
+                --arg name "puppy-workspace" \
+                --arg desc "Workspace-specific Puppy Linux (not linked)" \
+                --arg networks "lan" \
+                --arg detail "$puppy_detail" \
+                --argjson published false \
+                '{
+                    name: $name,
+                    description: $desc,
+                    networks: $networks,
+                    detail: $detail,
+                    isPublished: $published
+                }')
+
+            local puppy_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "$TOPOMOJO_API_URL/api/template-detail" \
+                -H "Authorization: Bearer $token" \
+                -H "Content-Type: application/json" \
+                -d "$puppy_payload" 2>&1)
+
+            local http_code=$(echo "$puppy_response" | grep "HTTP_CODE:" | cut -d: -f2)
+            local response_body=$(echo "$puppy_response" | sed '/HTTP_CODE:/d')
+
+            # Debug: log the response if it fails
+            if [ "$http_code" != "200" ] && [ "$http_code" != "201" ]; then
+                log_info "DEBUG - Puppy response body: ${response_body:0:1000}"
+            fi
+
+            local puppy_id=$(echo "$response_body" | jq -r '.id' 2>/dev/null)
+
+            if [ -n "$puppy_id" ] && [ "$puppy_id" != "null" ]; then
+                # Link to workspace
+                local link_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "$TOPOMOJO_API_URL/api/template" \
+                    -H "Authorization: Bearer $token" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"templateId\": \"$puppy_id\", \"workspaceId\": \"$workspace_id\"}" 2>&1)
+
+                local link_http_code=$(echo "$link_response" | grep "HTTP_CODE:" | cut -d: -f2)
+                local link_body=$(echo "$link_response" | sed '/HTTP_CODE:/d')
+                local link_id=$(echo "$link_body" | jq -r '.id' 2>/dev/null)
+
+                if [ -n "$link_id" ] && [ "$link_id" != "null" ]; then
+                    log_success "Workspace template created and linked: puppy-workspace ($link_id)"
+                else
+                    log_warning "Template created ($puppy_id) but link failed (HTTP $link_http_code): $(echo "$link_body" | jq -r '.message // .' 2>/dev/null)"
+                fi
+            else
+                local error_detail=$(echo "$response_body" | jq -r '.message // .title // .detail // empty' 2>/dev/null)
+                if [ -z "$error_detail" ]; then
+                    error_detail="${response_body:0:500}"
+                fi
+                log_warning "Failed to create Puppy workspace template (HTTP $http_code): $error_detail"
+            fi
+        fi
+    elif [ "$template_type" = "alpine" ]; then
         # Alpine template for Variants workspace
         if template_exists "alpine-workspace"; then
             log_info "Alpine workspace template already exists, skipping"
