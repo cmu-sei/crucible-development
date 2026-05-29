@@ -1861,19 +1861,19 @@
       "clientId": "moodle-client",
       "name": "moodle",
       "description": "",
-      "rootUrl": "http://localhost",
-      "adminUrl": "http://localhost",
-      "baseUrl": "http://localhost",
+      "rootUrl": "http://localhost:8081",
+      "adminUrl": "http://localhost:8081",
+      "baseUrl": "http://localhost:8081",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "super-safe-secret",
       "redirectUris": [
-        "http://localhost/admin/oauth2callback.php"
+        "http://localhost:8081/admin/oauth2callback.php"
       ],
       "webOrigins": [
-        "http://localhost"
+        "http://localhost:8081"
       ],
       "notBefore": 0,
       "bearerOnly": false,
