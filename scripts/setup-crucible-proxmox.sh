@@ -1243,33 +1243,44 @@ create_topomojo_workspace_with_variants() {
   ]
 }'
 
-    # Update workspace with challenge spec
-    # Build the workspace update JSON with challenge object embedded
-    local workspace_update=$(jq -n \
-        --arg id "$workspace_id" \
-        --arg name "$workspace_name" \
-        --arg desc "Test workspace with 3 variants for mod_topomojo testing" \
-        --arg tags "test,moodle,variants" \
-        --argjson challenge "$challenge_json" \
-        '{
-            id: $id,
-            name: $name,
-            description: $desc,
-            tags: $tags,
-            challenge: $challenge
-        }')
+    # Check if workspace already has challenge variants
+    local current_workspace=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
+        -H "Authorization: Bearer $token" 2>/dev/null)
 
-    local update_response=$(curl -k -s -X PUT "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
-        -H "Authorization: Bearer $token" \
-        -H "Content-Type: application/json" \
-        -d "$workspace_update" 2>&1)
+    local existing_variants=$(echo "$current_workspace" | jq -r '.challenge.variants | length' 2>/dev/null)
 
-    # Verify challenge was added
-    if echo "$update_response" | jq -e '.challenge.variants' > /dev/null 2>&1; then
-        local variant_count=$(echo "$update_response" | jq -r '.challenge.variants | length')
-        log_success "Challenge spec with $variant_count variants added"
+    if [ "$existing_variants" = "3" ] 2>/dev/null; then
+        log_info "Workspace already has 3 challenge variants, skipping"
     else
-        log_warning "Challenge spec may not have been added correctly"
+        log_info "Adding challenge spec with 3 variants..."
+
+        # Build the workspace update JSON with challenge object embedded
+        local workspace_update=$(jq -n \
+            --arg id "$workspace_id" \
+            --arg name "$workspace_name" \
+            --arg desc "Test workspace with 3 variants for mod_topomojo testing" \
+            --arg tags "test,moodle,variants" \
+            --argjson challenge "$challenge_json" \
+            '{
+                id: $id,
+                name: $name,
+                description: $desc,
+                tags: $tags,
+                challenge: $challenge
+            }')
+
+        local update_response=$(curl -k -s -X PUT "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "$workspace_update" 2>&1)
+
+        # Verify challenge was added
+        if echo "$update_response" | jq -e '.challenge.variants' > /dev/null 2>&1; then
+            local variant_count=$(echo "$update_response" | jq -r '.challenge.variants | length')
+            log_success "Challenge spec with $variant_count variants added"
+        else
+            log_warning "Challenge spec may not have been added correctly"
+        fi
     fi
 
     # Create stock templates (once, globally)
