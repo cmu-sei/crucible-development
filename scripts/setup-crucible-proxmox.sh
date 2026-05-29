@@ -1486,10 +1486,10 @@ create_topomojo_templates() {
     local existing_templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
         -H "Authorization: Bearer $token" 2>/dev/null)
 
-    # Helper function to check if template exists by name
+    # Helper function to check if template exists by name (or name with suffix like -377)
     template_exists() {
         local name="$1"
-        echo "$existing_templates" | jq -r ".[].name" | grep -q "^${name}$"
+        echo "$existing_templates" | jq -r ".[].name" | grep -q "^${name}\(-[0-9]\+\)\?$"
     }
 
     # Create workspace-specific template based on type
@@ -1500,7 +1500,7 @@ create_topomojo_templates() {
         else
             log_info "Creating Puppy Linux workspace template..."
             local puppy_detail=$(jq -n \
-                --arg template "puppy-test" \
+                --arg template "Puppy-Linux" \
                 --arg iso "local:iso/fossapup64-9.5.iso" \
                 '{
                     template: $template,
