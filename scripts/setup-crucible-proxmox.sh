@@ -1267,13 +1267,15 @@ create_topomojo_workspace_with_variants() {
 }'
 
     # Create workspace WITH challenge included in initial POST
+    # Note: challenge must be a JSON-encoded STRING, not an object
     log_info "Creating workspace with 3 challenge variants..."
+    local challenge_string=$(echo "$challenge_json" | jq -c '.' | jq -Rs '.')
     local workspace_payload=$(jq -n \
         --arg id "$WORKSPACE_VARIANTS_ID" \
         --arg name "$workspace_name" \
         --arg desc "Test workspace with 3 variants for mod_topomojo testing" \
         --arg tags "test,moodle,variants" \
-        --argjson challenge "$challenge_json" \
+        --argjson challenge "$challenge_string" \
         '{
             id: $id,
             name: $name,
