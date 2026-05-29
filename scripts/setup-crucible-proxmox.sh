@@ -1503,7 +1503,8 @@ create_topomojo_templates() {
             -d "{\"templateId\": \"$alpine_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
         log_success "Workspace template created and linked: Alpine-Workspace ($alpine_id)"
     else
-        log_warning "Failed to create Alpine workspace template: $(echo "$alpine_response" | jq -r '.message // .title // "Unknown error"' 2>/dev/null)"
+        local error_msg=$(echo "$alpine_response" | jq -r '.message // .title // .detail // .' 2>/dev/null)
+        log_warning "Failed to create Alpine workspace template: $error_msg"
     fi
 
     # Template 4: Link stock Alpine to workspace (if exists)
@@ -1557,7 +1558,8 @@ create_topomojo_templates() {
             -d "{\"templateId\": \"$puppy_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
         log_success "Workspace template created and linked: Puppy-Linux ($puppy_id)"
     else
-        log_warning "Failed to create Puppy workspace template: $(echo "$puppy_response" | jq -r '.message // .title // "Unknown error"' 2>/dev/null)"
+        local error_msg=$(echo "$puppy_response" | jq -r '.message // .title // .detail // .' 2>/dev/null)
+        log_warning "Failed to create Puppy workspace template: $error_msg"
     fi
 
     log_success "TopoMojo templates configured for workspace"
