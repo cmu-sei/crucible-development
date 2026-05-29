@@ -346,6 +346,10 @@ setup_proxmox_ssh() {
     # Check if passwordless SSH works
     if ssh -i "$SSH_KEY_PATH" -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" exit 2>/dev/null; then
         log_success "Passwordless SSH already configured"
+
+        # Configure SSH config for easy access from any terminal
+        configure_ssh_config
+
         return 0
     fi
 
@@ -359,11 +363,45 @@ setup_proxmox_ssh() {
     if command -v ssh-copy-id &> /dev/null; then
         ssh-copy-id -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST"
         log_success "SSH key installed"
+
+        # Configure SSH config for easy access from any terminal
+        configure_ssh_config
     else
         log_error "ssh-copy-id not found. Please install SSH key manually:"
         echo "  cat ${SSH_KEY_PATH}.pub | ssh $PROXMOX_USER@$PROXMOX_HOST 'mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys'"
         return 1
     fi
+}
+
+configure_ssh_config() {
+    log_step "Configuring SSH config for easy Proxmox access..."
+
+    local ssh_config="$HOME/.ssh/config"
+
+    # Create .ssh/config if it doesn't exist
+    if [ ! -f "$ssh_config" ]; then
+        touch "$ssh_config"
+        chmod 600 "$ssh_config"
+    fi
+
+    # Check if Proxmox entry already exists
+    if grep -q "Host.*$PROXMOX_HOST\|Host proxmox" "$ssh_config" 2>/dev/null; then
+        log_success "SSH config already has Proxmox entry"
+        return 0
+    fi
+
+    # Add Proxmox entry to SSH config
+    cat >> "$ssh_config" << EOF
+
+# Proxmox server (added by crucible-proxmox.sh)
+Host $PROXMOX_HOST proxmox
+   HostName $PROXMOX_HOST
+   User root
+   IdentityFile $SSH_KEY_PATH
+   StrictHostKeyChecking no
+EOF
+
+    log_success "SSH config updated - you can now use: ssh proxmox"
 }
 
 setup_proxmox_nginx() {
@@ -2374,6 +2412,52 @@ cleanup_all() {
     log_success "All resources cleaned"
 }
 
+cleanup_proxmox_vms() {
+    print_section "Cleaning Proxmox VMs and Templates"
+
+    if [ -z "$PROXMOX_HOST" ]; then
+        log_error "PROXMOX_HOST not set"
+        return 1
+    fi
+
+    log_step "Stopping and removing all non-template VMs..."
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'CLEANVMS'
+set -e
+
+# Stop all running VMs (except those marked as templates)
+for vmid in $(qm list | grep running | awk '{print $1}'); do
+    echo "Stopping VM $vmid..."
+    qm stop $vmid || true
+done
+
+# Delete all VMs (except templates)
+for vmid in $(qm list | tail -n +2 | awk '{print $1}'); do
+    # Check if it's a template
+    is_template=$(qm config $vmid | grep -c "^template: 1" || echo "0")
+    if [ "$is_template" = "0" ]; then
+        echo "Deleting VM $vmid..."
+        qm destroy $vmid || true
+    else
+        echo "Skipping template VM $vmid"
+    fi
+done
+CLEANVMS
+
+    log_step "Removing test VM templates (105, 106, 9001, 9002, 9003)..."
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'CLEANTEMPLATES'
+set -e
+
+for vmid in 105 106 9001 9002 9003; do
+    if qm status $vmid >/dev/null 2>&1; then
+        echo "Removing template VM $vmid..."
+        qm destroy $vmid || true
+    fi
+done
+CLEANTEMPLATES
+
+    log_success "Proxmox VMs and templates cleaned"
+}
+
 # ============================================================
 # PHASE ORCHESTRATION
 # ============================================================
@@ -2591,7 +2675,7 @@ mode_reset() {
 mode_clean() {
     print_header "Crucible Proxmox Environment Cleanup"
 
-    log_warning "This will delete all Proxmox test resources via APIs"
+    log_warning "This will delete all Proxmox test resources via APIs (keeps Proxmox VMs)"
     read -p "Continue? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -2602,6 +2686,31 @@ mode_clean() {
     cleanup_all
 
     print_header "Cleanup Complete!"
+}
+
+mode_cleanall() {
+    print_header "Crucible Proxmox Complete Cleanup"
+
+    log_warning "This will delete ALL resources including Proxmox VMs and templates"
+    read -p "Continue? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Cleanup cancelled"
+        exit 0
+    fi
+
+    # Load config to get PROXMOX_HOST
+    load_config || true
+
+    if [ -z "$PROXMOX_HOST" ]; then
+        log_error "PROXMOX_HOST not set. Cannot clean Proxmox VMs."
+        exit 1
+    fi
+
+    cleanup_all
+    cleanup_proxmox_vms
+
+    print_header "Complete Cleanup Done!"
 }
 
 mode_status() {
@@ -2725,12 +2834,13 @@ Crucible Proxmox Environment Manager v${VERSION}
 Usage: $0 <command> [options]
 
 Commands:
-  setup    - Create complete Proxmox test environment
-  reset    - Clean all resources and recreate
-  clean    - Remove all resources
-  status   - Show current environment state
-  fix      - Repair broken state
-  help     - Show this help message
+  setup     - Create complete Proxmox test environment
+  reset     - Clean all resources and recreate
+  clean     - Remove TopoMojo/Player/Caster/Alloy resources (keeps Proxmox VMs)
+  cleanall  - Remove ALL resources including Proxmox VMs and templates
+  status    - Show current environment state
+  fix       - Repair broken state
+  help      - Show this help message
 
 Environment Variables:
   PROXMOX_HOST          - Proxmox IP/hostname (required)
@@ -2837,6 +2947,9 @@ main() {
             ;;
         clean)
             mode_clean
+            ;;
+        cleanall)
+            mode_cleanall
             ;;
         status)
             mode_status
