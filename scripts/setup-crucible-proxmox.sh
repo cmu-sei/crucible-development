@@ -1502,7 +1502,7 @@ create_topomojo_templates() {
     }
 
     # Template 1: Create workspace-specific TinyCore template (global, not published)
-    if template_exists "TinyCore-Workspace-$workspace_id"; then
+    if template_exists "tinycore-workspace"; then
         log_info "TinyCore workspace template already exists, skipping"
     else
         log_info "Creating TinyCore workspace template..."
@@ -1522,7 +1522,7 @@ create_topomojo_templates() {
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
         -d "{
-            \"name\": \"TinyCore-Workspace-$workspace_id\",
+            \"name\": \"tinycore-workspace\",
             \"description\": \"Workspace-specific TinyCore (not linked)\",
             \"networks\": \"lan\",
             \"detail\": $(echo "$tinycore_detail" | jq -Rs .),
