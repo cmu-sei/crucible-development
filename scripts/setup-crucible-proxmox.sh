@@ -921,6 +921,12 @@ create_alpine_template() {
         return 0
     fi
 
+    # Check if VM already exists
+    if ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "qm status 105 >/dev/null 2>&1"; then
+        log_info "Alpine template VM 105 already exists, skipping"
+        return 0
+    fi
+
     ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF'
 set -e
 
@@ -978,6 +984,12 @@ create_tinycore_template() {
         return 0
     fi
 
+    # Check if VM already exists
+    if ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "qm status 106 >/dev/null 2>&1"; then
+        log_info "TinyCore template VM 106 already exists, skipping"
+        return 0
+    fi
+
     ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF'
 set -e
 
@@ -1022,6 +1034,12 @@ create_puppy_vm() {
 
     if [ "$DRY_RUN" = "true" ]; then
         log_info "[DRY RUN] Would create Puppy VM"
+        return 0
+    fi
+
+    # Check if VM already exists
+    if ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "qm status 103 >/dev/null 2>&1"; then
+        log_info "Puppy Linux VM 103 already exists, skipping"
         return 0
     fi
 
