@@ -1238,18 +1238,33 @@ create_topomojo_workspace_with_variants() {
 }'
 
     # Update workspace with challenge spec
-    curl -k -s -X PUT "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
+    # Build the workspace update JSON with challenge object embedded
+    local workspace_update=$(jq -n \
+        --arg id "$workspace_id" \
+        --arg name "$workspace_name" \
+        --arg desc "Test workspace with 3 variants for mod_topomojo testing" \
+        --arg tags "test,moodle,variants" \
+        --argjson challenge "$challenge_json" \
+        '{
+            id: $id,
+            name: $name,
+            description: $desc,
+            tags: $tags,
+            challenge: $challenge
+        }')
+
+    local update_response=$(curl -k -s -X PUT "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
-        -d "{
-            \"id\": \"$workspace_id\",
-            \"name\": \"$workspace_name\",
-            \"description\": \"Test workspace with 3 variants for mod_topomojo testing\",
-            \"tags\": \"test,moodle,variants\",
-            \"challenge\": $(echo "$challenge_json" | jq -Rs .)
-        }" > /dev/null 2>&1
+        -d "$workspace_update" 2>&1)
 
-    log_success "Challenge spec with 3 variants added"
+    # Verify challenge was added
+    if echo "$update_response" | jq -e '.challenge.variants' > /dev/null 2>&1; then
+        local variant_count=$(echo "$update_response" | jq -r '.challenge.variants | length')
+        log_success "Challenge spec with $variant_count variants added"
+    else
+        log_warning "Challenge spec may not have been added correctly"
+    fi
 
     # Create stock templates (once, globally)
     create_stock_templates_once "$token"
@@ -2191,7 +2206,7 @@ cleanup_topomojo_resources() {
         return 1
     fi
 
-    # Clean workspaces
+    # Clean workspace templates (but keep workspaces to preserve GUIDs)
     local all_workspaces=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/workspaces" \
         -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
 
@@ -2200,15 +2215,26 @@ cleanup_topomojo_resources() {
     local count=0
     for workspace_id in $workspace_ids; do
         if [ -n "$workspace_id" ]; then
-            if [ "$DRY_RUN" = "true" ]; then
-                log_info "[DRY RUN] Would delete TopoMojo workspace: $workspace_id"
-            else
-                curl -k -s -X DELETE "$TOPOMOJO_API_URL/api/workspace/$workspace_id" \
-                    -H "Authorization: Bearer $token" > /dev/null
-            fi
+            # Delete templates in this workspace (keeps workspace itself)
+            local templates=$(curl -k -s "$TOPOMOJO_API_URL/api/workspace/$workspace_id/templates" \
+                -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
+
+            local template_ids=$(echo "$templates" | jq -r '.[].id')
+            for template_id in $template_ids; do
+                if [ "$DRY_RUN" = "true" ]; then
+                    log_info "[DRY RUN] Would unlink template: $template_id from workspace: $workspace_id"
+                else
+                    curl -k -s -X POST "$TOPOMOJO_API_URL/api/template/unlink" \
+                        -H "Authorization: Bearer $token" \
+                        -H "Content-Type: application/json" \
+                        -d "{\"templateId\": \"$template_id\", \"workspaceId\": \"$workspace_id\"}" > /dev/null 2>&1
+                fi
+            done
             count=$((count + 1))
         fi
     done
+
+    log_info "Cleaned templates from $count workspaces (workspaces preserved for GUID consistency)"
 
     # Clean global templates
     local all_templates=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/templates" \
