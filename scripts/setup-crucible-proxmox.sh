@@ -466,7 +466,7 @@ pveum user token add root@pam $TOKEN_NAME --privsep 0
 TOKENEOF
 )
 
-    local token_value=$(echo "$token_output" | grep -E "│\s+value\s+│" | awk -F'│' '{print $3}' | xargs)
+    local token_value=$(echo "$token_output" | grep -E "│\s+value\s+│" | awk -F'│' '{print $3}' | grep -E '[0-9a-f-]{36}' | head -1)
 
     if [ -z "$token_value" ]; then
         log_error "Failed to extract token value"
