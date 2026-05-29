@@ -1653,8 +1653,8 @@ create_topomojo_templates() {
                 '{
                     template: $template,
                     iso: $iso,
-                    ram: 2,
-                    cpu: "1x2",
+                    ram: 0.25,
+                    cpu: "1x1",
                     eth: [{net: "lan"}],
                     disks: []
                 }')
