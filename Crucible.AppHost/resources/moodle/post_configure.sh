@@ -55,7 +55,7 @@ configure_oauth2() {
   section="OAuth2 Configuration"
   log "Configuring OAuth2 settings..."
 
-  KEYCLOAK_URL="http://localhost:8080/realms/crucible/"
+  KEYCLOAK_URL="http://keycloak.dev.internal:8080/realms/crucible/"
   KEYCLOAK_CLIENTID="moodle-client"
   KEYCLOAK_CLIENTSECRET="super-safe-secret"
   KEYCLOAK_NAME="Crucible Keycloak"
