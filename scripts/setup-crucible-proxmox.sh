@@ -2307,24 +2307,44 @@ create_alloy_event_with_caster() {
 
     local token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[alloy]}")
 
-    # Check if event with expected ID exists
-    local check_response=$(curl -k -s "$ALLOY_API_URL/eventtemplates/$event_id" \
+    # Find ALL events with this name (there might be duplicates)
+    local all_events=$(curl -k -s "$ALLOY_API_URL/eventtemplates" \
         -H "Authorization: Bearer $token" 2>/dev/null)
+    local matching_events=$(echo "$all_events" | jq -r ".[] | select(.name == \"$event_name\") | .id + \" \" + .directoryId")
 
-    if echo "$check_response" | jq -e '.id' > /dev/null 2>&1; then
-        # Event exists, check directory
-        local current_dir_id=$(echo "$check_response" | jq -r '.directoryId')
+    local has_correct=false
+    local ids_to_delete=""
 
-        if [ "$current_dir_id" = "$caster_dir_id" ]; then
-            log_success "Alloy event already exists with correct directory: $event_id"
-            return 0
+    while IFS=' ' read -r id dir_id; do
+        if [ "$dir_id" = "$caster_dir_id" ]; then
+            has_correct=true
+            log_success "Alloy event already exists with correct directory: $id"
         else
-            log_info "Alloy event exists but has wrong directory ($current_dir_id != $caster_dir_id), deleting..."
-            curl -k -s -X DELETE "$ALLOY_API_URL/eventtemplates/$event_id" \
-                -H "Authorization: Bearer $token" > /dev/null 2>&1
-            log_info "Recreating with correct directory..."
+            ids_to_delete="$ids_to_delete $id"
         fi
+    done <<< "$matching_events"
+
+    # If we have the correct one, we're done
+    if [ "$has_correct" = "true" ]; then
+        # Delete any duplicates with wrong directory
+        for id in $ids_to_delete; do
+            if [ -n "$id" ]; then
+                log_info "Deleting duplicate with wrong directory: $id"
+                curl -k -s -X DELETE "$ALLOY_API_URL/eventtemplates/$id" \
+                    -H "Authorization: Bearer $token" > /dev/null 2>&1
+            fi
+        done
+        return 0
     fi
+
+    # Delete all existing events with this name (all have wrong directory)
+    for id in $ids_to_delete; do
+        if [ -n "$id" ]; then
+            log_info "Deleting event with wrong directory: $id"
+            curl -k -s -X DELETE "$ALLOY_API_URL/eventtemplates/$id" \
+                -H "Authorization: Bearer $token" > /dev/null 2>&1
+        fi
+    done
 
     if [ "$DRY_RUN" = "true" ]; then
         log_info "[DRY RUN] Would create Alloy event (with Caster)"
