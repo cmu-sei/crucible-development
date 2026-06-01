@@ -1828,45 +1828,58 @@ create_caster_project() {
 
     if [ -n "$existing_id" ] && [ "$existing_id" != "null" ]; then
         log_success "Caster project already exists: $existing_id"
-        return 0
+        project_id="$existing_id"
+
+        # Check if directory exists for this project
+        local existing_dirs=$(curl -k -s -X GET "$CASTER_API_URL/directories" \
+            -H "Authorization: Bearer $token" 2>/dev/null)
+        local existing_dir_id=$(echo "$existing_dirs" | jq -r ".[] | select(.projectId == \"$project_id\") | .id" | head -1)
+
+        if [ -n "$existing_dir_id" ] && [ "$existing_dir_id" != "null" ]; then
+            log_success "Directory already exists: $existing_dir_id"
+            return 0
+        else
+            log_info "Directory does not exist, creating..."
+            # Fall through to directory creation below
+        fi
     fi
 
-    if [ "$DRY_RUN" = "true" ]; then
-        log_info "[DRY RUN] Would create Caster project: $project_name"
-        return 0
+    # Only create project if it doesn't exist
+    if [ -z "$existing_id" ] || [ "$existing_id" = "null" ]; then
+        if [ "$DRY_RUN" = "true" ]; then
+            log_info "[DRY RUN] Would create Caster project: $project_name"
+            return 0
+        fi
+
+        # Create project
+        local project_response=$(curl -k -s -X POST "$CASTER_API_URL/projects" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"id\": \"$project_id\",
+                \"name\": \"$project_name\",
+                \"description\": \"Test project for Proxmox VMs\"
+            }" 2>/dev/null)
+
+        if ! echo "$project_response" | jq -e '.id' > /dev/null 2>&1; then
+            log_error "Failed to create Caster project"
+            return 1
+        fi
+
+        # Extract the actual project ID from the response (API generates its own ID)
+        project_id=$(echo "$project_response" | jq -r '.id')
+        log_success "Caster project created: $project_id"
+
+        # Get fresh token (old token doesn't have project claims yet)
+        token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[caster]}")
+
+        # Wait for DB transaction to commit
+        sleep 2
     fi
 
-    # Create project
-    local project_response=$(curl -k -s -X POST "$CASTER_API_URL/projects" \
-        -H "Authorization: Bearer $token" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"id\": \"$project_id\",
-            \"name\": \"$project_name\",
-            \"description\": \"Test project for Proxmox VMs\"
-        }" 2>/dev/null)
-
-    if ! echo "$project_response" | jq -e '.id' > /dev/null 2>&1; then
-        log_error "Failed to create Caster project"
-        return 1
-    fi
-
-    # Extract the actual project ID from the response (API generates its own ID)
-    project_id=$(echo "$project_response" | jq -r '.id')
-    log_success "Caster project created: $project_id"
-
-    # Get fresh token (old token doesn't have project claims yet)
+    # At this point, project_id is set (either from existing or newly created)
+    # Get fresh token to ensure we have project permissions
     token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[caster]}")
-
-    # Debug: Verify project exists via LIST endpoint (GET by ID requires project-specific permissions)
-    local verify_response=$(curl -k -s -X GET "$CASTER_API_URL/projects" \
-        -H "Authorization: Bearer $token" 2>/dev/null)
-    local found_project=$(echo "$verify_response" | jq -r ".[] | select(.id == \"$project_id\") | .id")
-    if [ "$found_project" = "$project_id" ]; then
-        log_info "✓ Project verified in API: $project_id"
-    else
-        log_warning "⚠ Project not found in LIST response"
-    fi
 
     # Debug: show what we're sending
     log_info "Creating directory with projectId: $project_id"
