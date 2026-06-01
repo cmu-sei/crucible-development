@@ -2332,6 +2332,7 @@ create_alloy_event_with_caster() {
     fi
 
     # Token already fetched above
+    # Try with id first (if API supports it), otherwise API will generate one
     local event_response=$(curl -k -s -X POST "$ALLOY_API_URL/eventtemplates" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
@@ -2346,11 +2347,30 @@ create_alloy_event_with_caster() {
             \"isPublished\": true
         }" 2>/dev/null)
 
+    # If failed, check error and maybe retry without id
+    if ! echo "$event_response" | jq -e '.id' > /dev/null 2>&1; then
+        log_warning "Failed with specified ID, trying without ID..."
+        event_response=$(curl -k -s -X POST "$ALLOY_API_URL/eventtemplates" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"name\": \"$event_name\",
+                \"description\": \"Event template linking Caster directory and Player view\",
+                \"directoryId\": \"$caster_dir_id\",
+                \"viewId\": \"$player_view_id\",
+                \"durationHours\": 4,
+                \"useDynamicHost\": false,
+                \"isPublished\": true
+            }" 2>/dev/null)
+    fi
+
     if echo "$event_response" | jq -e '.id' > /dev/null 2>&1; then
-        log_success "Alloy event created (with Caster): $event_id"
+        local created_id=$(echo "$event_response" | jq -r '.id')
+        log_success "Alloy event created (with Caster): $created_id"
         return 0
     else
         log_error "Failed to create Alloy event with Caster"
+        log_error "Response: ${event_response:0:300}"
         return 1
     fi
 }
