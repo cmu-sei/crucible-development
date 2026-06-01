@@ -2225,13 +2225,28 @@ create_player_view_template() {
                 \"applicationTemplateId\": \"ace19f19-8916-4169-84de-ad00565d8456\"
             }" > /dev/null 2>&1
 
-        # Add VM application to Admin team
+        # Add Dashboard application (URL is configured in the template itself)
+        local dash_app_id="${RESOURCE_IDS[dashboard_app_template]}"
+        curl -k -s -X POST "$PLAYER_API_URL/views/$view_id/applications" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"id\": \"$dash_app_id\",
+                \"viewId\": \"$view_id\",
+                \"applicationTemplateId\": \"a4c361cc-b43f-4c44-99a7-7e2e2b3a9f88\"
+            }" > /dev/null 2>&1
+
+        # Add applications to Admin team
         if [ -n "$admin_team_id" ]; then
             curl -k -s -X POST "$PLAYER_API_URL/teams/$admin_team_id/applications/$vm_app_id" \
                 -H "Authorization: Bearer $token" \
                 -H "Content-Type: application/json" > /dev/null 2>&1
 
-            log_success "VM application added to Admin team"
+            curl -k -s -X POST "$PLAYER_API_URL/teams/$admin_team_id/applications/$dash_app_id" \
+                -H "Authorization: Bearer $token" \
+                -H "Content-Type: application/json" > /dev/null 2>&1
+
+            log_success "Applications added to Admin team"
         fi
 
         # Mark as template
