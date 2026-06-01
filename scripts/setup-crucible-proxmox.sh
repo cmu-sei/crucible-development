@@ -1830,13 +1830,12 @@ create_caster_project() {
         log_success "Caster project already exists: $existing_id"
         project_id="$existing_id"
 
-        # Check if directory exists for this project
-        local existing_dirs=$(curl -k -s -X GET "$CASTER_API_URL/directories" \
+        # Check if THE SPECIFIC directory we want exists (by ID)
+        local check_dir_response=$(curl -k -s -X GET "$CASTER_API_URL/directories/$directory_id" \
             -H "Authorization: Bearer $token" 2>/dev/null)
-        local existing_dir_id=$(echo "$existing_dirs" | jq -r ".[] | select(.projectId == \"$project_id\") | .id" | head -1)
 
-        if [ -n "$existing_dir_id" ] && [ "$existing_dir_id" != "null" ]; then
-            log_success "Directory already exists: $existing_dir_id"
+        if echo "$check_dir_response" | jq -e '.id' > /dev/null 2>&1; then
+            log_success "Directory already exists: $directory_id"
             return 0
         else
             log_info "Directory does not exist, creating..."
