@@ -1920,6 +1920,10 @@ create_caster_project() {
       source  = "bpg/proxmox"
       version = "0.106.0"
     }
+    crucible = {
+      source  = "cmu-sei/crucible"
+      version = "~> 2.5"
+    }
   }
 }
 
@@ -1929,6 +1933,20 @@ provider "proxmox" {
   insecure  = var.proxmox_insecure
 }
 
+provider "crucible" {
+  username       = var.crucible_username
+  password       = var.crucible_password
+  auth_url       = var.crucible_auth_url
+  token_url      = var.crucible_token_url
+  client_id      = var.crucible_client_id
+  client_secret  = var.crucible_client_secret
+  client_scopes  = ["player", "player-vm"]
+  vm_api_url     = var.vm_api_url
+  player_api_url = var.player_api_url
+  caster_api_url = var.caster_api_url
+}
+
+# Create VMs in Proxmox
 resource "proxmox_virtual_environment_vm" "alpine" {
   name      = "alpine-caster-test"
   node_name = "pve"
@@ -1978,6 +1996,37 @@ resource "proxmox_virtual_environment_vm" "puppy" {
   memory {
     dedicated = 1024
   }
+}
+
+# Register VMs in Player VM API
+resource "crucible_player_virtual_machine" "alpine" {
+  name       = proxmox_virtual_environment_vm.alpine.name
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.alpine.vm_id
+    node = "pve"
+  }
+}
+
+resource "crucible_player_virtual_machine" "tinycore" {
+  name       = proxmox_virtual_environment_vm.tinycore.name
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.tinycore.vm_id
+    node = "pve"
+  }
+}
+
+resource "crucible_player_virtual_machine" "puppy" {
+  name       = proxmox_virtual_environment_vm.puppy.name
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.puppy.vm_id
+    node = "pve"
+  }
 }'
 
     curl -k -s -X POST "$CASTER_API_URL/files" \
@@ -2008,6 +2057,55 @@ variable "proxmox_insecure" {
   description = "Skip TLS verification"
   type        = bool
   default     = true
+}
+
+variable "crucible_username" {
+  description = "Crucible username"
+  type        = string
+}
+
+variable "crucible_password" {
+  description = "Crucible password"
+  type        = string
+  sensitive   = true
+}
+
+variable "crucible_auth_url" {
+  description = "Crucible auth URL"
+  type        = string
+}
+
+variable "crucible_token_url" {
+  description = "Crucible token URL"
+  type        = string
+}
+
+variable "crucible_client_id" {
+  description = "Crucible OAuth client ID"
+  type        = string
+  default     = "player.ui"
+}
+
+variable "crucible_client_secret" {
+  description = "Crucible OAuth client secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "vm_api_url" {
+  description = "Player VM API URL"
+  type        = string
+}
+
+variable "player_api_url" {
+  description = "Player API URL"
+  type        = string
+}
+
+variable "caster_api_url" {
+  description = "Caster API URL"
+  type        = string
 }'
 
     curl -k -s -X POST "$CASTER_API_URL/files" \
@@ -2025,7 +2123,17 @@ variable "proxmox_insecure" {
     # Create terraform.tfvars
     local tfvars_content="proxmox_endpoint = \"https://${PROXMOX_HOST}:8006\"
 proxmox_api_token = \"${PROXMOX_API_TOKEN}\"
-proxmox_insecure = true"
+proxmox_insecure = true
+
+crucible_username = \"${KEYCLOAK_USER}\"
+crucible_password = \"${KEYCLOAK_PASSWORD}\"
+crucible_auth_url = \"${KEYCLOAK_URL}\"
+crucible_token_url = \"${KEYCLOAK_URL}/realms/crucible/protocol/openid-connect/token\"
+crucible_client_id = \"player.ui\"
+crucible_client_secret = \"\"
+vm_api_url = \"http://localhost:4302/api\"
+player_api_url = \"http://localhost:4300/api\"
+caster_api_url = \"http://localhost:4309/api\""
 
     curl -k -s -X POST "$CASTER_API_URL/files" \
         -H "Authorization: Bearer $token" \
