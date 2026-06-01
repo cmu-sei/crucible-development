@@ -1836,10 +1836,11 @@ create_caster_project() {
 
         if echo "$check_dir_response" | jq -e '.id' > /dev/null 2>&1; then
             log_success "Directory already exists: $directory_id"
-            return 0
+            # Don't return - check if files exist and create them if needed
+            local skip_dir_creation=true
         else
             log_info "Directory does not exist, creating..."
-            # Fall through to directory creation below
+            local skip_dir_creation=false
         fi
     fi
 
@@ -1880,24 +1881,37 @@ create_caster_project() {
     # Get fresh token to ensure we have project permissions
     token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[caster]}")
 
-    # Debug: show what we're sending
-    log_info "Creating directory with projectId: $project_id"
+    # Create directory if needed
+    if [ "$skip_dir_creation" != "true" ]; then
+        log_info "Creating directory with projectId: $project_id"
 
-    # Create directory
-    local directory_payload="{\"id\": \"$directory_id\", \"projectId\": \"$project_id\", \"name\": \"Basic Topology\", \"terraformVersion\": \"1.5.0\"}"
-    local directory_response=$(curl -k -s -X POST "$CASTER_API_URL/directories" \
-        -H "Authorization: Bearer $token" \
-        -H "Content-Type: application/json" \
-        -d "$directory_payload" 2>/dev/null)
+        local directory_payload="{\"id\": \"$directory_id\", \"projectId\": \"$project_id\", \"name\": \"Basic Topology\", \"terraformVersion\": \"1.5.0\"}"
+        local directory_response=$(curl -k -s -X POST "$CASTER_API_URL/directories" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "$directory_payload" 2>/dev/null)
 
-    if ! echo "$directory_response" | jq -e '.id' > /dev/null 2>&1; then
-        local error_msg=$(echo "$directory_response" | jq -r '.message // .title // .error // "Unknown error"' 2>/dev/null)
-        log_warning "Failed to create directory: $error_msg"
-        log_warning "Response: ${directory_response:0:200}"
-        return 1
+        if ! echo "$directory_response" | jq -e '.id' > /dev/null 2>&1; then
+            local error_msg=$(echo "$directory_response" | jq -r '.message // .title // .error // "Unknown error"' 2>/dev/null)
+            log_warning "Failed to create directory: $error_msg"
+            log_warning "Response: ${directory_response:0:200}"
+            return 1
+        fi
+
+        log_success "Directory created: $directory_id"
     fi
 
-    log_success "Directory created: $directory_id"
+    # Check if files exist
+    local existing_files=$(curl -k -s -X GET "$CASTER_API_URL/directories/$directory_id/files" \
+        -H "Authorization: Bearer $token" 2>/dev/null)
+    local file_count=$(echo "$existing_files" | jq '. | length' 2>/dev/null || echo 0)
+
+    if [ "$file_count" -gt 0 ]; then
+        log_success "Directory already has $file_count file(s), skipping file creation"
+        return 0
+    fi
+
+    log_info "Creating Terraform files in directory..."
 
     # Create main.tf
     local main_tf_content='terraform {
