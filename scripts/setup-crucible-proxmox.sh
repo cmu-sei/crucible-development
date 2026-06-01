@@ -2225,7 +2225,10 @@ create_player_view_template() {
                 \"applicationTemplateId\": \"ace19f19-8916-4169-84de-ad00565d8456\"
             }" > /dev/null 2>&1
 
-        # Add Dashboard application (URL is configured in the template itself)
+        # Add Dashboard application
+        # Template a4c361cc-b43f-4c44-99a7-7e2e2b3a9f88 should be configured in Player DB with URL:
+        # http://localhost:4403/templates/{eventTemplateId}/view/{viewId}?theme={theme}
+        # Alloy dynamically substitutes placeholders when creating views during event launch
         local dash_app_id="${RESOURCE_IDS[dashboard_app_template]}"
         curl -k -s -X POST "$PLAYER_API_URL/views/$view_id/applications" \
             -H "Authorization: Bearer $token" \
