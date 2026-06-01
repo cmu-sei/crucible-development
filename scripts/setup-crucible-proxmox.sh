@@ -2305,11 +2305,25 @@ create_alloy_event_with_caster() {
 
     log_step "Creating Alloy event (with Caster): $event_name"
 
-    # Check if exists
+    local token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[alloy]}")
+
+    # Check if exists and verify it has correct directory
     local existing_id=$(resource_exists "alloy-event" "$event_name")
     if [ -n "$existing_id" ]; then
-        log_success "Alloy event already exists: $existing_id"
-        return 0
+        # Check if directoryId is correct
+        local existing_event=$(curl -k -s "$ALLOY_API_URL/eventtemplates/$existing_id" \
+            -H "Authorization: Bearer $token" 2>/dev/null)
+        local current_dir_id=$(echo "$existing_event" | jq -r '.directoryId')
+
+        if [ "$current_dir_id" = "$caster_dir_id" ]; then
+            log_success "Alloy event already exists with correct directory: $existing_id"
+            return 0
+        else
+            log_info "Alloy event exists but has wrong directory ($current_dir_id), updating..."
+            # Delete and recreate
+            curl -k -s -X DELETE "$ALLOY_API_URL/eventtemplates/$existing_id" \
+                -H "Authorization: Bearer $token" > /dev/null 2>&1
+        fi
     fi
 
     if [ "$DRY_RUN" = "true" ]; then
@@ -2317,8 +2331,7 @@ create_alloy_event_with_caster() {
         return 0
     fi
 
-    local token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[alloy]}")
-
+    # Token already fetched above
     local event_response=$(curl -k -s -X POST "$ALLOY_API_URL/eventtemplates" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
