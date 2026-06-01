@@ -2307,22 +2307,22 @@ create_alloy_event_with_caster() {
 
     local token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[alloy]}")
 
-    # Check if exists and verify it has correct directory
-    local existing_id=$(resource_exists "alloy-event" "$event_name")
-    if [ -n "$existing_id" ]; then
-        # Check if directoryId is correct
-        local existing_event=$(curl -k -s "$ALLOY_API_URL/eventtemplates/$existing_id" \
-            -H "Authorization: Bearer $token" 2>/dev/null)
-        local current_dir_id=$(echo "$existing_event" | jq -r '.directoryId')
+    # Check if event with expected ID exists
+    local check_response=$(curl -k -s "$ALLOY_API_URL/eventtemplates/$event_id" \
+        -H "Authorization: Bearer $token" 2>/dev/null)
+
+    if echo "$check_response" | jq -e '.id' > /dev/null 2>&1; then
+        # Event exists, check directory
+        local current_dir_id=$(echo "$check_response" | jq -r '.directoryId')
 
         if [ "$current_dir_id" = "$caster_dir_id" ]; then
-            log_success "Alloy event already exists with correct directory: $existing_id"
+            log_success "Alloy event already exists with correct directory: $event_id"
             return 0
         else
-            log_info "Alloy event exists but has wrong directory ($current_dir_id), updating..."
-            # Delete and recreate
-            curl -k -s -X DELETE "$ALLOY_API_URL/eventtemplates/$existing_id" \
+            log_info "Alloy event exists but has wrong directory ($current_dir_id != $caster_dir_id), deleting..."
+            curl -k -s -X DELETE "$ALLOY_API_URL/eventtemplates/$event_id" \
                 -H "Authorization: Bearer $token" > /dev/null 2>&1
+            log_info "Recreating with correct directory..."
         fi
     fi
 
