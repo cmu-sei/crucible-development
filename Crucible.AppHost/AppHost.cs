@@ -636,12 +636,15 @@ public static class BuilderExtensions
             }
 
             // Hypervisor-specific settings
+            // Note: In development, appsettings.Development.conf will override these via ConfToEnv()
+            // In production, no .conf file exists so these AppHost environment variables are used
             if (options.HypervisorType.Equals("Proxmox", StringComparison.OrdinalIgnoreCase))
             {
                 topoApi
                     .WithEnvironment("Pod__IgnoreCertificateErrors", "true")
                     .WithEnvironment("Pod__SupportsSubfolders", "false")
                     .WithEnvironment("FileUpload__IsoRoot", "/mnt/proxmox-iso")
+                    .WithEnvironment("FileUpload__SupportsSubfolders", "false")
                     .WithEnvironment("FileUpload__UseDatastoreApi", "false")
                     .WithEnvironment("FileUpload__TempRoot", "/tmp/topoiso");
             }
@@ -656,6 +659,7 @@ public static class BuilderExtensions
                     .WithEnvironment("Pod__TicketUrlHandler", isVmc ? "none" : "querystring")
                     .WithEnvironment("Pod__SupportsSubfolders", "true")
                     .WithEnvironment("FileUpload__IsoRoot", isVmc ? "/mnt/vmc-iso" : "/mnt/isos")
+                    .WithEnvironment("FileUpload__SupportsSubfolders", "true")
                     .WithEnvironment("FileUpload__UseDatastoreApi", isVmc ? "true" : "false")
                     .WithEnvironment("FileUpload__TempRoot", "/tmp/topoiso");
             }
