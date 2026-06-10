@@ -5,12 +5,7 @@
     "AWS_PROFILE": "default"
   },
   "permissions": {
-    "additionalDirectories": [
-      "/mnt/data/crucible"
-    ],
-    "allow": [
-      "mcp__playwright-test__*"
-    ],
+    "allow": ["mcp__playwright-test__*"],
     "deny": [
       "Bash(gh api *)",
       "Bash(gh alias delete *)",
@@ -45,6 +40,10 @@
       "Bash(gh ssh-key delete *)",
       "Bash(gh variable delete *)",
       "Bash(gh workflow disable *)"
-    ]
+    ],
+    "additionalDirectories": ["/mnt/data/crucible"]
+  },
+  "enabledPlugins": {
+    "gopls-lsp@claude-plugins-official": true
   }
 }
