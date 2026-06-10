@@ -90,12 +90,12 @@ declare -A RESOURCE_IDS=(
     [vm_app_template]="18229b03-873e-4288-9c30-d4eace3bd042"
     [dashboard_app_template]="635f5bd3-624e-4ab9-ac20-fbbf20b0fd04"
     [vm_app_live]="4d8f0b3e-9c5e-4f2b-af6d-3e9c7f4b8d2a"
-    [map_app_live]="5e9g1c4f-ad6f-5g3c-bg7e-4fad8g5c9e3b"
+    [map_app_live]="5e9c1c4f-ad6f-5e3c-be7e-4fad8c5c9e3b"
 
     # Player VMs
-    [puppy_vm]="6fah2d5g-be7g-6h4d-ch8f-5gbe9h6daf4c"
-    [alpine_vm]="7gbi3e6h-cf8h-7i5e-di9g-6hcfai7ebg5d"
-    [tinycore_vm]="8hcj4f7i-dg9i-8j6f-ej0h-7idgbj8fch6e"
+    [puppy_vm]="6fac2d5e-be7c-6e4d-ce8f-5cbe9c6daf4c"
+    [alpine_vm]="7cbe3e6c-cf8e-7e5e-de9c-6ccfac7ebc5d"
+    [tinycore_vm]="8ccc4f7e-dc9e-8e6f-ee0c-7edccc8fcc6e"
 
     # Caster Projects
     [caster_project1]="3584598e-bebe-4ecb-9f5e-2c52a2971a68"
