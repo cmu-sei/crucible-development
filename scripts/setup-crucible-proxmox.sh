@@ -2174,6 +2174,36 @@ create_caster_project2() {
 # PLAYER FUNCTIONS
 # ============================================================
 
+add_team_application_instance() {
+    local team_id="$1"
+    local application_id="$2"
+    local display_order="$3"
+    local token="$4"
+
+    local response=$(curl -k -s -w "\n%{http_code}" -X POST \
+        "$PLAYER_API_URL/teams/$team_id/application-instances" \
+        -H "Authorization: Bearer $token" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"applicationId\": \"$application_id\",
+            \"displayOrder\": $display_order
+        }")
+
+    local http_code=$(echo "$response" | tail -1)
+    local body=$(echo "$response" | sed '$d')
+
+    if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+        log_success "Added application instance ($application_id) to team"
+        return 0
+    elif [ "$http_code" = "409" ]; then
+        log_success "Application instance already exists on team: $application_id"
+        return 0
+    else
+        log_error "Failed to add application instance '$application_id' to team (HTTP $http_code): $body"
+        return 1
+    fi
+}
+
 create_player_view_template() {
     local view_name="Proxmox On-Demand Template"
     local view_id="${RESOURCE_IDS[player_view_template]}"
@@ -2239,17 +2269,12 @@ create_player_view_template() {
                 \"applicationTemplateId\": \"a4c361cc-b43f-4c44-99a7-7e2e2b3a9f88\"
             }" > /dev/null 2>&1
 
-        # Add applications to Admin team
-        if [ -n "$admin_team_id" ]; then
-            curl -k -s -X POST "$PLAYER_API_URL/teams/$admin_team_id/applications/$vm_app_id" \
-                -H "Authorization: Bearer $token" \
-                -H "Content-Type: application/json" > /dev/null 2>&1
-
-            curl -k -s -X POST "$PLAYER_API_URL/teams/$admin_team_id/applications/$dash_app_id" \
-                -H "Authorization: Bearer $token" \
-                -H "Content-Type: application/json" > /dev/null 2>&1
-
-            log_success "Applications added to Admin team"
+        # Add applications to Admin team as application instances
+        if [ -n "$admin_team_id" ] && [ "$admin_team_id" != "null" ]; then
+            add_team_application_instance "$admin_team_id" "$vm_app_id" "0" "$token"
+            add_team_application_instance "$admin_team_id" "$dash_app_id" "1" "$token"
+        else
+            log_error "No Admin team found for template view; skipping application instances"
         fi
 
         # Mark as template
@@ -2312,7 +2337,23 @@ create_player_view_live() {
             -H "Authorization: Bearer $token" 2>/dev/null)
         local admin_team_id=$(echo "$teams" | jq -r '.[] | select(.name == "Admin") | .id' | head -1)
 
-        # Register VMs
+        # Add Virtual Machines application to the view
+        local vm_app_id="${RESOURCE_IDS[vm_app_live]}"
+        curl -k -s -X POST "$PLAYER_API_URL/views/$view_id/applications" \
+            -H "Authorization: Bearer $token" \
+            -H "Content-Type: application/json" \
+            -d "{
+                \"id\": \"$vm_app_id\",
+                \"viewId\": \"$view_id\",
+                \"applicationTemplateId\": \"ace19f19-8916-4169-84de-ad00565d8456\"
+            }" > /dev/null 2>&1
+
+        # Add the VM application instance to the Admin team so VMs display
+        if [ -n "$admin_team_id" ] && [ "$admin_team_id" != "null" ]; then
+            add_team_application_instance "$admin_team_id" "$vm_app_id" "0" "$token"
+        fi
+
+        # Register VMs to the Admin team
         register_player_vms "$admin_team_id" "$token"
 
         log_success "VMs registered to live view"
@@ -2323,53 +2364,61 @@ create_player_view_live() {
     fi
 }
 
+register_player_vm() {
+    local vm_uuid="$1"
+    local vm_name="$2"
+    local proxmox_id="$3"
+    local admin_team_id="$4"
+    local token="$5"
+
+    local response=$(curl -k -s -w "\n%{http_code}" -X POST "$VM_API_URL/vms" \
+        -H "Authorization: Bearer $token" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"id\": \"$vm_uuid\",
+            \"name\": \"$vm_name\",
+            \"teamIds\": [\"$admin_team_id\"],
+            \"proxmoxVmInfo\": {
+                \"id\": $proxmox_id,
+                \"node\": \"$PROXMOX_NODE\"
+            }
+        }")
+
+    local http_code=$(echo "$response" | tail -1)
+    local body=$(echo "$response" | sed '$d')
+
+    if [ "$http_code" = "200" ] || [ "$http_code" = "201" ]; then
+        log_success "Registered VM: $vm_name (Proxmox ID $proxmox_id)"
+        return 0
+    elif [ "$http_code" = "409" ]; then
+        log_success "VM already registered: $vm_name"
+        return 0
+    else
+        log_error "Failed to register VM '$vm_name' (HTTP $http_code): $body"
+        return 1
+    fi
+}
+
 register_player_vms() {
     local admin_team_id="$1"
     local token="$2"
 
     log_step "Registering VMs in Player VM API..."
 
-    # Register Puppy VM
-    curl -k -s -X POST "$VM_API_URL/vms" \
-        -H "Authorization: Bearer $token" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"id\": \"${RESOURCE_IDS[puppy_vm]}\",
-            \"name\": \"puppy-test\",
-            \"teamIds\": [\"$admin_team_id\"],
-            \"proxmoxVmInfo\": {
-                \"id\": $PUPPY_PROXMOX_ID,
-                \"node\": \"$PROXMOX_NODE\"
-            }
-        }" > /dev/null 2>&1
+    if [ -z "$admin_team_id" ] || [ "$admin_team_id" = "null" ]; then
+        log_error "No Admin team ID provided; cannot register VMs"
+        return 1
+    fi
 
-    # Register Alpine VM
-    curl -k -s -X POST "$VM_API_URL/vms" \
-        -H "Authorization: Bearer $token" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"id\": \"${RESOURCE_IDS[alpine_vm]}\",
-            \"name\": \"alpine-linux-template\",
-            \"teamIds\": [\"$admin_team_id\"],
-            \"proxmoxVmInfo\": {
-                \"id\": $ALPINE_PROXMOX_ID,
-                \"node\": \"$PROXMOX_NODE\"
-            }
-        }" > /dev/null 2>&1
+    local failures=0
+    register_player_vm "${RESOURCE_IDS[puppy_vm]}" "puppy-test" "$PUPPY_PROXMOX_ID" "$admin_team_id" "$token" || ((failures++))
+    register_player_vm "${RESOURCE_IDS[alpine_vm]}" "alpine-linux-template" "$ALPINE_PROXMOX_ID" "$admin_team_id" "$token" || ((failures++))
+    register_player_vm "${RESOURCE_IDS[tinycore_vm]}" "tinycore-linux-template" "$TINYCORE_PROXMOX_ID" "$admin_team_id" "$token" || ((failures++))
 
-    # Register TinyCore VM
-    curl -k -s -X POST "$VM_API_URL/vms" \
-        -H "Authorization: Bearer $token" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"id\": \"${RESOURCE_IDS[tinycore_vm]}\",
-            \"name\": \"tinycore-linux-template\",
-            \"teamIds\": [\"$admin_team_id\"],
-            \"proxmoxVmInfo\": {
-                \"id\": $TINYCORE_PROXMOX_ID,
-                \"node\": \"$PROXMOX_NODE\"
-            }
-        }" > /dev/null 2>&1
+    if [ "$failures" -gt 0 ]; then
+        log_error "$failures VM(s) failed to register"
+        return 1
+    fi
 
     log_success "3 VMs registered"
 }
