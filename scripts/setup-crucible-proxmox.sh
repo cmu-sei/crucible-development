@@ -2244,35 +2244,33 @@ create_player_view_template() {
             -H "Authorization: Bearer $token" 2>/dev/null)
         local admin_team_id=$(echo "$teams" | jq -r '.[] | select(.name == "Admin") | .id' | head -1)
 
-        # Add VM application
-        local vm_app_id="${RESOURCE_IDS[vm_app_template]}"
-        curl -k -s -X POST "$PLAYER_API_URL/views/$view_id/applications" \
+        # Add VM application (Player generates its own id)
+        local vm_app_response=$(curl -k -s -X POST "$PLAYER_API_URL/views/$view_id/applications" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
             -d "{
-                \"id\": \"$vm_app_id\",
                 \"viewId\": \"$view_id\",
                 \"applicationTemplateId\": \"ace19f19-8916-4169-84de-ad00565d8456\"
-            }" > /dev/null 2>&1
+            }" 2>/dev/null)
+        local vm_app_id=$(echo "$vm_app_response" | jq -r '.id // empty')
 
         # Add Dashboard application
         # Template a4c361cc-b43f-4c44-99a7-7e2e2b3a9f88 should be configured in Player DB with URL:
         # http://localhost:4403/templates/{eventTemplateId}/view/{viewId}?theme={theme}
         # Alloy dynamically substitutes placeholders when creating views during event launch
-        local dash_app_id="${RESOURCE_IDS[dashboard_app_template]}"
-        curl -k -s -X POST "$PLAYER_API_URL/views/$view_id/applications" \
+        local dash_app_response=$(curl -k -s -X POST "$PLAYER_API_URL/views/$view_id/applications" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
             -d "{
-                \"id\": \"$dash_app_id\",
                 \"viewId\": \"$view_id\",
                 \"applicationTemplateId\": \"a4c361cc-b43f-4c44-99a7-7e2e2b3a9f88\"
-            }" > /dev/null 2>&1
+            }" 2>/dev/null)
+        local dash_app_id=$(echo "$dash_app_response" | jq -r '.id // empty')
 
         # Add applications to Admin team as application instances
         if [ -n "$admin_team_id" ] && [ "$admin_team_id" != "null" ]; then
-            add_team_application_instance "$admin_team_id" "$vm_app_id" "0" "$token"
-            add_team_application_instance "$admin_team_id" "$dash_app_id" "1" "$token"
+            [ -n "$vm_app_id" ] && add_team_application_instance "$admin_team_id" "$vm_app_id" "0" "$token" || log_error "VM application not created for template view (response: $vm_app_response)"
+            [ -n "$dash_app_id" ] && add_team_application_instance "$admin_team_id" "$dash_app_id" "1" "$token" || log_error "Dashboard application not created for template view (response: $dash_app_response)"
         else
             log_error "No Admin team found for template view; skipping application instances"
         fi
@@ -2337,20 +2335,21 @@ create_player_view_live() {
             -H "Authorization: Bearer $token" 2>/dev/null)
         local admin_team_id=$(echo "$teams" | jq -r '.[] | select(.name == "Admin") | .id' | head -1)
 
-        # Add Virtual Machines application to the view
-        local vm_app_id="${RESOURCE_IDS[vm_app_live]}"
-        curl -k -s -X POST "$PLAYER_API_URL/views/$view_id/applications" \
+        # Add Virtual Machines application to the view (Player generates its own id)
+        local vm_app_response=$(curl -k -s -X POST "$PLAYER_API_URL/views/$view_id/applications" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
             -d "{
-                \"id\": \"$vm_app_id\",
                 \"viewId\": \"$view_id\",
                 \"applicationTemplateId\": \"ace19f19-8916-4169-84de-ad00565d8456\"
-            }" > /dev/null 2>&1
+            }" 2>/dev/null)
+        local vm_app_id=$(echo "$vm_app_response" | jq -r '.id // empty')
 
         # Add the VM application instance to the Admin team so VMs display
-        if [ -n "$admin_team_id" ] && [ "$admin_team_id" != "null" ]; then
+        if [ -n "$vm_app_id" ] && [ -n "$admin_team_id" ] && [ "$admin_team_id" != "null" ]; then
             add_team_application_instance "$admin_team_id" "$vm_app_id" "0" "$token"
+        else
+            log_error "Could not create VM application for live view (response: $vm_app_response)"
         fi
 
         # Register VMs to the Admin team

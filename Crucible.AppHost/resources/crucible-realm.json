@@ -2400,11 +2400,11 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "proxmox-oidc-secret-change-me",
       "redirectUris": [
-        "https://*/",
-        "https://*/auth/realms/crucible/broker/proxmox/endpoint"
+        "https://*",
+        "https://*/*"
       ],
       "webOrigins": [
-        "https://*"
+        "+"
       ],
       "notBefore": 0,
       "bearerOnly": false,
