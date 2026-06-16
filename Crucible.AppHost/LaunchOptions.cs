@@ -42,6 +42,11 @@ public class LaunchOptions
     public string HypervisorIsoStore { get; set; } = "";
     public string HypervisorPoolPath { get; set; } = "";
 
+    // File-layout behavior. Nullable so AppHost falls back to type-based
+    // defaults when the toggle script hasn't written an explicit value.
+    public bool? HypervisorSupportsSubfolders { get; set; }
+    public bool? HypervisorUseDatastoreApi { get; set; }
+
     // Backward compatibility
     public bool UseProxmox => HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true;
     public string ProxmoxHost => HypervisorUrl;

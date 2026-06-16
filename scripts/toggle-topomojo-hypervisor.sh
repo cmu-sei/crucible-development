@@ -237,6 +237,13 @@ EOF
   \"HypervisorPoolPath\": \"${config[pool_path]}\""
     fi
 
+    # Always write file-layout behavior so it is explicit rather than
+    # inferred from HypervisorType (avoids stale Proxmox flat-layout
+    # leaking into vSphere/VMC uploads and vice-versa).
+    hypervisor_config+=",
+  \"HypervisorSupportsSubfolders\": ${config[supports_subfolders]},
+  \"HypervisorUseDatastoreApi\": ${config[use_datastore_api]}"
+
     hypervisor_config+="
 }"
 
@@ -296,7 +303,8 @@ remove_config() {
         local temp_file=$(mktemp)
         jq 'del(.Launch.HypervisorType, .Launch.HypervisorUrl, .Launch.HypervisorUser,
                 .Launch.HypervisorPassword, .Launch.HypervisorToken, .Launch.HypervisorVmStore,
-                .Launch.HypervisorDiskStore, .Launch.HypervisorIsoStore, .Launch.HypervisorPoolPath)' \
+                .Launch.HypervisorDiskStore, .Launch.HypervisorIsoStore, .Launch.HypervisorPoolPath,
+                .Launch.HypervisorSupportsSubfolders, .Launch.HypervisorUseDatastoreApi)' \
            "$APPSETTINGS_JSON" > "$temp_file"
         mv "$temp_file" "$APPSETTINGS_JSON"
 

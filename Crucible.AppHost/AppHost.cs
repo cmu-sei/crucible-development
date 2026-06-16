@@ -640,12 +640,17 @@ public static class BuilderExtensions
             // In production, no .conf file exists so these AppHost environment variables are used
             if (options.HypervisorType.Equals("Proxmox", StringComparison.OrdinalIgnoreCase))
             {
+                // Explicit toggle values win; otherwise default to Proxmox flat layout.
+                bool supportsSubfolders = options.HypervisorSupportsSubfolders ?? false;
+                bool useDatastoreApi = options.HypervisorUseDatastoreApi ?? false;
+                string subfolders = supportsSubfolders ? "true" : "false";
+
                 topoApi
                     .WithEnvironment("Pod__IgnoreCertificateErrors", "true")
-                    .WithEnvironment("Pod__SupportsSubfolders", "false")
+                    .WithEnvironment("Pod__SupportsSubfolders", subfolders)
                     .WithEnvironment("FileUpload__IsoRoot", "/mnt/proxmox-iso")
-                    .WithEnvironment("FileUpload__SupportsSubfolders", "false")
-                    .WithEnvironment("FileUpload__UseDatastoreApi", "false")
+                    .WithEnvironment("FileUpload__SupportsSubfolders", subfolders)
+                    .WithEnvironment("FileUpload__UseDatastoreApi", useDatastoreApi ? "true" : "false")
                     .WithEnvironment("FileUpload__TempRoot", "/tmp/topoiso");
             }
             else if (options.HypervisorType.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) ||
@@ -654,13 +659,19 @@ public static class BuilderExtensions
                 // Check if it's VMC based on URL
                 bool isVmc = options.HypervisorUrl.Contains("vmwarevmc.com");
 
+                // Explicit toggle values win; otherwise default to vSphere subfolder layout
+                // (datastore API for VMC, NFS for on-prem).
+                bool supportsSubfolders = options.HypervisorSupportsSubfolders ?? true;
+                bool useDatastoreApi = options.HypervisorUseDatastoreApi ?? isVmc;
+                string subfolders = supportsSubfolders ? "true" : "false";
+
                 topoApi
                     .WithEnvironment("Pod__IgnoreCertificateErrors", "true")
                     .WithEnvironment("Pod__TicketUrlHandler", isVmc ? "none" : "querystring")
-                    .WithEnvironment("Pod__SupportsSubfolders", "true")
+                    .WithEnvironment("Pod__SupportsSubfolders", subfolders)
                     .WithEnvironment("FileUpload__IsoRoot", isVmc ? "/mnt/vmc-iso" : "/mnt/isos")
-                    .WithEnvironment("FileUpload__SupportsSubfolders", "true")
-                    .WithEnvironment("FileUpload__UseDatastoreApi", isVmc ? "true" : "false")
+                    .WithEnvironment("FileUpload__SupportsSubfolders", subfolders)
+                    .WithEnvironment("FileUpload__UseDatastoreApi", useDatastoreApi ? "true" : "false")
                     .WithEnvironment("FileUpload__TempRoot", "/tmp/topoiso");
             }
         }
