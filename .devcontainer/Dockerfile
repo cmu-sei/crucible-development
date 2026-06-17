@@ -89,6 +89,21 @@ RUN echo '' >> /home/vscode/.zshrc && \
     echo 'autoload -Uz bashcompinit && bashcompinit' >> /home/vscode/.zshrc && \
     echo 'complete -C /usr/local/bin/aws_completer aws' >> /home/vscode/.zshrc
 
+# Install kubefwd
+ARG KUBEFWD_VERSION=1.25.14
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+    amd64)  KUBEFWD_ARCH="x86_64" ;; \
+    arm64)  KUBEFWD_ARCH="arm64"  ;; \
+    *)      echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac && \
+    curl -fsSL -o /tmp/kubefwd.tgz \
+    "https://github.com/txn2/kubefwd/releases/download/v${KUBEFWD_VERSION}/kubefwd_Linux_${KUBEFWD_ARCH}.tar.gz" \
+    && tar -xzf /tmp/kubefwd.tgz -C /usr/local/bin kubefwd \
+    && rm /tmp/kubefwd.tgz \
+    && chmod +x /usr/local/bin/kubefwd \
+    && kubefwd version
+
 # Configure ZSH History
 RUN mkdir -p "/home/vscode/.history" && touch "/home/vscode/.history/zsh_history" && \
     chown -R vscode:vscode /home/vscode/.history && \
