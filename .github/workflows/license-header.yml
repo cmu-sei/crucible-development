@@ -13,6 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check Headers
-        uses: cmu-sei/Crucible-Github-Actions/actions/header@header-v1.0
+        uses: cmu-sei/Crucible-Github-Actions/actions/header@header-v1.0.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
