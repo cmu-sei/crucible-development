@@ -33,6 +33,7 @@ updates:
       - dependency-name: "devcontainers/ci"
         update-types:
           - "version-update:semver-patch"
+      # The "header-v" tag prefix prevents Dependabot from mapping bumps onto
+      # semver, so update-types filters don't match (see PRs #96, #99). Ignore
+      # the dependency entirely; track major bumps of this action manually.
       - dependency-name: "cmu-sei/Crucible-Github-Actions"
-        update-types:
-          - "version-update:semver-patch"
