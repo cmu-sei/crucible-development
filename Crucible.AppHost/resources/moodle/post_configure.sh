@@ -205,6 +205,29 @@ configure_site() {
   php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='';
 }
 
+configure_cmi5launch() {
+  if [ "${CRUCIBLE_CATAPULT_ENABLED:-0}" != "1" ]; then
+    log "CATAPULT disabled - skipping mod_cmi5launch configuration"
+    return
+  fi
+
+  echo "Configuring cmi5launch"
+  # CATAPULT player (reached from the Moodle container via host.docker.internal).
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchplayerurl --set=http://host.docker.internal:3398
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchbasicname --set=catapult
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchbasepass --set=catapult-dev-secret
+
+  # LRS — same LRsql instance the rest of Crucible uses (xAPI endpoint requires trailing slash).
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchlrsendpoint --set=http://host.docker.internal:9274/xapi/
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchlrslogin --set=defaultkey
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchlrspass --set=defaultsecret
+
+  # NOTE: cmi5launchtenanttoken must be generated against the player's tenant
+  # (Site administration > Plugins > Activity modules > cmi5launch token setup).
+  # It cannot be set statically here because the player issues it at runtime.
+  log "mod_cmi5launch configured (tenant token still requires manual setup)"
+}
+
 configure_crucible() {
   echo "Configuring Crucible"
   log "Configuring Crucible block based on enabled services..."
@@ -396,6 +419,7 @@ configure_oauth2
 execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
 execute_section "Crucible Configuration" configure_crucible
+execute_section "cmi5launch Configuration" configure_cmi5launch
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
 

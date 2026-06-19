@@ -32,6 +32,7 @@ builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
 builder.AddMisp(postgres, keycloak, launchOptions);
 builder.AddSuperset(postgres, keycloak, launchOptions);
+builder.AddCatapult(postgres, keycloak, launchOptions);
 builder.AddDocs(launchOptions);
 
 builder.Build().Run();
@@ -42,7 +43,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Player: {launchOptions.Player}, Caster: {launchOptions.Caster}, Alloy: {launchOptions.Alloy}");
     Console.WriteLine($"  Gallery: {launchOptions.Gallery}, Cite: {launchOptions.Cite}");
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
-    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}");
+    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
     Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, Gameboard: {launchOptions.Gameboard}");
     Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
@@ -900,6 +901,7 @@ public static class BuilderExtensions
             .WithEnvironment("CRUCIBLE_GALLERY_ENABLED", IsEnabled(galleryMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_BLUEPRINT_ENABLED", IsEnabled(blueprintMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_GAMEBOARD_ENABLED", IsEnabled(gameboardMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_CATAPULT_ENABLED", IsEnabled(ResolveMode(options.Catapult, "Catapult", options)) ? "1" : "0")
             .WithEnvironment("PLUGINS", @"tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"/usr/local/bin/post_configure.sh")
@@ -1143,6 +1145,55 @@ public static class BuilderExtensions
         if (!IsEnabled(supersetMode))
         {
             superset.WithExplicitStart();
+        }
+    }
+
+    public static void AddCatapult(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        var catapultMode = ResolveMode(options.Catapult, "Catapult", options);
+
+        if (!options.AddAllApplications && !IsEnabled(catapultMode))
+            return;
+
+        // CATAPULT's cmi5 player uses knex with the "mysql" client hard-coded and ships
+        // only the mysql driver (no pg), so it cannot use the centralized crucible-postgres
+        // instance. It gets its own MySQL container, like MISP.
+        var catapultMysql = builder.AddMySql("catapult-mysql")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("catapult-mysql")
+            .WithDataVolume();
+
+        var catapultDb = catapultMysql.AddDatabase("catapultPlayerDb", "catapult_player");
+
+        // ADL publishes no prebuilt image; the repo's own Dockerfile builds the Node app
+        // from source. Build from the cloned repo's player directory.
+        var catapult = builder.AddContainer("catapult-player", "catapult-player-image")
+            .WithDockerfile("/mnt/data/crucible/catapult/catapult/player")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("catapult-player")
+            .WaitFor(catapultMysql)
+            .WithHttpEndpoint(port: 3398, targetPort: 3398)
+            .WithEnvironment("DB_HOST", catapultMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("DB_NAME", catapultDb.Resource.DatabaseName)
+            .WithEnvironment("DB_USERNAME", "root")
+            .WithEnvironment("DB_PASSWORD", catapultMysql.Resource.PasswordParameter)
+            // xAPI statements flow to the existing LRsql container (reachable by container name).
+            .WithEnvironment("LRS_ENDPOINT", "http://lrsql:8080/xapi")
+            .WithEnvironment("LRS_USERNAME", "defaultkey")
+            .WithEnvironment("LRS_PASSWORD", "defaultsecret")
+            .WithEnvironment("TOKEN_SECRET", "crucible-dev-catapult-token-secret")
+            .WithEnvironment("API_KEY", "catapult")
+            .WithEnvironment("API_SECRET", "catapult-dev-secret")
+            // First tenant is created on startup; mod_cmi5launch authenticates against it.
+            .WithEnvironment("FIRST_TENANT_NAME", "crucible")
+            .WithEnvironment("PLAYER_API_ROOT", "/api/v1")
+            .WithEnvironment("PLAYER_STANDALONE_LAUNCH_URL_BASE", "http://localhost:3398")
+            .WithEnvironment("PLAYER_REQUIRE_STRICT_HEADERS", "false")
+            .WithEnvironment("CONTENT_URL", "http://localhost:3398/content");
+
+        if (!IsEnabled(catapultMode))
+        {
+            catapult.WithExplicitStart();
         }
     }
 
