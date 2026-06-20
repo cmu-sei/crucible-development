@@ -1158,17 +1158,26 @@ public static class BuilderExtensions
         // CATAPULT's cmi5 player uses knex with the "mysql" client hard-coded and ships
         // only the mysql driver (no pg), so it cannot use the centralized crucible-postgres
         // instance. It gets its own MySQL container, like MISP.
+        // CATAPULT's legacy "mysql" node driver can't authenticate against MySQL 8/9's
+        // default caching_sha2_password. Upstream pins 8.0 with mysql_native_password
+        // (which is removed in MySQL 9.x), so pin the image and force the legacy plugin.
         var catapultMysql = builder.AddMySql("catapult-mysql")
+            .WithImageTag("8.0.31")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("catapult-mysql")
+            .WithArgs("--default-authentication-plugin=mysql_native_password")
             .WithDataVolume();
 
         var catapultDb = catapultMysql.AddDatabase("catapultPlayerDb", "catapult_player");
 
         // ADL publishes no prebuilt image; the repo's own Dockerfile builds the Node app
         // from source. Build from the cloned repo's player directory.
+        // Context is the cloned player source dir (so the upstream COPY steps resolve),
+        // but the Dockerfile is our patched copy in resources/ (survives re-clone and is
+        // version-controlled). Upstream's npm ci fails on an out-of-sync lock file.
+        var catapultDockerfile = Path.Combine(builder.AppHostDirectory, "resources", "catapult", "Dockerfile.CatapultPlayer");
         var catapult = builder.AddContainer("catapult-player", "catapult-player-image")
-            .WithDockerfile("/mnt/data/crucible/catapult/catapult/player")
+            .WithDockerfile("/mnt/data/crucible/catapult/catapult/player", catapultDockerfile)
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("catapult-player")
             .WaitFor(catapultMysql)
@@ -1186,7 +1195,10 @@ public static class BuilderExtensions
             .WithEnvironment("API_SECRET", "catapult-dev-secret")
             // First tenant is created on startup; mod_cmi5launch authenticates against it.
             .WithEnvironment("FIRST_TENANT_NAME", "crucible")
-            .WithEnvironment("PLAYER_API_ROOT", "/api/v1")
+            // PLAYER_API_ROOT is only for proxied (nginx) deployments; it is prepended to
+            // routes that already live under /api/v1. Leave empty for direct access so
+            // paths resolve as /api/v1/... rather than /api/v1/api/v1/...
+            .WithEnvironment("PLAYER_API_ROOT", "")
             .WithEnvironment("PLAYER_STANDALONE_LAUNCH_URL_BASE", "http://localhost:3398")
             .WithEnvironment("PLAYER_REQUIRE_STRICT_HEADERS", "false")
             .WithEnvironment("CONTENT_URL", "http://localhost:3398/content");
