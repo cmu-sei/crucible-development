@@ -243,6 +243,30 @@ configure_cmi5launch() {
   log "mod_cmi5launch configured (tenant token still requires manual setup)"
 }
 
+configure_cmi5_activity() {
+  if [ "${CRUCIBLE_CATAPULT_ENABLED:-0}" != "1" ]; then
+    log "CATAPULT disabled - skipping cmi5 demo activity setup"
+    return
+  fi
+
+  # Idempotently ensure the Test Course has a working cmi5 activity. The CATAPULT
+  # player wipes imported content (var/content) on image rebuild, which 404s any
+  # existing Moodle activity; this re-imports the bundled package and rewires the
+  # activity when needed. Safe to run every time - it no-ops when already healthy.
+  # The package is bind-mounted from the cloned CATAPULT repo (see AppHost.cs).
+  PACKAGE="/usr/local/share/cmi5/sample_cmi5.zip"
+  if [ ! -f "$PACKAGE" ]; then
+    log "cmi5 sample package not mounted at $PACKAGE - skipping demo activity"
+    return
+  fi
+
+  echo "Ensuring cmi5 demo activity"
+  php /usr/local/bin/create_cmi5_activity.php \
+    --course="Test Course" \
+    --package="$PACKAGE" \
+    --name="Geology Intro (cmi5)"
+}
+
 configure_crucible() {
   echo "Configuring Crucible"
   log "Configuring Crucible block based on enabled services..."
@@ -438,6 +462,7 @@ execute_section "Crucible Configuration" configure_crucible
 execute_section "cmi5launch Configuration" configure_cmi5launch
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
+execute_section "cmi5 Demo Activity" configure_cmi5_activity
 
 # Only configure AWS Bedrock if credentials are available
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then

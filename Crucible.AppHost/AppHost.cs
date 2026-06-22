@@ -912,6 +912,17 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/provider", "/var/www/html/ai/provider", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false);
 
+        // When CATAPULT is enabled, mount the Apache-2.0 cmi5 sample package from the
+        // cloned CATAPULT repo (single source of truth - avoids vendoring a duplicate
+        // binary). post_configure.sh uses it to seed/repair the demo cmi5 activity.
+        if (IsEnabled(ResolveMode(options.Catapult, "Catapult", options)))
+        {
+            moodle.WithBindMount(
+                "/mnt/data/crucible/catapult/catapult/course_examples/packages/single_au_basic_framed.zip",
+                "/usr/local/share/cmi5/sample_cmi5.zip",
+                isReadOnly: true);
+        }
+
         // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
         var moodlePlugins = ReadMoodlePlugins();
         foreach (var plugin in moodlePlugins)
