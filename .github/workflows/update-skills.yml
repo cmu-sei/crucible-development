@@ -20,7 +20,16 @@ jobs:
           node-version: "lts/*"
 
       - name: Update skills
-        run: npx --yes skills update --project --yes
+        # The `skills` CLI picks install targets by detecting which agents are
+        # present in $HOME. On a clean CI runner none are found, so it falls
+        # back to "install to all agents" — which writes a stray `agent/skills/`
+        # tree instead of using `.agents/skills`.
+        # Creating ~/.claude makes Claude Code a detected agent, so the
+        # update targets the universal `.agents/skills` store (and its
+        # `.claude/skills` symlinks) as intended.
+        run: |
+          mkdir -p "$HOME/.claude"
+          npx --yes skills update --project --yes
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v8
