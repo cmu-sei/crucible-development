@@ -452,6 +452,17 @@ log "Starting script..."
 # Create STATUS_FILE if it doesn't exist
 touch "$STATUS_FILE"
 
+# Bind-mounted plugins (block_crucible, mod_crucible, mod_cmi5launch, tool_lptmanager,
+# etc.) put Moodle into an "upgrade pending" state on a fresh container. While pending,
+# admin/cli/cfg.php refuses to run and exits non-zero, so any plugin configuration that
+# follows is silently skipped. Apply pending upgrades up front so the rest of this
+# script can configure those plugins. Idempotent: a no-op ("No upgrade needed") once
+# everything is installed. Run unconditionally (not via execute_section) so it always
+# clears the pending state regardless of prior status.
+log "Applying any pending Moodle/plugin upgrades..."
+php /var/www/html/admin/cli/upgrade.php --non-interactive --allow-unstable || \
+  log "upgrade.php returned non-zero (continuing)"
+
 # Execute sections based on status
 execute_section "Site Configuration" configure_site
 configure_oauth2
