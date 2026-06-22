@@ -20,6 +20,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
 - [Shared UI Settings](#shared-ui-settings)
 - [Database Seeding and Backup](#database-seeding-and-backup)
 - [Moodle Configuration](#moodle-configuration)
+- [Local Configuration Files](#local-configuration-files)
 - [Library Development](#library-development)
   - [.NET Libraries (crucible-common-dotnet)](#net-libraries-crucible-common-dotnet)
   - [Angular Libraries (Crucible.Common.Ui)](#angular-libraries-cruciblecommonui)
@@ -871,6 +872,13 @@ Administration, Development, menu. The install process for this container instal
 `tool_userdebug` which allows site admins to easily toggle debug display via an icon added
 to the header just to the left of the user avatar in the upper right corner of the screen.
 This is the preferred method to enable display of debug messages inside of the browser.
+
+## Local Configuration Files
+
+Some configuration files are git-ignored for local customization:
+
+- **`scripts/repos.local.json`** - Private/override repositories (see [Adding Private/Internal Repositories](#adding-privateinternal-repositories))
+- **`.claude/settings.local.json`** - Per-developer Claude Code settings (`.claude/settings.json` is the shared team config)
 
 ## Library Development
 
