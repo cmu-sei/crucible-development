@@ -222,6 +222,12 @@ configure_cmi5launch() {
   php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchlrslogin --set=defaultkey
   php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchlrspass --set=defaultsecret
 
+  # Actor account.homePage must match logstore_xapi's account_homepage so cmi5
+  # statements correlate to the same learner as the rest of Moodle's xAPI output.
+  # (The actor account.name is set in code to $USER->idnumber to match logstore's
+  # send_user_idnumber scheme - see classes/local/cmi5_connectors.php.)
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchcustomacchp --set=https://keycloak.dev.internal:8443/realms/crucible/
+
   # NOTE: cmi5launchtenanttoken must be generated against the player's tenant
   # (Site administration > Plugins > Activity modules > cmi5launch token setup).
   # It cannot be set statically here because the player issues it at runtime.
