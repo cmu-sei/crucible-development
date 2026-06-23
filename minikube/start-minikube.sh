@@ -137,14 +137,17 @@ stage_custom_ca_certs
 # Pull-through cache containers for minikube image pulls.
 # Image blobs are stored under /mnt/data/registry/ on the persistent
 # crucible-dev-data volume and survive `minikube delete` (but not --purge).
-# Mirror ports: docker.io=5001, ghcr.io=5002, quay.io=5003, registry.k8s.io=5004
+# Mirror ports: docker.io=5051, ghcr.io=5052, quay.io=5053, registry.k8s.io=5054
+# (5001-5004 were avoided because gameboard-api binds 5002 in the default
+# launch profile; a registry mirror on 5002 collides and fails minikube start,
+# which in turn blocks caster-api via its WaitForCompletion(minikube) dependency.)
 # -----------------------------------------------------------------------------
 
 declare -A REGISTRY_MIRRORS=(
-  ["docker.io"]="5001:https://registry-1.docker.io"
-  ["ghcr.io"]="5002:https://ghcr.io"
-  ["quay.io"]="5003:https://quay.io"
-  ["registry.k8s.io"]="5004:https://registry.k8s.io"
+  ["docker.io"]="5051:https://registry-1.docker.io"
+  ["ghcr.io"]="5052:https://ghcr.io"
+  ["quay.io"]="5053:https://quay.io"
+  ["registry.k8s.io"]="5054:https://registry.k8s.io"
 )
 
 start_registry_mirrors() {
