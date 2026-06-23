@@ -1,0 +1,26 @@
+# Copyright 2026 Carnegie Mellon University. All Rights Reserved.
+# Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
+
+# Mirrors the upstream ADL CATAPULT player Dockerfile, but uses `npm install`
+# instead of `npm ci`. Upstream ships a package-lock.json that is out of sync
+# with package.json (stale tar/chownr/minipass entries), which makes the strict
+# `npm ci` fail. `npm install` reconciles the lock file at build time.
+#
+# Build context is the cloned player directory
+# (/mnt/data/crucible/catapult/catapult/player) so the COPY paths below resolve.
+FROM node:18
+RUN apt-get update && apt-get install -y dumb-init
+ENV NODE_ENV=production
+WORKDIR /usr/src/app
+COPY --chown=node:node entrypoint.sh /usr/src/app
+COPY --chown=node:node service /usr/src/app
+COPY --chown=node:node migrations /usr/src/app/migrations
+
+RUN mkdir -p /usr/src/app/var/content && chown node:node /usr/src/app/var/content
+
+RUN npm install --omit=dev
+RUN npm install -g nodemon
+USER node
+ENTRYPOINT []
+CMD ["dumb-init", "./entrypoint.sh"]
+EXPOSE 3398/tcp

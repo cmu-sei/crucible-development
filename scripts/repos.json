@@ -188,12 +188,25 @@
         {
           "name": "local_tagmanager",
           "url": "https://github.com/cmu-sei/moodle-local_tagmanager"
+        },
+        {
+          "name": "mod_cmi5launch",
+          "url": "https://github.com/adlnet/moodle-mod_cmi5launch"
         }
       ]
     },
     {
       "name": "misp",
       "repos": []
+    },
+    {
+      "name": "catapult",
+      "repos": [
+        {
+          "name": "catapult",
+          "url": "https://github.com/adlnet/CATAPULT"
+        }
+      ]
     },
     {
       "name": "terraform-providers",
