@@ -1,0 +1,39 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    # Only propose updates at the precision each action is pinned to. The moving
+    # tag already captures lower-level releases (e.g. v1.0 includes v1.0.1),
+    # so bumping below the pinned level just creates noise.
+    ignore:
+      # Pinned to a major tag -> only propose new major versions.
+      - dependency-name: "actions/checkout"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      - dependency-name: "actions/setup-node"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      - dependency-name: "docker/login-action"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      - dependency-name: "peter-evans/create-pull-request"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+      # Pinned to a minor tag -> only propose minor (or major) versions.
+      - dependency-name: "devcontainers/ci"
+        update-types:
+          - "version-update:semver-patch"
+      # The "header-v" tag prefix prevents Dependabot from mapping bumps onto
+      # semver, so update-types filters don't match (see PRs #96, #99). Ignore
+      # the dependency entirely; track major bumps of this action manually.
+      - dependency-name: "cmu-sei/Crucible-Github-Actions"

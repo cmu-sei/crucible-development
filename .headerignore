@@ -1,0 +1,4 @@
+# Files managed by external tooling (npx skills, Claude Code).
+# These carry their own upstream licenses; do not add SEI headers.
+.agents/
+.claude/

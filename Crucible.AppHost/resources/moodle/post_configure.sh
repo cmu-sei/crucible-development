@@ -199,10 +199,72 @@ configure_xapi() {
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=account_homepage --set=https://keycloak.dev.internal:8443/realms/crucible/
 }
 
+configure_lptmanager() {
+  echo "Configuring lptmanager LRS integration"
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_endpoint --set=http://host.docker.internal:9274/xapi
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_api_key --set=defaultkey
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_api_secret --set=defaultsecret
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=enable_lrs_sync --set=1
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=competency_iri_prefix --set=https://niccs.cisa.gov/workforce-development/nice-framework/ksat/
+}
+
 configure_site() {
   echo "Configuring Site"
   php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --set='';
   php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='';
+}
+
+configure_cmi5launch() {
+  if [ "${CRUCIBLE_CATAPULT_ENABLED:-0}" != "1" ]; then
+    log "CATAPULT disabled - skipping mod_cmi5launch configuration"
+    return
+  fi
+
+  echo "Configuring cmi5launch"
+  # CATAPULT player (reached from the Moodle container via host.docker.internal).
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchplayerurl --set=http://host.docker.internal:3398
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchbasicname --set=catapult
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchbasepass --set=catapult-dev-secret
+
+  # LRS — same LRsql instance the rest of Crucible uses (xAPI endpoint requires trailing slash).
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchlrsendpoint --set=http://host.docker.internal:9274/xapi/
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchlrslogin --set=defaultkey
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchlrspass --set=defaultsecret
+
+  # Actor account.homePage must match logstore_xapi's account_homepage so cmi5
+  # statements correlate to the same learner as the rest of Moodle's xAPI output.
+  # (The actor account.name is set in code to $USER->idnumber to match logstore's
+  # send_user_idnumber scheme - see classes/local/cmi5_connectors.php.)
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchcustomacchp --set=https://keycloak.dev.internal:8443/realms/crucible/
+
+  # NOTE: cmi5launchtenanttoken must be generated against the player's tenant
+  # (Site administration > Plugins > Activity modules > cmi5launch token setup).
+  # It cannot be set statically here because the player issues it at runtime.
+  log "mod_cmi5launch configured (tenant token still requires manual setup)"
+}
+
+configure_cmi5_activity() {
+  if [ "${CRUCIBLE_CATAPULT_ENABLED:-0}" != "1" ]; then
+    log "CATAPULT disabled - skipping cmi5 demo activity setup"
+    return
+  fi
+
+  # Idempotently ensure the Test Course has a working cmi5 activity. The CATAPULT
+  # player wipes imported content (var/content) on image rebuild, which 404s any
+  # existing Moodle activity; this re-imports the bundled package and rewires the
+  # activity when needed. Safe to run every time - it no-ops when already healthy.
+  # The package is bind-mounted from the cloned CATAPULT repo (see AppHost.cs).
+  PACKAGE="/usr/local/share/cmi5/sample_cmi5.zip"
+  if [ ! -f "$PACKAGE" ]; then
+    log "cmi5 sample package not mounted at $PACKAGE - skipping demo activity"
+    return
+  fi
+
+  echo "Ensuring cmi5 demo activity"
+  php /usr/local/bin/create_cmi5_activity.php \
+    --course="Test Course" \
+    --package="$PACKAGE" \
+    --name="Geology Intro (cmi5)"
 }
 
 configure_crucible() {
@@ -418,14 +480,28 @@ log "Starting script..."
 # Create STATUS_FILE if it doesn't exist
 touch "$STATUS_FILE"
 
+# Bind-mounted plugins (block_crucible, mod_crucible, mod_cmi5launch, tool_lptmanager,
+# etc.) put Moodle into an "upgrade pending" state on a fresh container. While pending,
+# admin/cli/cfg.php refuses to run and exits non-zero, so any plugin configuration that
+# follows is silently skipped. Apply pending upgrades up front so the rest of this
+# script can configure those plugins. Idempotent: a no-op ("No upgrade needed") once
+# everything is installed. Run unconditionally (not via execute_section) so it always
+# clears the pending state regardless of prior status.
+log "Applying any pending Moodle/plugin upgrades..."
+php /var/www/html/admin/cli/upgrade.php --non-interactive --allow-unstable || \
+  log "upgrade.php returned non-zero (continuing)"
+
 # Execute sections based on status
 execute_section "Site Configuration" configure_site
 configure_oauth2
 execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
+execute_section "lptmanager Configuration" configure_lptmanager
 execute_section "Crucible Configuration" configure_crucible
+execute_section "cmi5launch Configuration" configure_cmi5launch
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
+execute_section "cmi5 Demo Activity" configure_cmi5_activity
 
 # Only configure AWS Bedrock if credentials are available
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then

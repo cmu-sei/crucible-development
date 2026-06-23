@@ -21,9 +21,11 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
 - [Shared UI Settings](#shared-ui-settings)
 - [Database Seeding and Backup](#database-seeding-and-backup)
 - [Moodle Configuration](#moodle-configuration)
+- [Local Configuration Files](#local-configuration-files)
 - [Library Development](#library-development)
   - [.NET Libraries (crucible-common-dotnet)](#net-libraries-crucible-common-dotnet)
   - [Angular Libraries (Crucible.Common.Ui)](#angular-libraries-cruciblecommonui)
+- [Devcontainer CI](#devcontainer-ci)
 
 ## Getting Started
 
@@ -560,10 +562,11 @@ automatically as will one default Moodle course with no activities within it.
 
 ### Moodle Tasks
 
-Two Moodle task configurations are available:
+The following Moodle task configurations are available:
 
 - **`.env/moodle.env`** - Moodle without Xdebug (faster, for general development/testing)
 - **`.env/moodle-xdebug.env`** - Moodle with Xdebug enabled (for PHP debugging)
+- **`.env/catapult.env`** - Moodle + the ADL CATAPULT cmi5 player + LRS, for cmi5/xAPI content (launches Moodle, Catapult, and Lrsql together)
 
 Use the appropriate task based on whether you need to debug PHP code. Xdebug has significant performance overhead, so only enable it when actively debugging.
 
@@ -912,6 +915,13 @@ Administration, Development, menu. The install process for this container instal
 to the header just to the left of the user avatar in the upper right corner of the screen.
 This is the preferred method to enable display of debug messages inside of the browser.
 
+## Local Configuration Files
+
+Some configuration files are git-ignored for local customization:
+
+- **`scripts/repos.local.json`** - Private/override repositories (see [Adding Private/Internal Repositories](#adding-privateinternal-repositories))
+- **`.claude/settings.local.json`** - Per-developer Claude Code settings (`.claude/settings.json` is the shared team config)
+
 ## Library Development
 
 ### .NET Libraries (crucible-common-dotnet)
@@ -978,3 +988,7 @@ The AppHost uses a health check to ensure UIs don't start until the library is f
 3. Edit files in `/mnt/data/crucible/libraries/Crucible.Common.Ui`
 4. The watch process rebuilds the library automatically
 5. UIs using `ng serve` pick up the changes via the npm link
+
+## Devcontainer CI
+
+A GitHub Actions workflow (`.github/workflows/devcontainer-ci.yml`) builds the dev container on every pull request and on pushes to `main` (amd64 and arm64) using the [`devcontainers/ci`](https://github.com/devcontainers/ci) action, then runs `.devcontainer/ci-verify-tools.sh` inside it to confirm the core developer tools are installed. Repo cloning is skipped in CI via `CRUCIBLE_CI_SKIP_CLONE=1`. Builds on `main` are cached to GHCR so PR runs are faster.

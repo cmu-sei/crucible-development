@@ -384,10 +384,19 @@ if [[ ! " ${CHARTS[*]} " =~ " crucible-infra " ]]; then
   ensure_nodehosts_entry
 fi
 
-# Enable K8s port forwarding to allow connection to web apps from host
+# Enable K8s port forwarding to allow connection to web apps from host.
+# kubefwd is more durable than `kubectl port-forward` under sustained load
+# (auto-reconnects on broken pipe / pod churn). Requires sudo for /etc/hosts
+# edits even though we only use the -r reservation to bind 127.0.0.1.
 log_header "Enabling port-forwarding"
+sudo -n pkill -f "kubefwd.*crucible-infra-ingress-nginx-controller" 2>/dev/null || true
 pkill -f "port-forward.*443:443" 2>/dev/null || true
-nohup kubectl port-forward -n default "service/crucible-infra-ingress-nginx-controller" "443:443" > /dev/null 2>&1 &
+sudo -n setsid bash -c "kubefwd svc \
+  -n default \
+  -f metadata.name=crucible-infra-ingress-nginx-controller \
+  -r crucible-infra-ingress-nginx-controller:127.0.0.1 \
+  -c $HOME/.kube/config \
+  </dev/null >/tmp/kubefwd.log 2>&1 &"
 
 # Print URLs and credentials
 print_web_app_urls

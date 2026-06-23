@@ -6,6 +6,11 @@
 
 set -euo pipefail
 
+if [ -n "${CRUCIBLE_CI_SKIP_CLONE:-}" ]; then
+  echo "CRUCIBLE_CI_SKIP_CLONE set; skipping xdebug filter generation."
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MANIFEST="$SCRIPT_DIR/repos.json"
 LOCAL_MANIFEST="$SCRIPT_DIR/repos.local.json"

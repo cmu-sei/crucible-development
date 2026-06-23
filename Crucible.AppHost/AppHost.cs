@@ -32,6 +32,7 @@ builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
 builder.AddMisp(postgres, keycloak, launchOptions);
 builder.AddSuperset(postgres, keycloak, launchOptions);
+builder.AddCatapult(postgres, keycloak, launchOptions);
 builder.AddDocs(launchOptions);
 
 builder.Build().Run();
@@ -42,7 +43,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Player: {launchOptions.Player}, Caster: {launchOptions.Caster}, Alloy: {launchOptions.Alloy}");
     Console.WriteLine($"  Gallery: {launchOptions.Gallery}, Cite: {launchOptions.Cite}");
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
-    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}");
+    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
     Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, Gameboard: {launchOptions.Gameboard}");
     Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
@@ -914,6 +915,7 @@ public static class BuilderExtensions
             .WithEnvironment("CRUCIBLE_GALLERY_ENABLED", IsEnabled(galleryMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_BLUEPRINT_ENABLED", IsEnabled(blueprintMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_GAMEBOARD_ENABLED", IsEnabled(gameboardMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_CATAPULT_ENABLED", IsEnabled(ResolveMode(options.Catapult, "Catapult", options)) ? "1" : "0")
             .WithEnvironment("PLUGINS", @"tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"/usr/local/bin/post_configure.sh")
@@ -923,6 +925,17 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/provider", "/var/www/html/ai/provider", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false);
+
+        // When CATAPULT is enabled, mount the Apache-2.0 cmi5 sample package from the
+        // cloned CATAPULT repo (single source of truth - avoids vendoring a duplicate
+        // binary). post_configure.sh uses it to seed/repair the demo cmi5 activity.
+        if (IsEnabled(ResolveMode(options.Catapult, "Catapult", options)))
+        {
+            moodle.WithBindMount(
+                "/mnt/data/crucible/catapult/catapult/course_examples/packages/single_au_basic_framed.zip",
+                "/usr/local/share/cmi5/sample_cmi5.zip",
+                isReadOnly: true);
+        }
 
         // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
         var moodlePlugins = ReadMoodlePlugins();
@@ -1157,6 +1170,67 @@ public static class BuilderExtensions
         if (!IsEnabled(supersetMode))
         {
             superset.WithExplicitStart();
+        }
+    }
+
+    public static void AddCatapult(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        var catapultMode = ResolveMode(options.Catapult, "Catapult", options);
+
+        if (!options.AddAllApplications && !IsEnabled(catapultMode))
+            return;
+
+        // CATAPULT's cmi5 player uses knex with the "mysql" client hard-coded and ships
+        // only the mysql driver (no pg), so it cannot use the centralized crucible-postgres
+        // instance. It gets its own MySQL container, like MISP.
+        // CATAPULT's legacy "mysql" node driver can't authenticate against MySQL 8/9's
+        // default caching_sha2_password. Upstream pins 8.0 with mysql_native_password
+        // (which is removed in MySQL 9.x), so pin the image and force the legacy plugin.
+        var catapultMysql = builder.AddMySql("catapult-mysql")
+            .WithImageTag("8.0.31")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("catapult-mysql")
+            .WithArgs("--default-authentication-plugin=mysql_native_password")
+            .WithDataVolume();
+
+        var catapultDb = catapultMysql.AddDatabase("catapultPlayerDb", "catapult_player");
+
+        // ADL publishes no prebuilt image; the repo's own Dockerfile builds the Node app
+        // from source. Build from the cloned repo's player directory.
+        // Context is the cloned player source dir (so the upstream COPY steps resolve),
+        // but the Dockerfile is our patched copy in resources/ (survives re-clone and is
+        // version-controlled). Upstream's npm ci fails on an out-of-sync lock file.
+        var catapultDockerfile = Path.Combine(builder.AppHostDirectory, "resources", "catapult", "Dockerfile.CatapultPlayer");
+        var catapult = builder.AddContainer("catapult-player", "catapult-player-image")
+            .WithDockerfile("/mnt/data/crucible/catapult/catapult/player", catapultDockerfile)
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("catapult-player")
+            .WaitFor(catapultMysql)
+            .WithHttpEndpoint(port: 3398, targetPort: 3398)
+            .WithEnvironment("DB_HOST", catapultMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
+            .WithEnvironment("DB_NAME", catapultDb.Resource.DatabaseName)
+            .WithEnvironment("DB_USERNAME", "root")
+            .WithEnvironment("DB_PASSWORD", catapultMysql.Resource.PasswordParameter)
+            // xAPI statements flow to the existing LRsql container (reachable by container name).
+            .WithEnvironment("LRS_ENDPOINT", "http://lrsql:8080/xapi")
+            .WithEnvironment("LRS_USERNAME", "defaultkey")
+            .WithEnvironment("LRS_PASSWORD", "defaultsecret")
+            .WithEnvironment("TOKEN_SECRET", "crucible-dev-catapult-token-secret")
+            .WithEnvironment("API_KEY", "catapult")
+            .WithEnvironment("API_SECRET", "catapult-dev-secret")
+            // First tenant is created on startup; mod_cmi5launch authenticates against it.
+            .WithEnvironment("FIRST_TENANT_NAME", "crucible")
+            // PLAYER_API_ROOT is only for proxied (nginx) deployments; it is prepended to
+            // routes that already live under /api/v1. Leave empty for direct access so
+            // paths resolve as /api/v1/... rather than /api/v1/api/v1/...
+            .WithEnvironment("PLAYER_API_ROOT", "")
+            .WithEnvironment("PLAYER_STANDALONE_LAUNCH_URL_BASE", "http://localhost:3398")
+            .WithEnvironment("PLAYER_REQUIRE_STRICT_HEADERS", "false")
+            .WithEnvironment("CONTENT_URL", "http://localhost:3398/content");
+
+        if (!IsEnabled(catapultMode))
+        {
+            catapult.WithExplicitStart();
         }
     }
 

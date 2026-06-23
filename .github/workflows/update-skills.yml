@@ -1,0 +1,44 @@
+name: Update AI Agent Skills
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"  # Every Monday at 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "lts/*"
+
+      - name: Update skills
+        # The `skills` CLI picks install targets by detecting which agents are
+        # present in $HOME. On a clean CI runner none are found, so it falls
+        # back to "install to all agents" — which writes a stray `agent/skills/`
+        # tree instead of using `.agents/skills`.
+        # Creating ~/.claude makes Claude Code a detected agent, so the
+        # update targets the universal `.agents/skills` store (and its
+        # `.claude/skills` symlinks) as intended.
+        run: |
+          mkdir -p "$HOME/.claude"
+          npx --yes skills update --project --yes
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: automated/update-skills
+          commit-message: "Update AI agent skills"
+          title: "Update AI agent skills"
+          body: |
+            Automated weekly update of AI agent skills via `npx skills update`.
+
+            This PR was created automatically by the [Update AI Agent Skills](${{ github.server_url }}/${{ github.repository }}/actions/workflows/update-skills.yml) workflow.
+          delete-branch: true

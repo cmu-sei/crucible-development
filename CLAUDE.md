@@ -33,6 +33,7 @@ This is a **meta-repository** that orchestrates 30+ external repositories cloned
 | Gameboard API/UI | Competition/scoring | 4202 |
 | Moodle | LMS integration | 8081 |
 | LRsql | Learning Record Store (xAPI) | 9274 |
+| CATAPULT Player | cmi5 content player (xAPI) | 3398 |
 
 ## Development Patterns
 
@@ -95,3 +96,9 @@ IMPORTANT! Always prefer official documentation when available. The following si
 1. https://aspire.dev
 2. https://learn.microsoft.com/dotnet/aspire
 3. https://nuget.org (for specific integration package details)
+
+## Devcontainer CI
+
+The `.github/workflows/devcontainer-ci.yml` workflow builds the dev container on every PR and `main` push (amd64 and arm64), runs `postCreateCommand`, then executes `.devcontainer/ci-verify-tools.sh` to confirm each expected tool is on `PATH`. Repo cloning is skipped in CI via `CRUCIBLE_CI_SKIP_CLONE=1`, forwarded into the container through `containerEnv` in `devcontainer.json`.
+
+**IMPORTANT:** When adding a new tool to the dev container — whether via a new devcontainer Feature, a Dockerfile `RUN`, or a `postcreate.sh` install step — add a matching `check` line to `.devcontainer/ci-verify-tools.sh`. The verification script is the only thing asserting the tool is actually installed; if it isn't in the script, a broken install can ship unnoticed. Prefer the shortest version command that doesn't touch the network or a server (e.g. `kubectl version --client=true`, not `kubectl version`).
