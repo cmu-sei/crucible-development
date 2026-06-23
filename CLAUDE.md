@@ -33,6 +33,7 @@ This is a **meta-repository** that orchestrates 30+ external repositories cloned
 | Gameboard API/UI | Competition/scoring | 4202 |
 | Moodle | LMS integration | 8081 |
 | LRsql | Learning Record Store (xAPI) | 9274 |
+| CATAPULT Player | cmi5 content player (xAPI) | 3398 |
 
 ## Development Patterns
 
