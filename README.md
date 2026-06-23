@@ -521,10 +521,11 @@ automatically as will one default Moodle course with no activities within it.
 
 ### Moodle Tasks
 
-Two Moodle task configurations are available:
+The following Moodle task configurations are available:
 
 - **`.env/moodle.env`** - Moodle without Xdebug (faster, for general development/testing)
 - **`.env/moodle-xdebug.env`** - Moodle with Xdebug enabled (for PHP debugging)
+- **`.env/catapult.env`** - Moodle + the ADL CATAPULT cmi5 player + LRS, for cmi5/xAPI content (launches Moodle, Catapult, and Lrsql together)
 
 Use the appropriate task based on whether you need to debug PHP code. Xdebug has significant performance overhead, so only enable it when actively debugging.
 
