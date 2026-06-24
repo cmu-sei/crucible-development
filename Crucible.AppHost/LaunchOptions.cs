@@ -21,6 +21,7 @@ public class LaunchOptions
     public bool Docs { get; set; }
     public bool Misp { get; set; }
     public bool Superset { get; set; }
+    public bool Catapult { get; set; }
 
     // Supporting apps (appsettings.Development.json): arrays grouped by mode
     public string[] Prod { get; set; } = Array.Empty<string>();

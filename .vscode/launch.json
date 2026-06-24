@@ -185,6 +185,16 @@
         "group": "a"
       }
     },
+    {
+      "name": "Catapult ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/catapult.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
 
     // ========== Aspire Configurations ==========
     {
@@ -433,6 +443,20 @@
       "debuggers": {
         "apphost": {
           "envFile": "${workspaceFolder}/.env/superset.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Catapult (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/catapult.env"
         }
       },
       "presentation": {
