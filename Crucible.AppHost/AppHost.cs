@@ -357,47 +357,40 @@ public static class BuilderExtensions
 
         // Player VM API supports Proxmox and vSphere simultaneously: it routes
         // per-VM based on each VM's provider info. Configure whichever backends
-        // have credentials present rather than treating them as mutually
-        // exclusive, so a single HypervisorType toggle - or both cred sets in
-        // appsettings - works.
-        if (options.HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true &&
-            !string.IsNullOrEmpty(options.HypervisorUrl) &&
-            !string.IsNullOrEmpty(options.HypervisorToken))
+        // are resolved (nested Hypervisors block, or the legacy flat fields),
+        // so a single-backend toggle OR both backends at once both work.
+        if (options.ResolveProxmox() is { } proxmox)
         {
             // Extract host from URL (remove https:// and port)
-            var host = options.HypervisorUrl.Replace("https://", "").Replace("http://", "").Split(':')[0];
+            var host = proxmox.Url.Replace("https://", "").Replace("http://", "").Split(':')[0];
 
             vmApi
                 .WithEnvironment("Proxmox__Enabled", "true")
                 .WithEnvironment("Proxmox__Host", host)
                 .WithEnvironment("Proxmox__Port", "443")
-                .WithEnvironment("Proxmox__Token", options.HypervisorToken)
+                .WithEnvironment("Proxmox__Token", proxmox.Token)
                 .WithEnvironment("Proxmox__StateRefreshIntervalSeconds", "60");
         }
 
         // Configure vSphere (on-prem or VMC) for Player VM API. Uses the
         // Vsphere:Hosts[] array shape that VsphereOptions binds; a host entry
         // with Enabled=true activates the vSphere connection/state services.
-        if ((options.HypervisorType?.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) == true ||
-             options.HypervisorType?.Equals("vSphere", StringComparison.OrdinalIgnoreCase) == true) &&
-            !string.IsNullOrEmpty(options.HypervisorUrl) &&
-            !string.IsNullOrEmpty(options.HypervisorUser) &&
-            !string.IsNullOrEmpty(options.HypervisorPassword))
+        if (options.ResolveVsphere() is { } vsphere)
         {
             // Extract bare host from the vCenter SDK URL (strip scheme, /sdk, port)
-            var vsphereHost = options.HypervisorUrl
+            var vsphereHost = vsphere.Url
                 .Replace("https://", "").Replace("http://", "")
                 .Replace("/sdk", "").Split('/')[0].Split(':')[0];
 
             vmApi
                 .WithEnvironment("Vsphere__Hosts__0__Enabled", "true")
                 .WithEnvironment("Vsphere__Hosts__0__Address", vsphereHost)
-                .WithEnvironment("Vsphere__Hosts__0__Username", options.HypervisorUser)
-                .WithEnvironment("Vsphere__Hosts__0__Password", options.HypervisorPassword);
+                .WithEnvironment("Vsphere__Hosts__0__Username", vsphere.User)
+                .WithEnvironment("Vsphere__Hosts__0__Password", vsphere.Password);
 
-            if (!string.IsNullOrEmpty(options.HypervisorVmStore))
+            if (!string.IsNullOrEmpty(vsphere.VmStore))
             {
-                vmApi.WithEnvironment("Vsphere__Hosts__0__DsName", options.HypervisorVmStore);
+                vmApi.WithEnvironment("Vsphere__Hosts__0__DsName", vsphere.VmStore);
             }
         }
 
@@ -470,63 +463,56 @@ public static class BuilderExtensions
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
             .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
 
-        // Configure hypervisor for Terraform
-        if (!string.IsNullOrEmpty(options.HypervisorType) && !string.IsNullOrEmpty(options.HypervisorUrl))
+        // Configure hypervisor providers for Terraform. Caster picks a provider
+        // per-project, so emit env for every resolved backend rather than one.
+        if (options.ResolveProxmox() is { } casterProxmox)
         {
-            if (options.HypervisorType.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrEmpty(options.HypervisorToken))
+            // Proxmox Terraform Provider
+            casterApi
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_ENDPOINT", casterProxmox.Url)
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN", casterProxmox.Token)
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_INSECURE", "true");
+        }
+
+        if (options.ResolveVsphere() is { } casterVsphere)
+        {
+            // vSphere Terraform Provider (works for both on-prem and VMC)
+            casterApi
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_SERVER",
+                    casterVsphere.Url.Replace("https://", "").Replace("/sdk", "").Split(':')[0])
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_USER", casterVsphere.User)
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_PASSWORD", casterVsphere.Password)
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_ALLOW_UNVERIFIED_SSL", "true");
+
+            // Add datacenter/cluster info if pool path is provided
+            if (!string.IsNullOrEmpty(casterVsphere.PoolPath))
             {
-                // Proxmox Terraform Provider
-                casterApi
-                    .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_ENDPOINT", options.HypervisorUrl)
-                    .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN", options.HypervisorToken)
-                    .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_INSECURE", "true");
-            }
-            else if (options.HypervisorType.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) ||
-                     options.HypervisorType.Equals("vSphere", StringComparison.OrdinalIgnoreCase))
-            {
-                // vSphere Terraform Provider (works for both on-prem and VMC)
-                if (!string.IsNullOrEmpty(options.HypervisorUser) &&
-                    !string.IsNullOrEmpty(options.HypervisorPassword))
+                // Parse pool path: "Datacenter/Cluster" or "SDDC-Datacenter/Cluster-1/Compute-ResourcePool"
+                var pathParts = casterVsphere.PoolPath.Split('/');
+                if (pathParts.Length >= 1)
                 {
-                    casterApi
-                        .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_SERVER",
-                            options.HypervisorUrl.Replace("https://", "").Replace("/sdk", "").Split(':')[0])
-                        .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_USER", options.HypervisorUser)
-                        .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_PASSWORD", options.HypervisorPassword)
-                        .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_ALLOW_UNVERIFIED_SSL", "true");
-
-                    // Add datacenter/cluster info if pool path is provided
-                    if (!string.IsNullOrEmpty(options.HypervisorPoolPath))
-                    {
-                        // Parse pool path: "Datacenter/Cluster" or "SDDC-Datacenter/Cluster-1/Compute-ResourcePool"
-                        var pathParts = options.HypervisorPoolPath.Split('/');
-                        if (pathParts.Length >= 1)
-                        {
-                            casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_DATACENTER", pathParts[0]);
-                        }
-                        if (pathParts.Length >= 2)
-                        {
-                            casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_CLUSTER", pathParts[1]);
-                        }
-                        if (pathParts.Length >= 3)
-                        {
-                            casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_RESOURCE_POOL", pathParts[2]);
-                        }
-                    }
-
-                    // Add datastore if provided
-                    if (!string.IsNullOrEmpty(options.HypervisorVmStore))
-                    {
-                        // Extract datastore name from "[datastore] path" format
-                        var datastoreName = options.HypervisorVmStore;
-                        if (datastoreName.StartsWith("["))
-                        {
-                            datastoreName = datastoreName.Substring(1, datastoreName.IndexOf(']') - 1);
-                        }
-                        casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_DATASTORE", datastoreName);
-                    }
+                    casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_DATACENTER", pathParts[0]);
                 }
+                if (pathParts.Length >= 2)
+                {
+                    casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_CLUSTER", pathParts[1]);
+                }
+                if (pathParts.Length >= 3)
+                {
+                    casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_RESOURCE_POOL", pathParts[2]);
+                }
+            }
+
+            // Add datastore if provided
+            if (!string.IsNullOrEmpty(casterVsphere.VmStore))
+            {
+                // Extract datastore name from "[datastore] path" format
+                var datastoreName = casterVsphere.VmStore;
+                if (datastoreName.StartsWith("["))
+                {
+                    datastoreName = datastoreName.Substring(1, datastoreName.IndexOf(']') - 1);
+                }
+                casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_DATASTORE", datastoreName);
             }
         }
 
@@ -627,54 +613,61 @@ public static class BuilderExtensions
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");
 
-        // Configure hypervisor if specified
-        if (!string.IsNullOrEmpty(options.HypervisorType) && !string.IsNullOrEmpty(options.HypervisorUrl))
+        // Configure hypervisor if specified. TopoMojo is single-backend: it uses
+        // exactly one hypervisor, chosen by ResolveTopomojo() (explicit
+        // TopomojoHypervisor, else legacy HypervisorType, else the sole configured
+        // backend). NOTE: in dev TopoMojo's appsettings.Development.conf is loaded
+        // last via its ConfToEnv() loader and OVERRIDES these AppHost env vars;
+        // these values are authoritative only in prod (no .conf present).
+        if (options.ResolveTopomojo() is { } topo)
         {
+            var (hvType, hv) = topo;
+
             topoApi
-                .WithEnvironment("Pod__Type", options.HypervisorType)
-                .WithEnvironment("Pod__HypervisorType", options.HypervisorType)
-                .WithEnvironment("Pod__Url", options.HypervisorUrl);
+                .WithEnvironment("Pod__Type", hvType)
+                .WithEnvironment("Pod__HypervisorType", hvType)
+                .WithEnvironment("Pod__Url", hv.Url);
 
             // Authentication (token for Proxmox, user/pass for vSphere)
-            if (!string.IsNullOrEmpty(options.HypervisorToken))
+            if (!string.IsNullOrEmpty(hv.Token))
             {
-                topoApi.WithEnvironment("Pod__AccessToken", options.HypervisorToken);
+                topoApi.WithEnvironment("Pod__AccessToken", hv.Token);
             }
-            if (!string.IsNullOrEmpty(options.HypervisorUser))
+            if (!string.IsNullOrEmpty(hv.User))
             {
-                topoApi.WithEnvironment("Pod__User", options.HypervisorUser);
+                topoApi.WithEnvironment("Pod__User", hv.User);
             }
-            if (!string.IsNullOrEmpty(options.HypervisorPassword))
+            if (!string.IsNullOrEmpty(hv.Password))
             {
-                topoApi.WithEnvironment("Pod__Password", options.HypervisorPassword);
+                topoApi.WithEnvironment("Pod__Password", hv.Password);
             }
 
             // Storage configuration
-            if (!string.IsNullOrEmpty(options.HypervisorVmStore))
+            if (!string.IsNullOrEmpty(hv.VmStore))
             {
-                topoApi.WithEnvironment("Pod__VmStore", options.HypervisorVmStore);
+                topoApi.WithEnvironment("Pod__VmStore", hv.VmStore);
             }
-            if (!string.IsNullOrEmpty(options.HypervisorDiskStore))
+            if (!string.IsNullOrEmpty(hv.DiskStore))
             {
-                topoApi.WithEnvironment("Pod__DiskStore", options.HypervisorDiskStore);
+                topoApi.WithEnvironment("Pod__DiskStore", hv.DiskStore);
             }
-            if (!string.IsNullOrEmpty(options.HypervisorIsoStore))
+            if (!string.IsNullOrEmpty(hv.IsoStore))
             {
-                topoApi.WithEnvironment("Pod__IsoStore", options.HypervisorIsoStore);
+                topoApi.WithEnvironment("Pod__IsoStore", hv.IsoStore);
             }
-            if (!string.IsNullOrEmpty(options.HypervisorPoolPath))
+            if (!string.IsNullOrEmpty(hv.PoolPath))
             {
-                topoApi.WithEnvironment("Pod__PoolPath", options.HypervisorPoolPath);
+                topoApi.WithEnvironment("Pod__PoolPath", hv.PoolPath);
             }
 
             // Hypervisor-specific settings
             // Note: In development, appsettings.Development.conf will override these via ConfToEnv()
             // In production, no .conf file exists so these AppHost environment variables are used
-            if (options.HypervisorType.Equals("Proxmox", StringComparison.OrdinalIgnoreCase))
+            if (hvType.Equals("Proxmox", StringComparison.OrdinalIgnoreCase))
             {
-                // Explicit toggle values win; otherwise default to Proxmox flat layout.
-                bool supportsSubfolders = options.HypervisorSupportsSubfolders ?? false;
-                bool useDatastoreApi = options.HypervisorUseDatastoreApi ?? false;
+                // Explicit values win; otherwise default to Proxmox flat layout.
+                bool supportsSubfolders = hv.SupportsSubfolders ?? false;
+                bool useDatastoreApi = hv.UseDatastoreApi ?? false;
                 string subfolders = supportsSubfolders ? "true" : "false";
 
                 topoApi
@@ -685,16 +678,16 @@ public static class BuilderExtensions
                     .WithEnvironment("FileUpload__UseDatastoreApi", useDatastoreApi ? "true" : "false")
                     .WithEnvironment("FileUpload__TempRoot", "/tmp/topoiso");
             }
-            else if (options.HypervisorType.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) ||
-                     options.HypervisorType.Equals("vSphere", StringComparison.OrdinalIgnoreCase))
+            else if (hvType.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) ||
+                     hvType.Equals("vSphere", StringComparison.OrdinalIgnoreCase))
             {
                 // Check if it's VMC based on URL
-                bool isVmc = options.HypervisorUrl.Contains("vmwarevmc.com");
+                bool isVmc = hv.Url.Contains("vmwarevmc.com");
 
-                // Explicit toggle values win; otherwise default to vSphere subfolder layout
+                // Explicit values win; otherwise default to vSphere subfolder layout
                 // (datastore API for VMC, NFS for on-prem).
-                bool supportsSubfolders = options.HypervisorSupportsSubfolders ?? true;
-                bool useDatastoreApi = options.HypervisorUseDatastoreApi ?? isVmc;
+                bool supportsSubfolders = hv.SupportsSubfolders ?? true;
+                bool useDatastoreApi = hv.UseDatastoreApi ?? isVmc;
                 string subfolders = supportsSubfolders ? "true" : "false";
 
                 topoApi
@@ -1122,9 +1115,8 @@ public static class BuilderExtensions
             .WithEnvironment("CRUCIBLE_GALLERY_ENABLED", IsEnabled(galleryMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_BLUEPRINT_ENABLED", IsEnabled(blueprintMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_GAMEBOARD_ENABLED", IsEnabled(gameboardMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_PROXMOX_ENABLED", !string.IsNullOrEmpty(options.HypervisorUrl) &&
-                options.HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_PROXMOX_URL", options.HypervisorUrl ?? "")
+            .WithEnvironment("CRUCIBLE_PROXMOX_ENABLED", options.ResolveProxmox() != null ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_PROXMOX_URL", options.ResolveProxmox()?.Url ?? "")
             .WithEnvironment("CRUCIBLE_CATAPULT_ENABLED", IsEnabled(ResolveMode(options.Catapult, "Catapult", options)) ? "1" : "0")
             .WithEnvironment("PLUGINS", @"tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")

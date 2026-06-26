@@ -32,7 +32,10 @@ public class LaunchOptions
     public bool UseAspireProxy { get; set; }
     public bool LinkCommonUI { get; set; }
 
-    // Hypervisor configuration
+    // Hypervisor configuration (legacy flat fields).
+    // A single backend at a time. Still supported for backward compatibility;
+    // the nested Hypervisors block below supersedes these when present and is
+    // the only way to configure Proxmox AND vSphere simultaneously.
     public string HypervisorType { get; set; } = ""; // Proxmox, Vsphere, or empty for none
     public string HypervisorUrl { get; set; } = "";
     public string HypervisorUser { get; set; } = "";
@@ -48,8 +51,111 @@ public class LaunchOptions
     public bool? HypervisorSupportsSubfolders { get; set; }
     public bool? HypervisorUseDatastoreApi { get; set; }
 
+    // Nested multi-backend config. Player VM API and Caster support Proxmox and
+    // vSphere/VMC simultaneously (vm.api routes per-VM, Caster per-project), so
+    // both blocks can be populated at once - useful in dev when testing a
+    // feature against both. TopoMojo is single-backend and uses the one named
+    // by TopomojoHypervisor.
+    public HypervisorsConfig? Hypervisors { get; set; }
+
+    // Which backend TopoMojo uses ("Proxmox" or "Vsphere"). Falls back to the
+    // legacy HypervisorType, then to whichever single backend is configured.
+    public string TopomojoHypervisor { get; set; } = "";
+
+    // Resolve the effective Proxmox backend (nested wins, else legacy flat fields).
+    public HypervisorConfig? ResolveProxmox()
+    {
+        if (Hypervisors?.Proxmox is { } p &&
+            !string.IsNullOrEmpty(p.Url) && !string.IsNullOrEmpty(p.Token))
+        {
+            return p;
+        }
+
+        if (HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true &&
+            !string.IsNullOrEmpty(HypervisorUrl) && !string.IsNullOrEmpty(HypervisorToken))
+        {
+            return FromFlat();
+        }
+
+        return null;
+    }
+
+    // Resolve the effective vSphere/VMC backend (nested wins, else legacy flat fields).
+    public HypervisorConfig? ResolveVsphere()
+    {
+        if (Hypervisors?.Vsphere is { } v &&
+            !string.IsNullOrEmpty(v.Url) && !string.IsNullOrEmpty(v.User) && !string.IsNullOrEmpty(v.Password))
+        {
+            return v;
+        }
+
+        if ((HypervisorType?.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) == true) &&
+            !string.IsNullOrEmpty(HypervisorUrl) && !string.IsNullOrEmpty(HypervisorUser) &&
+            !string.IsNullOrEmpty(HypervisorPassword))
+        {
+            return FromFlat();
+        }
+
+        return null;
+    }
+
+    // The (type, config) TopoMojo should use. Explicit TopomojoHypervisor wins,
+    // then legacy HypervisorType, then whichever single backend is configured.
+    public (string Type, HypervisorConfig Config)? ResolveTopomojo()
+    {
+        var proxmox = ResolveProxmox();
+        var vsphere = ResolveVsphere();
+
+        var pick = !string.IsNullOrEmpty(TopomojoHypervisor) ? TopomojoHypervisor : HypervisorType;
+
+        if (pick?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true && proxmox != null)
+            return ("Proxmox", proxmox);
+        if (pick?.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) == true && vsphere != null)
+            return ("Vsphere", vsphere);
+
+        // No explicit selection: use whichever single backend exists.
+        if (proxmox != null && vsphere == null) return ("Proxmox", proxmox);
+        if (vsphere != null && proxmox == null) return ("Vsphere", vsphere);
+
+        return null;
+    }
+
+    private HypervisorConfig FromFlat() => new()
+    {
+        Url = HypervisorUrl,
+        Token = HypervisorToken,
+        User = HypervisorUser,
+        Password = HypervisorPassword,
+        VmStore = HypervisorVmStore,
+        DiskStore = HypervisorDiskStore,
+        IsoStore = HypervisorIsoStore,
+        PoolPath = HypervisorPoolPath,
+        SupportsSubfolders = HypervisorSupportsSubfolders,
+        UseDatastoreApi = HypervisorUseDatastoreApi,
+    };
+
     // Backward compatibility
     public bool UseProxmox => HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true;
     public string ProxmoxHost => HypervisorUrl;
     public string ProxmoxApiToken => HypervisorToken;
+}
+
+public class HypervisorsConfig
+{
+    public HypervisorConfig? Proxmox { get; set; }
+    public HypervisorConfig? Vsphere { get; set; }
+}
+
+public class HypervisorConfig
+{
+    public string Url { get; set; } = "";
+    public string Token { get; set; } = "";      // Proxmox auth
+    public string User { get; set; } = "";        // vSphere auth
+    public string Password { get; set; } = "";    // vSphere auth
+    public string VmStore { get; set; } = "";
+    public string DiskStore { get; set; } = "";
+    public string IsoStore { get; set; } = "";
+    public string PoolPath { get; set; } = "";
+    public bool? SupportsSubfolders { get; set; }
+    public bool? UseDatastoreApi { get; set; }
 }

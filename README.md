@@ -999,6 +999,45 @@ The script updates `Crucible.AppHost/appsettings.Development.json`, then just re
 aspire run
 ```
 
+### Multiple Hypervisors at Once (dev)
+
+Player VM API and Caster support **Proxmox and vSphere/VMC simultaneously** — vm.api routes per-VM, Caster picks per-project. This is useful in dev when a feature must be tested against both. (TopoMojo is single-backend.)
+
+Use `configure-hypervisors.sh` to write the nested `Launch.Hypervisors` block, which can hold both backends at once:
+
+```bash
+# Configure BOTH backends
+./scripts/configure-hypervisors.sh set-proxmox            # uses ~/.crucible-proxmox, or --url/--token
+./scripts/configure-hypervisors.sh set-vmc \
+  --url https://vcenter.sddc-x.vmwarevmc.com/sdk \
+  --user cloudadmin@vmc.local --password 'pw'
+
+# Pick which backend TopoMojo uses (single-backend)
+./scripts/configure-hypervisors.sh topomojo Proxmox
+
+./scripts/configure-hypervisors.sh show          # view current config
+./scripts/configure-hypervisors.sh remove Vsphere
+```
+
+This produces:
+
+```json
+{
+  "Launch": {
+    "Hypervisors": {
+      "Proxmox": { "Url": "https://10.0.100.2:443", "Token": "root@pam!CRUCIBLE=..." },
+      "Vsphere": { "Url": "https://vcenter.../sdk", "User": "...", "Password": "...",
+                   "PoolPath": "Datacenter/Cluster/Pool", "VmStore": "[WorkloadDatastore] topomojo/" }
+    },
+    "TopomojoHypervisor": "Proxmox"
+  }
+}
+```
+
+You can also hand-edit this block directly — AppHost reads it on startup. The nested `Launch.Hypervisors` config supersedes the legacy flat `Launch.Hypervisor*` fields when present.
+
+> **TopoMojo caveat:** in dev, TopoMojo is driven by its own `appsettings.Development.conf` (loaded last via its `ConfToEnv()` loader, which **overrides** AppHost env vars). `TopomojoHypervisor` only takes effect in prod. To change TopoMojo's hypervisor in dev, edit `/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/appsettings.Development.conf` (or use `toggle-topomojo-hypervisor.sh`).
+
 ### Hypervisor Configuration Options
 
 #### Proxmox Example
