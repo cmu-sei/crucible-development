@@ -501,12 +501,53 @@ ENDSSH
     log_success "nginx reverse proxy installed"
 }
 
+# Inject the current API token into the nginx reverse-proxy vhost.
+# The vhost ships with a __PROXMOX_TOKEN__ placeholder that nginx uses to
+# authenticate the VNC websocket (noVNC cannot send the token itself). This
+# MUST run on every setup, not only when a new token is created -- otherwise
+# a reused/existing token leaves the placeholder unsubstituted and all VM
+# consoles return 401 on the websocket (while REST calls still work).
+update_nginx_token() {
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would substitute API token into nginx vhost"
+        return 0
+    fi
+
+    if [ -z "$PROXMOX_API_TOKEN" ]; then
+        log_error "No API token available to inject into nginx"
+        return 1
+    fi
+
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << NGINXEOF
+set -e
+VHOST=/etc/nginx/sites-available/proxmox-reverse-proxy
+if [ ! -f "\$VHOST" ]; then
+    echo "nginx vhost not found at \$VHOST"
+    exit 1
+fi
+# Replace either the unsubstituted placeholder OR a previously-substituted
+# token line, so this is safe to run repeatedly and after token rotation.
+sed -i -E "s|PVEAPIToken=[^\"]*|PVEAPIToken=$PROXMOX_API_TOKEN|g" "\$VHOST"
+nginx -t
+systemctl reload nginx
+echo "✓ nginx token updated"
+NGINXEOF
+
+    if [ $? -eq 0 ]; then
+        log_success "nginx updated with API token"
+    else
+        log_error "Failed to update nginx with API token"
+        return 1
+    fi
+}
+
 setup_proxmox_token() {
     log_step "Creating Proxmox API token..."
 
     # Check if token already exists in config
     if [ -n "$PROXMOX_API_TOKEN" ]; then
         log_success "Using existing API token from config"
+        update_nginx_token
         return 0
     fi
 
@@ -530,6 +571,7 @@ setup_proxmox_token() {
 
         if [ -n "$PROXMOX_API_TOKEN" ]; then
             log_success "Using token from config file"
+            update_nginx_token
             return 0
         else
             log_error "Token exists on Proxmox but secret not in config file"
@@ -560,15 +602,8 @@ TOKENEOF
     PROXMOX_API_TOKEN="root@pam!${TOKEN_NAME}=${token_value}"
     log_success "API token created"
 
-    # Update nginx with token
-    if [ "$DRY_RUN" != "true" ]; then
-        ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << NGINXEOF
-sed -i "s|__PROXMOX_TOKEN__|$PROXMOX_API_TOKEN|g" /etc/nginx/sites-available/proxmox-reverse-proxy
-nginx -t
-systemctl reload nginx
-NGINXEOF
-        log_success "nginx updated with API token"
-    fi
+    # Inject the freshly-created token into the nginx vhost
+    update_nginx_token
 }
 
 setup_proxmox_nfs() {
