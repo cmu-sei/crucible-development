@@ -355,9 +355,14 @@ public static class BuilderExtensions
             .WithEnvironment("IdentityClient__UserName", "admin")
             .WithEnvironment("IdentityClient__Password", "admin");
 
-        // Configure Proxmox if enabled (Player VM API only supports Proxmox)
+        // Player VM API supports Proxmox and vSphere simultaneously: it routes
+        // per-VM based on each VM's provider info. Configure whichever backends
+        // have credentials present rather than treating them as mutually
+        // exclusive, so a single HypervisorType toggle - or both cred sets in
+        // appsettings - works.
         if (options.HypervisorType?.Equals("Proxmox", StringComparison.OrdinalIgnoreCase) == true &&
-            !string.IsNullOrEmpty(options.HypervisorUrl))
+            !string.IsNullOrEmpty(options.HypervisorUrl) &&
+            !string.IsNullOrEmpty(options.HypervisorToken))
         {
             // Extract host from URL (remove https:// and port)
             var host = options.HypervisorUrl.Replace("https://", "").Replace("http://", "").Split(':')[0];
@@ -368,6 +373,32 @@ public static class BuilderExtensions
                 .WithEnvironment("Proxmox__Port", "443")
                 .WithEnvironment("Proxmox__Token", options.HypervisorToken)
                 .WithEnvironment("Proxmox__StateRefreshIntervalSeconds", "60");
+        }
+
+        // Configure vSphere (on-prem or VMC) for Player VM API. Uses the
+        // Vsphere:Hosts[] array shape that VsphereOptions binds; a host entry
+        // with Enabled=true activates the vSphere connection/state services.
+        if ((options.HypervisorType?.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) == true ||
+             options.HypervisorType?.Equals("vSphere", StringComparison.OrdinalIgnoreCase) == true) &&
+            !string.IsNullOrEmpty(options.HypervisorUrl) &&
+            !string.IsNullOrEmpty(options.HypervisorUser) &&
+            !string.IsNullOrEmpty(options.HypervisorPassword))
+        {
+            // Extract bare host from the vCenter SDK URL (strip scheme, /sdk, port)
+            var vsphereHost = options.HypervisorUrl
+                .Replace("https://", "").Replace("http://", "")
+                .Replace("/sdk", "").Split('/')[0].Split(':')[0];
+
+            vmApi
+                .WithEnvironment("Vsphere__Hosts__0__Enabled", "true")
+                .WithEnvironment("Vsphere__Hosts__0__Address", vsphereHost)
+                .WithEnvironment("Vsphere__Hosts__0__Username", options.HypervisorUser)
+                .WithEnvironment("Vsphere__Hosts__0__Password", options.HypervisorPassword);
+
+            if (!string.IsNullOrEmpty(options.HypervisorVmStore))
+            {
+                vmApi.WithEnvironment("Vsphere__Hosts__0__DsName", options.HypervisorVmStore);
+            }
         }
 
         // Configure xAPI if LRS is enabled
