@@ -974,19 +974,19 @@ Use the toggle script to configure any hypervisor:
 
 ```bash
 # Proxmox
-./scripts/toggle-topomojo-hypervisor.sh proxmox
+./scripts/toggle-hypervisor.sh proxmox
 
 # vSphere on-premises (interactive - prompts for credentials)
-./scripts/toggle-topomojo-hypervisor.sh vsphere
+./scripts/toggle-hypervisor.sh vsphere
 
 # VMware Cloud on AWS (interactive)
-./scripts/toggle-topomojo-hypervisor.sh vmc
+./scripts/toggle-hypervisor.sh vmc
 
 # Remove hypervisor configuration
-./scripts/toggle-topomojo-hypervisor.sh remove
+./scripts/toggle-hypervisor.sh remove
 
 # Non-interactive with credentials
-./scripts/toggle-topomojo-hypervisor.sh vsphere \
+./scripts/toggle-hypervisor.sh vsphere \
   --url https://vcenter.example.com/sdk \
   --user administrator@vsphere.local \
   --password 'password' \
@@ -1036,7 +1036,7 @@ This produces:
 
 You can also hand-edit this block directly — AppHost reads it on startup. The nested `Launch.Hypervisors` config supersedes the legacy flat `Launch.Hypervisor*` fields when present.
 
-> **TopoMojo caveat:** in dev, TopoMojo is driven by its own `appsettings.Development.conf` (loaded last via its `ConfToEnv()` loader, which **overrides** AppHost env vars). `TopomojoHypervisor` only takes effect in prod. To change TopoMojo's hypervisor in dev, edit `/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/appsettings.Development.conf` (or use `toggle-topomojo-hypervisor.sh`).
+> **TopoMojo caveat:** in dev, TopoMojo is driven by its own `appsettings.Development.conf` (loaded last via its `ConfToEnv()` loader, which **overrides** AppHost env vars). `TopomojoHypervisor` only takes effect in prod. To change TopoMojo's hypervisor in dev, edit `/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/appsettings.Development.conf` (or use `toggle-hypervisor.sh`).
 
 ### Hypervisor Configuration Options
 

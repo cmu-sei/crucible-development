@@ -10,7 +10,7 @@
 # uses. NOTE: in dev, TopoMojo is actually driven by its own
 # appsettings.Development.conf (loaded last via ConfToEnv, overriding AppHost) -
 # this script's TopoMojo selection is authoritative only in prod. Use
-# toggle-topomojo-hypervisor.sh / edit the .conf to change TopoMojo in dev.
+# toggle-hypervisor.sh / edit the .conf to change TopoMojo in dev.
 #
 # This script writes Crucible.AppHost/appsettings.Development.json. AppHost
 # reads it on startup; restart Aspire to apply.

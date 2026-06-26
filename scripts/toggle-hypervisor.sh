@@ -1,6 +1,12 @@
 #!/bin/bash
-# Toggle TopoMojo between Proxmox, vSphere on-prem, and VMware Cloud (VMC)
-# by creating/updating appsettings.Development.conf
+# Toggle the Crucible hypervisor (Proxmox, vSphere on-prem, or VMware Cloud/VMC)
+# for a SINGLE backend at a time by writing the legacy flat Launch.Hypervisor*
+# fields in Crucible.AppHost/appsettings.Development.json. AppHost applies this
+# to TopoMojo, Player VM API, and Caster.
+#
+# To run Proxmox AND vSphere/VMC simultaneously (vm.api/Caster), use
+# configure-hypervisors.sh instead, which writes the nested Launch.Hypervisors
+# block.
 
 set -e
 
