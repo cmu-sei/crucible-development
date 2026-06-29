@@ -195,6 +195,16 @@
         "group": "a"
       }
     },
+    {
+      "name": "All Apps (Stopped) ",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/all-stopped.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
 
     // ========== Aspire Configurations ==========
     {
@@ -457,6 +467,20 @@
       "debuggers": {
         "apphost": {
           "envFile": "${workspaceFolder}/.env/catapult.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "All Apps (Stopped) (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/all-stopped.env"
         }
       },
       "presentation": {
