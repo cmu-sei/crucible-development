@@ -125,11 +125,6 @@ public static class BuilderExtensions
                         {
                             var endpoint = resourceWithEndpoints.GetEndpoint("http");
                             ctx.Args.Add("--");
-                            if (commonUiSetup != null)
-                            {
-                                ctx.Args.Add("--configuration");
-                                ctx.Args.Add("localNPM");
-                            }
                             ctx.Args.Add("--port");
                             ctx.Args.Add(endpoint.Property(EndpointProperty.TargetPort));
                         }
@@ -138,13 +133,17 @@ public static class BuilderExtensions
             else
             {
                 ui = ui.WithHttpEndpoint(port: port, isProxied: false);
-                if (commonUiSetup != null)
-                {
-                    ui = ui.WithArgs("--", "--configuration", "localNPM");
-                }
             }
 
-            // Set up local common UI library: copy tsconfig.local-npm.json and use --configuration localNPM
+            // Set up local common UI library. We deliberately do NOT use `npm link`
+            // (a symlink) or the `localNPM` tsconfig `paths` override: with Angular's
+            // dev-server bundler, both make the library's bare `@angular/*` imports
+            // resolve from the library's OWN node_modules — a second, duplicate copy
+            // of @angular/core, material, cdk, etc. distinct from the consuming app's.
+            // That duplication triggers NG3004 ("Unable to import component MatIcon/Dir/...")
+            // Instead we rsync a REAL copy of the built lib into the app's node_modules so its
+            // `@angular/*` imports resolve to the app's single Angular installation, and we
+            //  serve with the app's normal (non-localNPM) configuration.
             if (commonUiSetup != null)
             {
                 var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
@@ -152,9 +151,10 @@ public static class BuilderExtensions
 
                 if (installerResource != null)
                 {
+                    var commonUiDist = "/mnt/data/crucible/libraries/Crucible.Common.Ui/dist/@crucible-common";
                     var setupLocal = builder.AddExecutable($"{name}-setup-local", "bash", appRoot, [
                         "-c",
-                        $"npm link @cmusei/crucible-common && cp {builder.AppHostDirectory}/resources/tsconfig.local-npm.json ."
+                        $"mkdir -p node_modules/@cmusei/crucible-common && rsync -a --delete {commonUiDist}/ node_modules/@cmusei/crucible-common/"
                     ])
                     .WithParentRelationship(installerResource);
 
