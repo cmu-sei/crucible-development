@@ -317,6 +317,12 @@ public static class BuilderExtensions
 
         var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
+        if (!IsEnabled(playerMode))
+        {
+            playerApi.WithExplicitStart();
+            playerUi.WithExplicitStart();
+        }
+
         builder.AddPlayerVm(postgres, keycloak, options, playerMode, lrsqlMode, commonUiSetup);
     }
 
@@ -371,6 +377,13 @@ public static class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+
+        if (!IsEnabled(playerMode))
+        {
+            vmApi.WithExplicitStart();
+            vmUi.WithExplicitStart();
+            consoleUi.WithExplicitStart();
+        }
     }
 
     public static void AddCaster(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
