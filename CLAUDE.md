@@ -90,6 +90,13 @@ End-to-end Playwright tests live at `/mnt/data/crucible/crucible-tests/`. This r
 ## Aspire workload
 IMPORTANT! The aspire workload is obsolete. You should never attempt to install or use the Aspire workload.
 
+## Troubleshooting: hung `dotnet restore`
+If `dotnet restore` (or `aspire run`) hangs for minutes at `Restoring packages for ...` with no output and no error, the cause is almost always orphaned NuGet lock files and/or wedged MSBuild build-server nodes left behind when a previous restore was force-killed (`kill -9`) instead of stopped with Ctrl-C. It is NOT Zscaler, the proxy, a specific package version, or NuGet index lag.
+
+- Fix: run `scripts/reset-nuget.sh`, then re-run the restore.
+- Prevention: stop a slow restore with **Ctrl-C** (SIGINT lets NuGet release its locks); never `kill -9` it.
+- Separate symptom: right after publishing a new package version, restore may report `Unable to find package ... (>= x.y.z)` even though it is on nuget.org — that is a stale cached registration index. Run `dotnet nuget locals http-cache --clear` (also done by `scripts/reset-nuget.sh`).
+
 ## Official documentation
 IMPORTANT! Always prefer official documentation when available. The following sites contain the official documentation for Aspire and related components
 
