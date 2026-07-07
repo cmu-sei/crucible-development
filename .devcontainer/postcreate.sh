@@ -135,12 +135,18 @@ done
 if ! grep -q 'alias opencode=' ~/.zshrc 2>/dev/null; then
 cat >> ~/.zshrc <<'ALIASES'
 alias opencode='CLAUDE_CODE_USE_BEDROCK= AWS_REGION= command opencode'
-alias openclaude='CLAUDE_CODE_USE_OPENAI=1 OPENAI_BASE_URL=${LOCAL_LLM_BASE_URL} OPENAI_API_KEY=${LOCAL_LLM_API_KEY} OPENAI_MODEL=${LOCAL_LLM_MODEL} command openclaude'
+alias openclaude='CLAUDE_CODE_USE_BEDROCK= AWS_REGION= CLAUDE_CODE_USE_OPENAI=1 OPENAI_BASE_URL=${LOCAL_LLM_BASE_URL} OPENAI_API_KEY=${LOCAL_LLM_API_KEY} OPENAI_MODEL=${LOCAL_LLM_MODEL} command openclaude'
 ALIASES
 fi
 
 # Prompt user to configure local LLM provider (skips if already configured)
 bash scripts/setup-local-llm.sh
+
+# Load the local LLM vars into this shell so the envsubst below can see them
+# (setup-local-llm.sh runs in a subshell, so its `source` doesn't propagate here).
+if [ -f .devcontainer/local-llm.env ] && [ -s .devcontainer/local-llm.env ]; then
+  set -a; . .devcontainer/local-llm.env; set +a
+fi
 
 # Generate opencode config from example template if it doesn't exist
 OPENCODE_CONFIG="/workspaces/crucible-development/.opencode/opencode.json"

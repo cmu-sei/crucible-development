@@ -39,6 +39,8 @@ check aws        aws --version
 check vale       vale --version
 check playwright playwright-cli --version
 check claude     claude --version
+check opencode   /home/vscode/.opencode/bin/opencode --version
+check openclaude openclaude --version
 check dotnet-ef  dotnet ef --version
 check ng         ng --version
 
