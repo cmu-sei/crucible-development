@@ -4,6 +4,10 @@
 
 claude update &
 
+if [ -x /home/vscode/.local/bin/codex ]; then
+  /home/vscode/.local/bin/codex update &
+fi
+
 scripts/sync-repos.sh --pull
 
 # Welcome message

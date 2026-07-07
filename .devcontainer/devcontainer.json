@@ -73,10 +73,13 @@
     "source=crucible-dev-microsoft,target=/home/vscode/.microsoft,type=volume",
     // Shell history
     "source=crucible-dev-shell-history,target=/home/vscode/.history,type=volume",
-    // AWS credentials for Claude Code (optional)
+    // AWS credentials for agent CLIs (optional)
     "source=${localWorkspaceFolder}/.devcontainer/.aws,target=/home/vscode/.aws,type=bind",
     // Claude Code data (sessions, history, todos, etc.)
     "source=crucible-dev-claude,target=/home/vscode/.claude,type=volume",
+    // Codex shared defaults and persisted state
+    "source=${localWorkspaceFolder}/.devcontainer/codex/config.toml,target=/etc/codex/config.toml,type=bind,readonly",
+    "source=crucible-dev-codex,target=/home/vscode/.codex,type=volume",
     // SSH keys and config
     "source=crucible-dev-ssh,target=/home/vscode/.ssh,type=volume",
     // GitHub CLI auth
