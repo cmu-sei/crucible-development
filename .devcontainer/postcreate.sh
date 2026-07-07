@@ -9,6 +9,7 @@ mkdir -p /mnt/data/terraform/root
 sudo chown -R $(whoami): /home/vscode/.microsoft
 sudo chown -R $(whoami): /mnt/data/
 sudo chown -R $(whoami): /home/vscode/.claude
+sudo chown -R $(whoami): /home/vscode/.local/share/opencode
 sudo chown -R $(whoami): /home/vscode/.nuget
 sudo chown -R $(whoami): /home/vscode/.cache/ms-playwright
 sudo chown -R $(whoami): /home/vscode/.npm
@@ -23,7 +24,7 @@ echo "Installing tools..."
 (dotnet tool install --global dotnet-ef --version 10) &
 DOTNET_EF_PID=$!
 
-(npm config -g set fund false && npm install -g @angular/cli@latest) &
+(npm config -g set fund false && npm install -g @angular/cli@latest @gitlawb/openclaude) &
 ANGULAR_PID=$!
 
 # Initialize Playwright test agents in the dev container
@@ -129,3 +130,34 @@ for name in "${!HELM_REPOS[@]}"; do
   url="${HELM_REPOS[$name]}"
   helm repo add "$name" "$url"
 done
+
+# Shell aliases for local LLM provider support
+if ! grep -q 'alias opencode=' ~/.zshrc 2>/dev/null; then
+cat >> ~/.zshrc <<'ALIASES'
+alias opencode='CLAUDE_CODE_USE_BEDROCK= AWS_REGION= command opencode'
+alias openclaude='CLAUDE_CODE_USE_BEDROCK= AWS_REGION= CLAUDE_CODE_USE_OPENAI=1 OPENAI_BASE_URL=${LOCAL_LLM_BASE_URL} OPENAI_API_KEY=${LOCAL_LLM_API_KEY} OPENAI_MODEL=${LOCAL_LLM_MODEL} command openclaude'
+ALIASES
+fi
+
+# Prompt user to configure local LLM provider (skips if already configured)
+bash scripts/setup-local-llm.sh
+
+# Load the local LLM vars into this shell so the envsubst below can see them
+# (setup-local-llm.sh runs in a subshell, so its `source` doesn't propagate here).
+if [ -f .devcontainer/local-llm.env ] && [ -s .devcontainer/local-llm.env ]; then
+  set -a; . .devcontainer/local-llm.env; set +a
+fi
+
+# Generate opencode config from example template if it doesn't exist
+OPENCODE_CONFIG="/workspaces/crucible-development/.opencode/opencode.json"
+OPENCODE_EXAMPLE="/workspaces/crucible-development/.opencode/opencode-example.json"
+if [ ! -f "$OPENCODE_CONFIG" ] && [ -f "$OPENCODE_EXAMPLE" ]; then
+  if [ -n "${LOCAL_LLM_BASE_URL:-}" ] && [ -n "${LOCAL_LLM_API_KEY:-}" ]; then
+    envsubst '${LOCAL_LLM_BASE_URL},${LOCAL_LLM_API_KEY},${LOCAL_LLM_MODEL}' < "$OPENCODE_EXAMPLE" > "$OPENCODE_CONFIG"
+    echo "Generated opencode.json from example template with local LLM provider."
+  else
+    cp "$OPENCODE_EXAMPLE" "$OPENCODE_CONFIG"
+    echo "Copied opencode-example.json to opencode.json (no local LLM configured)."
+  fi
+fi
+

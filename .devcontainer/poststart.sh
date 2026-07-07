@@ -3,6 +3,8 @@
 # Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
 claude update &
+$HOME/.opencode/bin/opencode upgrade &
+npm update -g @gitlawb/openclaude &
 
 scripts/sync-repos.sh --pull
 

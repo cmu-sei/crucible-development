@@ -1,0 +1,70 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "local/qwen3-coder",
+  "provider": {
+    "amazon-bedrock": {
+      "options": {
+        "region": "us-east-1",
+        "profile": "default"
+      }
+    },
+    "local": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Local",
+      "options": {
+        "baseURL": "${LOCAL_LLM_BASE_URL}",
+        "apiKey": "${LOCAL_LLM_API_KEY}"
+      },
+      "models": {
+        "qwen3-coder": {
+          "name": "Qwen3 Coder Next (FP8)",
+          "id": "Qwen/Qwen3-Coder-Next-FP8",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        }
+      }
+    }
+  },
+  "permission": {
+    "external_directory": {
+      "/mnt/data/crucible/**": "allow"
+    },
+    "read": {
+      "*": "allow",
+      "*.env": "deny",
+      "*.env.*": "deny",
+      "secrets.json": "deny"
+    },
+    "bash": {
+      "*": "ask",
+      "ls *": "allow",
+      "find *": "allow",
+      "grep *": "allow",
+      "head *": "allow",
+      "cat *": "allow",
+      "wc *": "allow",
+      "git status *": "allow",
+      "git log *": "allow",
+      "git diff *": "allow",
+      "git branch *": "allow",
+      "git show *": "allow",
+      "dotnet build *": "allow",
+      "npm run *": "allow",
+      "git commit *": "ask",
+      "git push *": "ask",
+      "git merge *": "ask",
+      "git checkout *": "ask",
+      "git reset *": "deny",
+      "rm -rf *": "deny"
+    },
+    "edit": {
+      "*": "ask"
+    },
+    "webfetch": "ask",
+    "glob": "allow",
+    "grep": "allow",
+    "task": "ask"
+  }
+}
