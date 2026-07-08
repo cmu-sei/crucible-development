@@ -12,6 +12,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [Launch Profiles](#launch-profiles)
   - [Default Credentials](#default-credentials)
 - [Claude Code](#claude-code)
+- [Codex CLI](#codex-cli)
 - [Playwright Testing](#playwright-testing)
 - [GitHub CLI](#github-cli)
 - [Memory Optimization](#memory-optimization)
@@ -109,11 +110,12 @@ To speed up container rebuilds, several caches are stored in named Docker volume
 - `crucible-dev-nuget` — NuGet package cache (`~/.nuget/packages`)
 - `crucible-dev-playwright` — Playwright browser binaries (`~/.cache/ms-playwright`)
 - `crucible-dev-npm` — npm cache (`~/.npm`)
+- `crucible-dev-codex` — Codex sessions, history, configuration, auth, and package metadata (`~/.codex`)
 
 If one of these caches becomes corrupted or you need a fully clean rebuild, remove the volume(s) before rebuilding the dev container:
 
 ```bash
-docker volume rm crucible-dev-nuget crucible-dev-playwright crucible-dev-npm
+docker volume rm crucible-dev-nuget crucible-dev-playwright crucible-dev-npm crucible-dev-codex
 ```
 
 ## Claude Code
@@ -171,6 +173,30 @@ The config file is mounted to `/home/vscode/.aws/config` inside the container an
 ### Usage
 
 Once the container is running with valid credentials, run `claude` in the terminal to start Claude Code.
+
+## Codex CLI
+
+The dev container installs the [Codex CLI](https://developers.openai.com/codex) with the official standalone installer and configures it to use AWS Bedrock by default.
+
+Repo-managed Codex defaults live in `.devcontainer/codex/config.toml` and are mounted read-only at `/etc/codex/config.toml` inside the container. Because this is a bind mount, updates to the repo config are picked up after `git pull` and container restart.
+
+Repo-level agent instructions live in `AGENTS.md`. `CLAUDE.md` is kept as a symlink to `AGENTS.md` so Codex CLI and Claude Code use the same repository guidance.
+
+Personal Codex overrides belong in `/home/vscode/.codex/config.toml`. This file is not checked in and is stored in the `crucible-dev-codex` Docker volume, along with Codex sessions, history, auth, and package metadata. Do not edit `/etc/codex/config.toml` inside the container; it is repo-managed.
+
+The default Codex config uses:
+
+```toml
+model = "openai.gpt-5.5"
+model_provider = "amazon-bedrock"
+
+[model_providers.amazon-bedrock.aws]
+region = "us-east-2"
+```
+
+AWS authentication uses the same `/home/vscode/.aws` mount described in [Claude Code](#claude-code), `AWS_BEARER_TOKEN_BEDROCK`, or the standard AWS SDK credential chain. Codex updates automatically on container start via `codex update`.
+
+Once the container is running with valid Bedrock credentials, run `codex` in the terminal to start Codex CLI.
 
 ## Playwright Testing
 
@@ -888,6 +914,7 @@ Some configuration files are git-ignored for local customization:
 
 - **`scripts/repos.local.json`** - Private/override repositories (see [Adding Private/Internal Repositories](#adding-privateinternal-repositories))
 - **`.claude/settings.local.json`** - Per-developer Claude Code settings (`.claude/settings.json` is the shared team config)
+- **`/home/vscode/.codex/config.toml`** - Per-developer Codex settings (`.devcontainer/codex/config.toml` is the shared dev container default)
 
 ## Library Development
 
