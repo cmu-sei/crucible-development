@@ -5,10 +5,11 @@
 # Show git dirty status in zsh prompt
 git config devcontainers-theme.show-dirty 1
 
-mkdir -p /mnt/data/terraform/root
+mkdir -p /mnt/data/terraform/root /home/vscode/.codex
 sudo chown -R $(whoami): /home/vscode/.microsoft
 sudo chown -R $(whoami): /mnt/data/
 sudo chown -R $(whoami): /home/vscode/.claude
+sudo chown -R $(whoami): /home/vscode/.codex
 sudo chown -R $(whoami): /home/vscode/.nuget
 sudo chown -R $(whoami): /home/vscode/.cache/ms-playwright
 sudo chown -R $(whoami): /home/vscode/.npm
@@ -25,6 +26,14 @@ DOTNET_EF_PID=$!
 
 (npm config -g set fund false && npm install -g @angular/cli@latest) &
 ANGULAR_PID=$!
+
+if [ ! -x /home/vscode/.local/bin/codex ]; then
+  (
+    set -euo pipefail
+    curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
+  ) &
+  CODEX_PID=$!
+fi
 
 # Initialize Playwright test agents in the dev container
 PLAYWRIGHT_TESTING_DIR="/mnt/data/crucible/crucible-tests"
@@ -53,7 +62,7 @@ if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
   PLAYWRIGHT_AGENTS_PID=$!
 fi
 
-wait $DOTNET_EF_PID $ANGULAR_PID ${PLAYWRIGHT_AGENTS_PID:-}
+wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_AGENTS_PID:-}
 echo "Tool installs complete."
 
 # Generate dotnet dev-cert. Needed if not using aspire extension launch profiles

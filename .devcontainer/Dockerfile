@@ -89,6 +89,9 @@ RUN echo '' >> /home/vscode/.zshrc && \
     echo 'autoload -Uz bashcompinit && bashcompinit' >> /home/vscode/.zshrc && \
     echo 'complete -C /usr/local/bin/aws_completer aws' >> /home/vscode/.zshrc
 
+# Codex system config is bind-mounted into this directory at container runtime.
+RUN mkdir -p /etc/codex
+
 # Install kubefwd
 ARG KUBEFWD_VERSION=1.25.14
 RUN set -eux; \
