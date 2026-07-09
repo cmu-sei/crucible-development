@@ -103,10 +103,27 @@ chmod 600 "${KEY_FILE}"
 sudo cp "${CERT_FILE}" /usr/local/share/ca-certificates/custom/crucible-dev.crt
 sudo update-ca-certificates
 
+# Playwright's Chromium uses the user's NSS database on Linux, so OS-level
+# trust alone is not enough for generated dev certs or corporate root CAs.
+CUSTOM_CERT_SOURCE="/usr/local/share/ca-certificates/custom"
+NSSDB="${HOME}/.pki/nssdb"
+mkdir -p "${NSSDB}"
+if [ ! -f "${NSSDB}/cert9.db" ]; then
+  certutil -N -d "sql:${NSSDB}" --empty-password
+fi
+
+if compgen -G "${CUSTOM_CERT_SOURCE}"'/*.crt' > /dev/null; then
+  for cert in "${CUSTOM_CERT_SOURCE}"/*.crt; do
+    nickname="$(basename "${cert}" .crt)"
+    certutil -D -d "sql:${NSSDB}" -n "${nickname}" >/dev/null 2>&1 || true
+    certutil -A -d "sql:${NSSDB}" -n "${nickname}" -t "C,," -i "${cert}"
+  done
+  echo "Imported custom CA certificates into Chromium NSS trust store."
+fi
+
 echo "Crucible-dev certificates generated and trusted."
 
 # Stage custom CA certs so Minikube trusts them
-CUSTOM_CERT_SOURCE="/usr/local/share/ca-certificates/custom"
 MINIKUBE_CERT_DEST="${HOME}/.minikube/files/etc/ssl/certs/custom"
 MOODLE_CERT_DEST="Crucible.AppHost/resources/moodle/certs"
 MISP_CERT_DEST="Crucible.AppHost/resources/misp/certs"
