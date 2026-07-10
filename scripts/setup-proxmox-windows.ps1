@@ -49,8 +49,62 @@ Write-Host ""
 # Convert GB to bytes
 $MemoryBytes = [int64]$Memory * 1GB
 $DiskSizeBytes = [int64]$DiskSize * 1GB
+$RepoRoot = Split-Path $PSScriptRoot -Parent
+$ProxmoxConfigPath = Join-Path $RepoRoot "Crucible.AppHost\resources\proxmox\config"
+
+function Set-ProxmoxConfigValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    $configDir = Split-Path $ProxmoxConfigPath -Parent
+    New-Item -ItemType Directory -Force -Path $configDir | Out-Null
+
+    $line = "export $Name='$Value'"
+    if (Test-Path $ProxmoxConfigPath) {
+        $lines = Get-Content -Path $ProxmoxConfigPath
+        $found = $false
+        $updated = foreach ($existingLine in $lines) {
+            if ($existingLine -match "^\s*(export\s+)?$([regex]::Escape($Name))=") {
+                $found = $true
+                $line
+            } else {
+                $existingLine
+            }
+        }
+
+        if (-not $found) {
+            $updated += $line
+        }
+
+        Set-Content -Path $ProxmoxConfigPath -Value $updated
+    } else {
+        Set-Content -Path $ProxmoxConfigPath -Value @(
+            "# Crucible Proxmox Configuration"
+            "# Local machine config; contains secrets when PROXMOX_API_TOKEN is set."
+            $line
+        )
+    }
+}
 
 #region Port Forwarding Setup
+function Remove-KeycloakPortProxyRules {
+    $rules = netsh interface portproxy show v4tov4
+
+    foreach ($line in $rules) {
+        if ($line -match '^\s*(\S+)\s+(8080|8443)\s+127\.0\.0\.1\s+\2\s*$') {
+            $listenAddress = $Matches[1]
+            $listenPort = $Matches[2]
+
+            Write-Host "  Removing existing ${listenAddress}:${listenPort} port proxy..." -ForegroundColor Gray
+            netsh interface portproxy delete v4tov4 listenaddress=$listenAddress listenport=$listenPort | Out-Null
+        }
+    }
+}
+
 function Setup-PortForwarding {
     Write-Host "Configuring Keycloak port forwarding..." -ForegroundColor Cyan
     Write-Host ""
@@ -65,19 +119,12 @@ function Setup-PortForwarding {
 
     $keycloakHost = $switchAdapter.IPAddress
     Write-Host "  Switch IP: $keycloakHost" -ForegroundColor Gray
+    Set-ProxmoxConfigValue -Name "KEYCLOAK_HOST" -Value $keycloakHost
+    Write-Host "  Saved KEYCLOAK_HOST to: $ProxmoxConfigPath" -ForegroundColor Gray
 
-    # Remove existing rules
-    $existing8443 = netsh interface portproxy show v4tov4 | Select-String "8443.*127.0.0.1"
-    $existing8080 = netsh interface portproxy show v4tov4 | Select-String "8080.*127.0.0.1"
-
-    if ($existing8443) {
-        Write-Host "  Removing existing 8443 port proxy..." -ForegroundColor Gray
-        netsh interface portproxy delete v4tov4 listenaddress=$keycloakHost listenport=8443 | Out-Null
-    }
-    if ($existing8080) {
-        Write-Host "  Removing existing 8080 port proxy..." -ForegroundColor Gray
-        netsh interface portproxy delete v4tov4 listenaddress=$keycloakHost listenport=8080 | Out-Null
-    }
+    # Remove stale Keycloak rules from old Hyper-V Default Switch IPs before
+    # adding the current switch address.
+    Remove-KeycloakPortProxyRules
 
     # Add port forwarding rules
     Write-Host "  Adding port proxy: ${keycloakHost}:8443 -> 127.0.0.1:8443" -ForegroundColor Gray
@@ -288,8 +335,10 @@ try {
         Write-Host "   - Save and run: systemctl restart networking"
         Write-Host ""
         Write-Host "4. Run the Proxmox setup script from WSL/dev container:" -ForegroundColor Cyan
-        Write-Host "   export PROXMOX_HOST='<PROXMOX_IP>'"
-        Write-Host "   ./scripts/crucible-proxmox.sh setup"
+        Write-Host "   ./scripts/setup-crucible-proxmox.sh setup"
+        Write-Host ""
+        Write-Host "   The setup script reads Proxmox host/token from:" -ForegroundColor Cyan
+        Write-Host "   Crucible.AppHost/resources/proxmox/config"
         Write-Host ""
         Write-Host "Opening VM console..." -ForegroundColor Cyan
         Start-Process vmconnect.exe -ArgumentList localhost,$VMName
@@ -297,8 +346,10 @@ try {
         Write-Host "Port forwarding configured for existing Proxmox VM" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "To complete Proxmox setup, run from WSL/dev container:" -ForegroundColor Cyan
-        Write-Host "  export PROXMOX_HOST='<PROXMOX_IP>'"
-        Write-Host "  ./scripts/crucible-proxmox.sh setup"
+        Write-Host "  ./scripts/setup-crucible-proxmox.sh setup"
+        Write-Host ""
+        Write-Host "The setup script reads Proxmox host/token from:" -ForegroundColor Cyan
+        Write-Host "  Crucible.AppHost/resources/proxmox/config"
     }
 
     Write-Host ""
