@@ -5,7 +5,7 @@
       "source": "angular/skills",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "computedHash": "71ec40398a5194a446b23dbaf46c00d8f9f7fa6b944b69a0ea7f36893302a2fa"
+      "computedHash": "400d674a14120ccaa435a263cd6551e5f5ddb84d99df8622689da46fe9e5902c"
     },
     "angular-new-app": {
       "source": "angular/skills",
@@ -23,7 +23,7 @@
       "source": "hashicorp/agent-skills",
       "sourceType": "github",
       "skillPath": "terraform/provider-development/skills/new-terraform-provider/SKILL.md",
-      "computedHash": "2f12647edea2705451301a24a864d71af4aa7758e8a8e977a1f95f83a297dc4a"
+      "computedHash": "ad0de484d8c1dacc628d64e1368e026bdeed54ae676694126706a4879a9fb41d"
     },
     "provider-actions": {
       "source": "hashicorp/agent-skills",
@@ -47,13 +47,13 @@
       "source": "hashicorp/agent-skills",
       "sourceType": "github",
       "skillPath": "terraform/provider-development/skills/provider-test-patterns/SKILL.md",
-      "computedHash": "5357774c5d08fa1666737d49ffb68f0c86689be3b3620be5779fd882b159c09c"
+      "computedHash": "703ec35664c962545a33c1f50d489be90e8656b33ce488cc9357c154e4dc5494"
     },
     "terraform-style-guide": {
       "source": "hashicorp/agent-skills",
       "sourceType": "github",
       "skillPath": "terraform/code-generation/skills/terraform-style-guide/SKILL.md",
-      "computedHash": "fd301fe5bfb41764acac67c25244cc5650b5dd0a5d8d037414449a2d3adecbbf"
+      "computedHash": "e7776668ff288f856a8f9bb8bb3301dd2c78c70102d81fb1027c059b01f6b07b"
     }
   }
 }
