@@ -1075,6 +1075,8 @@ public static class BuilderExtensions
 
         if (!IsEnabled(mispMode))
         {
+            mispRedis.WithExplicitStart();
+            mispMysql.WithExplicitStart();
             misp.WithExplicitStart();
             mispModules.WithExplicitStart();
         }
