@@ -123,7 +123,8 @@
         "ms-playwright.playwright",
         "AmazonWebServices.aws-toolkit-vscode",
         "bmewburn.vscode-intelephense-client",
-        "xdebug.php-debug"
+        "xdebug.php-debug",
+        "openai.chatgpt"
       ],
       "settings": {
         "editor.formatOnSave": true,
