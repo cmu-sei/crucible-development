@@ -1017,12 +1017,10 @@ public static class BuilderExtensions
 
         // Redis for MISP background jobs (without TLS for dev environment)
         var mispRedis = builder.AddRedis("misp-redis")
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-redis");
 
         // MySQL for MISP (MISP requires MySQL/MariaDB, not PostgreSQL)
         var mispMysql = builder.AddMySql("misp-mysql")
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-mysql")
             .WithDataVolume();
 
@@ -1031,7 +1029,6 @@ public static class BuilderExtensions
         // MISP Core application with custom fast-startup image
         var misp = builder.AddContainer("misp", "misp-custom-image")
             .WithDockerfile("./resources/misp", "Dockerfile.MispCustom")
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp")
             .WaitFor(mispMysql)
             .WaitFor(mispRedis)
@@ -1068,7 +1065,6 @@ public static class BuilderExtensions
         // MISP modules with custom module mounted
         var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
             .WithDockerfile("./resources/misp", "Dockerfile.MispModules")
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-modules")
             .WithHttpEndpoint(port: 8666, targetPort: 6666, isProxied: false)
             .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle/misp_module.py", "/usr/local/lib/python3.12/site-packages/misp_modules/modules/action_mod/moodle.py", isReadOnly: false);
