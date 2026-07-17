@@ -13,6 +13,48 @@
       "skillPath": "angular-new-app/SKILL.md",
       "computedHash": "49bd84ab08bd3498c52f476bed48fbb942dc6dbc0925607e84549adbed34bccf"
     },
+    "aspire": {
+      "source": "microsoft/aspire-skills",
+      "sourceType": "github",
+      "skillPath": "skills/aspire/SKILL.md",
+      "computedHash": "99e6f99daf65aaa88fcc496e4d1486d450ae29c0faf73ac64accd1aa27d1b305"
+    },
+    "aspire-deployment": {
+      "source": "microsoft/aspire-skills",
+      "sourceType": "github",
+      "skillPath": "skills/aspire-deployment/SKILL.md",
+      "computedHash": "3117c6f73a7def0eb8c47aafb70000ce1b2cff8c38d306f6b8a9c7ca4bdd3fe9"
+    },
+    "aspire-init": {
+      "source": "microsoft/aspire-skills",
+      "sourceType": "github",
+      "skillPath": "skills/aspire-init/SKILL.md",
+      "computedHash": "7bb3b855cfbe363bb28f3e8ba7ace95f4b471b8922b33879965a8bf6ff59e777"
+    },
+    "aspire-monitoring": {
+      "source": "microsoft/aspire-skills",
+      "sourceType": "github",
+      "skillPath": "skills/aspire-monitoring/SKILL.md",
+      "computedHash": "12f198c1e6f029a5effed11a347e613d9ffb3dcdf6e3820db601e859ec8961ab"
+    },
+    "aspire-orchestration": {
+      "source": "microsoft/aspire-skills",
+      "sourceType": "github",
+      "skillPath": "skills/aspire-orchestration/SKILL.md",
+      "computedHash": "eaf0596cd49261b8b00af76b46feeb73157b90e069ba987748378e31b3209ef5"
+    },
+    "aspireify": {
+      "source": "microsoft/aspire-skills",
+      "sourceType": "github",
+      "skillPath": "skills/aspireify/SKILL.md",
+      "computedHash": "443cc7ffdd4db910388ba924701b96b102696a91714a2bf2ce0c404e5239b689"
+    },
+    "dotnet-inspect": {
+      "source": "richlander/dotnet-inspect",
+      "sourceType": "github",
+      "skillPath": "skills/dotnet-inspect/SKILL.md",
+      "computedHash": "de3523bbb29a039805692914f768385388fd693a942a4da7380dd75efbea5e42"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
@@ -24,6 +66,12 @@
       "sourceType": "github",
       "skillPath": "terraform/provider-development/skills/new-terraform-provider/SKILL.md",
       "computedHash": "ad0de484d8c1dacc628d64e1368e026bdeed54ae676694126706a4879a9fb41d"
+    },
+    "playwright-cli": {
+      "source": "microsoft/playwright-cli",
+      "sourceType": "github",
+      "skillPath": "skills/playwright-cli/SKILL.md",
+      "computedHash": "438b922468b7bb2ab5ce4a0f318fc65db93337f0df03908a5476effbae9487e6"
     },
     "provider-actions": {
       "source": "hashicorp/agent-skills",
