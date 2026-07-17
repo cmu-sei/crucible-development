@@ -235,8 +235,9 @@ public static class BuilderExtensions
     {
         var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak");
 
-        var keycloak = builder.AddKeycloak("keycloak", 8080)
+        var keycloak = builder.AddKeycloak("keycloak", 8443)
             .WithReference(keycloakDb)
+            .WaitFor(keycloakDb)
             .WithLifetime(ContainerLifetime.Persistent)
             // Configure environment variables for the PostgreSQL connection
             .WithEnvironment("KC_DB", "postgres")
@@ -250,18 +251,6 @@ public static class BuilderExtensions
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
             .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
-
-        // Override https endpoint to have a static port
-        builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
-        {
-            keycloak.WithEndpoint("https", ep =>
-            {
-                ep.Port = 8443;
-                ep.TargetPort = 8443;
-            });
-
-            return Task.CompletedTask;
-        });
 
         return keycloak;
     }
