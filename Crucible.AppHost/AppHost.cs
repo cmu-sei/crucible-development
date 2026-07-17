@@ -180,6 +180,10 @@ public static class BuilderExtensions
         var pgAdminMode = ResolveMode(options.PGAdmin, "PGAdmin", options);
 
         var postgres = builder.AddPostgres("postgres")
+            // AddPostgres defaults to version 18. Postgres 18 changed the data layout.
+            // Consult https://aspire.dev/whats-new/aspire-13-4/#postgresql-default-image-bumped-to-183-breaking-existing-data-volumes
+            // when changing this tag to 18+ to avoid data loss.
+            .WithImageTag("17.6")
             .WithDataVolume()
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("crucible-postgres")
