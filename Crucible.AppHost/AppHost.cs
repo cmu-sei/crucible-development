@@ -1173,8 +1173,10 @@ public static class BuilderExtensions
     public static void AddCatapult(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
         var catapultMode = ResolveMode(options.Catapult, "Catapult", options);
+        var moodleMode = ResolveMode(options.Moodle, "Moodle", options);
+        var catapultEnabled = IsEnabled(catapultMode) && IsEnabled(moodleMode);
 
-        if (!options.AddAllApplications && !IsEnabled(catapultMode))
+        if (!options.AddAllApplications && !catapultEnabled)
             return;
 
         // CATAPULT's cmi5 player uses knex with the "mysql" client hard-coded and ships
@@ -1185,7 +1187,6 @@ public static class BuilderExtensions
         // (which is removed in MySQL 9.x), so pin the image and force the legacy plugin.
         var catapultMysql = builder.AddMySql("catapult-mysql")
             .WithImageTag("8.0.31")
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("catapult-mysql")
             .WithArgs("--default-authentication-plugin=mysql_native_password")
             .WithDataVolume();
@@ -1200,7 +1201,6 @@ public static class BuilderExtensions
         var catapultDockerfile = Path.Combine(builder.AppHostDirectory, "resources", "catapult", "Dockerfile.CatapultPlayer");
         var catapult = builder.AddContainer("catapult-player", "catapult-player-image")
             .WithDockerfile("/mnt/data/crucible/catapult/catapult/player", catapultDockerfile)
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("catapult-player")
             .WaitFor(catapultMysql)
             .WithHttpEndpoint(port: 3398, targetPort: 3398)
@@ -1225,8 +1225,9 @@ public static class BuilderExtensions
             .WithEnvironment("PLAYER_REQUIRE_STRICT_HEADERS", "false")
             .WithEnvironment("CONTENT_URL", "http://localhost:3398/content");
 
-        if (!IsEnabled(catapultMode))
+        if (!catapultEnabled)
         {
+            catapultMysql.WithExplicitStart();
             catapult.WithExplicitStart();
         }
     }
