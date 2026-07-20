@@ -29,7 +29,7 @@
       "source": "hashicorp/agent-skills",
       "sourceType": "github",
       "skillPath": "terraform/provider-development/skills/provider-actions/SKILL.md",
-      "computedHash": "e3852e6583ab4c2199a26793583a3463ce80d31b4b972f7855585c8885d0c0e4"
+      "computedHash": "bfa4d8e3b12721da037fe3252853288c435d2ec7d1952f1f544bce0330aaefba"
     },
     "provider-docs": {
       "source": "hashicorp/agent-skills",
