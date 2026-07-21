@@ -1,9 +1,6 @@
 {
   "name": "Crucible Development",
-  "runArgs": [
-    "--name",
-    "crucible-dev"
-  ],
+  "runArgs": ["--name", "crucible-dev"],
   "build": {
     "dockerfile": "Dockerfile"
   },
@@ -51,7 +48,7 @@
       "version": "0.1"
     },
     "./features/aspire": {
-      "version": "13.1.1"
+      "version": "13.4"
     },
     "./features/desktop": {},
     "./features/claude-code": {}
