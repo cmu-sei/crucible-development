@@ -35,7 +35,7 @@ if [ ! -x /home/vscode/.local/bin/codex ]; then
   CODEX_PID=$!
 fi
 
-# Initialize Playwright test agents in the dev container
+# Install Playwright test dependencies in the dev container
 PLAYWRIGHT_TESTING_DIR="/mnt/data/crucible/crucible-tests"
 if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
   (
@@ -49,20 +49,11 @@ if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
     echo "Installing Playwright browser binaries..."
     npx playwright install chromium
     npx playwright install firefox
-
-    echo "Initializing Playwright test agents..."
-    TMPDIR=$(mktemp -d)
-    cd "$TMPDIR"
-    npx --prefix "$PLAYWRIGHT_TESTING_DIR" playwright init-agents --loop=claude --config "$PLAYWRIGHT_TESTING_DIR/playwright.config.ts"
-    AGENTS_DIR="/workspaces/crucible-development/.claude/agents"
-    mkdir -p "$AGENTS_DIR"
-    cp "$TMPDIR/.claude/agents/"*.md "$AGENTS_DIR/"
-    rm -rf "$TMPDIR"
   ) &
-  PLAYWRIGHT_AGENTS_PID=$!
+  PLAYWRIGHT_SETUP_PID=$!
 fi
 
-wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_AGENTS_PID:-}
+wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_SETUP_PID:-}
 echo "Tool installs complete."
 
 # Generate dotnet dev-cert. Needed if not using aspire extension launch profiles
