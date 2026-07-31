@@ -21,6 +21,13 @@ scripts/generate-xdebug-filter.sh
 
 echo "Installing tools..."
 
+# Install the gh-stack CLI extension and configure git for non-interactive use,
+# per https://docs.github.com/en/pull-requests/get-started/stacked-prs-quickstart
+# (the gh-stack Claude/Codex skill itself is managed via .agents/skills + skills-lock.json,
+# kept current by .github/workflows/update-skills.yml)
+(gh extension install github/gh-stack) &
+GH_STACK_PID=$!
+
 (dotnet tool install --global dotnet-ef --version 10) &
 DOTNET_EF_PID=$!
 
@@ -62,7 +69,7 @@ if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
   PLAYWRIGHT_AGENTS_PID=$!
 fi
 
-wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_AGENTS_PID:-}
+wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_AGENTS_PID:-} $GH_STACK_PID
 echo "Tool installs complete."
 
 # Generate dotnet dev-cert. Needed if not using aspire extension launch profiles
