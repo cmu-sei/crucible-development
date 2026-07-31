@@ -5,7 +5,7 @@
       "source": "angular/skills",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "computedHash": "400d674a14120ccaa435a263cd6551e5f5ddb84d99df8622689da46fe9e5902c"
+      "computedHash": "258cc410839924d8c2b31afe9dd7349a1c03b9215ddba7942a87ce976c894adb"
     },
     "angular-new-app": {
       "source": "angular/skills",
@@ -17,49 +17,49 @@
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire/SKILL.md",
-      "computedHash": "99e6f99daf65aaa88fcc496e4d1486d450ae29c0faf73ac64accd1aa27d1b305"
+      "computedHash": "0be6b8b52ed40a790911de8b4da21df3b12e5d48e923f9127fc9a01bf28d3802"
     },
     "aspire-deployment": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-deployment/SKILL.md",
-      "computedHash": "3117c6f73a7def0eb8c47aafb70000ce1b2cff8c38d306f6b8a9c7ca4bdd3fe9"
+      "computedHash": "4f8d475100897f01ed1db3041bd0e8a47f10c0ea854a8793b46eb3d5a3cbe7f0"
     },
     "aspire-init": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-init/SKILL.md",
-      "computedHash": "7bb3b855cfbe363bb28f3e8ba7ace95f4b471b8922b33879965a8bf6ff59e777"
+      "computedHash": "2f00fdbe35999cf33f858963555fa783ba28218570563329cddc874805a2a3e8"
     },
     "aspire-monitoring": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-monitoring/SKILL.md",
-      "computedHash": "12f198c1e6f029a5effed11a347e613d9ffb3dcdf6e3820db601e859ec8961ab"
+      "computedHash": "8f28ef8ef22cdbad5a385a752da9565021ec8703973dad9ead5e8bb56f5d3196"
     },
     "aspire-orchestration": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-orchestration/SKILL.md",
-      "computedHash": "eaf0596cd49261b8b00af76b46feeb73157b90e069ba987748378e31b3209ef5"
+      "computedHash": "a6c1b678eb9c97555f28f2f6d16510c7a5b7a91171b661003f37649aa253ebbe"
     },
     "aspireify": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspireify/SKILL.md",
-      "computedHash": "443cc7ffdd4db910388ba924701b96b102696a91714a2bf2ce0c404e5239b689"
+      "computedHash": "906cf6cae54c0628b60db433269af621f8dece010bb6190207dc5377cb0757ee"
     },
     "dotnet-inspect": {
       "source": "richlander/dotnet-inspect",
       "sourceType": "github",
       "skillPath": "skills/dotnet-inspect/SKILL.md",
-      "computedHash": "de3523bbb29a039805692914f768385388fd693a942a4da7380dd75efbea5e42"
+      "computedHash": "02b793defeeeffdb65e964012ec3f77b66e126e7eb325e1d85266704d539861f"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
       "skillPath": "skills/find-skills/SKILL.md",
-      "computedHash": "781bd6d3f9b19f8c9af6b53d8d0e4876d0183841b565db34ca7092ffa412d111"
+      "computedHash": "b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf"
     },
     "gh-stack": {
       "source": "github/gh-stack",
@@ -77,7 +77,7 @@
       "source": "microsoft/playwright-cli",
       "sourceType": "github",
       "skillPath": "skills/playwright-cli/SKILL.md",
-      "computedHash": "438b922468b7bb2ab5ce4a0f318fc65db93337f0df03908a5476effbae9487e6"
+      "computedHash": "f602822b51bcb6d033749c60731b8f1e80f308222fcb2e4af551905a817c6e08"
     },
     "provider-actions": {
       "source": "hashicorp/agent-skills",

@@ -200,27 +200,12 @@ The test suite lives in `/mnt/data/crucible/crucible-tests/` and covers all 11 C
 
 The [Playwright Test for VS Code](https://marketplace.visualstudio.com/items?itemName=ms-playwright.playwright) extension is pre-installed and configured to use the Crucible test suite. Open the **Testing** panel in VS Code to browse, run, and debug tests visually.
 
-### Claude Code Playwright Test Agents
+### Playwright Test Agents
 
-The dev container automatically initializes three [Playwright test agents](https://playwright.dev/docs/test-agents) for use with Claude Code during container creation. These agents allow Claude Code to plan, generate, and fix Playwright tests interactively using a real browser.
-
-| Agent | Purpose |
-|-------|---------|
-| **playwright-test-planner** | Navigates a running application in a browser, explores the UI, and produces a comprehensive test plan (saved as a markdown file) |
-| **playwright-test-generator** | Takes a test plan and generates `.spec.ts` files by executing each step in a real browser, then recording the actions |
-| **playwright-test-healer** | Runs failing tests, debugs them in a live browser, identifies root causes, and fixes the test code |
-
-To use the agents, start Claude Code in the terminal and ask it to plan, generate, or fix tests. Claude Code will automatically delegate to the appropriate agent. For example:
-
-- *"Create a test plan for the Player application"* — invokes the **planner** to explore the Player UI and produce a test plan
-- *"Generate tests for the Blueprint authentication section"* — invokes the **generator** to create spec files from the test plan
-- *"Fix the failing Blueprint tests"* — invokes the **healer** to debug and repair broken tests
-
-To generate comprehensive test coverage for an entire application in parallel, use a prompt like:
-
-> @"playwright-test-generator (agent)" look at the `<app>-test-plan.md` and generate all tests mentioned on the test plan with multiple agents running in parallel using the pre-established shared fixtures and authentication mechanism that other apps are using. Read and review the app documentation @/mnt/data/crucible/crucible-docs/docs/<app>/ for additional context on how the application works and to ensure maximum test coverage. Add more tests to the test plan as necessary for coverage.
-
-The agents require Crucible services to be running since they interact with the applications through a real browser.
+The Playwright test agents are defined in the
+[`crucible-tests`](https://github.com/cmu-sei/crucible-tests) repository.
+Start the coding agent from that repository when planning, generating, or
+healing tests; its README documents the available agents and their use.
 
 ### Running Tests from the Terminal
 
