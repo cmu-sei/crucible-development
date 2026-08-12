@@ -57,11 +57,6 @@ RUN set -eux; \
     && chmod +x /usr/local/bin/vale \
     && vale --version
 
-# Install k-alias
-RUN git clone https://github.com/jaggedmountain/k-alias.git /tmp/k-alias && \
-    cp /tmp/k-alias/[h,k]* /usr/local/bin && \
-    rm -rf /tmp/k-alias
-
 # Install AWS CLI with Session Manager Plugin
 RUN case "${TARGETARCH}" in \
     amd64)  AWSCLI_PKG="awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip" \

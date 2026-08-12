@@ -44,6 +44,7 @@
       "version": "24.15",
       "installYarnUsingApt": false
     },
+    "ghcr.io/jaggedmountain/k-alias/k-alias:1": {},
     "./features/playwright-cli": {
       "version": "0.1"
     },
