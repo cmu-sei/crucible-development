@@ -17,7 +17,7 @@
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire/SKILL.md",
-      "computedHash": "4dbe3320602a522ab7b34547091b8fbaaa07b0b7bff4c293400e7918463c3686"
+      "computedHash": "f24902e6619321291156ad1d3f455d0914c63d8e6b79ac35d5082918652e6c72"
     },
     "aspire-deployment": {
       "source": "microsoft/aspire-skills",
@@ -41,7 +41,7 @@
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-orchestration/SKILL.md",
-      "computedHash": "a32ed6e897412fce309998a5c45f735210c6dda117fe22d3e3bb1025e4068ea6"
+      "computedHash": "d4309cfe4b5a58169a935e6433a595778a04cd77e1a0c11dbaeda875c0305be4"
     },
     "aspireify": {
       "source": "microsoft/aspire-skills",
@@ -53,7 +53,7 @@
       "source": "richlander/dotnet-inspect",
       "sourceType": "github",
       "skillPath": "skills/dotnet-inspect/SKILL.md",
-      "computedHash": "20b20e400df9cfab463ff4517bc0ec3cd4c31870e0d4bb3181ad4ccf8e8e84b4"
+      "computedHash": "1523cd50192252692e1af5f56b9166f309d08e02d873ab257879a459b8413a3b"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
