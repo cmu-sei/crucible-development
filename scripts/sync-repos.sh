@@ -6,12 +6,15 @@ MANIFEST=scripts/repos.json
 LOCAL_MANIFEST=scripts/repos.local.json
 ROOT_DIR="/mnt/data/crucible"
 USE_PULL=false
+PURGE=false
 GIT_ARGS=()
 
 # Parse arguments
 for arg in "$@"; do
     if [[ "$arg" == "--pull" ]]; then
         USE_PULL=true
+    elif [[ "$arg" == "--purge" ]]; then
+        PURGE=true
     else
         GIT_ARGS+=("$arg")
     fi
@@ -42,6 +45,45 @@ map_moodle_plugin_path() {
     esac
 }
 
+# Delete local branches whose upstream tracking branch has been removed from
+# the remote (i.e. marked "[gone]" by git after a --prune fetch).
+purge_local_branches() {
+    local dir=$1
+    local current
+    current=$(git -C "$dir" symbolic-ref --short HEAD 2>/dev/null || echo "")
+
+    local gone_branches
+    gone_branches=$(git -C "$dir" branch -vv | { grep ': gone]' || true; } | \
+        awk '{ if ($1 == "*" || $1 == "+") print $2; else print $1 }')
+
+    if [[ -z "$gone_branches" ]]; then
+        return 0
+    fi
+
+    while IFS= read -r branch; do
+        [[ -z "$branch" ]] && continue
+        if [[ "$branch" == "$current" ]]; then
+            echo "Skipping current branch $branch in $dir (remote gone, but checked out)"
+            continue
+        fi
+        if git -C "$dir" worktree list 2>/dev/null | grep -q "\[$branch\]"; then
+            echo "Skipping branch $branch in $dir (remote gone, but checked out in another worktree)"
+            continue
+        fi
+        local err_file
+        err_file=$(mktemp)
+        if git -C "$dir" branch -d "$branch" 2>"$err_file"; then
+            echo "Deleted local branch $branch in $dir (remote gone)"
+        elif grep -q "not fully merged" "$err_file"; then
+            echo "Skipping branch $branch in $dir (remote gone, but has unmerged commits - delete manually with 'git branch -D' if intentional)"
+        else
+            cat "$err_file" >&2
+            echo -e "\033[31mError: Failed to delete branch $branch in $dir\033[0m" >&2
+        fi
+        rm -f "$err_file"
+    done <<< "$gone_branches"
+}
+
 sync_repository() {
     local dir=$1
     if [[ ! -d "$dir" ]]; then
@@ -50,18 +92,27 @@ sync_repository() {
     fi
 
     if git -C "$dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        local git_args=("${GIT_ARGS[@]}")
+        if [[ "$PURGE" == true ]]; then
+            git_args+=("--prune")
+        fi
+
         if [[ "$USE_PULL" == true ]]; then
             echo "Pulling updates in $dir"
-            if ! git -C "$dir" pull "${GIT_ARGS[@]}"; then
+            if ! git -C "$dir" pull "${git_args[@]}"; then
                 echo -e "\033[31mError: Failed to pull in $dir\033[0m" >&2
                 return 0
             fi
         else
             echo "Fetching updates in $dir"
-            if ! git -C "$dir" fetch "${GIT_ARGS[@]}"; then
+            if ! git -C "$dir" fetch "${git_args[@]}"; then
                 echo -e "\033[31mError: Failed to fetch in $dir\033[0m" >&2
                 return 0
             fi
+        fi
+
+        if [[ "$PURGE" == true ]]; then
+            purge_local_branches "$dir"
         fi
         return 0
     fi

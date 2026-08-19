@@ -274,6 +274,7 @@ configure_crucible() {
   # Configure mod_crucible
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=issuerid --set=$OAUTH2_ISSUER_ID;
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=alloyapiurl --set=http://host.docker.internal:4402/api;
+  php /var/www/html/admin/cli/cfg.php --component=crucible --name=alloyapiclienturl --set=http://localhost:4402/api;
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=playerappurl --set=http://localhost:4301;
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=vmappurl --set=http://localhost:4303;
   php /var/www/html/admin/cli/cfg.php --component=crucible --name=steamfitterapiurl --set=http://host.docker.internal:4400/api

@@ -27,6 +27,7 @@ check aspire     aspire --version
 check node       node --version
 check npm        npm --version
 check gh         gh --version
+check gh-stack   gh stack --version
 check kubectl    kubectl version --client=true
 check helm       helm version --short
 check minikube   minikube version --short

@@ -21,6 +21,13 @@ scripts/generate-xdebug-filter.sh
 
 echo "Installing tools..."
 
+# Install the gh-stack CLI extension and configure git for non-interactive use,
+# per https://docs.github.com/en/pull-requests/get-started/stacked-prs-quickstart
+# (the gh-stack Claude/Codex skill itself is managed via .agents/skills + skills-lock.json,
+# kept current by .github/workflows/update-skills.yml)
+(gh extension install github/gh-stack) &
+GH_STACK_PID=$!
+
 (dotnet tool install --global dotnet-ef --version 10) &
 DOTNET_EF_PID=$!
 
@@ -35,7 +42,7 @@ if [ ! -x /home/vscode/.local/bin/codex ]; then
   CODEX_PID=$!
 fi
 
-# Initialize Playwright test agents in the dev container
+# Install Playwright test dependencies in the dev container
 PLAYWRIGHT_TESTING_DIR="/mnt/data/crucible/crucible-tests"
 if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
   (
@@ -49,20 +56,11 @@ if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
     echo "Installing Playwright browser binaries..."
     npx playwright install chromium
     npx playwright install firefox
-
-    echo "Initializing Playwright test agents..."
-    TMPDIR=$(mktemp -d)
-    cd "$TMPDIR"
-    npx --prefix "$PLAYWRIGHT_TESTING_DIR" playwright init-agents --loop=claude --config "$PLAYWRIGHT_TESTING_DIR/playwright.config.ts"
-    AGENTS_DIR="/workspaces/crucible-development/.claude/agents"
-    mkdir -p "$AGENTS_DIR"
-    cp "$TMPDIR/.claude/agents/"*.md "$AGENTS_DIR/"
-    rm -rf "$TMPDIR"
   ) &
-  PLAYWRIGHT_AGENTS_PID=$!
+  PLAYWRIGHT_SETUP_PID=$!
 fi
 
-wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_AGENTS_PID:-}
+wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_AGENTS_PID:-} $GH_STACK_PID
 echo "Tool installs complete."
 
 # Generate dotnet dev-cert. Needed if not using aspire extension launch profiles
@@ -103,10 +101,27 @@ chmod 600 "${KEY_FILE}"
 sudo cp "${CERT_FILE}" /usr/local/share/ca-certificates/custom/crucible-dev.crt
 sudo update-ca-certificates
 
+# Playwright's Chromium uses the user's NSS database on Linux, so OS-level
+# trust alone is not enough for generated dev certs or corporate root CAs.
+CUSTOM_CERT_SOURCE="/usr/local/share/ca-certificates/custom"
+NSSDB="${HOME}/.pki/nssdb"
+mkdir -p "${NSSDB}"
+if [ ! -f "${NSSDB}/cert9.db" ]; then
+  certutil -N -d "sql:${NSSDB}" --empty-password
+fi
+
+if compgen -G "${CUSTOM_CERT_SOURCE}"'/*.crt' > /dev/null; then
+  for cert in "${CUSTOM_CERT_SOURCE}"/*.crt; do
+    nickname="$(basename "${cert}" .crt)"
+    certutil -D -d "sql:${NSSDB}" -n "${nickname}" >/dev/null 2>&1 || true
+    certutil -A -d "sql:${NSSDB}" -n "${nickname}" -t "C,," -i "${cert}"
+  done
+  echo "Imported custom CA certificates into Chromium NSS trust store."
+fi
+
 echo "Crucible-dev certificates generated and trusted."
 
 # Stage custom CA certs so Minikube trusts them
-CUSTOM_CERT_SOURCE="/usr/local/share/ca-certificates/custom"
 MINIKUBE_CERT_DEST="${HOME}/.minikube/files/etc/ssl/certs/custom"
 MOODLE_CERT_DEST="Crucible.AppHost/resources/moodle/certs"
 MISP_CERT_DEST="Crucible.AppHost/resources/misp/certs"

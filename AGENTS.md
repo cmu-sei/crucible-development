@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to AI coding agents, including Codex CLI and Claude Code, when working with code in this repository.
+This file provides guidance to AI coding agents when working with code in this repository.
 
 ## Project Overview
 
@@ -20,17 +20,17 @@ This is a **meta-repository** that orchestrates 30+ external repositories cloned
 ### Microservices (in `/mnt/data/crucible/`)
 | Service | Purpose | Ports |
 |---------|---------|-------|
-| Player API/UI | Main learning platform | 4301 |
+| Player API/UI | Team access to virtual environments | 4301 |
 | Player VM API/UI | Virtual machine management | 4303 |
-| Console UI | Console access | 4305 |
+| Console UI | VM console access | 4305 |
 | Caster API/UI | Infrastructure orchestration | 4310 |
-| Alloy API/UI | Advanced orchestration | 4403 |
-| TopoMojo API/UI | Network topology simulation | 5000/4201 |
+| Alloy API/UI | On-demand event orchestration | 4403 |
+| TopoMojo API/UI | Network topology builder | 5000/4201 |
 | Steamfitter API/UI | Scenario execution | 4401 |
 | CITE API/UI | Collaborative training | 4721 |
 | Gallery API/UI | Content management | 4723 |
 | Blueprint API/UI | Scenario design | 4725 |
-| Gameboard API/UI | Competition/scoring | 4202 |
+| Gameboard API/UI | Competition | 4202 |
 | Moodle | LMS integration | 8081 |
 | LRsql | Learning Record Store (xAPI) | 9274 |
 | CATAPULT Player | cmi5 content player (xAPI) | 3398 |
@@ -55,8 +55,7 @@ This is a **meta-repository** that orchestrates 30+ external repositories cloned
 - `Crucible.AppHost/AppHost.cs` - Main service orchestration logic
 - `Crucible.AppHost/LaunchOptions.cs` - Service toggle options
 - `Crucible.slnx` - Solution file including external projects
-- `scripts/repos.json` - List of repositories to clone
-- `scripts/clone-repos.sh` - Repository cloning script
+- `scripts/repos.json` - Repositories to clone
 - `.env/*.env` - Environment configurations for different launch profiles
 - `Crucible.AppHost/resources/` - UI configuration files and Keycloak realm
 
@@ -91,7 +90,7 @@ End-to-end Playwright tests live at `/mnt/data/crucible/crucible-tests/`. This r
 IMPORTANT! The aspire workload is obsolete. You should never attempt to install or use the Aspire workload.
 
 ## Troubleshooting: hung `dotnet restore`
-If `dotnet restore` (or `aspire run`) hangs for minutes at `Restoring packages for ...` with no output and no error, the cause is almost always orphaned NuGet lock files and/or wedged MSBuild build-server nodes left behind when a previous restore was force-killed (`kill -9`) instead of stopped with Ctrl-C. It is NOT Zscaler, the proxy, a specific package version, or NuGet index lag.
+If `dotnet restore` (or `aspire run`) hangs for minutes at `Restoring packages for ...` with no output and no error, the cause is almost always orphaned NuGet lock files and/or wedged MSBuild build-server nodes left behind when a previous restore was force-killed (`kill -9`) instead of stopped with Ctrl-C.
 
 - Fix: run `scripts/reset-nuget.sh`, then re-run the restore.
 - Prevention: stop a slow restore with **Ctrl-C** (SIGINT lets NuGet release its locks); never `kill -9` it.
@@ -105,7 +104,9 @@ IMPORTANT! Always prefer official documentation when available. The following si
 3. https://nuget.org (for specific integration package details)
 
 ## Devcontainer CI
-
 The `.github/workflows/devcontainer-ci.yml` workflow builds the dev container on every PR and `main` push (amd64 and arm64), runs `postCreateCommand`, then executes `.devcontainer/ci-verify-tools.sh` to confirm each expected tool is on `PATH`. Repo cloning is skipped in CI via `CRUCIBLE_CI_SKIP_CLONE=1`, forwarded into the container through `containerEnv` in `devcontainer.json`.
 
-**IMPORTANT:** When adding a new tool to the dev container — whether via a new devcontainer Feature, a Dockerfile `RUN`, or a `postcreate.sh` install step — add a matching `check` line to `.devcontainer/ci-verify-tools.sh`. The verification script is the only thing asserting the tool is actually installed; if it isn't in the script, a broken install can ship unnoticed. Prefer the shortest version command that doesn't touch the network or a server (e.g. `kubectl version --client=true`, not `kubectl version`).
+**IMPORTANT:** When adding a new tool to the dev container — whether via a new devcontainer Feature, a Dockerfile `RUN`, or a `postcreate.sh` install step — add a matching `check` line to `.devcontainer/ci-verify-tools.sh`. Prefer the shortest version command that doesn't touch the network or a server (e.g. `kubectl version --client=true`, not `kubectl version`).
+
+## Code Design Specifications
+The `design-specs` folder houses documents outlining coding best practices and design specifications for Crucible apps to follow. Review `design-specs/README.md` for high level overviews of the specifications. Then, if doing development that targets an area with a design specification, read that specification and follow it when coding.

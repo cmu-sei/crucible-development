@@ -180,6 +180,10 @@ public static class BuilderExtensions
         var pgAdminMode = ResolveMode(options.PGAdmin, "PGAdmin", options);
 
         var postgres = builder.AddPostgres("postgres")
+            // AddPostgres defaults to version 18. Postgres 18 changed the data layout.
+            // Consult https://aspire.dev/whats-new/aspire-13-4/#postgresql-default-image-bumped-to-183-breaking-existing-data-volumes
+            // when changing this tag to 18+ to avoid data loss.
+            .WithImageTag("17.6")
             .WithDataVolume()
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("crucible-postgres")
@@ -231,8 +235,9 @@ public static class BuilderExtensions
     {
         var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak");
 
-        var keycloak = builder.AddKeycloak("keycloak", 8080)
+        var keycloak = builder.AddKeycloak("keycloak", 8443)
             .WithReference(keycloakDb)
+            .WaitFor(keycloakDb)
             .WithLifetime(ContainerLifetime.Persistent)
             // Configure environment variables for the PostgreSQL connection
             .WithEnvironment("KC_DB", "postgres")
@@ -247,18 +252,6 @@ public static class BuilderExtensions
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
             .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
-
-        // Override https endpoint to have a static port
-        builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
-        {
-            keycloak.WithEndpoint("https", ep =>
-            {
-                ep.Port = 8443;
-                ep.TargetPort = 8443;
-            });
-
-            return Task.CompletedTask;
-        });
 
         return keycloak;
     }
@@ -1132,7 +1125,7 @@ public static class BuilderExtensions
             .WithEnvironment("CRUCIBLE_PROXMOX_ENABLED", options.ResolveProxmox() != null ? "1" : "0")
             .WithEnvironment("CRUCIBLE_PROXMOX_URL", options.ResolveProxmox()?.Url ?? "")
             .WithEnvironment("CRUCIBLE_CATAPULT_ENABLED", IsEnabled(ResolveMode(options.Catapult, "Catapult", options)) ? "1" : "0")
-            .WithEnvironment("PLUGINS", @"tool_userdebug=https://moodle.org/plugins/download.php/36714/tool_userdebug_moodle50_2025070100.zip")
+            .WithEnvironment("PLUGINS", @"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/2025070100/download")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"/usr/local/bin/post_configure.sh")
             // Bind mount moodle-core directories (writable for xdebug)
@@ -1235,12 +1228,10 @@ public static class BuilderExtensions
 
         // Redis for MISP background jobs (without TLS for dev environment)
         var mispRedis = builder.AddRedis("misp-redis")
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-redis");
 
         // MySQL for MISP (MISP requires MySQL/MariaDB, not PostgreSQL)
         var mispMysql = builder.AddMySql("misp-mysql")
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-mysql")
             .WithDataVolume();
 
@@ -1249,7 +1240,6 @@ public static class BuilderExtensions
         // MISP Core application with custom fast-startup image
         var misp = builder.AddContainer("misp", "misp-custom-image")
             .WithDockerfile("./resources/misp", "Dockerfile.MispCustom")
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp")
             .WaitFor(mispMysql)
             .WaitFor(mispRedis)
@@ -1286,13 +1276,14 @@ public static class BuilderExtensions
         // MISP modules with custom module mounted
         var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
             .WithDockerfile("./resources/misp", "Dockerfile.MispModules")
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("misp-modules")
             .WithHttpEndpoint(port: 8666, targetPort: 6666, isProxied: false)
             .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle/misp_module.py", "/usr/local/lib/python3.12/site-packages/misp_modules/modules/action_mod/moodle.py", isReadOnly: false);
 
         if (!IsEnabled(mispMode))
         {
+            mispRedis.WithExplicitStart();
+            mispMysql.WithExplicitStart();
             misp.WithExplicitStart();
             mispModules.WithExplicitStart();
         }
@@ -1393,8 +1384,10 @@ public static class BuilderExtensions
     public static void AddCatapult(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
         var catapultMode = ResolveMode(options.Catapult, "Catapult", options);
+        var moodleMode = ResolveMode(options.Moodle, "Moodle", options);
+        var catapultEnabled = IsEnabled(catapultMode) && IsEnabled(moodleMode);
 
-        if (!options.AddAllApplications && !IsEnabled(catapultMode))
+        if (!options.AddAllApplications && !catapultEnabled)
             return;
 
         // CATAPULT's cmi5 player uses knex with the "mysql" client hard-coded and ships
@@ -1405,7 +1398,6 @@ public static class BuilderExtensions
         // (which is removed in MySQL 9.x), so pin the image and force the legacy plugin.
         var catapultMysql = builder.AddMySql("catapult-mysql")
             .WithImageTag("8.0.31")
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("catapult-mysql")
             .WithArgs("--default-authentication-plugin=mysql_native_password")
             .WithDataVolume();
@@ -1420,7 +1412,6 @@ public static class BuilderExtensions
         var catapultDockerfile = Path.Combine(builder.AppHostDirectory, "resources", "catapult", "Dockerfile.CatapultPlayer");
         var catapult = builder.AddContainer("catapult-player", "catapult-player-image")
             .WithDockerfile("/mnt/data/crucible/catapult/catapult/player", catapultDockerfile)
-            .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("catapult-player")
             .WaitFor(catapultMysql)
             .WithHttpEndpoint(port: 3398, targetPort: 3398)
@@ -1445,8 +1436,9 @@ public static class BuilderExtensions
             .WithEnvironment("PLAYER_REQUIRE_STRICT_HEADERS", "false")
             .WithEnvironment("CONTENT_URL", "http://localhost:3398/content");
 
-        if (!IsEnabled(catapultMode))
+        if (!catapultEnabled)
         {
+            catapultMysql.WithExplicitStart();
             catapult.WithExplicitStart();
         }
     }
