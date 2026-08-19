@@ -529,22 +529,38 @@ public static class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
 
-        // Use AddAngularUI like other apps, but TopoMojo needs special dev mode args
+        // Launchpoint is a separate Angular app, but Moodle links expect it under
+        // the same TopoMojo origin at /lp/. Serve both build outputs on port 4201.
+        const string topoWorkDistPath = "dist/topomojo-work/browser";
+        const string topoLaunchpointDistPath = "dist/topomojo-launchpoint/browser";
+        const string topoStaticServer = "node tools/serve-topomojo-ui.mjs";
+        const string topoBuildSources = "projects/topomojo-work/src projects/topomojo-launchpoint/src";
+        const string fixupCheck = "[ -e node_modules/vmware-wmks/css/css/wmks-all.css ] || [ -d node_modules/vmware-wmks/img/img ]";
+        var ensureTopoDependencies = $"if [ ! -d node_modules ]; then npm install; fi; if {fixupCheck}; then bash tools/fixup-wmks.sh; fi";
+        var serveTopoUi = $"{topoStaticServer} {topoWorkDistPath} {topoLaunchpointDistPath} 4201";
+
         IResourceBuilder<ExecutableResource> topoUi;
         if (topoMojoMode == "dev")
         {
-            // Dev mode needs .WithArgs for the workspace
-            topoUi = builder.AddJavaScriptApp("topomojo-ui", topoUiRoot, "start")
-                .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
-                .WithArgs("topomojo-work")
+            var serveDev = $"{ensureTopoDependencies}; npx concurrently --kill-others-on-fail " +
+                $"\"npx ng build topomojo-work -c development --watch\" " +
+                $"\"npx ng build topomojo-launchpoint -c development --base-href=/lp/ --watch\" " +
+                $"\"{serveTopoUi}\"";
+
+            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveDev)
+                .WithHttpEndpoint(port: 4201, isProxied: false)
                 .WithHttpHealthCheck();
         }
         else
         {
-            // Prod/off mode with fixup-wmks check
-            var distPath = "dist/topomojo-work/browser";
-            var fixupCheck = "[ -e node_modules/vmware-wmks/css/css/wmks-all.css ] || [ -d node_modules/vmware-wmks/img/img ]";
-            var serveProd = $"if {fixupCheck}; then bash tools/fixup-wmks.sh; fi; if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm install && npm run build topomojo-work; fi; npx serve -s {distPath} -l 4201";
+            var outputsMissingOrStale =
+                $"[ ! -d {topoWorkDistPath} ] || [ ! -d {topoLaunchpointDistPath} ] || " +
+                $"[ -n \"$(find {topoBuildSources} -newer {topoWorkDistPath} -print -quit)\" ] || " +
+                $"[ -n \"$(find {topoBuildSources} -newer {topoLaunchpointDistPath} -print -quit)\" ]";
+            var serveProd = $"if {outputsMissingOrStale}; then {ensureTopoDependencies}; " +
+                $"npx ng build topomojo-work -c production && " +
+                $"npx ng build topomojo-launchpoint -c production --base-href=/lp/; fi; {serveTopoUi}";
+
             topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
                 .WithHttpEndpoint(port: 4201, isProxied: false)
                 .WithHttpHealthCheck();
