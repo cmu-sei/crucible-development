@@ -523,33 +523,30 @@ public static class BuilderExtensions
             .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201") // for topo-ui
             .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
             .WithEnvironment("Headers__Cors__Methods__0", "*")
-            .WithEnvironment("Headers__Cors__Headers__0", "*");
+            .WithEnvironment("Headers__Cors__Headers__0", "*")
+            .WithEnvironment("Headers__Cors__AllowCredentials", "true");
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
 
         // Launchpoint is a separate Angular app, but Moodle links expect it under
-        // the same TopoMojo origin at /lp/. Serve both build outputs on port 4201.
+        // the same TopoMojo origin at /lp/. Mount both build outputs in Nginx,
+        // matching the production image's static layout.
         const string topoWorkDistPath = "dist/topomojo-work/browser";
         const string topoLaunchpointDistPath = "dist/topomojo-launchpoint/browser";
-        const string topoStaticServer = "node tools/serve-topomojo-ui.mjs";
         const string topoBuildSources = "projects/topomojo-work/src projects/topomojo-launchpoint/src";
         const string fixupCheck = "[ -e node_modules/vmware-wmks/css/css/wmks-all.css ] || [ -d node_modules/vmware-wmks/img/img ]";
         var ensureTopoDependencies = $"if [ ! -d node_modules ]; then npm install; fi; if {fixupCheck}; then bash tools/fixup-wmks.sh; fi";
-        var serveTopoUi = $"{topoStaticServer} {topoWorkDistPath} {topoLaunchpointDistPath} 4201";
 
-        IResourceBuilder<ExecutableResource> topoUi;
+        IResourceBuilder<ExecutableResource> topoUiBuild;
         if (topoMojoMode == "dev")
         {
             var serveDev = $"{ensureTopoDependencies}; npx concurrently --kill-others-on-fail " +
                 $"\"npx ng build topomojo-work -c development --watch\" " +
-                $"\"npx ng build topomojo-launchpoint -c development --base-href=/lp/ --watch\" " +
-                $"\"{serveTopoUi}\"";
+                $"\"npx ng build topomojo-launchpoint -c development --base-href=/lp/ --watch\"";
 
-            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveDev)
-                .WithHttpEndpoint(port: 4201, isProxied: false)
-                .WithHttpHealthCheck();
+            topoUiBuild = builder.AddExecutable("topomojo-ui-build", "bash", topoUiRoot, "-c", serveDev);
         }
         else
         {
@@ -559,31 +556,17 @@ public static class BuilderExtensions
                 $"[ -n \"$(find {topoBuildSources} -newer {topoLaunchpointDistPath} -print -quit)\" ]";
             var serveProd = $"if {outputsMissingOrStale}; then {ensureTopoDependencies}; " +
                 $"npx ng build topomojo-work -c production && " +
-                $"npx ng build topomojo-launchpoint -c production --base-href=/lp/; fi; {serveTopoUi}";
+                $"npx ng build topomojo-launchpoint -c production --base-href=/lp/; fi";
 
-            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4201, isProxied: false)
-                .WithHttpHealthCheck();
+            topoUiBuild = builder.AddExecutable("topomojo-ui-build", "bash", topoUiRoot, "-c", serveProd);
         }
 
-        // Add fixup-wmks script if in dev mode and installer exists
-        if (topoMojoMode == "dev")
-        {
-            var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
-                .FirstOrDefault(r => r.Name == "topomojo-ui-installer");
-
-            if (installerResource != null)
-            {
-                var script = builder.AddExecutable("fixup-wmks", "bash", topoUiRoot, [
-                    "-c",
-                    "tools/fixup-wmks.sh"
-                ])
-                .WithParentRelationship(installerResource);
-
-                script.Resource.Annotations.Add(new WaitAnnotation(installerResource, WaitType.WaitForCompletion));
-                topoUi.WaitForCompletion(script);
-            }
-        }
+        var topoUi = builder.AddContainer("topomojo-ui", "nginx:alpine")
+            .WithBindMount($"{topoUiRoot}{topoWorkDistPath}", "/var/www", isReadOnly: true)
+            .WithBindMount($"{topoUiRoot}{topoLaunchpointDistPath}", "/var/www/lp", isReadOnly: true)
+            .WithBindMount($"{topoUiRoot}tools/nginx-static.conf", "/etc/nginx/conf.d/default.conf", isReadOnly: true)
+            .WithHttpEndpoint(port: 4201, targetPort: 80, isProxied: false)
+            .WithHttpHealthCheck(endpointName: "http");
 
         if (!IsEnabled(topoMojoMode))
         {
