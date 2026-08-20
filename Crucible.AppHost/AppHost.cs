@@ -531,22 +531,27 @@ public static class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
 
         // Launchpoint is a separate Angular app, but Moodle links expect it under
-        // the same TopoMojo origin at /lp/. Mount both build outputs in Nginx,
-        // matching the production image's static layout.
+        // the same TopoMojo origin at /lp/. The local router serves both builds
+        // and proxies /api without requiring an Aspire container.
         const string topoWorkDistPath = "dist/topomojo-work/browser";
         const string topoLaunchpointDistPath = "dist/topomojo-launchpoint/browser";
+        const string topoStaticServer = "node tools/serve-topomojo-ui.mjs";
         const string topoBuildSources = "projects/topomojo-work/src projects/topomojo-launchpoint/src";
         const string fixupCheck = "[ -e node_modules/vmware-wmks/css/css/wmks-all.css ] || [ -d node_modules/vmware-wmks/img/img ]";
         var ensureTopoDependencies = $"if [ ! -d node_modules ]; then npm install; fi; if {fixupCheck}; then bash tools/fixup-wmks.sh; fi";
+        var serveTopoUi = $"{topoStaticServer} {topoWorkDistPath} {topoLaunchpointDistPath} 4201";
 
-        IResourceBuilder<ExecutableResource> topoUiBuild;
+        IResourceBuilder<ExecutableResource> topoUi;
         if (topoMojoMode == "dev")
         {
             var serveDev = $"{ensureTopoDependencies}; npx concurrently --kill-others-on-fail " +
                 $"\"npx ng build topomojo-work -c development --watch\" " +
-                $"\"npx ng build topomojo-launchpoint -c development --base-href=/lp/ --watch\"";
+                $"\"npx ng build topomojo-launchpoint -c development --base-href=/lp/ --watch\" " +
+                $"\"{serveTopoUi}\"";
 
-            topoUiBuild = builder.AddExecutable("topomojo-ui-build", "bash", topoUiRoot, "-c", serveDev);
+            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveDev)
+                .WithHttpEndpoint(port: 4201, isProxied: false)
+                .WithHttpHealthCheck();
         }
         else
         {
@@ -556,17 +561,12 @@ public static class BuilderExtensions
                 $"[ -n \"$(find {topoBuildSources} -newer {topoLaunchpointDistPath} -print -quit)\" ]";
             var serveProd = $"if {outputsMissingOrStale}; then {ensureTopoDependencies}; " +
                 $"npx ng build topomojo-work -c production && " +
-                $"npx ng build topomojo-launchpoint -c production --base-href=/lp/; fi";
+                $"npx ng build topomojo-launchpoint -c production --base-href=/lp/; fi; {serveTopoUi}";
 
-            topoUiBuild = builder.AddExecutable("topomojo-ui-build", "bash", topoUiRoot, "-c", serveProd);
+            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
+                .WithHttpEndpoint(port: 4201, isProxied: false)
+                .WithHttpHealthCheck();
         }
-
-        var topoUi = builder.AddContainer("topomojo-ui", "nginx:alpine")
-            .WithBindMount($"{topoUiRoot}{topoWorkDistPath}", "/var/www", isReadOnly: true)
-            .WithBindMount($"{topoUiRoot}{topoLaunchpointDistPath}", "/var/www/lp", isReadOnly: true)
-            .WithBindMount($"{topoUiRoot}tools/nginx-static.conf", "/etc/nginx/conf.d/default.conf", isReadOnly: true)
-            .WithHttpEndpoint(port: 4201, targetPort: 80, isProxied: false)
-            .WithHttpHealthCheck(endpointName: "http");
 
         if (!IsEnabled(topoMojoMode))
         {
