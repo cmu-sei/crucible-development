@@ -156,6 +156,16 @@
       }
     },
     {
+      "name": "Moodle + TopoMojo",
+      "type": "dotnet",
+      "request": "launch",
+      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
+      "envFile": "${workspaceFolder}/.env/moodle-topo.env",
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
       "name": "Moodle-Xdebug",
       "type": "dotnet",
       "request": "launch",
@@ -411,6 +421,20 @@
       "debuggers": {
         "apphost": {
           "envFile": "${workspaceFolder}/.env/moodle.env"
+        }
+      },
+      "presentation": {
+        "group": "b"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Moodle + Topomojo (aspire)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/moodle-topo.env"
         }
       },
       "presentation": {

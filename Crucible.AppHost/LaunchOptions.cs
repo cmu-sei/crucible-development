@@ -10,6 +10,7 @@ public class LaunchOptions
     public bool Caster { get; set; }
     public bool Alloy { get; set; }
     public bool TopoMojo { get; set; }
+    public bool TopoMojoLaunchpoint { get; set; }
     public bool Steamfitter { get; set; }
     public bool Cite { get; set; }
     public bool Gallery { get; set; }
