@@ -44,7 +44,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Gallery: {launchOptions.Gallery}, Cite: {launchOptions.Cite}");
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
     Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
-    Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, Gameboard: {launchOptions.Gameboard}");
+    Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, TopoMojo Launchpoint: {launchOptions.TopoMojoLaunchpoint}, Gameboard: {launchOptions.Gameboard}");
     Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
     Console.WriteLine($"  Dev: [{string.Join(", ", launchOptions.Dev)}]");
@@ -494,7 +494,13 @@ public static class BuilderExtensions
 
     public static void AddTopoMojo(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        var topoMojoMode = ResolveMode(options.TopoMojo, "TopoMojo", options);
+        var configuredTopoMojoMode = ResolveMode(options.TopoMojo, "TopoMojo", options);
+        var launchpointMode = ResolveMode(options.TopoMojoLaunchpoint, "TopoMojoLaunchpoint", options);
+        var topoMojoMode = IsEnabled(configuredTopoMojoMode)
+            ? configuredTopoMojoMode
+            : launchpointMode;
+        var launchpointIncluded = IsEnabled(launchpointMode) || options.AddAllApplications;
+        var effectiveLaunchpointMode = IsEnabled(launchpointMode) ? launchpointMode : "prod";
 
         if (!options.AddAllApplications && !IsEnabled(topoMojoMode))
             return;
@@ -523,49 +529,116 @@ public static class BuilderExtensions
             .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201") // for topo-ui
             .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
             .WithEnvironment("Headers__Cors__Methods__0", "*")
-            .WithEnvironment("Headers__Cors__Headers__0", "*");
+            .WithEnvironment("Headers__Cors__Headers__0", "*")
+            .WithEnvironment("Headers__Cors__AllowCredentials", "true");
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
+        const int topoWorkUiPort = 4201;
+        const int topoLaunchpointUiPort = 4204;
+        var topoLaunchpointUiUrl = $"http://localhost:{topoLaunchpointUiPort}";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/topomojo.ui.json", $"{topoUiRoot}/projects/topomojo-work/src/assets/settings.json", overwrite: true);
 
-        // Use AddAngularUI like other apps, but TopoMojo needs special dev mode args
+        if (launchpointIncluded)
+        {
+            topoApi = topoApi
+                .WithEnvironment("Headers__Cors__Origins__2", topoLaunchpointUiUrl)
+                .WithEnvironment("Core__LaunchUrl", topoLaunchpointUiUrl);
+        }
+
         IResourceBuilder<ExecutableResource> topoUi;
+        IResourceBuilder<ExecutableResource>? topoLaunchpointUi = null;
+
         if (topoMojoMode == "dev")
         {
-            // Dev mode needs .WithArgs for the workspace
             topoUi = builder.AddJavaScriptApp("topomojo-ui", topoUiRoot, "start")
-                .WithHttpEndpoint(port: 4201, env: "PORT", isProxied: false)
-                .WithArgs("topomojo-work")
+                .WithArgs("--", "topomojo-work", "--configuration", "development", "--port", topoWorkUiPort.ToString())
+                .WithHttpEndpoint(port: topoWorkUiPort, isProxied: false)
                 .WithHttpHealthCheck();
+
+            var topoUiInstaller = builder.Resources.OfType<JavaScriptInstallerResource>()
+                .Single(resource => resource.Name == "topomojo-ui-installer");
+
+            var fixupWmks = builder.AddExecutable("fixup-wmks", "bash", topoUiRoot, [
+                "-c",
+                "tools/fixup-wmks.sh"
+            ])
+            .WithParentRelationship(topoUiInstaller);
+
+            fixupWmks.Resource.Annotations.Add(
+                new WaitAnnotation(topoUiInstaller, WaitType.WaitForCompletion));
+            topoUi.WaitForCompletion(fixupWmks);
+
+            if (launchpointIncluded && effectiveLaunchpointMode == "dev")
+            {
+                topoLaunchpointUi = builder.AddJavaScriptApp("topomojo-launchpoint", topoUiRoot, "start")
+                    .WithNpm(install: false)
+                    .WithArgs("--", "topomojo-launchpoint", "--configuration", "development", "--port", topoLaunchpointUiPort.ToString())
+                    .WithHttpEndpoint(port: topoLaunchpointUiPort, isProxied: false)
+                    .WithHttpHealthCheck()
+                    .WaitForCompletion(fixupWmks);
+            }
+            else if (launchpointIncluded)
+            {
+                // The development build contains the local API and console URL settings needed when serving the app statically.
+                topoLaunchpointUi = builder.AddExecutable(
+                    "topomojo-launchpoint",
+                    "bash",
+                    topoUiRoot,
+                    "-c",
+                    $"npm run build -- topomojo-launchpoint --configuration development && npx serve -s dist/topomojo-launchpoint/browser -l {topoLaunchpointUiPort}")
+                    .WithHttpEndpoint(port: topoLaunchpointUiPort, isProxied: false)
+                    .WithHttpHealthCheck()
+                    .WaitForCompletion(fixupWmks);
+            }
         }
         else
         {
-            // Prod/off mode with fixup-wmks check
-            var distPath = "dist/topomojo-work/browser";
-            var fixupCheck = "[ -e node_modules/vmware-wmks/css/css/wmks-all.css ] || [ -d node_modules/vmware-wmks/img/img ]";
-            var serveProd = $"if {fixupCheck}; then bash tools/fixup-wmks.sh; fi; if [ ! -d {distPath} ] || [ -z \"$(ls -A {distPath} 2>/dev/null)\" ] || [ -n \"$(find src -newer {distPath} -print -quit)\" ]; then npm install && npm run build topomojo-work; fi; npx serve -s {distPath} -l 4201";
-            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveProd)
-                .WithHttpEndpoint(port: 4201, isProxied: false)
-                .WithHttpHealthCheck();
-        }
+            const string topoWorkDistPath = "dist/topomojo-work/browser";
+            const string topoLaunchpointDistPath = "dist/topomojo-launchpoint/browser";
 
-        // Add fixup-wmks script if in dev mode and installer exists
-        if (topoMojoMode == "dev")
-        {
-            var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
-                .FirstOrDefault(r => r.Name == "topomojo-ui-installer");
-
-            if (installerResource != null)
+            // Development configuration is required for the local API and console URLs; serve its build statically to avoid Angular dev servers.
+            var builds = new List<string>
             {
-                var script = builder.AddExecutable("fixup-wmks", "bash", topoUiRoot, [
-                    "-c",
-                    "tools/fixup-wmks.sh"
-                ])
-                .WithParentRelationship(installerResource);
+                "npm run build -- topomojo-work --configuration development"
+            };
 
-                script.Resource.Annotations.Add(new WaitAnnotation(installerResource, WaitType.WaitForCompletion));
-                topoUi.WaitForCompletion(script);
+            if (launchpointIncluded && effectiveLaunchpointMode != "dev")
+            {
+                builds.Add("npm run build -- topomojo-launchpoint --configuration development");
+            }
+
+            var serveTopoUi =
+                $"npm install && bash tools/fixup-wmks.sh && {string.Join(" && ", builds)} && " +
+                $"npx serve -s {topoWorkDistPath} -l {topoWorkUiPort}";
+
+            topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveTopoUi)
+                .WithHttpEndpoint(port: topoWorkUiPort, isProxied: false)
+                .WithHttpHealthCheck();
+
+            if (launchpointIncluded && effectiveLaunchpointMode == "dev")
+            {
+                topoLaunchpointUi = builder.AddJavaScriptApp("topomojo-launchpoint", topoUiRoot, "start")
+                    .WithNpm(install: false)
+                    .WithArgs("--", "topomojo-launchpoint", "--configuration", "development", "--port", topoLaunchpointUiPort.ToString())
+                    .WithHttpEndpoint(port: topoLaunchpointUiPort, isProxied: false)
+                    .WithHttpHealthCheck()
+                    .WaitFor(topoUi);
+            }
+            else if (launchpointIncluded)
+            {
+                topoLaunchpointUi = builder.AddExecutable(
+                    "topomojo-launchpoint",
+                    "npx",
+                    topoUiRoot,
+                    "serve",
+                    "-s",
+                    topoLaunchpointDistPath,
+                    "-l",
+                    topoLaunchpointUiPort.ToString())
+                    .WithHttpEndpoint(port: topoLaunchpointUiPort, isProxied: false)
+                    .WithHttpHealthCheck()
+                    .WaitFor(topoUi);
             }
         }
 
@@ -573,6 +646,7 @@ public static class BuilderExtensions
         {
             topoApi.WithExplicitStart();
             topoUi.WithExplicitStart();
+            topoLaunchpointUi?.WithExplicitStart();
         }
     }
 
@@ -860,6 +934,7 @@ public static class BuilderExtensions
         var casterMode = ResolveMode(options.Caster, "Caster", options);
         var alloyMode = ResolveMode(options.Alloy, "Alloy", options);
         var topoMojoMode = ResolveMode(options.TopoMojo, "TopoMojo", options);
+        var topoMojoLaunchpointMode = ResolveMode(options.TopoMojoLaunchpoint, "TopoMojoLaunchpoint", options);
         var steamfitterMode = ResolveMode(options.Steamfitter, "Steamfitter", options);
         var citeMode = ResolveMode(options.Cite, "Cite", options);
         var galleryMode = ResolveMode(options.Gallery, "Gallery", options);
@@ -901,7 +976,7 @@ public static class BuilderExtensions
             .WithEnvironment("CRUCIBLE_PLAYER_ENABLED", IsEnabled(playerMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_CASTER_ENABLED", IsEnabled(casterMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_ALLOY_ENABLED", IsEnabled(alloyMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_TOPOMOJO_ENABLED", IsEnabled(topoMojoMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_TOPOMOJO_ENABLED", IsEnabled(topoMojoMode) || IsEnabled(topoMojoLaunchpointMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_STEAMFITTER_ENABLED", IsEnabled(steamfitterMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_CITE_ENABLED", IsEnabled(citeMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_GALLERY_ENABLED", IsEnabled(galleryMode) ? "1" : "0")
