@@ -5,7 +5,7 @@
       "source": "angular/skills",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "computedHash": "ded1e95fb8d75d60901201665c6ab7e348eec3b79a6c53824c4a30a487d99f58"
+      "computedHash": "b347918e4684319dabde773c882cce231a738454166a221684f991a6197749eb"
     },
     "angular-new-app": {
       "source": "angular/skills",
@@ -53,7 +53,7 @@
       "source": "richlander/dotnet-inspect",
       "sourceType": "github",
       "skillPath": "skills/dotnet-inspect/SKILL.md",
-      "computedHash": "1523cd50192252692e1af5f56b9166f309d08e02d873ab257879a459b8413a3b"
+      "computedHash": "d046a7895b6a065fe4d195d5cbe2728a04531e75c978d26028a827df4d5baa91"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
