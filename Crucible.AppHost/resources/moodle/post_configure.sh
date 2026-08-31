@@ -215,27 +215,11 @@ configure_site() {
 }
 
 configure_boost_dark_theme() {
-  echo "Configuring Boost Union and Boost Dark"
+  echo "Configuring Boost Union and Boost Dark with the CMU development palette"
 
-  boost_union_scss='body {
-  background-image: url("/pluginfile.php/1/theme_boost_union/additionalresources/0/AdobeStock_755770452.jpeg");
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  letter-spacing: .3px;
-}
-
-#page.drawers .main-inner {
-  opacity: 95%;
-}
-
-.que .formulation {
-  display: flow-root;
-}
-
-/* IMCITE Boost Dark topbar */
+  boost_union_scss='/* CMU Boost Dark topbar */
 .navbar.fixed-top.bg-primary[data-bs-theme="dark"] {
-  background-color: #021269 !important;
+  background-color: #CC0000 !important;
   --bs-navbar-color: rgba(255, 255, 255, 0.92);
   --bs-navbar-hover-color: #fff;
 }
@@ -258,15 +242,15 @@ configure_boost_dark_theme() {
 }'
 
   php /var/www/html/admin/cli/cfg.php --name=theme --set=boost_union
-  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=brandcolor --set='#021269'
+  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=brandcolor --set='#CC0000'
   php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=navbarcolor --set=primarydark
   php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=scss --set="$boost_union_scss"
 
   php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=enable --set=1
-  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_primary --set='#2F6DB2'
-  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_color --set='#8FC4FF'
-  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_hover_color --set='#B5DAFF'
-  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_focus_color --set='#D0E9FF'
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_primary --set='#D9363E'
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_color --set='#FF9FA4'
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_hover_color --set='#FFC2C5'
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_focus_color --set='#FFD9DB'
 }
 
 configure_cmi5launch() {
@@ -329,6 +313,11 @@ configure_groupquiz_activity() {
     --name="Group Quiz (Test)" \
     --grouping="Group Quiz Test Grouping" \
     --group="Group Quiz Test Group"
+}
+
+configure_crucible_dashboard_blocks() {
+  echo "Ensuring Crucible dashboard blocks"
+  php /usr/local/bin/create_crucible_dashboard_blocks.php
 }
 
 configure_crucible() {
@@ -536,6 +525,7 @@ execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
 execute_section "lptmanager Configuration" configure_lptmanager
 execute_section "Crucible Configuration" configure_crucible
+execute_section "Crucible Dashboard Blocks" configure_crucible_dashboard_blocks
 execute_section "cmi5launch Configuration" configure_cmi5launch
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
