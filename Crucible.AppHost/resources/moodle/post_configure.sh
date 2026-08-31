@@ -214,6 +214,61 @@ configure_site() {
   php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='';
 }
 
+configure_boost_dark_theme() {
+  echo "Configuring Boost Union and Boost Dark"
+
+  boost_union_scss='body {
+  background-image: url("/pluginfile.php/1/theme_boost_union/additionalresources/0/AdobeStock_755770452.jpeg");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  letter-spacing: .3px;
+}
+
+#page.drawers .main-inner {
+  opacity: 95%;
+}
+
+.que .formulation {
+  display: flow-root;
+}
+
+/* IMCITE Boost Dark topbar */
+.navbar.fixed-top.bg-primary[data-bs-theme="dark"] {
+  background-color: #021269 !important;
+  --bs-navbar-color: rgba(255, 255, 255, 0.92);
+  --bs-navbar-hover-color: #fff;
+}
+
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link.active,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link[aria-current="true"],
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:hover,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus-visible,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:hover,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus-visible {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.16) !important;
+}'
+
+  php /var/www/html/admin/cli/cfg.php --name=theme --set=boost_union
+  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=brandcolor --set='#021269'
+  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=navbarcolor --set=primarydark
+  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=scss --set="$boost_union_scss"
+
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=enable --set=1
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_primary --set='#2F6DB2'
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_color --set='#8FC4FF'
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_hover_color --set='#B5DAFF'
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_focus_color --set='#D0E9FF'
+}
+
 configure_cmi5launch() {
   if [ "${CRUCIBLE_CATAPULT_ENABLED:-0}" != "1" ]; then
     log "CATAPULT disabled - skipping mod_cmi5launch configuration"
@@ -265,6 +320,15 @@ configure_cmi5_activity() {
     --course="Test Course" \
     --package="$PACKAGE" \
     --name="Geology Intro (cmi5)"
+}
+
+configure_groupquiz_activity() {
+  echo "Ensuring Group Quiz demo activity"
+  php /usr/local/bin/create_groupquiz_activity.php \
+    --course="Test Course" \
+    --name="Group Quiz (Test)" \
+    --grouping="Group Quiz Test Grouping" \
+    --group="Group Quiz Test Group"
 }
 
 configure_crucible() {
@@ -466,6 +530,7 @@ php /var/www/html/admin/cli/upgrade.php --non-interactive --allow-unstable || \
 
 # Execute sections based on status
 execute_section "Site Configuration" configure_site
+execute_section "Boost Dark Theme Configuration" configure_boost_dark_theme
 configure_oauth2
 execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
@@ -475,6 +540,7 @@ execute_section "cmi5launch Configuration" configure_cmi5launch
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
 execute_section "cmi5 Demo Activity" configure_cmi5_activity
+execute_section "Group Quiz Demo Activity" configure_groupquiz_activity
 
 # Only configure AWS Bedrock if credentials are available
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then

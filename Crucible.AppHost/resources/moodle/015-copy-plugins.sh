@@ -107,7 +107,19 @@ for entry in $PLUGINS; do
       ;;
   esac
 
-  if [ -d "$plugin_subdir" ]; then
+  source_dir="$plugin_subdir"
+  if [ ! -d "$source_dir" ]; then
+    source_dir_count=$(find . -mindepth 2 -maxdepth 2 -type f -name version.php | wc -l)
+    if [ "$source_dir_count" -eq 1 ]; then
+      source_dir=$(find . -mindepth 2 -maxdepth 2 -type f -name version.php | sed 's|/version.php$||')
+      if ! grep -Fq "$plugin_name" "$source_dir/version.php"; then
+        echo "Error: plugin metadata in '$source_dir' does not match '$plugin_name'"
+        exit 1
+      fi
+    fi
+  fi
+
+  if [ -d "$source_dir" ]; then
     # Ensure target directory exists
     mkdir -p "$(dirname "$target")"
 
@@ -118,14 +130,14 @@ for entry in $PLUGINS; do
     fi
 
     # Move plugin to target location
-    mv "$plugin_subdir" "$target"
+    mv "$source_dir" "$target"
 
     # Set appropriate permissions
     chown -R www-data:www-data "$target" 2>/dev/null || true
 
     echo "Successfully installed $plugin_name to $target"
   else
-    echo "Error: the ZIP does not contain the expected folder '$plugin_subdir'"
+    echo "Error: the ZIP does not contain a plugin folder for '$plugin_name'"
     echo "Contents of the ZIP:"
     ls -la
     exit 1
