@@ -5,7 +5,7 @@
       "source": "angular/skills",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "computedHash": "b347918e4684319dabde773c882cce231a738454166a221684f991a6197749eb"
+      "computedHash": "3faf142c1524f6d006621e1485810d15ee975bdfddb6d0f80c2b367b3a596a44"
     },
     "angular-new-app": {
       "source": "angular/skills",
@@ -17,7 +17,7 @@
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire/SKILL.md",
-      "computedHash": "f24902e6619321291156ad1d3f455d0914c63d8e6b79ac35d5082918652e6c72"
+      "computedHash": "a9bc9478562ae4c2c72cdaa45986cfd521ae32ecae049c7d5944e8b91425126a"
     },
     "aspire-deployment": {
       "source": "microsoft/aspire-skills",
@@ -29,13 +29,13 @@
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-init/SKILL.md",
-      "computedHash": "52e351ad57570dbedc4b53c115b3fc3ec265fc3f97c1b81d99b3af5819eab082"
+      "computedHash": "17582d2beb564a7f32e04116fcedec489fe6b585703c3873866ae94d404d8bcf"
     },
     "aspire-monitoring": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-monitoring/SKILL.md",
-      "computedHash": "1e4826d4647df16c0a147dc93f8250e8c44d756bf36ac5c1f8bf1283d99625ae"
+      "computedHash": "b8ad035d035dfdeb261c200d90a761494976f981f23f14d78a9e59a29de4060b"
     },
     "aspire-orchestration": {
       "source": "microsoft/aspire-skills",
@@ -47,13 +47,13 @@
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspireify/SKILL.md",
-      "computedHash": "c790ad33383014ee243e4ee375253891d3ae2bfa6ff2c2b5247a5bd74ce3f3d7"
+      "computedHash": "a1e19912ebc55627f8b0a8551d0885257925505a1693326b829c1a081f855ef3"
     },
     "dotnet-inspect": {
       "source": "richlander/dotnet-inspect",
       "sourceType": "github",
       "skillPath": "skills/dotnet-inspect/SKILL.md",
-      "computedHash": "d046a7895b6a065fe4d195d5cbe2728a04531e75c978d26028a827df4d5baa91"
+      "computedHash": "74e45cbfa650af46bef7a100f52308b802aaf5682f956636770bf1e0cde66479"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
@@ -65,7 +65,7 @@
       "source": "github/gh-stack",
       "sourceType": "github",
       "skillPath": "skills/gh-stack/SKILL.md",
-      "computedHash": "213d3fe0b3dc87b453912b5a5947fd189a884e4a82ce41fe8ce6c16fb93cd8b3"
+      "computedHash": "28d42250d52f33424b807add6fbdec75736e835f98752311db321ab51733fea6"
     },
     "new-terraform-provider": {
       "source": "hashicorp/agent-skills",
