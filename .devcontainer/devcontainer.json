@@ -78,6 +78,10 @@
     // Codex shared defaults and persisted state
     "source=${localWorkspaceFolder}/.devcontainer/codex/config.toml,target=/etc/codex/config.toml,type=bind,readonly",
     "source=crucible-dev-codex,target=/home/vscode/.codex,type=volume",
+    // OMP settings, sessions, history, and cached model metadata
+    "source=crucible-dev-omp,target=/home/vscode/.omp,type=volume",
+    // Herdr settings, session state, and logs
+    "source=crucible-dev-herdr,target=/home/vscode/.config/herdr,type=volume",
     // SSH keys and config
     "source=crucible-dev-ssh,target=/home/vscode/.ssh,type=volume",
     // GitHub CLI auth

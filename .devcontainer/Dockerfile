@@ -87,6 +87,9 @@ RUN set -eux; \
     rm /tmp/herdr; \
     herdr --version
 
+# Prepare persistent agent state directories before Docker initializes named volumes
+RUN install -d -o vscode -g vscode /home/vscode/.omp /home/vscode/.config/herdr
+
 # Install AWS CLI with Session Manager Plugin
 RUN case "${TARGETARCH}" in \
     amd64)  AWSCLI_PKG="awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip" \
