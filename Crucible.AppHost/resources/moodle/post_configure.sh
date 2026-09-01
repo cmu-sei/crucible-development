@@ -239,6 +239,12 @@ configure_boost_dark_theme() {
 .navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus-visible {
   color: #fff !important;
   background-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Moodle aiplacement_courseassist dark-mode compatibility. */
+[data-bs-theme="dark"] .ai-drawer {
+  background-color: var(--bs-body-bg);
+  border-left: 1px solid var(--bs-border-color);
 }'
 
   php /var/www/html/admin/cli/cfg.php --name=theme --set=boost_union
