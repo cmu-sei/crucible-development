@@ -214,6 +214,53 @@ configure_site() {
   php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='';
 }
 
+configure_boost_dark_theme() {
+  echo "Configuring Boost Union and Boost Dark with the CMU development palette"
+
+  boost_union_scss='/* CMU Boost Dark topbar */
+.navbar.fixed-top.bg-primary[data-bs-theme="dark"] {
+  background-color: #CC0000 !important;
+  --bs-navbar-color: rgba(255, 255, 255, 0.92);
+  --bs-navbar-hover-color: #fff;
+}
+
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link.active,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link[aria-current="true"],
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:hover,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus-visible,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:hover,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus,
+.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus-visible {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Moodle aiplacement_courseassist dark-mode compatibility. */
+[data-bs-theme="dark"] .ai-drawer {
+  background-color: var(--bs-body-bg);
+  border-left: 1px solid var(--bs-border-color);
+}'
+
+  php /var/www/html/admin/cli/cfg.php --name=theme --set=boost_union
+  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=brandcolor --set='#CC0000'
+  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=navbarcolor --set=primarydark
+  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=scss --set="$boost_union_scss"
+
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=enable --set=1
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_primary --set='#D9363E'
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_color --set='#FF9FA4'
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_hover_color --set='#FFC2C5'
+  php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_focus_color --set='#FFD9DB'
+
+  php /var/www/html/admin/cli/purge_caches.php --theme
+}
+
 configure_cmi5launch() {
   if [ "${CRUCIBLE_CATAPULT_ENABLED:-0}" != "1" ]; then
     log "CATAPULT disabled - skipping mod_cmi5launch configuration"
@@ -265,6 +312,20 @@ configure_cmi5_activity() {
     --course="Test Course" \
     --package="$PACKAGE" \
     --name="Geology Intro (cmi5)"
+}
+
+configure_groupquiz_activity() {
+  echo "Ensuring Group Quiz demo activity"
+  php /usr/local/bin/create_groupquiz_activity.php \
+    --course="Test Course" \
+    --name="Group Quiz (Test)" \
+    --grouping="Group Quiz Test Grouping" \
+    --group="Group Quiz Test Group"
+}
+
+configure_crucible_dashboard_blocks() {
+  echo "Ensuring Crucible dashboard blocks"
+  php /usr/local/bin/create_crucible_dashboard_blocks.php
 }
 
 configure_crucible() {
@@ -466,15 +527,18 @@ php /var/www/html/admin/cli/upgrade.php --non-interactive --allow-unstable || \
 
 # Execute sections based on status
 execute_section "Site Configuration" configure_site
+execute_section "Boost Dark Theme Configuration" configure_boost_dark_theme
 configure_oauth2
 execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
 execute_section "lptmanager Configuration" configure_lptmanager
 execute_section "Crucible Configuration" configure_crucible
+execute_section "Crucible Dashboard Blocks v2" configure_crucible_dashboard_blocks
 execute_section "cmi5launch Configuration" configure_cmi5launch
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
 execute_section "cmi5 Demo Activity" configure_cmi5_activity
+execute_section "Group Quiz Demo Activity" configure_groupquiz_activity
 
 # Only configure AWS Bedrock if credentials are available
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then
