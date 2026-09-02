@@ -556,18 +556,6 @@ public static class BuilderExtensions
                 .WithHttpEndpoint(port: topoWorkUiPort, isProxied: false)
                 .WithHttpHealthCheck();
 
-            var topoUiInstaller = builder.Resources.OfType<JavaScriptInstallerResource>()
-                .Single(resource => resource.Name == "topomojo-ui-installer");
-
-            var fixupWmks = builder.AddExecutable("fixup-wmks", "bash", topoUiRoot, [
-                "-c",
-                "tools/fixup-wmks.sh"
-            ])
-            .WithParentRelationship(topoUiInstaller);
-
-            fixupWmks.Resource.Annotations.Add(
-                new WaitAnnotation(topoUiInstaller, WaitType.WaitForCompletion));
-            topoUi.WaitForCompletion(fixupWmks);
 
             if (launchpointIncluded && effectiveLaunchpointMode == "dev")
             {
@@ -576,7 +564,7 @@ public static class BuilderExtensions
                     .WithArgs("--", "topomojo-launchpoint", "--configuration", "development", "--port", topoLaunchpointUiPort.ToString())
                     .WithHttpEndpoint(port: topoLaunchpointUiPort, isProxied: false)
                     .WithHttpHealthCheck()
-                    .WaitForCompletion(fixupWmks);
+                    .WaitFor(topoUi);
             }
             else if (launchpointIncluded)
             {
@@ -589,7 +577,7 @@ public static class BuilderExtensions
                     $"npm run build -- topomojo-launchpoint --configuration development && npx serve -s dist/topomojo-launchpoint/browser -l {topoLaunchpointUiPort}")
                     .WithHttpEndpoint(port: topoLaunchpointUiPort, isProxied: false)
                     .WithHttpHealthCheck()
-                    .WaitForCompletion(fixupWmks);
+                    .WaitFor(topoUi);
             }
         }
         else
@@ -609,7 +597,7 @@ public static class BuilderExtensions
             }
 
             var serveTopoUi =
-                $"npm install && bash tools/fixup-wmks.sh && {string.Join(" && ", builds)} && " +
+                $"npm install && {string.Join(" && ", builds)} && " +
                 $"npx serve -s {topoWorkDistPath} -l {topoWorkUiPort}";
 
             topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveTopoUi)
