@@ -983,7 +983,7 @@ public static class BuilderExtensions
             .WithEnvironment("CRUCIBLE_BLUEPRINT_ENABLED", IsEnabled(blueprintMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_GAMEBOARD_ENABLED", IsEnabled(gameboardMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_CATAPULT_ENABLED", IsEnabled(ResolveMode(options.Catapult, "Catapult", options)) ? "1" : "0")
-            .WithEnvironment("PLUGINS", @"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/2025070100/download theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/2025041407/download local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/2026010600/download")
+            .WithEnvironment("PLUGINS", @"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/2025070100/download theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/2025041477/download local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/2026052400/download")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"/usr/local/bin/post_configure.sh")
             // Bind mount moodle-core directories (writable for xdebug)
