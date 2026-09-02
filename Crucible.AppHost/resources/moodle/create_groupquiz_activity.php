@@ -86,10 +86,22 @@ $existing = $DB->get_record('groupquiz', [
     'name' => $options['name'],
 ]);
 if ($existing) {
+    $updated = false;
     if ((int) $existing->grouping !== (int) $grouping->id) {
         $existing->grouping = $grouping->id;
         $existing->timemodified = time();
         $DB->update_record('groupquiz', $existing);
+        $updated = true;
+    }
+
+    $cm = get_coursemodule_from_instance('groupquiz', $existing->id, $course->id, false, MUST_EXIST);
+    if ((int) $cm->groupingid !== (int) $grouping->id) {
+        $cm->groupingid = $grouping->id;
+        $DB->update_record('course_modules', $cm);
+        $updated = true;
+    }
+
+    if ($updated) {
         rebuild_course_cache($course->id, true);
         cli_writeln("Updated Group Quiz '{$existing->name}' to use grouping '{$grouping->name}'.");
     } else {
@@ -107,7 +119,6 @@ $moduleinfo->course = $course->id;
 $moduleinfo->section = 0;
 $moduleinfo->visible = 1;
 $moduleinfo->visibleoncoursepage = 1;
-$moduleinfo->groupmode = SEPARATEGROUPS;
 $moduleinfo->groupingid = $grouping->id;
 $moduleinfo->name = $options['name'];
 $moduleinfo->intro = 'Seeded development activity for validating Group Quiz behavior and styling.';

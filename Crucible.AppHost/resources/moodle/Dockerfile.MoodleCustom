@@ -38,10 +38,13 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # Copy moosh with user-agent setting since we don't have the latest alpine-moodle or moosh
 COPY moosh.sh /usr/local/bin/moosh-new
 
+# Seed bind-mounted Moodle core files before third-party plugins are installed.
+COPY 010-seed-moodle-core-mounts.sh /docker-entrypoint-init.d/
+
 # Copy plugins install script
 COPY 015-copy-plugins.sh /docker-entrypoint-init.d/
 
-RUN chmod +x /docker-entrypoint-init.d/015-copy-plugins.sh
+RUN chmod +x /docker-entrypoint-init.d/010-seed-moodle-core-mounts.sh /docker-entrypoint-init.d/015-copy-plugins.sh
 
 # Copy scripts
 COPY post_configure.sh /usr/local/bin/

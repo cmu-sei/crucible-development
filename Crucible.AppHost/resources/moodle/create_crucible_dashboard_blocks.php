@@ -29,8 +29,15 @@ $instances = $DB->get_records('block_instances', [
 
 $existingviews = [];
 foreach ($instances as $instance) {
-    $config = unserialize(base64_decode($instance->configdata), ['allowed_classes' => [stdClass::class]]);
-    if (empty($config->viewtype)) {
+    $config = null;
+    if (!empty($instance->configdata)) {
+        $decodedconfig = base64_decode($instance->configdata, true);
+        if ($decodedconfig !== false) {
+            $config = unserialize($decodedconfig, ['allowed_classes' => [stdClass::class]]);
+        }
+    }
+
+    if (!is_object($config) || empty($config->viewtype)) {
         continue;
     }
 
@@ -77,3 +84,8 @@ foreach ($views as $offset => $view) {
 
     cli_writeln("Created Crucible {$view['viewtype']} dashboard block (ID {$instance->id}).");
 }
+
+cli_writeln('Resetting dashboard pages for existing users.');
+$progressbar = new progress_bar();
+$progressbar->create();
+my_reset_page_for_all_users(MY_PAGE_PRIVATE, 'my-index', $progressbar);

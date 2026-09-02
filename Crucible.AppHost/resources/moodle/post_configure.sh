@@ -257,6 +257,8 @@ configure_boost_dark_theme() {
   php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_color --set='#FF9FA4'
   php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_hover_color --set='#FFC2C5'
   php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=bs_link_focus_color --set='#FFD9DB'
+
+  php /var/www/html/admin/cli/purge_caches.php --theme
 }
 
 configure_cmi5launch() {
@@ -531,7 +533,7 @@ execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
 execute_section "lptmanager Configuration" configure_lptmanager
 execute_section "Crucible Configuration" configure_crucible
-execute_section "Crucible Dashboard Blocks" configure_crucible_dashboard_blocks
+execute_section "Crucible Dashboard Blocks v2" configure_crucible_dashboard_blocks
 execute_section "cmi5launch Configuration" configure_cmi5launch
 execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
