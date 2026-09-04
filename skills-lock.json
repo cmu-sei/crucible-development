@@ -17,37 +17,37 @@
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire/SKILL.md",
-      "computedHash": "a9bc9478562ae4c2c72cdaa45986cfd521ae32ecae049c7d5944e8b91425126a"
+      "computedHash": "2b37052a2d993e1941a35de876c1351f201090228c469a55d6a24ee65a049feb"
     },
     "aspire-deployment": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-deployment/SKILL.md",
-      "computedHash": "e92cc2f0a4e186c6e8e4a04c1159eb5756dc325bf0fcd7ab3f5d55d65676c9cb"
+      "computedHash": "279cae5707bc63f7ba3b6695413d9ae9ee0910593c5cbd5352fe2f802bbb8ac1"
     },
     "aspire-init": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-init/SKILL.md",
-      "computedHash": "17582d2beb564a7f32e04116fcedec489fe6b585703c3873866ae94d404d8bcf"
+      "computedHash": "ad1c28637fb57e37d9a345f09daee6a51c32c3f8b7abe12e19596a3a2d13d124"
     },
     "aspire-monitoring": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-monitoring/SKILL.md",
-      "computedHash": "b8ad035d035dfdeb261c200d90a761494976f981f23f14d78a9e59a29de4060b"
+      "computedHash": "2b779e76dcd3236841558529becfafdd7b724608ee2388a6a7f273c2f034b089"
     },
     "aspire-orchestration": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspire-orchestration/SKILL.md",
-      "computedHash": "d4309cfe4b5a58169a935e6433a595778a04cd77e1a0c11dbaeda875c0305be4"
+      "computedHash": "52f1eefdabae4508d4197d30cbbd4a2bda8dc373adf79388967eb12a7615c8bf"
     },
     "aspireify": {
       "source": "microsoft/aspire-skills",
       "sourceType": "github",
       "skillPath": "skills/aspireify/SKILL.md",
-      "computedHash": "a1e19912ebc55627f8b0a8551d0885257925505a1693326b829c1a081f855ef3"
+      "computedHash": "338ea536978e91a2b8f6b2a5370893a6a58e5834a71fff8b5bbbb7d74bcad6e0"
     },
     "dotnet-inspect": {
       "source": "richlander/dotnet-inspect",
@@ -77,7 +77,7 @@
       "source": "microsoft/playwright-cli",
       "sourceType": "github",
       "skillPath": "skills/playwright-cli/SKILL.md",
-      "computedHash": "f602822b51bcb6d033749c60731b8f1e80f308222fcb2e4af551905a817c6e08"
+      "computedHash": "19b6942c9cbcf9b9e3000fc497f8f156b8251d66055de806017e4aaa651e0c7b"
     },
     "provider-actions": {
       "source": "hashicorp/agent-skills",
