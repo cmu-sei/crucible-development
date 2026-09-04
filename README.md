@@ -25,6 +25,14 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
 - [Library Development](#library-development)
   - [.NET Libraries (crucible-common-dotnet)](#net-libraries-crucible-common-dotnet)
   - [Angular Libraries (Crucible.Common.Ui)](#angular-libraries-cruciblecommonui)
+- [Hypervisor Configuration](#hypervisor-configuration)
+  - [Supported Hypervisors](#supported-hypervisors)
+  - [Quick Start](#hypervisor-quick-start)
+  - [Configuration Options](#hypervisor-configuration-options)
+- [Proxmox OIDC Authentication](#proxmox-oidc-authentication)
+  - [Setup](#proxmox-oidc-setup)
+  - [Login Flow](#proxmox-oidc-login-flow)
+  - [Role-Based Access Control](#proxmox-oidc-rbac)
 - [Devcontainer CI](#devcontainer-ci)
 
 ## Getting Started
@@ -959,6 +967,214 @@ The AppHost uses a health check to ensure UIs don't start until the library is f
 3. Edit files in `/mnt/data/crucible/libraries/Crucible.Common.Ui`
 4. The watch process rebuilds the library automatically
 5. UIs using `ng serve` pick up the changes via the npm link
+
+## Hypervisor Configuration
+
+Crucible supports three hypervisor types for VM orchestration: Proxmox, vSphere (on-premises), and VMware Cloud (VMC). Configure hypervisors centrally via `Crucible.AppHost/appsettings.Development.json` and the AppHost will automatically inject environment variables into TopoMojo, Player VM, and Caster.
+
+### Supported Hypervisors
+
+| Application | Proxmox | vSphere On-Prem | VMware Cloud (VMC) |
+|-------------|---------|-----------------|---------------------|
+| **TopoMojo** | ✅ | ✅ | ✅ |
+| **Player VM** | ✅ | ❌ | ❌ |
+| **Caster** | ✅ | ✅ | ✅ |
+
+### Hypervisor Quick Start
+
+Use the toggle script to configure any hypervisor:
+
+```bash
+# Proxmox
+./scripts/toggle-hypervisor.sh proxmox
+
+# vSphere on-premises (interactive - prompts for credentials)
+./scripts/toggle-hypervisor.sh vsphere
+
+# VMware Cloud on AWS (interactive)
+./scripts/toggle-hypervisor.sh vmc
+
+# Remove hypervisor configuration
+./scripts/toggle-hypervisor.sh remove
+
+# Non-interactive with credentials
+./scripts/toggle-hypervisor.sh vsphere \
+  --url https://vcenter.example.com/sdk \
+  --user administrator@vsphere.local \
+  --password 'password' \
+  --non-interactive
+```
+
+The script updates `Crucible.AppHost/appsettings.Development.json`, then just restart Aspire:
+
+```bash
+aspire run
+```
+
+### Multiple Hypervisors at Once (dev)
+
+Player VM API and Caster support **Proxmox and vSphere/VMC simultaneously** — vm.api routes per-VM, Caster picks per-project. This is useful in dev when a feature must be tested against both. (TopoMojo is single-backend.)
+
+Use `configure-hypervisors.sh` to write the nested `Launch.Hypervisors` block, which can hold both backends at once:
+
+```bash
+# Configure BOTH backends
+./scripts/configure-hypervisors.sh set-proxmox            # uses ~/.crucible-proxmox, or --url/--token
+./scripts/configure-hypervisors.sh set-vmc \
+  --url https://vcenter.sddc-x.vmwarevmc.com/sdk \
+  --user cloudadmin@vmc.local --password 'pw'
+
+# Pick which backend TopoMojo uses (single-backend)
+./scripts/configure-hypervisors.sh topomojo Proxmox
+
+./scripts/configure-hypervisors.sh show          # view current config
+./scripts/configure-hypervisors.sh remove Vsphere
+```
+
+This produces:
+
+```json
+{
+  "Launch": {
+    "Hypervisors": {
+      "Proxmox": { "Url": "https://10.0.100.2:443", "Token": "root@pam!CRUCIBLE=..." },
+      "Vsphere": { "Url": "https://vcenter.../sdk", "User": "...", "Password": "...",
+                   "PoolPath": "Datacenter/Cluster/Pool", "VmStore": "[WorkloadDatastore] topomojo/" }
+    },
+    "TopomojoHypervisor": "Proxmox"
+  }
+}
+```
+
+You can also hand-edit this block directly — AppHost reads it on startup. The nested `Launch.Hypervisors` config supersedes the legacy flat `Launch.Hypervisor*` fields when present.
+
+> **TopoMojo caveat:** in dev, TopoMojo is driven by its own `appsettings.Development.conf` (loaded last via its `ConfToEnv()` loader, which **overrides** AppHost env vars). `TopomojoHypervisor` only takes effect in prod. To change TopoMojo's hypervisor in dev, edit `/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/appsettings.Development.conf` (or use `toggle-hypervisor.sh`).
+
+### Hypervisor Configuration Options
+
+#### Proxmox Example
+
+```json
+{
+  "Launch": {
+    "HypervisorType": "Proxmox",
+    "HypervisorUrl": "https://172.29.24.139:443",
+    "HypervisorToken": "root@pam!CRUCIBLE=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "HypervisorVmStore": "local-lvm",
+    "HypervisorDiskStore": "local-lvm",
+    "HypervisorIsoStore": "local"
+  }
+}
+```
+
+#### vSphere On-Premises Example
+
+```json
+{
+  "Launch": {
+    "HypervisorType": "Vsphere",
+    "HypervisorUrl": "https://vcenter.example.com/sdk",
+    "HypervisorUser": "administrator@vsphere.local",
+    "HypervisorPassword": "your-password",
+    "HypervisorVmStore": "[datastore1] topomojo",
+    "HypervisorDiskStore": "[datastore1] topomojo",
+    "HypervisorIsoStore": "[datastore1] topomojo",
+    "HypervisorPoolPath": "Datacenter/Cluster"
+  }
+}
+```
+
+#### VMware Cloud (VMC) Example
+
+```json
+{
+  "Launch": {
+    "HypervisorType": "Vsphere",
+    "HypervisorUrl": "https://vcenter.sddc-12-34-56-78.vmwarevmc.com/sdk",
+    "HypervisorUser": "cloudadmin@vmc.local",
+    "HypervisorPassword": "your-vmc-password",
+    "HypervisorVmStore": "[WorkloadDatastore] topomojo/",
+    "HypervisorDiskStore": "[WorkloadDatastore] topomojo/",
+    "HypervisorIsoStore": "[WorkloadDatastore] topomojo/",
+    "HypervisorPoolPath": "SDDC-Datacenter/Cluster-1/Compute-ResourcePool"
+  }
+}
+```
+
+See `Crucible.AppHost/appsettings.Development.json.example` for complete configuration examples.
+
+## Proxmox OIDC Authentication
+
+Configure Proxmox to authenticate users via Keycloak OIDC, enabling unified SSO across Crucible services and Proxmox with role-based access control.
+
+### Proxmox OIDC Setup
+
+#### Prerequisites (Windows Host)
+
+Run once to configure port forwarding for Keycloak:
+
+```powershell
+# From Windows PowerShell (as Administrator)
+.\scripts\setup-keycloak-portforward.ps1
+```
+
+This configures:
+- Port forwarding: `172.29.16.1:8080` → `127.0.0.1:8080`
+- Firewall rules for ports 8080 and 8443
+- Windows hosts entry: `172.29.16.1 keycloak`
+
+#### Proxmox Configuration
+
+Configure Proxmox infrastructure and OIDC:
+
+```bash
+export PROXMOX_HOST='172.29.24.139'
+export KEYCLOAK_HOST='172.29.16.1'  # Optional, auto-detected
+./scripts/crucible-proxmox.sh setup
+```
+
+This creates:
+- OIDC realm `keycloak-crucible` in Proxmox
+- Three role-based Proxmox groups
+- VM templates (Alpine, TinyCore, Puppy)
+- TopoMojo, Caster, Player, Alloy resources
+
+### Proxmox OIDC Login Flow
+
+1. Navigate to: `https://172.29.24.139:8006`
+2. Select **"Keycloak Crucible Realm"** from realm dropdown
+3. Click Login → redirects to `http://keycloak:8080`
+4. Login with Keycloak credentials (`admin`/`admin`)
+5. Redirected back to Proxmox
+
+#### Assign Groups After First Login
+
+```bash
+ssh -i ~/.ssh/crucible_proxmox root@172.29.24.139
+
+# Assign Administrator role
+/usr/local/bin/oidc-group-sync.sh admin@keycloak-crucible Administrators
+
+# Assign VM Operator role
+/usr/local/bin/oidc-group-sync.sh developer@keycloak-crucible "Content Developer"
+
+# Assign Read-only role
+/usr/local/bin/oidc-group-sync.sh observer@keycloak-crucible Test
+```
+
+Log out and back in for permissions to take effect.
+
+### Proxmox OIDC RBAC
+
+Three Proxmox groups are created with role-based permissions:
+
+| Keycloak Role | Proxmox Group | Proxmox Role | Access Level |
+|---------------|---------------|--------------|--------------|
+| **Administrators** | crucible-admins | Administrator | Full datacenter access |
+| **Content Developer** | crucible-developers | PVEVMAdmin | VM operator (create/manage VMs) |
+| **Test** | crucible-observers | PVEAuditor | Read-only |
+
+**Emergency Access:** `root@pam` login remains available as fallback if OIDC fails.
 
 ## Devcontainer CI
 
