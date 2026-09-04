@@ -196,7 +196,7 @@ configure_xapi() {
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=mbox --set=0
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=send_name --set=1
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=send_user_idnumber --set=1
-  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=account_homepage --set=https://keycloak.dev.internal:8443/realms/crucible/
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=account_homepage --set=https://localhost:8443/realms/crucible/
 }
 
 configure_lptmanager() {
@@ -481,8 +481,15 @@ configure_topomojo() {
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableapikey --set=1;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enablemanagername --set=1;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';
-  echo "TopoMojo API KEY needs to be generated and set manually"
-  #php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
+  php /var/www/html/admin/cli/cfg.php --component=topomojo --name=usingconsoleforge --set=1;
+
+  # Read API key from environment variable (set by AppHost from ~/.topomojo-apikey)
+  if [ -n "$TOPOMOJO_APIKEY" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set="$TOPOMOJO_APIKEY";
+    echo "TopoMojo API key configured from environment variable"
+  else
+    echo "Warning: TOPOMOJO_APIKEY environment variable not set"
+  fi
 }
 
 
@@ -506,6 +513,9 @@ configure_ai_bedrock() {
 create_course() {
   echo "Creating course"
   moosh course-list | grep -q 'Test Course' || moosh course-create 'Test Course';
+
+  # Note: OAuth users (demo-user, contentdev) don't exist until first login
+  # Manual enrollment required after users authenticate via OAuth
 }
 
 # Main execution

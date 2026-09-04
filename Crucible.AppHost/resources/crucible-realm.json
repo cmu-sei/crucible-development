@@ -2749,19 +2749,19 @@
       "clientId": "moodle-client",
       "name": "moodle",
       "description": "",
-      "rootUrl": "http://localhost",
-      "adminUrl": "http://localhost",
-      "baseUrl": "http://localhost",
+      "rootUrl": "http://localhost:8081",
+      "adminUrl": "http://localhost:8081",
+      "baseUrl": "http://localhost:8081",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "super-safe-secret",
       "redirectUris": [
-        "http://localhost/admin/oauth2callback.php"
+        "http://localhost:8081/admin/oauth2callback.php"
       ],
       "webOrigins": [
-        "http://localhost"
+        "http://localhost:8081"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -2828,8 +2828,12 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "misp-client-secret",
-      "redirectUris": ["http://localhost:8444/*"],
-      "webOrigins": ["http://localhost:8444"],
+      "redirectUris": [
+        "http://localhost:8444/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8444"
+      ],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2919,6 +2923,109 @@
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "id": "a9b8c7d6-e5f4-3210-9876-543210fedcba",
+      "clientId": "proxmox-web",
+      "name": "Proxmox VE Web Interface",
+      "description": "OIDC client for Proxmox Virtual Environment web console authentication",
+      "rootUrl": "",
+      "adminUrl": "",
+      "baseUrl": "",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "proxmox-oidc-secret-change-me",
+      "redirectUris": [
+        "https://*",
+        "https://*/*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oidc.ciba.grant.enabled": "false",
+        "client.secret.creation.time": "1762805282",
+        "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "access.token.lifespan": "3600",
+        "pkce.code.challenge.method": "S256"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "id": "pm-proxmox-username",
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "pm-proxmox-groups",
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "id": "pm-proxmox-roles",
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ],
       "defaultClientScopes": [
         "web-origins",
         "acr",
@@ -4717,7 +4824,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "ogadmin@localhost"
     },
     {
       "id": "8037bdb5-1abd-45a7-aaa1-c8dce0da86d8",
@@ -4750,7 +4858,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "contentdev@localhost"
     },
     {
       "id": "3d8332fa-2e35-4823-b83f-732eb9483690",
@@ -4782,7 +4891,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "crucible-admin@localhost"
     },
     {
       "id": "a0c8dc48-c501-4362-bef2-945cf1695bd0",
@@ -4816,7 +4926,8 @@
       "notBefore": 0,
       "groups": [
         "/White Cell"
-      ]
+      ],
+      "email": "demo-user@localhost"
     },
     {
       "id": "987b237f-764e-460f-a80d-b761321d9e98",
@@ -4848,7 +4959,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "rangetech@localhost"
     },
     {
       "id": "6b2541f3-7b60-4c09-ba0a-d421bfbabb46",
@@ -4880,7 +4992,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "readonly@localhost"
     },
     {
       "id": "6ae23f9b-26d0-4c15-a399-1a94b7d10f90",
@@ -4931,7 +5044,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "user1@localhost"
     },
     {
       "id": "c0ce45b2-5634-4f5e-9a6a-87a0738e814c",
@@ -4962,7 +5076,8 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "user2@localhost"
     }
   ]
 }

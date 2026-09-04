@@ -247,6 +247,7 @@ public static class BuilderExtensions
             .WithEnvironment("KC_HOSTNAME", "localhost")
             .WithEnvironment("KC_HTTPS_PORT", "8443")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
+            .WithEnvironment("KC_HOSTNAME_STRICT_BACKCHANNEL", "false")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
@@ -353,6 +354,57 @@ public static class BuilderExtensions
             .WithEnvironment("IdentityClient__UserName", "admin")
             .WithEnvironment("IdentityClient__Password", "admin");
 
+        // Player VM API supports Proxmox and vSphere simultaneously: it routes
+        // per-VM based on each VM's provider info. Configure whichever backends
+        // are resolved (nested Hypervisors block, or the legacy flat fields),
+        // so a single-backend toggle OR both backends at once both work.
+        if (options.ResolveProxmox() is { } proxmox)
+        {
+            // Extract host from URL (remove https:// and port)
+            var host = proxmox.Url.Replace("https://", "").Replace("http://", "").Split(':')[0];
+
+            vmApi
+                .WithEnvironment("Proxmox__Enabled", "true")
+                .WithEnvironment("Proxmox__Host", host)
+                .WithEnvironment("Proxmox__Port", "443")
+                .WithEnvironment("Proxmox__Token", proxmox.Token)
+                .WithEnvironment("Proxmox__IsoStorage", proxmox.IsoStore)
+                .WithEnvironment("Proxmox__IsoUploadViaApi", "true")
+                // The local Proxmox setup exposes PVE through its stock self-signed certificate.
+                .WithEnvironment("Proxmox__ValidateCertificate", "false")
+                .WithEnvironment("Proxmox__StateRefreshIntervalSeconds", "60");
+        }
+
+        // Configure vSphere (on-prem or VMC) for Player VM API. Uses the
+        // Vsphere:Hosts[] array shape that VsphereOptions binds; a host entry
+        // with Enabled=true activates the vSphere connection/state services.
+        if (options.ResolveVsphere() is { } vsphere)
+        {
+            // Extract bare host from the vCenter SDK URL (strip scheme, /sdk, port)
+            var vsphereHost = vsphere.Url
+                .Replace("https://", "").Replace("http://", "")
+                .Replace("/sdk", "").Split('/')[0].Split(':')[0];
+
+            vmApi
+                .WithEnvironment("Vsphere__Hosts__0__Enabled", "true")
+                .WithEnvironment("Vsphere__Hosts__0__Address", vsphereHost)
+                .WithEnvironment("Vsphere__Hosts__0__Username", vsphere.User)
+                .WithEnvironment("Vsphere__Hosts__0__Password", vsphere.Password);
+
+            if (!string.IsNullOrEmpty(vsphere.VmStore))
+            {
+                // VmStore is in TopoMojo "[datastore] path" format; the VM API's
+                // Vsphere DsName expects a bare datastore name (as the Caster branch
+                // below also extracts for VSPHERE_DATASTORE).
+                var dsName = vsphere.VmStore;
+                if (dsName.StartsWith("["))
+                {
+                    dsName = dsName.Substring(1, dsName.IndexOf(']') - 1);
+                }
+                vmApi.WithEnvironment("Vsphere__Hosts__0__DsName", dsName);
+            }
+        }
+
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
         {
@@ -361,6 +413,7 @@ public static class BuilderExtensions
 
         var vmUiRoot = "/mnt/data/crucible/player/vm.ui";
 
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.json", overwrite: true);
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
@@ -427,7 +480,61 @@ public static class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "caster.api")
             .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
-            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
+            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true")
+            .WithEnvironment("Terraform__EnvironmentVariables__Direct__TF_CLI_CONFIG_FILE", "/terraform/terraformrc");
+
+        // Configure hypervisor providers for Terraform. Caster picks a provider
+        // per-project, so emit env for every resolved backend rather than one.
+        if (options.ResolveProxmox() is { } casterProxmox)
+        {
+            // Proxmox Terraform Provider
+            casterApi
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_ENDPOINT", casterProxmox.Url)
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN", casterProxmox.Token)
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__PROXMOX_VE_INSECURE", "true");
+        }
+
+        if (options.ResolveVsphere() is { } casterVsphere)
+        {
+            // vSphere Terraform Provider (works for both on-prem and VMC)
+            casterApi
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_SERVER",
+                    casterVsphere.Url.Replace("https://", "").Replace("/sdk", "").Split(':')[0])
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_USER", casterVsphere.User)
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_PASSWORD", casterVsphere.Password)
+                .WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_ALLOW_UNVERIFIED_SSL", "true");
+
+            // Add datacenter/cluster info if pool path is provided
+            if (!string.IsNullOrEmpty(casterVsphere.PoolPath))
+            {
+                // Parse pool path: "Datacenter/Cluster" or "SDDC-Datacenter/Cluster-1/Compute-ResourcePool"
+                var pathParts = casterVsphere.PoolPath.Split('/');
+                if (pathParts.Length >= 1)
+                {
+                    casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_DATACENTER", pathParts[0]);
+                }
+                if (pathParts.Length >= 2)
+                {
+                    casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_CLUSTER", pathParts[1]);
+                }
+                if (pathParts.Length >= 3)
+                {
+                    casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_RESOURCE_POOL", pathParts[2]);
+                }
+            }
+
+            // Add datastore if provided
+            if (!string.IsNullOrEmpty(casterVsphere.VmStore))
+            {
+                // Extract datastore name from "[datastore] path" format
+                var datastoreName = casterVsphere.VmStore;
+                if (datastoreName.StartsWith("["))
+                {
+                    datastoreName = datastoreName.Substring(1, datastoreName.IndexOf(']') - 1);
+                }
+                casterApi.WithEnvironment("Terraform__EnvironmentVariables__Direct__VSPHERE_DATASTORE", datastoreName);
+            }
+        }
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
@@ -531,6 +638,93 @@ public static class BuilderExtensions
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");
+        // Configure hypervisor if specified. TopoMojo is single-backend: it uses
+        // exactly one hypervisor, chosen by ResolveTopomojo() (explicit
+        // TopomojoHypervisor, else legacy HypervisorType, else the sole configured
+        // backend). NOTE: in dev TopoMojo's appsettings.Development.conf is loaded
+        // last via its ConfToEnv() loader and OVERRIDES these AppHost env vars;
+        // these values are authoritative only in prod (no .conf present).
+        if (options.ResolveTopomojo() is { } topo)
+        {
+            var (hvType, hv) = topo;
+
+            topoApi
+                .WithEnvironment("Pod__Type", hvType)
+                .WithEnvironment("Pod__HypervisorType", hvType)
+                .WithEnvironment("Pod__Url", hv.Url);
+
+            // Authentication (token for Proxmox, user/pass for vSphere)
+            if (!string.IsNullOrEmpty(hv.Token))
+            {
+                topoApi.WithEnvironment("Pod__AccessToken", hv.Token);
+            }
+            if (!string.IsNullOrEmpty(hv.User))
+            {
+                topoApi.WithEnvironment("Pod__User", hv.User);
+            }
+            if (!string.IsNullOrEmpty(hv.Password))
+            {
+                topoApi.WithEnvironment("Pod__Password", hv.Password);
+            }
+
+            // Storage configuration
+            if (!string.IsNullOrEmpty(hv.VmStore))
+            {
+                topoApi.WithEnvironment("Pod__VmStore", hv.VmStore);
+            }
+            if (!string.IsNullOrEmpty(hv.DiskStore))
+            {
+                topoApi.WithEnvironment("Pod__DiskStore", hv.DiskStore);
+            }
+            if (!string.IsNullOrEmpty(hv.IsoStore))
+            {
+                topoApi.WithEnvironment("Pod__IsoStore", hv.IsoStore);
+            }
+            if (!string.IsNullOrEmpty(hv.PoolPath))
+            {
+                topoApi.WithEnvironment("Pod__PoolPath", hv.PoolPath);
+            }
+
+            // Hypervisor-specific settings
+            // Note: In development, appsettings.Development.conf will override these via ConfToEnv()
+            // In production, no .conf file exists so these AppHost environment variables are used
+            if (hvType.Equals("Proxmox", StringComparison.OrdinalIgnoreCase))
+            {
+                // Explicit values win; otherwise default to Proxmox flat layout.
+                bool supportsSubfolders = hv.SupportsSubfolders ?? false;
+                bool useDatastoreApi = hv.UseDatastoreApi ?? false;
+                string subfolders = supportsSubfolders ? "true" : "false";
+
+                topoApi
+                    .WithEnvironment("Pod__IgnoreCertificateErrors", "true")
+                    .WithEnvironment("Pod__SupportsSubfolders", subfolders)
+                    .WithEnvironment("FileUpload__IsoRoot", "/mnt/proxmox-iso")
+                    .WithEnvironment("FileUpload__SupportsSubfolders", subfolders)
+                    .WithEnvironment("FileUpload__UseDatastoreApi", useDatastoreApi ? "true" : "false")
+                    .WithEnvironment("FileUpload__TempRoot", "/tmp/topoiso");
+            }
+            else if (hvType.Equals("Vsphere", StringComparison.OrdinalIgnoreCase) ||
+                     hvType.Equals("vSphere", StringComparison.OrdinalIgnoreCase))
+            {
+                // Check if it's VMC based on URL
+                bool isVmc = hv.Url.Contains("vmwarevmc.com");
+
+                // Explicit values win; otherwise default to vSphere subfolder layout
+                // (datastore API for VMC, NFS for on-prem).
+                bool supportsSubfolders = hv.SupportsSubfolders ?? true;
+                bool useDatastoreApi = hv.UseDatastoreApi ?? isVmc;
+                string subfolders = supportsSubfolders ? "true" : "false";
+
+                topoApi
+                    .WithEnvironment("Pod__IgnoreCertificateErrors", "true")
+                    .WithEnvironment("Pod__TicketUrlHandler", isVmc ? "none" : "querystring")
+                    .WithEnvironment("Pod__SupportsSubfolders", subfolders)
+                    .WithEnvironment("FileUpload__IsoRoot", isVmc ? "/mnt/vmc-iso" : "/mnt/isos")
+                    .WithEnvironment("FileUpload__SupportsSubfolders", subfolders)
+                    .WithEnvironment("FileUpload__UseDatastoreApi", useDatastoreApi ? "true" : "false")
+                    .WithEnvironment("FileUpload__TempRoot", "/tmp/topoiso");
+            }
+        }
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
         const int topoWorkUiPort = 4201;
@@ -943,7 +1137,44 @@ public static class BuilderExtensions
 
         var moodle = builder.AddContainer("moodle", "moodle-custom-image")
             .WaitFor(postgres)
-            .WaitFor(keycloak)
+            .WaitFor(keycloak);
+
+        // If TopoMojo is enabled, get/create API key before starting Moodle
+        if (IsEnabled(topoMojoMode))
+        {
+            // Find the TopoMojo API resource builder by display name
+            var topoMojoApiBuilder = builder.Resources
+                .OfType<IResourceBuilder<ProjectResource>>()
+                .FirstOrDefault(r => r.Resource.Name.StartsWith("topomojo") && !r.Resource.Name.Contains("ui"));
+
+            if (topoMojoApiBuilder != null)
+            {
+                // Run script to get or create API key after TopoMojo starts, before Moodle starts
+                var getApiKeyScript = builder.AddExecutable("get-topomojo-apikey", "bash",
+                    builder.AppHostDirectory,
+                    "-c",
+                    $"bash {builder.AppHostDirectory}/../scripts/get-or-create-topomojo-apikey.sh")
+                    .WaitFor(topoMojoApiBuilder);
+
+                // Make Moodle wait for the API key script to complete
+                moodle.WaitForCompletion(getApiKeyScript);
+
+                // Read the API key file at runtime (via callback) rather than during graph
+                // construction: the file is produced by getApiKeyScript, so on a fresh machine
+                // it does not exist yet at build time. The callback runs when Moodle starts,
+                // after WaitForCompletion has ensured the script finished and wrote the file.
+                var apiKeyFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".topomojo-apikey");
+                moodle.WithEnvironment(context =>
+                {
+                    if (File.Exists(apiKeyFilePath))
+                    {
+                        context.EnvironmentVariables["TOPOMOJO_APIKEY"] = File.ReadAllText(apiKeyFilePath).Trim();
+                    }
+                });
+            }
+        }
+
+        moodle
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("moodle")
@@ -982,6 +1213,8 @@ public static class BuilderExtensions
             .WithEnvironment("CRUCIBLE_GALLERY_ENABLED", IsEnabled(galleryMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_BLUEPRINT_ENABLED", IsEnabled(blueprintMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_GAMEBOARD_ENABLED", IsEnabled(gameboardMode) ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_PROXMOX_ENABLED", options.ResolveProxmox() != null ? "1" : "0")
+            .WithEnvironment("CRUCIBLE_PROXMOX_URL", options.ResolveProxmox()?.Url ?? "")
             .WithEnvironment("CRUCIBLE_CATAPULT_ENABLED", IsEnabled(ResolveMode(options.Catapult, "Catapult", options)) ? "1" : "0")
             .WithEnvironment("PLUGINS", @"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/2025070100/download theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/2025041407/download local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/2026010600/download")
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
@@ -991,7 +1224,8 @@ public static class BuilderExtensions
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/lib", "/var/www/html/lib", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/provider", "/var/www/html/ai/provider", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false);
+            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false)
+            .WithBindMount("/tmp/crucible", "/tmp/crucible", isReadOnly: true);
 
         // When CATAPULT is enabled, mount the Apache-2.0 cmi5 sample package from the
         // cloned CATAPULT repo (single source of truth - avoids vendoring a duplicate
