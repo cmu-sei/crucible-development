@@ -102,6 +102,9 @@ Crucible.AppHost/resources/ui/settings.shared.json
 # Local Proxmox setup config (contains API token)
 Crucible.AppHost/resources/proxmox/config
 
+# Proxmox installer ISO (setup-proxmox-windows.ps1 discovers this in the repo root)
+proxmox-ve_*.iso
+
 # Personal TODO files
 TODO/
 node_modules
