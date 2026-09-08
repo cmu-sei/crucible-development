@@ -753,15 +753,12 @@ public static class BuilderExtensions
             var topoUiInstaller = builder.Resources.OfType<JavaScriptInstallerResource>()
                 .Single(resource => resource.Name == "topomojo-ui-installer");
 
-            var fixupWmks = builder.AddExecutable("fixup-wmks", "bash", topoUiRoot, [
-                "-c",
-                "tools/fixup-wmks.sh"
-            ])
-            .WithParentRelationship(topoUiInstaller);
-
-            fixupWmks.Resource.Annotations.Add(
+            // The vendored WMKS SDK (and its tools/fixup-wmks.sh patch step) was dropped
+            // in topomojo-ui #63 in favor of @cmusei/console-forge, so wait on the npm
+            // installer directly instead of the removed fixup script. topoUiInstaller is a
+            // raw resource (not a builder), so wait on it via a WaitAnnotation.
+            topoUi.Resource.Annotations.Add(
                 new WaitAnnotation(topoUiInstaller, WaitType.WaitForCompletion));
-            topoUi.WaitForCompletion(fixupWmks);
 
             if (launchpointIncluded && effectiveLaunchpointMode == "dev")
             {
@@ -769,8 +766,9 @@ public static class BuilderExtensions
                     .WithNpm(install: false)
                     .WithArgs("--", "topomojo-launchpoint", "--configuration", "development", "--port", topoLaunchpointUiPort.ToString())
                     .WithHttpEndpoint(port: topoLaunchpointUiPort, isProxied: false)
-                    .WithHttpHealthCheck()
-                    .WaitForCompletion(fixupWmks);
+                    .WithHttpHealthCheck();
+                topoLaunchpointUi.Resource.Annotations.Add(
+                    new WaitAnnotation(topoUiInstaller, WaitType.WaitForCompletion));
             }
             else if (launchpointIncluded)
             {
@@ -782,8 +780,9 @@ public static class BuilderExtensions
                     "-c",
                     $"npm run build -- topomojo-launchpoint --configuration development && npx serve -s dist/topomojo-launchpoint/browser -l {topoLaunchpointUiPort}")
                     .WithHttpEndpoint(port: topoLaunchpointUiPort, isProxied: false)
-                    .WithHttpHealthCheck()
-                    .WaitForCompletion(fixupWmks);
+                    .WithHttpHealthCheck();
+                topoLaunchpointUi.Resource.Annotations.Add(
+                    new WaitAnnotation(topoUiInstaller, WaitType.WaitForCompletion));
             }
         }
         else
@@ -803,7 +802,7 @@ public static class BuilderExtensions
             }
 
             var serveTopoUi =
-                $"npm install && bash tools/fixup-wmks.sh && {string.Join(" && ", builds)} && " +
+                $"npm install && {string.Join(" && ", builds)} && " +
                 $"npx serve -s {topoWorkDistPath} -l {topoWorkUiPort}";
 
             topoUi = builder.AddExecutable("topomojo-ui", "bash", topoUiRoot, "-c", serveTopoUi)
