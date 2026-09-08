@@ -750,25 +750,14 @@ public static class BuilderExtensions
                 .WithHttpEndpoint(port: topoWorkUiPort, isProxied: false)
                 .WithHttpHealthCheck();
 
-            var topoUiInstaller = builder.Resources.OfType<JavaScriptInstallerResource>()
-                .Single(resource => resource.Name == "topomojo-ui-installer");
-
-            // The vendored WMKS SDK (and its tools/fixup-wmks.sh patch step) was dropped
-            // in topomojo-ui #63 in favor of @cmusei/console-forge, so wait on the npm
-            // installer directly instead of the removed fixup script. topoUiInstaller is a
-            // raw resource (not a builder), so wait on it via a WaitAnnotation.
-            topoUi.Resource.Annotations.Add(
-                new WaitAnnotation(topoUiInstaller, WaitType.WaitForCompletion));
-
             if (launchpointIncluded && effectiveLaunchpointMode == "dev")
             {
                 topoLaunchpointUi = builder.AddJavaScriptApp("topomojo-launchpoint", topoUiRoot, "start")
                     .WithNpm(install: false)
                     .WithArgs("--", "topomojo-launchpoint", "--configuration", "development", "--port", topoLaunchpointUiPort.ToString())
                     .WithHttpEndpoint(port: topoLaunchpointUiPort, isProxied: false)
-                    .WithHttpHealthCheck();
-                topoLaunchpointUi.Resource.Annotations.Add(
-                    new WaitAnnotation(topoUiInstaller, WaitType.WaitForCompletion));
+                    .WithHttpHealthCheck()
+                    .WaitFor(topoUi);
             }
             else if (launchpointIncluded)
             {
@@ -780,9 +769,8 @@ public static class BuilderExtensions
                     "-c",
                     $"npm run build -- topomojo-launchpoint --configuration development && npx serve -s dist/topomojo-launchpoint/browser -l {topoLaunchpointUiPort}")
                     .WithHttpEndpoint(port: topoLaunchpointUiPort, isProxied: false)
-                    .WithHttpHealthCheck();
-                topoLaunchpointUi.Resource.Annotations.Add(
-                    new WaitAnnotation(topoUiInstaller, WaitType.WaitForCompletion));
+                    .WithHttpHealthCheck()
+                    .WaitFor(topoUi);
             }
         }
         else

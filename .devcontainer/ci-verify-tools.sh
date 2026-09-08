@@ -41,6 +41,8 @@ check vale       vale --version
 check playwright playwright-cli --version
 check claude     claude --version
 check codex      codex --version
+check omp        omp --version
+check herdr      herdr --version
 check dotnet-ef  dotnet ef --version
 check ng         ng --version
 

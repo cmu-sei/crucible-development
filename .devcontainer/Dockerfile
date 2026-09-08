@@ -57,6 +57,39 @@ RUN set -eux; \
     && chmod +x /usr/local/bin/vale \
     && vale --version
 
+# Install OMP
+ARG OMP_VERSION=18.1.1
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+    amd64) OMP_ARCH="x64"; OMP_SHA256="04780b41fb33b658ca6e8449353911babc8c90332ac444e7e6562d041d3eae52" ;; \
+    arm64) OMP_ARCH="arm64"; OMP_SHA256="a8bf4dcc47dcf3284a0f6c43ffeb94adc0a2f031dcd7f8ab8ed92d0215c89a9d" ;; \
+    *)     echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL -o /tmp/omp \
+    "https://github.com/can1357/oh-my-pi/releases/download/v${OMP_VERSION}/omp-linux-${OMP_ARCH}"; \
+    echo "${OMP_SHA256}  /tmp/omp" | sha256sum -c -; \
+    install -m 0755 /tmp/omp /usr/local/bin/omp; \
+    rm /tmp/omp; \
+    omp --version
+
+# Install Herdr
+ARG HERDR_VERSION=0.8.2
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+    amd64) HERDR_ARCH="x86_64"; HERDR_SHA256="976150a14d490c94b243ea2e1a7eb2dfb67f12e36b182db90936f6728e6aecf4" ;; \
+    arm64) HERDR_ARCH="aarch64"; HERDR_SHA256="f55610658e1c2e0d2aaef730b4b2ab885f7f8ba00285ab372bfb14f2e3d5b40d" ;; \
+    *)     echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL -o /tmp/herdr \
+    "https://github.com/herdrdev/herdr/releases/download/v${HERDR_VERSION}/herdr-linux-${HERDR_ARCH}"; \
+    echo "${HERDR_SHA256}  /tmp/herdr" | sha256sum -c -; \
+    install -m 0755 /tmp/herdr /usr/local/bin/herdr; \
+    rm /tmp/herdr; \
+    herdr --version
+
+# Prepare persistent agent state directories before Docker initializes named volumes
+RUN install -d -o vscode -g vscode /home/vscode/.omp /home/vscode/.config/herdr
+
 # Install AWS CLI with Session Manager Plugin
 RUN case "${TARGETARCH}" in \
     amd64)  AWSCLI_PKG="awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip" \
