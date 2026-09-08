@@ -56,6 +56,7 @@ VERSION="1.0.0"
 
 readonly WORKSPACE_BASIC_ID="a5a4504b-8aa6-465f-adf5-b043f3813cd5"
 readonly WORKSPACE_VARIANTS_ID="af41d5dd-84b1-4672-8439-f03138c0f86e"
+readonly WORKSPACE_PENALTY_ID="d1e2f3a4-b5c6-4d7e-8f90-a1b2c3d4e5f6"
 
 # Stock Templates (only 2)
 readonly TEMPLATE_TINYCORE_STOCK_ID="4ab31ef8-73c9-4dc3-be25-c9c7fb920951"
@@ -1506,6 +1507,125 @@ create_topomojo_workspace_with_variants() {
 
     # Create TopoMojo templates for this workspace (Puppy for variants)
     create_topomojo_templates "$workspace_id" "$token" "tinycore"
+
+    return 0
+}
+
+create_topomojo_workspace_penalty() {
+    local workspace_name="Penalty Test Workspace"
+
+    log_step "Creating TopoMojo penalty test workspace: $workspace_name"
+
+    local token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[topomojo]}")
+    if [ -z "$token" ]; then
+        log_error "Failed to get TopoMojo token"
+        return 1
+    fi
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create TopoMojo penalty test workspace"
+        return 0
+    fi
+
+    # Check if workspace exists
+    local all_workspaces=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/workspaces" \
+        -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
+    local existing_id=$(echo "$all_workspaces" | jq -r ".[] | select(.name == \"$workspace_name\") | .id" | head -1)
+
+    if [ -n "$existing_id" ] && [ "$existing_id" != "null" ]; then
+        log_success "TopoMojo penalty test workspace already exists: $existing_id"
+        # Ensure the VM template is configured (mirrors the variants workspace).
+        create_stock_templates_once "$token"
+        create_topomojo_templates "$existing_id" "$token" "tinycore"
+        return 0
+    fi
+
+    # Challenge spec: one variant, weights that SUM TO 100 (so native TopoMojo
+    # scoring is meaningful - weights of 1 normalize to ~0.01 and under-score), with
+    # a 0.15 penalty on Q1. Answering Q1 correctly after one wrong try scores
+    # 50 * (1 - 0.15) = 42.5, so a full run totals 92.5/100 - exercising penalty
+    # application, decimal (non-integer) totals, and the cumulative-penalty path.
+    # A tinycore VM template is attached (below) so it behaves like a real lab.
+    local challenge_json='{
+  "text": "# Penalty Test Challenge\n\nSingle variant with a per-question penalty, for verifying penalty scoring and decimal totals.",
+  "maxPoints": 100,
+  "maxAttempts": 3,
+  "transforms": [],
+  "variants": [
+    {
+      "text": "# File Operations",
+      "sections": [
+        {
+          "name": "File Commands",
+          "text": "",
+          "questions": [
+            {
+              "text": "What command copies files?",
+              "answer": "cp",
+              "example": "cp source dest",
+              "hint": "Two letters",
+              "penalty": 0.15,
+              "weight": 50
+            },
+            {
+              "text": "What command moves files?",
+              "answer": "mv",
+              "example": "mv source dest",
+              "hint": "Two letters",
+              "penalty": 0,
+              "weight": 50
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}'
+
+    log_info "Creating penalty test workspace (weights 50/50, Q1 penalty 0.15)..."
+    local challenge_string=$(echo "$challenge_json" | jq -c '.' | jq -Rs '.')
+    local workspace_payload=$(jq -n \
+        --arg id "$WORKSPACE_PENALTY_ID" \
+        --arg name "$workspace_name" \
+        --arg desc "Single-variant workspace with a per-question penalty (no VMs) for scoring tests" \
+        --arg tags "test,penalty,scoring" \
+        --argjson challenge "$challenge_string" \
+        '{
+            id: $id,
+            name: $name,
+            description: $desc,
+            tags: $tags,
+            challenge: $challenge
+        }')
+
+    local workspace_response=$(curl -k -s -w "\nHTTP_CODE:%{http_code}" -X POST "$TOPOMOJO_API_URL/api/workspace" \
+        -H "Authorization: Bearer $token" \
+        -H "Content-Type: application/json" \
+        -d "$workspace_payload" 2>&1)
+
+    local http_code=$(echo "$workspace_response" | grep "HTTP_CODE:" | cut -d: -f2)
+    local response_body=$(echo "$workspace_response" | sed '/HTTP_CODE:/d')
+
+    local new_id=$(echo "$response_body" | jq -r '.id' 2>/dev/null)
+
+    if [ -z "$new_id" ] || [ "$new_id" = "null" ]; then
+        local error_msg=$(echo "$response_body" | jq -r '.message // .title // .detail // .' 2>/dev/null || echo "${response_body:0:500}")
+        log_error "Failed to create penalty test workspace (HTTP $http_code): $error_msg"
+        return 1
+    fi
+
+    # Verify the challenge round-tripped with the penalty intact (challenge is a JSON string).
+    local challenge_str=$(echo "$response_body" | jq -r '.challenge' 2>/dev/null)
+    local q1_penalty=$(echo "$challenge_str" | jq -r '.variants[0].sections[0].questions[0].penalty' 2>/dev/null)
+    if [ "$q1_penalty" = "0.15" ]; then
+        log_success "Penalty test workspace created with Q1 penalty $q1_penalty: $new_id"
+    else
+        log_warning "Penalty test workspace created ($new_id) but Q1 penalty is '$q1_penalty' (expected 0.15)"
+    fi
+
+    # Attach a VM template so this behaves like a real lab (mirrors the variants workspace).
+    create_stock_templates_once "$token"
+    create_topomojo_templates "$new_id" "$token" "tinycore"
 
     return 0
 }
@@ -3406,6 +3526,7 @@ phase4_topomojo_workspaces() {
 
     create_topomojo_workspace_basic || log_warning "TopoMojo basic workspace creation failed"
     create_topomojo_workspace_with_variants || log_warning "TopoMojo workspace with variants creation failed"
+    create_topomojo_workspace_penalty || log_warning "TopoMojo penalty test workspace creation failed"
 
     log_success "TopoMojo workspaces created"
 }
