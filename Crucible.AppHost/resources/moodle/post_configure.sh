@@ -245,6 +245,26 @@ configure_boost_dark_theme() {
 [data-bs-theme="dark"] .ai-drawer {
   background-color: var(--bs-body-bg);
   border-left: 1px solid var(--bs-border-color);
+}
+
+/* Moodle tool_lp competency/plan tree dark-mode compatibility.
+   tool_lp/styles.css hardcodes the selected-node background to #dfdfdf with no
+   text colour, so a highlighted item renders near-white on near-white. */
+[data-bs-theme="dark"] .path-admin-tool-lp [data-region="managecompetencies"] ul [aria-selected="true"] > span,
+[data-bs-theme="dark"] .path-admin-tool-lp [data-region="plans"] ul [aria-selected="true"] > span,
+[data-bs-theme="dark"] .path-admin-tool-lp [data-region="competencylinktree"] ul [aria-selected="true"] > span,
+[data-bs-theme="dark"] .path-admin-tool-lp [data-region="competencymovetree"] ul [aria-selected="true"] > span,
+[data-bs-theme="dark"] .path-badges [data-region="competencylinktree"] ul [aria-selected="true"] > span {
+  background-color: var(--bs-secondary-bg) !important;
+  color: var(--bs-emphasis-color) !important;
+}
+
+[data-bs-theme="dark"] .path-admin-tool-lp [data-region="managecompetencies"] ul[data-enhance="tree"],
+[data-bs-theme="dark"] .path-admin-tool-lp [data-region="plans"] ul[data-enhance="tree"],
+[data-bs-theme="dark"] .path-admin-tool-lp [data-region="competencylinktree"] ul[data-enhance="linktree"],
+[data-bs-theme="dark"] .path-admin-tool-lp [data-region="competencymovetree"] ul[data-enhance="movetree"],
+[data-bs-theme="dark"] .path-badges [data-region="competencylinktree"] ul[data-enhance="linktree"] {
+  border-color: var(--bs-border-color) !important;
 }'
 
   php /var/www/html/admin/cli/cfg.php --name=theme --set=boost_union
