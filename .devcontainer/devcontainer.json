@@ -105,7 +105,11 @@
   "forwardPorts": [
     9003, // Xdebug
     443, // Minikube ingress
-    6080 // noVNC (Playwright headed browser)
+    6080, // noVNC (Playwright headed browser)
+    // Moodle. Declared explicitly because the containers are persistent: recreating one
+    // replaces the listening socket, and an auto-detected forward does not survive that.
+    8081, // Moodle 5.0
+    8082 // Moodle 5.2
   ],
   "customizations": {
     "vscode": {

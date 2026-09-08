@@ -50,14 +50,15 @@ switch ($options['step']) {
         enable_auth_oauth2();
         break;
     case 'configure_ai_bedrock':
+        // --sessiontoken is checked in configure_ai_bedrock(): the bundled
+        // aiprovider_bedrock plugin needs one, core's aiprovider_awsbedrock cannot use it.
         if (
-            empty($options['accesskeyid']) || empty($options['secretaccesskey']) || empty($options['sessiontoken']) ||
+            empty($options['accesskeyid']) || empty($options['secretaccesskey']) ||
             empty($options['region']) || empty($options['modelid'])
         ) {
             cli_error("Missing required parameters. Current values:\n" .
                 "  --accesskeyid={$options['accesskeyid']}\n" .
                 "  --secretaccesskey={$options['secretaccesskey']}\n" .
-                "  --sessiontoken={$options['sessiontoken']}\n" .
                 "  --region={$options['region']}\n" .
                 "  --modelid={$options['modelid']}");
         }
@@ -262,6 +263,24 @@ function output_results($options, $results)
     }
 }
 
+/**
+ * Work out which AWS Bedrock provider plugin to configure.
+ *
+ * Moodle 5.2 ships aiprovider_awsbedrock in core, so that is what we configure there.
+ * The 5.0 image has no core provider and instead carries the bundled aiprovider_bedrock
+ * plugin in the ai/provider bind mount.
+ *
+ * @return string The plugin component name.
+ */
+function bedrock_provider_plugin(): string
+{
+    if (\core_component::get_plugin_directory('aiprovider', 'awsbedrock') !== null) {
+        return 'aiprovider_awsbedrock';
+    }
+
+    return 'aiprovider_bedrock';
+}
+
 function configure_ai_bedrock(array $options): void
 {
     global $CFG, $DB;
@@ -278,59 +297,119 @@ function configure_ai_bedrock(array $options): void
     $region = $options['region'];
     $modelId = $options['modelid'];
     $providerName = 'IMCITE Bedrock';
+    $imageModelId = 'amazon.nova-canvas-v1:0';
 
-    cli_writeln("Configuring AWS Bedrock AI provider: {$providerName}");
+    $plugin = bedrock_provider_plugin();
+    $usecore = ($plugin === 'aiprovider_awsbedrock');
 
-    // Check if provider already exists
-    $existingProvider = $DB->get_record('ai_providers', [
-        'provider' => 'aiprovider_bedrock\\provider',
-        'name' => $providerName
-    ]);
+    cli_writeln("Configuring AWS Bedrock AI provider: {$providerName} ({$plugin})");
 
-    // Build config JSON
-    $config = [
-        'aiprovider' => 'aiprovider_bedrock',
-        'name' => $providerName,
-        'accesskeyid' => $accessKeyId,
-        'secretaccesskey' => $secretAccessKey,
-        'sessiontoken' => $sessionToken,
-        'region' => $region,
-    ];
+    // Match on the name alone rather than name plus provider class. A row seeded by an
+    // earlier run can name the other plugin, and on 5.2 that class does not exist, so
+    // matching on it too would leave the broken row behind and add a duplicate.
+    $existingProvider = null;
+    $matches = $DB->get_records('ai_providers', ['name' => $providerName], 'id ASC', '*', 0, 1);
+    if ($matches) {
+        $existingProvider = reset($matches);
+    }
 
-    // Build actionconfig JSON with all AI actions
-    // Only set model - Moodle will use default system instructions
-    $actionconfig = [
-        'core_ai\\aiactions\\generate_text' => [
-            'enabled' => true,
-            'settings' => [
-                'model' => $modelId
+    if ($usecore) {
+        // Core reads the credentials as apikey/apisecret and takes the region from each
+        // action's settings, not from the instance config: see
+        // aiprovider_awsbedrock\provider::create_bedrock_client() and
+        // aiprovider_awsbedrock\abstract_processor::get_region().
+        $config = [
+            'apikey' => $accessKeyId,
+            'apisecret' => $secretAccessKey,
+        ];
+
+        // Anything left in settings beyond model, awsregion, cross_region_inference,
+        // systeminstruction, providerid and modelextraparams is passed to Bedrock as a model
+        // parameter (abstract_processor::get_model_settings() unsets only those six), so do
+        // not add anything else here.
+        //
+        // systeminstruction is mandatory: process_generate_text::get_system_instruction()
+        // reads it straight out of the action settings with no fallback and is typed to
+        // return string, so a missing key is a TypeError at request time rather than a
+        // validation error. The settings form defaults it to the action's own instruction,
+        // so use the same source.
+        $actionconfig = [];
+        foreach (
+            [
+                'core_ai\\aiactions\\generate_text' => $modelId,
+                'core_ai\\aiactions\\summarise_text' => $modelId,
+                'core_ai\\aiactions\\explain_text' => $modelId,
+                'core_ai\\aiactions\\generate_image' => $imageModelId,
+            ] as $action => $actionmodel
+        ) {
+            $actionconfig[$action] = [
+                'enabled' => true,
+                'settings' => [
+                    'model' => $actionmodel,
+                    'awsregion' => $region,
+                    'systeminstruction' => $action::get_system_instruction(),
+                ],
+            ];
+        }
+
+        if (!empty($sessionToken)) {
+            cli_writeln("Warning: AWS_SESSION_TOKEN is set but core aiprovider_awsbedrock " .
+                "cannot send one (bedrock_client_factory::create_client() takes only a key " .
+                "and secret). Temporary credentials will be rejected by Bedrock at request " .
+                "time; use long-lived IAM keys for AI features on this instance.");
+        }
+    } else {
+        if (empty($sessionToken)) {
+            cli_error("Missing required parameter --sessiontoken (required by aiprovider_bedrock).");
+        }
+
+        // Build config JSON
+        $config = [
+            'aiprovider' => 'aiprovider_bedrock',
+            'name' => $providerName,
+            'accesskeyid' => $accessKeyId,
+            'secretaccesskey' => $secretAccessKey,
+            'sessiontoken' => $sessionToken,
+            'region' => $region,
+        ];
+
+        // Build actionconfig JSON with all AI actions
+        // Only set model - Moodle will use default system instructions
+        $actionconfig = [
+            'core_ai\\aiactions\\generate_text' => [
+                'enabled' => true,
+                'settings' => [
+                    'model' => $modelId
+                ]
+            ],
+            'core_ai\\aiactions\\summarise_text' => [
+                'enabled' => true,
+                'settings' => [
+                    'model' => $modelId
+                ]
+            ],
+            'core_ai\\aiactions\\explain_text' => [
+                'enabled' => true,
+                'settings' => [
+                    'model' => $modelId
+                ]
+            ],
+            'core_ai\\aiactions\\generate_image' => [
+                'enabled' => true,
+                'settings' => [
+                    'model' => $imageModelId
+                ]
             ]
-        ],
-        'core_ai\\aiactions\\summarise_text' => [
-            'enabled' => true,
-            'settings' => [
-                'model' => $modelId
-            ]
-        ],
-        'core_ai\\aiactions\\explain_text' => [
-            'enabled' => true,
-            'settings' => [
-                'model' => $modelId
-            ]
-        ],
-        'core_ai\\aiactions\\generate_image' => [
-            'enabled' => true,
-            'settings' => [
-                'model' => 'amazon.nova-canvas-v1:0'
-            ]
-        ]
-    ];
+        ];
+    }
 
     if ($existingProvider) {
         // Update existing provider
-        $config['updateandreturn'] = 'Update instance';
-        $config['returnurl'] = 'https://' . $_SERVER['HTTP_HOST'] . '/admin/settings.php?section=aiprovider';
-        $config['id'] = $existingProvider->id;
+        if (!$usecore) {
+            $config['updateandreturn'] = 'Update instance';
+            $config['returnurl'] = 'https://' . $_SERVER['HTTP_HOST'] . '/admin/settings.php?section=aiprovider';
+            $config['id'] = $existingProvider->id;
+        }
 
         // Add providerid to actionconfig settings
         foreach ($actionconfig as $action => &$actiondata) {
@@ -339,6 +418,8 @@ function configure_ai_bedrock(array $options): void
             }
         }
 
+        // Repoint the row if it was seeded against the other plugin.
+        $existingProvider->provider = $plugin . '\\provider';
         $existingProvider->config = json_encode($config);
         $existingProvider->actionconfig = json_encode($actionconfig);
         $existingProvider->enabled = 1;
@@ -347,12 +428,14 @@ function configure_ai_bedrock(array $options): void
         cli_writeln("Updated existing AI provider (ID: {$existingProvider->id})");
     } else {
         // Create new provider
-        $config['createandreturn'] = 'Create instance';
-        $config['returnurl'] = 'https://' . $_SERVER['HTTP_HOST'] . '/admin/settings.php?section=aiprovider';
+        if (!$usecore) {
+            $config['createandreturn'] = 'Create instance';
+            $config['returnurl'] = 'https://' . $_SERVER['HTTP_HOST'] . '/admin/settings.php?section=aiprovider';
+        }
 
         $record = new stdClass();
         $record->name = $providerName;
-        $record->provider = 'aiprovider_bedrock\\provider';
+        $record->provider = $plugin . '\\provider';
         $record->enabled = 1;
         $record->config = json_encode($config);
         $record->actionconfig = json_encode($actionconfig);
@@ -374,8 +457,10 @@ function configure_ai_bedrock(array $options): void
 
     cli_writeln("AWS Bedrock AI provider configured successfully:");
     cli_writeln("  - Provider Name: {$providerName}");
+    cli_writeln("  - Provider Plugin: {$plugin}");
     cli_writeln("  - Region: {$region}");
     cli_writeln("  - Model: {$modelId}");
+    cli_writeln("  - Image Model: {$imageModelId}");
     cli_writeln("  - Access Key ID: " . substr($accessKeyId, 0, 8) . "...");
     cli_writeln("  - Actions configured: generate_text, summarise_text, explain_text, generate_image");
 

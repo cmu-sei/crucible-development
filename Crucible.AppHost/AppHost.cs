@@ -43,7 +43,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Player: {launchOptions.Player}, Caster: {launchOptions.Caster}, Alloy: {launchOptions.Alloy}");
     Console.WriteLine($"  Gallery: {launchOptions.Gallery}, Cite: {launchOptions.Cite}");
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
-    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
+    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Moodle52: {launchOptions.Moodle52}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
     Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, TopoMojo Launchpoint: {launchOptions.TopoMojoLaunchpoint}, Gameboard: {launchOptions.Gameboard}");
     Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
@@ -477,7 +477,8 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm alloy steamfitter caster")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
             .WithEnvironment("CorsPolicy__Origins__0", "http://localhost:4403") // for alloy-ui
-            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081"); // for moodle
+            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081") // for moodle
+            .WithEnvironment("CorsPolicy__Origins__2", "http://localhost:8082"); // for moodle52
 
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
@@ -528,6 +529,7 @@ public static class BuilderExtensions
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201") // for topo-ui
             .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
+            .WithEnvironment("Headers__Cors__Origins__2", "http://localhost:8082") // for moodle52
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");
@@ -905,14 +907,152 @@ public static class BuilderExtensions
         }
     }
 
+    /// <summary>
+    /// A Moodle version Aspire can run. Each instance needs its own container name,
+    /// port, database and moodle-core mount: booting a newer Moodle against another
+    /// instance's database runs irreversible upgrade migrations.
+    ///
+    /// WebRoot is where the Moodle tree lives inside the container. Moodle 5.1 moved
+    /// everything web-accessible under public/, so plugins and core directories sit one
+    /// level deeper on 5.1+ (admin/cli stays outside the web root in both layouts).
+    /// </summary>
+    private sealed record MoodleInstance(
+        string Name,
+        string BaseImage,
+        int Port,
+        string DbResourceName,
+        string DbName,
+        string CoreMountRoot,
+        string WebRoot,
+        string Mode,
+        bool IncludeWithAll,
+        string MarketplacePlugins);
+
+    /// <summary>
+    /// Marketplace plugin downloads for a given Moodle branch. The version ids are
+    /// branch-specific: installing a 5.0 build of these on 5.2 fails, so each Moodle
+    /// instance pins the versions the plugin API reports for its own branch.
+    /// </summary>
+    private static string MarketplacePluginsFor(string toolUserdebug, string boostUnion, string boostDark) =>
+        $"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/{toolUserdebug}/download " +
+        $"theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/{boostUnion}/download " +
+        $"local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/{boostDark}/download";
+
     public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
-        var moodleMode = ResolveMode(options.Moodle, "Moodle", options);
+        var instances = new[]
+        {
+            new MoodleInstance(
+                Name: "moodle",
+                BaseImage: "erseco/alpine-moodle:v5.0.0",
+                Port: 8081,
+                DbResourceName: "moodleDb",
+                DbName: "moodle",
+                CoreMountRoot: "/mnt/data/crucible/moodle/moodle-core",
+                WebRoot: "/var/www/html",
+                Mode: ResolveMode(options.Moodle, "Moodle", options),
+                IncludeWithAll: true,
+                MarketplacePlugins: MarketplacePluginsFor(
+                    toolUserdebug: "2025070100",
+                    boostUnion: "2025041407",
+                    boostDark: "2026010600")),
+            // Moodle 5.2 test instance. Left out of AddAllApplications so it only
+            // builds and appears in the dashboard when Launch__Moodle52 asks for it.
+            new MoodleInstance(
+                Name: "moodle52",
+                BaseImage: "erseco/alpine-moodle:v5.2.2",
+                Port: 8082,
+                DbResourceName: "moodle52Db",
+                DbName: "moodle52",
+                CoreMountRoot: "/mnt/data/crucible/moodle/moodle-core-52",
+                // 5.2 serves out of public/; the base image re-points nginx at it on boot.
+                WebRoot: "/var/www/html/public",
+                Mode: ResolveMode(options.Moodle52, "Moodle52", options),
+                IncludeWithAll: false,
+                // Versions the plugin API reports for branch 5.2 (boost_union v5.2-r8,
+                // boost_dark 1.3.7, userdebug v5.0.3 which spans through 5.2).
+                MarketplacePlugins: MarketplacePluginsFor(
+                    toolUserdebug: "2025070300",
+                    boostUnion: "2026042012",
+                    boostDark: "2026052400")),
+        };
 
-        if (!options.AddAllApplications && !IsEnabled(moodleMode))
+        var anyAdded = false;
+
+        foreach (var instance in instances)
+        {
+            if (!IsEnabled(instance.Mode) && !(options.AddAllApplications && instance.IncludeWithAll))
+                continue;
+
+            builder.AddMoodleInstance(postgres, keycloak, options, instance);
+            anyAdded = true;
+        }
+
+        if (!anyAdded)
             return;
 
-        var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
+        // Copy dotnet dev-cert(s) into resources/moodle/certs so they get trusted through the Dockerfile
+        builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
+        {
+            var aspireDevCertDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".aspnet", "dev-certs", "trust");
+            var moodleCertDir = Path.Combine(builder.AppHostDirectory, "resources", "moodle", "certs");
+
+            if (Directory.Exists(aspireDevCertDir))
+            {
+                Directory.CreateDirectory(moodleCertDir);
+                foreach (var pem in Directory.GetFiles(aspireDevCertDir, "*.pem"))
+                {
+                    var destName = Path.GetFileNameWithoutExtension(pem) + ".crt";
+                    File.Copy(pem, Path.Combine(moodleCertDir, destName), overwrite: true);
+                }
+            }
+
+            return Task.CompletedTask;
+        });
+    }
+
+    /// <summary>
+    /// Create the host side of an instance's moodle-core bind mounts. Docker creates missing
+    /// mount sources 0755 owned by whoever runs the AppHost, but the container runs as nobody
+    /// (65534) and pre_configure.sh has to seed these directories on first boot - so they have
+    /// to be world-writable, the same thing scripts/add-moodle-mounts.sh does at setup time.
+    /// Doing it here means a newly added Moodle version works without re-running that script.
+    /// </summary>
+    private static void EnsureMoodleCoreMounts(MoodleInstance instance)
+    {
+        const UnixFileMode worldWritableDir =
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
+            UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute |
+            UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
+
+        // The host layout stays flat across versions; only the container side moves under public/.
+        string[] coreDirs = ["", "theme", "lib", "admin/cli", "ai/provider", "ai/classes"];
+
+        foreach (var relative in coreDirs)
+        {
+            var path = relative.Length == 0 ? instance.CoreMountRoot : Path.Combine(instance.CoreMountRoot, relative);
+
+            try
+            {
+                Directory.CreateDirectory(path);
+                File.SetUnixFileMode(path, worldWritableDir);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: could not prepare {instance.Name} core mount {path}: {ex.Message}");
+            }
+        }
+    }
+
+    private static void AddMoodleInstance(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, MoodleInstance instance)
+    {
+        var moodleMode = instance.Mode;
+
+        EnsureMoodleCoreMounts(instance);
+
+        var moodleDb = postgres.AddDatabase(instance.DbResourceName, instance.DbName);
 
         // Read AWS credentials from ~/.aws/credentials file
         var awsCreds = ReadAwsCredentials();
@@ -929,18 +1069,23 @@ public static class BuilderExtensions
         var blueprintMode = ResolveMode(options.Blueprint, "Blueprint", options);
         var gameboardMode = ResolveMode(options.Gameboard, "Gameboard", options);
 
-        var moodle = builder.AddContainer("moodle", "moodle-custom-image")
+        // Held as a string so WithEnvironment binds the plain-string overload rather than
+        // the ReferenceExpression one, which rejects the interpolated int port.
+        var siteUrl = "http://localhost:" + instance.Port;
+
+        var moodle = builder.AddContainer(instance.Name, $"{instance.Name}-custom-image")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
+            .WithBuildArg("MOODLE_BASE_IMAGE", instance.BaseImage)
             .WithLifetime(ContainerLifetime.Persistent)
-            .WithContainerName("moodle")
-            .WithHttpEndpoint(port: 8081, targetPort: 8080)
+            .WithContainerName(instance.Name)
+            .WithHttpEndpoint(port: instance.Port, targetPort: 8080)
             .WithHttpHealthCheck(endpointName: "http")
             .WithEnvironment("memory_limit", "512M") // needs to be set for moosh plugin-list to work
             .WithEnvironment("XDEBUG_MODE", options.XdebugMode)
             .WithEnvironment("REVERSEPROXY", "true")
-            .WithEnvironment("SITE_URL", "http://localhost:8081")
+            .WithEnvironment("SITE_URL", siteUrl)
             .WithEnvironment("SSLPROXY", "false")
             .WithEnvironment("MOODLE_ADMIN_USERNAME", "admin")
             .WithEnvironment("MOODLE_ADMIN_PASSWORD", "admin")
@@ -971,15 +1116,22 @@ public static class BuilderExtensions
             .WithEnvironment("CRUCIBLE_BLUEPRINT_ENABLED", IsEnabled(blueprintMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_GAMEBOARD_ENABLED", IsEnabled(gameboardMode) ? "1" : "0")
             .WithEnvironment("CRUCIBLE_CATAPULT_ENABLED", IsEnabled(ResolveMode(options.Catapult, "Catapult", options)) ? "1" : "0")
-            .WithEnvironment("PLUGINS", @"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/2025070100/download theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/2025041407/download local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/2026010600/download")
+            // 5.1+ images can rsync --delete the image's Moodle tree over /var/www/html on
+            // boot. That is for named volumes; here the tree is baked into the image and the
+            // core/plugin directories are bind mounts (some read-only), so keep it off.
+            .WithEnvironment("SYNC_MOODLE_CODE", "never")
+            .WithEnvironment("PLUGINS", instance.MarketplacePlugins)
             .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
             .WithEnvironment("POST_CONFIGURE_COMMANDS", @"/usr/local/bin/post_configure.sh")
             // Bind mount moodle-core directories (writable for xdebug)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/theme", "/var/www/html/theme", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/lib", "/var/www/html/lib", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/provider", "/var/www/html/ai/provider", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false);
+            // pre_configure.sh seeds these from the image when they are empty, so a new
+            // version's mount root can start out as an empty directory. The host side
+            // stays flat across versions; only the container side moves under public/.
+            .WithBindMount($"{instance.CoreMountRoot}/theme", $"{instance.WebRoot}/theme", isReadOnly: false)
+            .WithBindMount($"{instance.CoreMountRoot}/lib", $"{instance.WebRoot}/lib", isReadOnly: false)
+            .WithBindMount($"{instance.CoreMountRoot}/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
+            .WithBindMount($"{instance.CoreMountRoot}/ai/provider", $"{instance.WebRoot}/ai/provider", isReadOnly: false)
+            .WithBindMount($"{instance.CoreMountRoot}/ai/classes", $"{instance.WebRoot}/ai/classes", isReadOnly: false);
 
         // When CATAPULT is enabled, mount the Apache-2.0 cmi5 sample package from the
         // cloned CATAPULT repo (single source of truth - avoids vendoring a duplicate
@@ -993,33 +1145,12 @@ public static class BuilderExtensions
         }
 
         // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
-        var moodlePlugins = ReadMoodlePlugins();
+        var moodlePlugins = ReadMoodlePlugins(instance.WebRoot);
         foreach (var plugin in moodlePlugins)
         {
             moodle.WithBindMount(plugin.HostPath, plugin.ContainerPath, isReadOnly: true);
-            Console.WriteLine($"  Mounting Moodle plugin: {plugin.Name} -> {plugin.ContainerPath}");
+            Console.WriteLine($"  Mounting {instance.Name} plugin: {plugin.Name} -> {plugin.ContainerPath}");
         }
-
-        // Copy dotnet dev-cert(s) into resources/moodle/certs so they get trusted through the Dockerfile
-        builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
-        {
-            var aspireDevCertDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".aspnet", "dev-certs", "trust");
-            var moodleCertDir = Path.Combine(builder.AppHostDirectory, "resources", "moodle", "certs");
-
-            if (Directory.Exists(aspireDevCertDir))
-            {
-                Directory.CreateDirectory(moodleCertDir);
-                foreach (var pem in Directory.GetFiles(aspireDevCertDir, "*.pem"))
-                {
-                    var destName = Path.GetFileNameWithoutExtension(pem) + ".crt";
-                    File.Copy(pem, Path.Combine(moodleCertDir, destName), overwrite: true);
-                }
-            }
-
-            return Task.CompletedTask;
-        });
 
         if (!IsEnabled(moodleMode))
         {
@@ -1459,29 +1590,33 @@ public static class BuilderExtensions
         public string ContainerPath { get; set; } = "";
     }
 
-    private static string MapPluginToContainerPath(string pluginName)
+    /// <summary>
+    /// Container path for a plugin, relative to the instance's web root: Moodle 5.1+
+    /// keeps the whole plugin tree under public/.
+    /// </summary>
+    private static string MapPluginToContainerPath(string pluginName, string webRoot)
     {
         var parts = pluginName.Split('_', 2);
-        if (parts.Length < 2) return $"/var/www/html/{pluginName}";
+        if (parts.Length < 2) return $"{webRoot}/{pluginName}";
 
         var pluginType = parts[0];
         var pluginSubdir = parts[1];
 
         return pluginType switch
         {
-            "mod" => $"/var/www/html/mod/{pluginSubdir}",
-            "block" => $"/var/www/html/blocks/{pluginSubdir}",
-            "tool" => $"/var/www/html/admin/tool/{pluginSubdir}",
-            "logstore" => $"/var/www/html/admin/tool/log/store/{pluginSubdir}",
-            "local" => $"/var/www/html/local/{pluginSubdir}",
-            "qtype" => $"/var/www/html/question/type/{pluginSubdir}",
-            "qbehaviour" => $"/var/www/html/question/behaviour/{pluginSubdir}",
-            "qformat" => $"/var/www/html/question/format/{pluginSubdir}",
-            "aiplacement" => $"/var/www/html/ai/placement/{pluginSubdir}",
-            "aiprovider" => $"/var/www/html/ai/provider/{pluginSubdir}",
-            "gradereport" => $"/var/www/html/grade/report/{pluginSubdir}",
-            "theme" => $"/var/www/html/theme/{pluginSubdir}",
-            _ => $"/var/www/html/{pluginType}/{pluginSubdir}"
+            "mod" => $"{webRoot}/mod/{pluginSubdir}",
+            "block" => $"{webRoot}/blocks/{pluginSubdir}",
+            "tool" => $"{webRoot}/admin/tool/{pluginSubdir}",
+            "logstore" => $"{webRoot}/admin/tool/log/store/{pluginSubdir}",
+            "local" => $"{webRoot}/local/{pluginSubdir}",
+            "qtype" => $"{webRoot}/question/type/{pluginSubdir}",
+            "qbehaviour" => $"{webRoot}/question/behaviour/{pluginSubdir}",
+            "qformat" => $"{webRoot}/question/format/{pluginSubdir}",
+            "aiplacement" => $"{webRoot}/ai/placement/{pluginSubdir}",
+            "aiprovider" => $"{webRoot}/ai/provider/{pluginSubdir}",
+            "gradereport" => $"{webRoot}/grade/report/{pluginSubdir}",
+            "theme" => $"{webRoot}/theme/{pluginSubdir}",
+            _ => $"{webRoot}/{pluginType}/{pluginSubdir}"
         };
     }
 
@@ -1511,7 +1646,7 @@ public static class BuilderExtensions
         };
     }
 
-    private static List<MoodlePlugin> ReadMoodlePlugins()
+    private static List<MoodlePlugin> ReadMoodlePlugins(string webRoot)
     {
         var plugins = new List<MoodlePlugin>();
         var workspaceRoot = "/workspaces/crucible-development";
@@ -1542,10 +1677,10 @@ public static class BuilderExtensions
             // Process groups from both files
             var moodleBasePath = "/mnt/data/crucible/moodle";
 
-            ProcessReposDocument(reposDoc, plugins, moodleBasePath);
+            ProcessReposDocument(reposDoc, plugins, moodleBasePath, webRoot);
             if (reposLocalDoc != null)
             {
-                ProcessReposDocument(reposLocalDoc, plugins, moodleBasePath);
+                ProcessReposDocument(reposLocalDoc, plugins, moodleBasePath, webRoot);
             }
 
             Console.WriteLine($"Loaded {plugins.Count} Moodle plugin(s) from repos.json{(reposLocalDoc != null ? " + repos.local.json" : "")}");
@@ -1558,7 +1693,7 @@ public static class BuilderExtensions
         return plugins;
     }
 
-    private static void ProcessReposDocument(System.Text.Json.JsonDocument doc, List<MoodlePlugin> plugins, string moodleBasePath)
+    private static void ProcessReposDocument(System.Text.Json.JsonDocument doc, List<MoodlePlugin> plugins, string moodleBasePath, string webRoot)
     {
         if (!doc.RootElement.TryGetProperty("groups", out var groups))
             return;
@@ -1588,7 +1723,7 @@ public static class BuilderExtensions
                 {
                     Name = pluginName,
                     HostPath = MapPluginToHostPath(pluginName, moodleBasePath),
-                    ContainerPath = MapPluginToContainerPath(pluginName)
+                    ContainerPath = MapPluginToContainerPath(pluginName, webRoot)
                 };
 
                 plugins.Add(plugin);

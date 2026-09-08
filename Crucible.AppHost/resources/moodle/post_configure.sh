@@ -267,9 +267,26 @@ configure_boost_dark_theme() {
   border-color: var(--bs-border-color) !important;
 }'
 
+  # theme_boost_union renamed the colored navbar options for Moodle 5.2: primarylight and
+  # primarydark became coloredlight and coloreddark. The old value is not migrated, and an
+  # unrecognised value falls through to the default branch of layout/includes/navbar.php,
+  # which emits bg-body instead of bg-primary, so the topbar loses the brand color. Ask the
+  # installed theme which spelling it knows rather than keying off the Moodle version. Both
+  # values produce the same bg-primary plus data-bs-theme="dark" markup that the custom SCSS
+  # below targets.
+  boost_union_lib="/var/www/html/theme/boost_union/lib.php"
+  if [ -f "/var/www/html/public/theme/boost_union/lib.php" ]; then
+    boost_union_lib="/var/www/html/public/theme/boost_union/lib.php"
+  fi
+  navbarcolor="primarydark"
+  if grep -q "THEME_BOOST_UNION_SETTING_NAVBARCOLOR_COLOREDDARK" "$boost_union_lib" 2>/dev/null; then
+    navbarcolor="coloreddark"
+  fi
+  log "Using theme_boost_union navbarcolor=$navbarcolor"
+
   php /var/www/html/admin/cli/cfg.php --name=theme --set=boost_union
   php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=brandcolor --set='#CC0000'
-  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=navbarcolor --set=primarydark
+  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=navbarcolor --set="$navbarcolor"
   php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=scss --set="$boost_union_scss"
 
   php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=enable --set=1
@@ -523,6 +540,26 @@ configure_ai_bedrock() {
 }
 
 
+configure_ai_placements() {
+  # AI placements ship disabled: with no settings.php of their own, the enabled flag is only
+  # written when something calls \core\plugininfo\aiplacement::enable_plugin(), which is what
+  # the Site administration > AI > AI placements toggles do. Without this the provider is
+  # configured but no AI feature appears anywhere in the UI.
+  for placement in courseassist editor competency; do
+    if [ ! -d "/var/www/html/ai/placement/$placement" ] && \
+       [ ! -d "/var/www/html/public/ai/placement/$placement" ]; then
+      log "Placement aiplacement_$placement not installed, skipping"
+      continue
+    fi
+    log "Enabling aiplacement_$placement"
+    php /var/www/html/admin/cli/cfg.php --component="aiplacement_$placement" --name=enabled --set=1
+  done
+
+  # enable_plugin() resets the plugin manager caches after writing the flag; cfg.php does not.
+  php /var/www/html/admin/cli/purge_caches.php
+}
+
+
 create_course() {
   echo "Creating course"
   moosh course-list | grep -q 'Test Course' || moosh course-create 'Test Course';
@@ -564,6 +601,9 @@ execute_section "Group Quiz Demo Activity" configure_groupquiz_activity
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then
     log "AWS credentials found, configuring Bedrock AI provider..."
     execute_section "Configure AWS Bedrock AI Provider" configure_ai_bedrock
+    # Gated on the same credentials: a placement with no working provider behind it just
+    # surfaces AI buttons that fail.
+    execute_section "Enable AI Placements" configure_ai_placements
 else
     log "AWS credentials not found, skipping Bedrock AI provider configuration"
 fi
