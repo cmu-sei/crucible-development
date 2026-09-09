@@ -6,7 +6,19 @@ LOG_FILE="/tmp/moodle_script.log"
 MOODLE_DIR="/var/www/html"
 MOODLE_CLI="$MOODLE_DIR/admin/cli"
 OAUTH2_ISSUER_ID=""
-BEDROCK_MODEL_ID="us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+# Shared by both Moodle instances, so it has to suit both provider plugins.
+#
+# Claude 3.5 Sonnet v2 (the previous value) is end of life on Bedrock: it still resolves as an
+# inference profile but every call returns "This model version has reached the end of its life".
+#
+# Sonnet 4.5 rather than a Claude 5 model because aiprovider_bedrock on 5.0 hardcodes
+# temperature 0.7 in its request body, and Claude 5 rejects temperature outright
+# ("`temperature` is deprecated for this model"). modelextraparams can only replace values, not
+# remove them, so a Claude 5 model there needs a plugin patch. 5.2's core provider sends no
+# temperature and works with either.
+#
+# Check candidates with `aws bedrock list-inference-profiles` before changing this.
+BEDROCK_MODEL_ID="us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 # Function to log messages
 log() {

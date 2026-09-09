@@ -50,8 +50,8 @@ switch ($options['step']) {
         enable_auth_oauth2();
         break;
     case 'configure_ai_bedrock':
-        // --sessiontoken is checked in configure_ai_bedrock(): the bundled
-        // aiprovider_bedrock plugin needs one, core's aiprovider_awsbedrock cannot use it.
+        // --sessiontoken is optional: aiprovider_bedrock passes one when it is set, and core's
+        // aiprovider_awsbedrock has nowhere to put it at all.
         if (
             empty($options['accesskeyid']) || empty($options['secretaccesskey']) ||
             empty($options['region']) || empty($options['modelid'])
@@ -302,6 +302,28 @@ function configure_ai_bedrock(array $options): void
     $plugin = bedrock_provider_plugin();
     $usecore = ($plugin === 'aiprovider_awsbedrock');
 
+    // Both provider plugins merge an action's modelextraparams into the request body — core in
+    // abstract_processor::get_model_settings(), ours in abstract_processor::merge_extra_params() —
+    // and a current Claude model needs two things through it:
+    //
+    //   max_tokens: Anthropic's InvokeModel API requires it and core's
+    //   process_generate_text::create_anthropic_request() never sets one. The model templates in
+    //   the settings UI carry it, but a hand-set model has no template, so every request comes
+    //   back 400 "max_tokens: Field required". (Our own plugin already sets 1024 itself.)
+    //
+    //   thinking disabled: Claude 5 models sometimes lead with a "thinking" content block, and
+    //   both plugins read content[0]'s text unconditionally (core
+    //   process_generate_text.php:290, ours process_generate_text.php:162 and
+    //   process_summarise_text.php:184). When a thinking block turns up the action still reports
+    //   success but the text is empty — an AI feature that looks broken on some prompts and not
+    //   others.
+    //
+    // Image generation goes through a different request builder in both plugins and uses neither.
+    $textextraparams = json_encode([
+        'max_tokens' => 1024,
+        'thinking' => ['type' => 'disabled'],
+    ]);
+
     cli_writeln("Configuring AWS Bedrock AI provider: {$providerName} ({$plugin})");
 
     // Match on the name alone rather than name plus provider class. A row seeded by an
@@ -342,13 +364,19 @@ function configure_ai_bedrock(array $options): void
                 'core_ai\\aiactions\\generate_image' => $imageModelId,
             ] as $action => $actionmodel
         ) {
+            $settings = [
+                'model' => $actionmodel,
+                'awsregion' => $region,
+                'systeminstruction' => $action::get_system_instruction(),
+            ];
+
+            if ($actionmodel !== $imageModelId) {
+                $settings['modelextraparams'] = $textextraparams;
+            }
+
             $actionconfig[$action] = [
                 'enabled' => true,
-                'settings' => [
-                    'model' => $actionmodel,
-                    'awsregion' => $region,
-                    'systeminstruction' => $action::get_system_instruction(),
-                ],
+                'settings' => $settings,
             ];
         }
 
@@ -359,10 +387,8 @@ function configure_ai_bedrock(array $options): void
                 "time; use long-lived IAM keys for AI features on this instance.");
         }
     } else {
-        if (empty($sessionToken)) {
-            cli_error("Missing required parameter --sessiontoken (required by aiprovider_bedrock).");
-        }
-
+        // A session token is optional here: aiprovider_bedrock adds it to the client credentials
+        // only when it is set (abstract_processor line 49), so long-lived IAM keys work too.
         // Build config JSON
         $config = [
             'aiprovider' => 'aiprovider_bedrock',
@@ -374,24 +400,27 @@ function configure_ai_bedrock(array $options): void
         ];
 
         // Build actionconfig JSON with all AI actions
-        // Only set model - Moodle will use default system instructions
+        // Only set model and modelextraparams - Moodle will use default system instructions
         $actionconfig = [
             'core_ai\\aiactions\\generate_text' => [
                 'enabled' => true,
                 'settings' => [
-                    'model' => $modelId
+                    'model' => $modelId,
+                    'modelextraparams' => $textextraparams
                 ]
             ],
             'core_ai\\aiactions\\summarise_text' => [
                 'enabled' => true,
                 'settings' => [
-                    'model' => $modelId
+                    'model' => $modelId,
+                    'modelextraparams' => $textextraparams
                 ]
             ],
             'core_ai\\aiactions\\explain_text' => [
                 'enabled' => true,
                 'settings' => [
-                    'model' => $modelId
+                    'model' => $modelId,
+                    'modelextraparams' => $textextraparams
                 ]
             ],
             'core_ai\\aiactions\\generate_image' => [
