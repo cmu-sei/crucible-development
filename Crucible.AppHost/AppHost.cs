@@ -952,10 +952,11 @@ public static class BuilderExtensions
                 WebRoot: "/var/www/html",
                 Mode: ResolveMode(options.Moodle, "Moodle", options),
                 IncludeWithAll: true,
+                // boost_dark 1.3.7, matching production and the 5.2 instance below.
                 MarketplacePlugins: MarketplacePluginsFor(
                     toolUserdebug: "2025070100",
                     boostUnion: "2025041407",
-                    boostDark: "2026010600")),
+                    boostDark: "2026052400")),
             // Moodle 5.2 test instance. Left out of AddAllApplications so it only
             // builds and appears in the dashboard when Launch__Moodle52 asks for it.
             new MoodleInstance(
