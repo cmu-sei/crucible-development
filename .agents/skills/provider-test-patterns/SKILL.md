@@ -12,6 +12,7 @@ description: >-
   plancheck, TestCheckFunc, CheckDestroy, ExpectError, import state
   verification, ephemeral resources, or how to structure test files.
 metadata:
+  lifecycle-status: active
   copyright: Copyright IBM Corp. 2026
   version: "0.0.1"
 ---
