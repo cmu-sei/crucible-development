@@ -343,6 +343,11 @@ configure_groupquiz_activity() {
     --group="Group Quiz Test Group"
 }
 
+configure_demo_activities() {
+  echo "Ensuring demo activities"
+  php /usr/local/bin/create_demo_activities.php --course="Test Course"
+}
+
 configure_crucible_dashboard_blocks() {
   echo "Ensuring Crucible dashboard blocks"
   php /usr/local/bin/create_crucible_dashboard_blocks.php
@@ -559,6 +564,7 @@ execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
 execute_section "cmi5 Demo Activity" configure_cmi5_activity
 execute_section "Group Quiz Demo Activity" configure_groupquiz_activity
+execute_section "Demo Activities" configure_demo_activities
 
 # Only configure AWS Bedrock if credentials are available
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then
