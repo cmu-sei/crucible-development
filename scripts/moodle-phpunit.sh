@@ -20,10 +20,13 @@
 # packages and builds a full second Moodle install in the phpu_ table prefix, which takes
 # minutes; paying that on every F5 is not worth it. Re-run --init after a container rebuild.
 #
-# Also re-run --init after any version.php bump, including the ones CI's auto-increment job
-# pushes onto a branch. The phpu_ install records the version it was built against, so a
-# bumped plugin makes every run stop with "Moodle PHPUnit environment was initialised for
-# different version" before a single test executes.
+# Also re-run --init after any version.php bump. The phpu_ install records the version it was
+# built against, so a bumped plugin makes every run stop with "Moodle PHPUnit environment was
+# initialised for different version" before a single test executes.
+#
+# The bump is often not yours: on the cmu-sei plugin repos, opening a PR against main makes
+# CI's version-check job commit an increment and push it onto your branch, so pulling that
+# commit into this working tree is enough to break the next run.
 
 set -euo pipefail
 
