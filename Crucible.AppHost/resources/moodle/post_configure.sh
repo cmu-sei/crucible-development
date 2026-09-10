@@ -265,6 +265,33 @@ configure_boost_dark_theme() {
 [data-bs-theme="dark"] .path-admin-tool-lp [data-region="competencymovetree"] ul[data-enhance="movetree"],
 [data-bs-theme="dark"] .path-badges [data-region="competencylinktree"] ul[data-enhance="linktree"] {
   border-color: var(--bs-border-color) !important;
+}
+
+/* local_boost_dark solid-button text colour.
+   The plugin sets a blanket "[data-bs-theme=dark] .btn { color: ... }", which
+   outranks the Bootstrap rule ".btn { color: var(--bs-btn-color) }" and so
+   discards the per-variant text colour. Variants with a light background end up
+   near-white on near-white: btn-light at 1.12:1 (core uses it for the datafilter
+   "Show all" button, e.g. on the question bank) and btn-warning at 1.64:1.
+   No !important needed - this SCSS compiles after the plugin styles at the same
+   specificity. Present in plugin 1.3.7 through 1.4.0, unreported upstream. */
+[data-bs-theme="dark"] .btn-light {
+  color: var(--bs-body-color);
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .btn-light:hover,
+[data-bs-theme="dark"] .btn-light:focus {
+  color: var(--bs-emphasis-color);
+  background-color: var(--bs-secondary-bg);
+  border-color: var(--bs-border-color);
+}
+
+/* The amber btn-warning background is fine in dark mode; only the text colour
+   is wrong, so hand it back to Bootstrap, which sets --bs-btn-color to black. */
+[data-bs-theme="dark"] .btn-warning {
+  color: var(--bs-btn-color);
 }'
 
   php /var/www/html/admin/cli/cfg.php --name=theme --set=boost_union
