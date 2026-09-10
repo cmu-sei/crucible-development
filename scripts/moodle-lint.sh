@@ -45,10 +45,18 @@ for arg in "$@"; do
   esac
 done
 
+# devcontainer.json puts the composer global bin on PATH, but only for shells VS Code
+# starts. Fall back to the absolute path so the script also works from a bare docker exec
+# or a non-interactive runner.
 if ! command -v "$tool" >/dev/null 2>&1; then
-  echo "$tool not found. It is installed by .devcontainer/postcreate.sh:" >&2
-  echo "  composer global require moodlehq/moodle-cs" >&2
-  exit 1
+  composerbin="${COMPOSER_HOME:-$HOME/.config/composer}/vendor/bin/$tool"
+  if [ -x "$composerbin" ]; then
+    tool="$composerbin"
+  else
+    echo "$tool not found. It is installed by .devcontainer/postcreate.sh:" >&2
+    echo "  composer global require moodlehq/moodle-cs" >&2
+    exit 1
+  fi
 fi
 
 # Lint the files git tracks rather than everything on disk. Several plugins carry a
