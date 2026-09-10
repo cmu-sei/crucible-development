@@ -62,7 +62,10 @@
     "SSL_CERT_DIR": "/usr/local/share/ca-certificates/:/etc/ssl/certs/:/home/vscode/.aspnet/dev-certs/trust/",
     // Set on the host by .github/workflows/devcontainer-ci.yml to skip external
     // repo cloning in CI. Resolves to an empty string on developer machines.
-    "CRUCIBLE_CI_SKIP_CLONE": "${localEnv:CRUCIBLE_CI_SKIP_CLONE}"
+    "CRUCIBLE_CI_SKIP_CLONE": "${localEnv:CRUCIBLE_CI_SKIP_CLONE}",
+    // Puts the composer global bin on PATH, for the phpcs and phpcbf installed by
+    // moodlehq/moodle-cs in postcreate.sh
+    "PATH": "/home/vscode/.config/composer/vendor/bin:${containerEnv:PATH}"
   },
   "mounts": [
     // crucible repo data
@@ -98,7 +101,10 @@
     // Playwright browser cache persists across rebuilds
     "source=crucible-dev-playwright,target=/home/vscode/.cache/ms-playwright,type=volume",
     // npm cache persists across rebuilds
-    "source=crucible-dev-npm,target=/home/vscode/.npm,type=volume"
+    "source=crucible-dev-npm,target=/home/vscode/.npm,type=volume",
+    // Composer global install (moodle-cs) and its download cache persist across rebuilds
+    "source=crucible-dev-composer,target=/home/vscode/.config/composer,type=volume",
+    "source=crucible-dev-composer-cache,target=/home/vscode/.cache/composer,type=volume"
   ],
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",

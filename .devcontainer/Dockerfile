@@ -34,6 +34,12 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     apt-get install -y --no-install-recommends \
     php \
     php-cli \
+    # php-xml supplies SimpleXML, without which phpcs cannot parse the Moodle ruleset;
+    # php-curl and php-zip are what composer needs to fetch and unpack packages
+    php-xml \
+    php-curl \
+    php-zip \
+    php-mbstring \
     # includes certutil for dev cert verification
     libnss3-tools \
     # Playwright system dependencies (headless Chromium, English-only)
@@ -42,6 +48,16 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 \
     libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
     libfontconfig1 libfreetype6 fonts-liberation fonts-freefont-ttf
+
+# Install Composer, used to install the Moodle coding standard in postcreate.sh
+ARG COMPOSER_VERSION=2.10.3
+RUN set -eux; \
+    curl -fsSL -o /tmp/composer-setup.php https://getcomposer.org/installer; \
+    php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer \
+    --version="${COMPOSER_VERSION}" --quiet; \
+    rm /tmp/composer-setup.php; \
+    composer --version
+
 # Install Vale
 ARG VALE_VERSION=3.12.0
 RUN set -eux; \
