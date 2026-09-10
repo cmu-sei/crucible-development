@@ -45,6 +45,8 @@ check omp        omp --version
 check herdr      herdr --version
 check dotnet-ef  dotnet ef --version
 check ng         ng --version
+check phpcs      phpcs --version
+check phpcbf     phpcbf --version
 
 if [ "$fail" -ne 0 ]; then
   echo

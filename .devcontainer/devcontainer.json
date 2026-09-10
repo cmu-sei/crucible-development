@@ -64,17 +64,8 @@
     // repo cloning in CI. Resolves to an empty string on developer machines.
     "CRUCIBLE_CI_SKIP_CLONE": "${localEnv:CRUCIBLE_CI_SKIP_CLONE}"
   },
-  // Puts the composer global bin on PATH, for the phpcs and phpcbf installed by
-  // moodlehq/moodle-cs in postcreate.sh.
-  //
-  // This belongs in remoteEnv, not containerEnv: ${containerEnv:PATH} is only resolvable
-  // once the container is running, and containerEnv is turned into `docker run -e` flags
-  // before that. The devcontainer CLI passes the unresolved placeholder straight through,
-  // which drops /usr/bin and /bin from PATH and kills the container at startup with
-  // "cat: not found" out of docker-init.sh.
-  "remoteEnv": {
-    "PATH": "/home/vscode/.config/composer/vendor/bin:${containerEnv:PATH}"
-  },
+  // Nothing here sets PATH. phpcs and phpcbf reach it by symlink from postcreate.sh; see
+  // the comment there for why neither containerEnv nor remoteEnv works for that.
   "mounts": [
     // crucible repo data
     "source=crucible-dev-data,target=/mnt/data/,type=volume",

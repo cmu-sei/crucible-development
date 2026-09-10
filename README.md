@@ -859,11 +859,13 @@ composer global require moodlehq/moodle-cs
 The package vendor is `moodlehq`, not `moodle`; `moodle/moodle-cs` does not exist. Its
 composer plugin registers phpcs `installed_paths` on install, so `--standard=moodle`
 resolves with no further configuration. `phpcs` and `phpcbf` land in
-`~/.config/composer/vendor/bin`, which `devcontainer.json` prepends to `PATH` through
-`remoteEnv` — not `containerEnv`, where `${containerEnv:PATH}` cannot be resolved yet and the
-devcontainer CLI passes the literal placeholder to `docker run`, leaving the container with no
-`/usr/bin` and killing it at startup. Both the global install and the composer download cache
-are named volumes, so they survive rebuilds.
+`~/.config/composer/vendor/bin`, and `postcreate.sh` symlinks both into `/usr/local/bin` to get
+them on `PATH`. Neither `devcontainer.json` env block can do that job: `containerEnv` becomes
+`docker run -e` flags before a container exists, so the devcontainer CLI passes a
+self-referential `${containerEnv:PATH}` through literally and the container dies at startup
+without a `/usr/bin`; and a `remoteEnv` `PATH` replaces the one `userEnvProbe` reads out of the
+login shell, which is where the `aspire`, `claude` and `codex` bin dirs come from. Both the
+global install and the composer download cache are named volumes, so they survive rebuilds.
 
 **`moodlehq/moodle-plugin-ci`** is deliberately **not** installed anywhere in this repo. Each
 plugin repo's GitHub Actions workflow installs it per-job, which is the only place it is
