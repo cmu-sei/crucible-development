@@ -265,6 +265,59 @@ configure_boost_dark_theme() {
 [data-bs-theme="dark"] .path-admin-tool-lp [data-region="competencymovetree"] ul[data-enhance="movetree"],
 [data-bs-theme="dark"] .path-badges [data-region="competencylinktree"] ul[data-enhance="linktree"] {
   border-color: var(--bs-border-color) !important;
+}
+
+/* local_boost_dark solid-button text colour.
+   The plugin sets a blanket "[data-bs-theme=dark] .btn { color: ... }", which
+   outranks the Bootstrap rule ".btn { color: var(--bs-btn-color) }" and so
+   discards the per-variant text colour. Variants with a light background end up
+   near-white on near-white: btn-light at 1.12:1 (core uses it for the datafilter
+   "Show all" button, e.g. on the question bank) and btn-warning at 1.64:1.
+   No !important needed - this SCSS compiles after the plugin styles at the same
+   specificity. Present in plugin 1.3.6 through 1.4.0, unreported upstream. */
+[data-bs-theme="dark"] .btn-light {
+  color: var(--bs-body-color);
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .btn-light:hover,
+[data-bs-theme="dark"] .btn-light:focus {
+  color: var(--bs-emphasis-color);
+  background-color: var(--bs-secondary-bg);
+  border-color: var(--bs-border-color);
+}
+
+/* The amber btn-warning background is fine in dark mode; only the text colour
+   is wrong, so hand it back to Bootstrap, which sets --bs-btn-color to black. */
+[data-bs-theme="dark"] .btn-warning {
+  color: var(--bs-btn-color);
+}
+
+/* Moodle course section header in dark mode.
+   1. Core hardcodes ".course-section .sectionname > a { color: #1d2125 }" with no
+      dark variant, which is 1.10:1 against the dark page background.
+      local_boost_dark only rescues it through an adjacent-sibling selector
+      (".btn.icons-collapse-expand + h3 a"), which misses whenever the collapse
+      control is not the h3 immediate previous sibling - confirmed on a course
+      set to "Show one section per page", where no collapse control is rendered
+      and the title is unreadable.
+   2. Core styles ".btn-icon.icons-collapse-expand" with the brand colour, which
+      here is CMU red at 3.27:1. That rule ties the plugin blanket
+      "[data-bs-theme=dark] .btn" on specificity and wins on document order, so
+      the collapse chevron next to every section title stays dark red. */
+[data-bs-theme="dark"] .course-section .sectionname > a,
+[data-bs-theme="dark"] .course-section .sectionname .inplaceeditable > a {
+  color: var(--bs-emphasis-color);
+}
+
+[data-bs-theme="dark"] .btn-icon.icons-collapse-expand {
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .btn-icon.icons-collapse-expand:hover,
+[data-bs-theme="dark"] .btn-icon.icons-collapse-expand:focus {
+  color: var(--bs-emphasis-color);
 }'
 
   php /var/www/html/admin/cli/cfg.php --name=theme --set=boost_union
@@ -341,6 +394,11 @@ configure_groupquiz_activity() {
     --name="Group Quiz (Test)" \
     --grouping="Group Quiz Test Grouping" \
     --group="Group Quiz Test Group"
+}
+
+configure_demo_activities() {
+  echo "Ensuring demo activities"
+  php /usr/local/bin/create_demo_activities.php --course="Test Course"
 }
 
 configure_crucible_dashboard_blocks() {
@@ -569,6 +627,7 @@ execute_section "TopoMojo Configuration" configure_topomojo
 execute_section "Course Creation" create_course
 execute_section "cmi5 Demo Activity" configure_cmi5_activity
 execute_section "Group Quiz Demo Activity" configure_groupquiz_activity
+execute_section "Demo Activities" configure_demo_activities
 
 # Only configure AWS Bedrock if credentials are available
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then
