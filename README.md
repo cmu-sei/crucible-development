@@ -834,6 +834,110 @@ After migration:
 ./scripts/migrate-moodle-hierarchical.sh
 ```
 
+### Testing Moodle Plugins
+
+Moodle plugins are checked two independent ways, and a plugin repo's CI runs both. See the
+[Moodle testing guide](https://moodledev.io/docs/5.1/guides/testing).
+
+| | What it checks | Where the tool lives | How to run it |
+|---|---|---|---|
+| **PHPUnit** | Behaviour. Does the code do the right thing? | `vendor/bin/phpunit` inside the Moodle container | `./scripts/moodle-phpunit.sh mod_topomojo` |
+| **phpcs + moodle-cs** | Style and docblocks. Does the code look like Moodle code? | `phpcs` in the dev container, from `moodlehq/moodle-cs` | `./scripts/moodle-lint.sh mod/topomojo` |
+
+Neither substitutes for the other. A plugin can pass every test and still fail CI on 1800
+sniff violations, and vice versa.
+
+#### Where each tool is installed
+
+**`moodlehq/moodle-cs`** (the coding standard) is installed in the **dev container**, by
+`.devcontainer/postcreate.sh`:
+
+```bash
+composer global require moodlehq/moodle-cs
+```
+
+The package vendor is `moodlehq`, not `moodle`; `moodle/moodle-cs` does not exist. Its
+composer plugin registers phpcs `installed_paths` on install, so `--standard=moodle`
+resolves with no further configuration. `phpcs` and `phpcbf` land in
+`~/.config/composer/vendor/bin`, which is on `PATH` via `devcontainer.json`. Both the global
+install and the composer download cache are named volumes, so they survive rebuilds.
+
+**`moodlehq/moodle-plugin-ci`** is deliberately **not** installed anywhere in this repo. Each
+plugin repo's GitHub Actions workflow installs it per-job, which is the only place it is
+needed. Two reasons not to have it locally:
+
+- It cannot be installed with `composer global require`, because it depends on
+  `moodlehq/moodle-local_ci`, which is not on packagist. The only supported install is
+  `composer create-project moodlehq/moodle-plugin-ci <dir> ^4`.
+- Its `phpcs` command enumerates every PHP file under the plugin. Several plugins carry a
+  gitignored `vendor/` and `node_modules/` from local composer and npm runs — mod_topomojo's
+  alone adds 995 files — which produces an argv large enough that `proc_open` refuses to
+  spawn phpcs at all. CI never sees this, because a fresh checkout has neither directory.
+
+`scripts/moodle-lint.sh` sidesteps that by linting only the files git tracks, which is
+exactly the set CI sees, and by setting the same phpcs runtime options `moodle-plugin-ci`
+does, so the violation counts match.
+
+**PHPUnit** ships as a dev dependency of Moodle itself, so it lives in the **Moodle
+container**, not the dev container. It needs a full Moodle install, a generated
+`phpunit.xml` and a live database, none of which exist on the dev container side.
+
+#### Running PHPUnit
+
+The Moodle container needs one-time provisioning per rebuild. This is not done at container
+startup on purpose: it installs ~70 composer dev packages and builds a second complete
+Moodle install under the `phpu_` table prefix, which takes minutes and would be paid on
+every F5.
+
+```bash
+# Once per container rebuild
+./scripts/moodle-phpunit.sh --init
+
+# Run one plugin's suite
+./scripts/moodle-phpunit.sh mod_topomojo
+
+# With the flags CI fails the build on. A local pass without these is not evidence
+# of a green build: "OK, but there were issues!" exits 0 locally and 1 in CI.
+./scripts/moodle-phpunit.sh mod_topomojo --strict
+
+# After adding a new test file or a new plugin, phpunit.xml has to be regenerated
+./scripts/moodle-phpunit.sh --rebuild-config
+
+# Against the Moodle 5.2 container, or pass anything through to phpunit
+./scripts/moodle-phpunit.sh -c moodle52 mod_topomojo
+./scripts/moodle-phpunit.sh mod_topomojo -- --filter test_topomojo_supports
+```
+
+Plugin source under `/mnt/data/crucible/moodle` is bind-mounted into the container, so tests
+run against your working tree with no copy or restart step. Edit, then re-run.
+
+Two things to know:
+
+- **Always select tests by testsuite, not by path.** The script passes
+  `--testsuite mod_topomojo_testsuite`. Pointing phpunit at `mod/topomojo/tests` instead
+  selects nothing, prints `No tests executed!`, and exits **0** — a silent false pass.
+- **The test database is shared per container.** Two people or two agent sessions running
+  PHPUnit against the same container at the same time will corrupt each other's `phpu_`
+  tables. Use a different container, or wait.
+
+#### Running the coding standard
+
+```bash
+# Report violations
+./scripts/moodle-lint.sh mod/topomojo
+
+# Apply every auto-fixable violation via phpcbf
+./scripts/moodle-lint.sh mod/topomojo --fix
+
+# Anything else is passed through to phpcs
+./scripts/moodle-lint.sh mod/topomojo --report=source
+./scripts/moodle-lint.sh mod/topomojo --sniffs=moodle.Commenting.InlineComment
+```
+
+The path is absolute, or relative to `/mnt/data/crucible/moodle`. `--report=source` gives a
+per-sniff tally, which is the useful view when burning down a large backlog — most of the
+volume is usually a handful of sniffs, and `--fix` clears the bulk of it.
+
 ### Adding Additional Official Plugins for Moodle
 
 To add additional plugins, add them to the `PLUGINS` environment variable in `AppHost.cs`.
