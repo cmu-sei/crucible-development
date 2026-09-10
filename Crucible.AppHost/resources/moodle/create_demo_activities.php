@@ -24,6 +24,7 @@
 define('CLI_SCRIPT', true);
 require('/var/www/html/config.php');
 require_once($CFG->libdir . '/clilib.php');
+require_once($CFG->libdir . '/filelib.php');
 require_once($CFG->libdir . '/questionlib.php');
 require_once($CFG->dirroot . '/course/lib.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
@@ -264,6 +265,102 @@ function demo_create_question(stdClass $category, string $name, string $question
     return \question_bank::get_qtype('truefalse')->save_question((object)['qtype' => 'truefalse'], $form);
 }
 
+/**
+ * Writes text files into an activity's file area.
+ *
+ * The packaged modules below (scorm, imscp) normally get their files by having a
+ * zip extracted into the 'content' area on save. There is no package to extract
+ * here, so the handful of files a viewer actually fetches are written straight
+ * in. Without them the activity's own view page renders its table of contents
+ * and then 404s inside the frame, which does not read as a working demo.
+ *
+ * @param int $cmid The activity whose context holds the files.
+ * @param string $component The component, e.g. 'mod_scorm'.
+ * @param string $filearea The file area to write into.
+ * @param int $itemid The item id within the area.
+ * @param array $files Map of filename => file contents.
+ */
+function demo_add_files(int $cmid, string $component, string $filearea, int $itemid, array $files): void {
+    $fs = get_file_storage();
+    $contextid = \context_module::instance($cmid)->id;
+
+    foreach ($files as $filename => $content) {
+        if ($fs->get_file($contextid, $component, $filearea, $itemid, '/', $filename)) {
+            continue;
+        }
+        $fs->create_file_from_string([
+            'contextid' => $contextid,
+            'component' => $component,
+            'filearea' => $filearea,
+            'itemid' => $itemid,
+            'filepath' => '/',
+            'filename' => $filename,
+        ], $content);
+    }
+}
+
+/**
+ * Writes generated PNG slides into an activity's file area.
+ *
+ * mod_pptbook shows the PNGs a PowerPoint conversion left behind and pairs each
+ * with its caption, so captions with no images would display nothing at all.
+ * Real slides are not something this script can produce, so each one is drawn
+ * with its own title on it - enough to see the pairing and the page ordering
+ * work.
+ *
+ * @param int $cmid The activity whose context holds the files.
+ * @param array $slides Map of filename => the text to draw on that slide.
+ */
+function demo_add_slides(int $cmid, array $slides): void {
+    $fs = get_file_storage();
+    $contextid = \context_module::instance($cmid)->id;
+
+    foreach ($slides as $filename => $caption) {
+        if ($fs->get_file($contextid, 'mod_pptbook', 'slides', 0, '/', $filename)) {
+            continue;
+        }
+
+        $image = imagecreatetruecolor(960, 540);
+        imagefill($image, 0, 0, imagecolorallocate($image, 245, 245, 245));
+        imagerectangle($image, 0, 0, 959, 539, imagecolorallocate($image, 180, 180, 180));
+        $ink = imagecolorallocate($image, 40, 40, 40);
+        // The bundled bitmap font takes one line at a time, so the caption is
+        // wrapped by hand and each line placed below the last.
+        $y = 240;
+        foreach (explode("\n", wordwrap($caption, 46)) as $line) {
+            imagestring($image, 5, 60, $y, $line, $ink);
+            $y += 24;
+        }
+
+        ob_start();
+        imagepng($image);
+        $png = ob_get_clean();
+        imagedestroy($image);
+
+        $fs->create_file_from_string([
+            'contextid' => $contextid,
+            'component' => 'mod_pptbook',
+            'filearea' => 'slides',
+            'itemid' => 0,
+            'filepath' => '/',
+            'filename' => $filename,
+        ], $png);
+    }
+}
+
+/**
+ * Returns a minimal HTML page, for use as packaged module content.
+ *
+ * @param string $title The page title and heading.
+ * @param string $body One paragraph of body text.
+ * @return string The complete document.
+ */
+function demo_html_page(string $title, string $body): string {
+    return "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
+        . "<title>{$title}</title>\n</head>\n<body>\n<h1>{$title}</h1>\n<p>{$body}</p>\n"
+        . "</body>\n</html>\n";
+}
+
 cli_writeln("Seeding demo activities in '{$course->fullname}'");
 
 // A book, whose content lives in its chapters rather than on the settings form.
@@ -322,8 +419,10 @@ demo_create_activity($course, 'assign', 'Demo Assignment', [
     'grade' => 100,
 ]);
 
-// A workshop, whose two instruction fields are on tabs of their own.
-demo_create_activity($course, 'workshop', 'Demo Workshop', [
+// A workshop, whose two instruction fields are on tabs of their own, and whose
+// grading criteria are on a form of their own again - not on the settings page at
+// all, which is what makes them worth seeding.
+$workshop = demo_create_activity($course, 'workshop', 'Demo Workshop', [
     'intro' => '<p>Peer review of hardening plans.</p>',
     'instructauthors' => '<p>Produce a hardening plan for the supplied server build, citing the control that '
         . 'justifies each change.</p>',
@@ -339,6 +438,26 @@ demo_create_activity($course, 'workshop', 'Demo Workshop', [
     'gradinggrade' => 20,
     'grademapping' => '',
 ]);
+// The accumulative strategy keeps one row per criterion, each graded out of its
+// own maximum. 'sort' is what the assessment form orders them by.
+if ($workshop && !$DB->record_exists('workshopform_accumulative', ['workshopid' => $workshop[0]])) {
+    $criteria = [
+        '<p>Every proposed change cites the control or benchmark item that requires it.</p>',
+        '<p>The plan states how each change would be verified after a rebuild.</p>',
+        '<p>Changes are ordered so that the ones reducing the most exposure come first.</p>',
+    ];
+    foreach ($criteria as $sort => $description) {
+        $DB->insert_record('workshopform_accumulative', (object)[
+            'workshopid' => $workshop[0],
+            'sort' => $sort + 1,
+            'description' => $description,
+            'descriptionformat' => FORMAT_HTML,
+            'grade' => 10,
+            'weight' => 1,
+        ]);
+    }
+    cli_writeln('  Added ' . count($criteria) . ' workshop assessment criteria.');
+}
 
 // A quiz with real questions, which is the only activity here that needs a
 // question bank. Its questions are its content; the description alone would not
@@ -420,6 +539,285 @@ if ($quiz && !$DB->record_exists('quiz_slots', ['quizid' => $quiz[0]])) {
         }
         cli_writeln('  Could not add quiz questions: ' . $e->getMessage());
     }
+}
+
+// A choice, whose question is its description and whose answers are rows of
+// their own.
+$choice = demo_create_activity($course, 'choice', 'Demo Choice', [
+    'intro' => '<p>Which step would you take first on receiving this alert?</p>',
+    'publish' => 0,
+    'showresults' => 1,
+    'display' => 0,
+    'allowupdate' => 1,
+    'showunanswered' => 1,
+    'showavailable' => 0,
+]);
+if ($choice && !$DB->record_exists('choice_options', ['choiceid' => $choice[0]])) {
+    $options = [
+        'Confirm the alert against a second source before acting',
+        'Isolate the host and preserve volatile memory',
+        'Review the authentication history for the account involved',
+        'Close the alert as a false positive',
+    ];
+    foreach ($options as $text) {
+        $DB->insert_record('choice_options', (object)[
+            'choiceid' => $choice[0],
+            'text' => $text,
+            'maxanswers' => 0,
+            'timemodified' => time(),
+        ]);
+    }
+    cli_writeln('  Added ' . count($options) . ' choice options.');
+}
+
+// A feedback activity, whose questions are rows whose display settings share one
+// column with the only content a label item has.
+$feedback = demo_create_activity($course, 'feedback', 'Demo Feedback', [
+    'intro' => '<p>Tell us how the incident response exercise went.</p>',
+    'anonymous' => 1,
+    'multiple_submit' => 0,
+    'autonumbering' => 1,
+    'page_after_submit' => '',
+]);
+if ($feedback && !$DB->record_exists('feedback_item', ['feedback' => $feedback[0]])) {
+    // 'presentation' holds the field's display settings for most types, but for a
+    // label it holds the label's whole text, and for a multichoice it holds the
+    // options as 'subtype>>>>>a|b|c<<<<<horizontal'.
+    $items = [
+        ['label', 'Exercise feedback', '<p>These answers shape the next exercise, so be specific.</p>', 0],
+        ['multichoice', 'How confident are you now in triaging a phishing report?',
+            'r>>>>>Not at all confident|Somewhat confident|Confident|Very confident<<<<<0', 1],
+        ['multichoice', 'Which parts of the exercise were most useful?',
+            'c>>>>>Log analysis|Host triage|Report writing|Peer review<<<<<0', 1],
+        ['textarea', 'What would you do differently next time?', '60|5', 1],
+    ];
+    foreach ($items as $position => [$typ, $name, $presentation, $hasvalue]) {
+        $DB->insert_record('feedback_item', (object)[
+            'feedback' => $feedback[0],
+            'template' => 0,
+            'name' => $name,
+            'label' => '',
+            'presentation' => $presentation,
+            'typ' => $typ,
+            'hasvalue' => $hasvalue,
+            'position' => $position + 1,
+            'required' => 0,
+            'dependitem' => 0,
+            'dependvalue' => '',
+            'options' => '',
+        ]);
+    }
+    cli_writeln('  Added ' . count($items) . ' feedback items.');
+}
+
+// A database, whose author content is its field definitions rather than the
+// entries learners add to it.
+$data = demo_create_activity($course, 'data', 'Demo Database', [
+    'intro' => '<p>Build a shared list of indicators observed during the exercise.</p>',
+    'requiredentries' => 0,
+    'requiredentriestoview' => 0,
+    'maxentries' => 0,
+    'approval' => 0,
+    'comments' => 1,
+]);
+if ($data && !$DB->record_exists('data_fields', ['dataid' => $data[0]])) {
+    $fields = [
+        ['text', 'Indicator', '<p>The observable itself: a domain, hash, IP address or file path.</p>', null],
+        ['menu', 'Indicator type', '<p>Which kind of observable this is, so the list can be filtered.</p>',
+            "Domain\nFile hash\nIP address\nFile path\nUser account"],
+        ['textarea', 'Why it matters', '<p>What this indicator tells you about the intrusion, and what you '
+            . 'would do next having found it.</p>', null],
+        ['text', 'Source', '<p>Where the indicator came from, so another analyst can go back to it.</p>', null],
+    ];
+    foreach ($fields as [$type, $name, $description, $param1]) {
+        $DB->insert_record('data_fields', (object)[
+            'dataid' => $data[0],
+            'type' => $type,
+            'name' => $name,
+            'description' => $description,
+            'required' => 0,
+            'param1' => $param1,
+        ]);
+    }
+    cli_writeln('  Added ' . count($fields) . ' database fields.');
+}
+
+// A wiki. Only its first page is author content - everything after that is
+// written by learners - and that page is reached through a subwiki, one per group
+// even when the wiki has no groups.
+$wiki = demo_create_activity($course, 'wiki', 'Demo Wiki', [
+    'intro' => '<p>Maintain the shared runbook for this exercise.</p>',
+    'firstpagetitle' => 'Incident response runbook',
+    'wikimode' => 'collaborative',
+    'defaultformat' => 'html',
+    'forceformat' => 1,
+]);
+if ($wiki && !$DB->record_exists_sql(
+        'SELECT 1 FROM {wiki_pages} p JOIN {wiki_subwikis} s ON s.id = p.subwikiid WHERE s.wikiid = ?',
+        [$wiki[0]])) {
+    $subwikiid = $DB->insert_record('wiki_subwikis', (object)[
+        'wikiid' => $wiki[0],
+        'groupid' => 0,
+        'userid' => 0,
+    ]);
+    $wikicontent = '<p>Work through these stages in order, and record the time of each decision as you '
+        . 'make it.</p><ol><li>Confirm the alert and open a case record.</li><li>Establish scope: which hosts '
+        . 'and accounts are involved.</li><li>Contain, preserving volatile evidence first.</li><li>Eradicate '
+        . 'and recover from a known good state.</li><li>Write up what changed and what should change.</li></ol>';
+    $pageid = $DB->insert_record('wiki_pages', (object)[
+        'subwikiid' => $subwikiid,
+        'title' => 'Incident response runbook',
+        'cachedcontent' => $wikicontent,
+        'timecreated' => time(),
+        'timemodified' => time(),
+        'timerendered' => time(),
+        'userid' => $USER->id,
+        'pageviews' => 0,
+        'readonly' => 0,
+    ]);
+    // cachedcontent is what the view page renders, but the editor loads the
+    // latest version row, so a page with no version history opens up empty.
+    $DB->insert_record('wiki_versions', (object)[
+        'pageid' => $pageid,
+        'content' => $wikicontent,
+        'contentformat' => 'html',
+        'version' => 1,
+        'timecreated' => time(),
+        'userid' => $USER->id,
+    ]);
+    cli_writeln('  Added the wiki first page.');
+}
+
+// A SCORM package. There is no zip to extract, so the manifest rows a parse would
+// have produced are written directly, along with the files they launch. The
+// organisation row is the package itself and carries no launch of its own; the
+// rows below it are the SCOs.
+$scorm = demo_create_activity($course, 'scorm', 'Demo SCORM Package', [
+    'intro' => '<p>A short self-paced module on detecting lateral movement.</p>',
+    'scormtype' => 'local',
+    'reference' => 'demo-lateral-movement.zip',
+    'version' => 'SCORM_1.2',
+    'maxgrade' => 100,
+    'grademethod' => 1,
+    'maxattempt' => 0,
+    'displaycoursestructure' => 1,
+    'hidetoc' => 0,
+    'skipview' => 0,
+    'md5hash' => '',
+]);
+if ($scorm && !$DB->record_exists('scorm_scoes', ['scorm' => $scorm[0]])) {
+    $DB->insert_record('scorm_scoes', (object)[
+        'scorm' => $scorm[0],
+        'manifest' => '',
+        'organization' => '',
+        'parent' => '/',
+        'identifier' => 'ORG-DEMO',
+        'launch' => '',
+        'scormtype' => '',
+        'title' => 'Detecting lateral movement',
+        'sortorder' => 1,
+    ]);
+
+    $scos = [
+        ['SCO-1', 'sco1.html', 'Baselining normal account behaviour',
+            'Know which accounts log in where, and how often, before trying to spot the one that does not '
+            . 'fit the pattern.'],
+        ['SCO-2', 'sco2.html', 'Spotting anomalous remote sessions',
+            'Remote logons between workstations, service accounts used interactively and logons outside '
+            . 'working hours are the signals worth chasing first.'],
+        ['SCO-3', 'sco3.html', 'Containing without losing evidence',
+            'Isolate the host at the network rather than powering it off, so that memory and running '
+            . 'processes survive to be collected.'],
+    ];
+    $files = [];
+    $firstscoid = 0;
+    foreach ($scos as $sortorder => [$identifier, $launch, $title, $body]) {
+        $scoid = $DB->insert_record('scorm_scoes', (object)[
+            'scorm' => $scorm[0],
+            'manifest' => '',
+            'organization' => 'ORG-DEMO',
+            'parent' => 'ORG-DEMO',
+            'identifier' => $identifier,
+            'launch' => $launch,
+            'scormtype' => 'sco',
+            'title' => $title,
+            'sortorder' => $sortorder + 2,
+        ]);
+        $firstscoid = $firstscoid ?: $scoid;
+        $files[$launch] = demo_html_page($title, $body);
+    }
+
+    // The player needs to know which SCO to open first.
+    $DB->set_field('scorm', 'launch', $firstscoid, ['id' => $scorm[0]]);
+    demo_add_files($scorm[1], 'mod_scorm', 'content', 0, $files);
+    cli_writeln('  Added ' . (count($scos) + 1) . ' SCORM manifest rows and their pages.');
+}
+
+// An IMS content package, whose table of contents is a serialized item tree on
+// its own row rather than a table of its own.
+$imscp = demo_create_activity($course, 'imscp', 'Demo IMS Content Package', [
+    'intro' => '<p>Reference pages on securing remote administration.</p>',
+    'revision' => 1,
+    'keepold' => -1,
+]);
+if ($imscp && trim((string)$DB->get_field('imscp', 'structure', ['id' => $imscp[0]])) === '') {
+    $structure = [
+        [
+            'title' => 'Securing remote administration',
+            'href' => 'index.html',
+            'subitems' => [
+                [
+                    'title' => 'Restricting where administration can happen',
+                    'href' => 'page1.html',
+                    'subitems' => [],
+                ],
+                [
+                    'title' => 'Separating administrative credentials',
+                    'href' => 'page2.html',
+                    'subitems' => [],
+                ],
+            ],
+        ],
+    ];
+    $DB->set_field('imscp', 'structure', serialize($structure), ['id' => $imscp[0]]);
+    // itemid is the revision, which is how replacing a package leaves the old
+    // files behind without them being served.
+    demo_add_files($imscp[1], 'mod_imscp', 'content', 1, [
+        'index.html' => demo_html_page('Securing remote administration',
+            'Administrative access is worth attacking precisely because it is worth having. These pages '
+            . 'cover where it should be possible from and which credentials should be able to use it.'),
+        'page1.html' => demo_html_page('Restricting where administration can happen',
+            'Administer from dedicated hosts on a management network, and refuse administrative logons '
+            . 'from anywhere a user reads mail.'),
+        'page2.html' => demo_html_page('Separating administrative credentials',
+            'An account with administrative rights should do nothing else, so that a compromised '
+            . 'day-to-day session yields nothing worth escalating.'),
+    ]);
+    cli_writeln('  Added the IMS package structure and its pages.');
+}
+
+// A PPT Book, whose captions are a filename-keyed map on its own row. The view
+// page pairs each caption with the slide image of that name, so the images have
+// to exist for the captions to be seen at all.
+$pptbook = demo_create_activity($course, 'pptbook', 'Demo PPT Book', [
+    'intro' => '<p>Slides from the briefing on reading firewall logs.</p>',
+    'perpage' => 4,
+]);
+if ($pptbook && trim((string)$DB->get_field('pptbook', 'captionsjson', ['id' => $pptbook[0]])) === '') {
+    // Filenames are ordered with a natural compare, so slide-2 sorts before
+    // slide-10 rather than after it.
+    $captions = [
+        'slide-1.png' => 'Reading firewall logs: what the fields mean and which ones matter.',
+        'slide-2.png' => 'Accepted and denied are both evidence. A long run of denials is reconnaissance; '
+            . 'a single acceptance after it is the one to explain.',
+        'slide-3.png' => 'Direction tells you intent. Outbound connections to addresses nobody browses to '
+            . 'are worth more attention than inbound noise.',
+        'slide-4.png' => 'Volume and timing beat signatures: steady small transfers at fixed intervals '
+            . 'look nothing like a person and everything like a beacon.',
+    ];
+    $DB->set_field('pptbook', 'captionsjson', json_encode($captions), ['id' => $pptbook[0]]);
+    demo_add_slides($pptbook[1], $captions);
+    cli_writeln('  Added ' . count($captions) . ' PPT Book slides and captions.');
 }
 
 // A label, which has nowhere to put content but its description.
