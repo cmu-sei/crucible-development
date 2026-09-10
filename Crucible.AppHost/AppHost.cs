@@ -932,11 +932,15 @@ public static class BuilderExtensions
     /// Marketplace plugin downloads for a given Moodle branch. The version ids are
     /// branch-specific: installing a 5.0 build of these on 5.2 fails, so each Moodle
     /// instance pins the versions the plugin API reports for its own branch.
+    ///
+    /// local_boost_dark is deliberately absent: it is cloned and bind mounted through
+    /// repos.local.json instead, so we can develop dark-theme fixes against our fork.
+    /// A plugin cannot be in both lists - 015-copy-plugins.sh rm -rf's its target, and
+    /// that target is a read-only mountpoint here, which aborts the script under set -e.
     /// </summary>
-    private static string MarketplacePluginsFor(string toolUserdebug, string boostUnion, string boostDark) =>
+    private static string MarketplacePluginsFor(string toolUserdebug, string boostUnion) =>
         $"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/{toolUserdebug}/download " +
-        $"theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/{boostUnion}/download " +
-        $"local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/{boostDark}/download";
+        $"theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/{boostUnion}/download";
 
     public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
@@ -952,11 +956,9 @@ public static class BuilderExtensions
                 WebRoot: "/var/www/html",
                 Mode: ResolveMode(options.Moodle, "Moodle", options),
                 IncludeWithAll: true,
-                // boost_dark 1.3.7, matching production and the 5.2 instance below.
                 MarketplacePlugins: MarketplacePluginsFor(
                     toolUserdebug: "2025070100",
-                    boostUnion: "2025041407",
-                    boostDark: "2026052400")),
+                    boostUnion: "2025041407")),
             // Moodle 5.2 test instance. Left out of AddAllApplications so it only
             // builds and appears in the dashboard when Launch__Moodle52 asks for it.
             new MoodleInstance(
@@ -971,11 +973,10 @@ public static class BuilderExtensions
                 Mode: ResolveMode(options.Moodle52, "Moodle52", options),
                 IncludeWithAll: false,
                 // Versions the plugin API reports for branch 5.2 (boost_union v5.2-r8,
-                // boost_dark 1.3.7, userdebug v5.0.3 which spans through 5.2).
+                // userdebug v5.0.3 which spans through 5.2).
                 MarketplacePlugins: MarketplacePluginsFor(
                     toolUserdebug: "2025070300",
-                    boostUnion: "2026042012",
-                    boostDark: "2026052400")),
+                    boostUnion: "2026042012")),
         };
 
         var anyAdded = false;
