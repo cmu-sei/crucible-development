@@ -911,8 +911,12 @@ every F5.
 Plugin source under `/mnt/data/crucible/moodle` is bind-mounted into the container, so tests
 run against your working tree with no copy or restart step. Edit, then re-run.
 
-Two things to know:
+Three things to know:
 
+- **A `version.php` bump invalidates the provisioned environment.** Every run then stops with
+  `Moodle PHPUnit environment was initialised for different version` before a single test
+  runs. Re-run `--init`. This bites most often on a plugin branch, where CI's auto-increment
+  job pushes a version bump you did not make.
 - **Always select tests by testsuite, not by path.** The script passes
   `--testsuite mod_topomojo_testsuite`. Pointing phpunit at `mod/topomojo/tests` instead
   selects nothing, prints `No tests executed!`, and exits **0** — a silent false pass.

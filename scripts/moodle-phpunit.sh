@@ -19,6 +19,11 @@
 # --init is not part of container startup, deliberately. It installs ~70 composer dev
 # packages and builds a full second Moodle install in the phpu_ table prefix, which takes
 # minutes; paying that on every F5 is not worth it. Re-run --init after a container rebuild.
+#
+# Also re-run --init after any version.php bump, including the ones CI's auto-increment job
+# pushes onto a branch. The phpu_ install records the version it was built against, so a
+# bumped plugin makes every run stop with "Moodle PHPUnit environment was initialised for
+# different version" before a single test executes.
 
 set -euo pipefail
 
@@ -84,9 +89,13 @@ init)
       echo "vendor/bin/phpunit already present, skipping composer install"
     fi'
 
-  # phpunit_dataroot must sit outside the real dataroot, and the test run has to be able to
-  # write it as the web user. Both settings go in ahead of the setup.php require, which is
-  # the last executable line of config.php.
+  # phpunit_dataroot must sit outside the real dataroot. Both settings go in ahead of the
+  # setup.php require, which is the last executable line of config.php.
+  #
+  # No chown on the dataroot: docker exec lands as nobody, which is also what php-fpm runs
+  # as and what owns /var/www, so the directory is created with the right owner already. A
+  # chown here fails with EPERM regardless, since a non-root process cannot change file
+  # ownership even to its own uid.
   docker exec "$CONTAINER" sh -c '
     set -e
     cfg=/var/www/html/config.php
@@ -97,8 +106,7 @@ init)
       sed -i "s|^require_once(__DIR__ . ./lib/setup.php.);|\$CFG->phpunit_prefix = '"'"'phpu_'"'"';\n\$CFG->phpunit_dataroot = '"'"'/var/www/phpunitdata'"'"';\n\n&|" "$cfg"
       grep -q phpunit_prefix "$cfg" || { echo "Failed to patch config.php" >&2; exit 1; }
     fi
-    mkdir -p /var/www/phpunitdata
-    chown -R nobody:nobody /var/www/phpunitdata'
+    mkdir -p /var/www/phpunitdata'
 
   # Builds the phpu_-prefixed tables alongside the live ones in the same database, and
   # writes phpunit.xml with a testsuite per component.
