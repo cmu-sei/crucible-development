@@ -20,5 +20,6 @@
   "AppTitle": "Player",
   "AppTopBarText": "Player",
   "UseLocalAuthStorage": false,
-  "DebugLogging": false
+  "DebugLogging": false,
+  "XApiEnabled": true
 }

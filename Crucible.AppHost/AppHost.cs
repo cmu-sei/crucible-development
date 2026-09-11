@@ -1400,7 +1400,9 @@ public static class BuilderExtensions
             .WithEnvironment("XApiOptions__ApiUrl", apiUrl)
             .WithEnvironment("XApiOptions__UiUrl", uiUrl)
             .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
-            .WithEnvironment("XApiOptions__Platform", platform);
+            .WithEnvironment("XApiOptions__Platform", platform)
+            // vm.api's XApiService.IsConfigured requires PlayerApiUrl; unused by the other APIs.
+            .WithEnvironment("XApiOptions__PlayerApiUrl", "http://localhost:4300/api/");
     }
 
 
