@@ -75,13 +75,10 @@ fi
 wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_AGENTS_PID:-} $GH_STACK_PID $MOODLE_CS_PID
 echo "Tool installs complete."
 
-# moodle-cs puts phpcs and phpcbf in the composer global bin dir, which is on no PATH.
-# Symlinking into /usr/local/bin is the only place that works for both of the alternatives
-# in devcontainer.json: containerEnv becomes `docker run -e` flags before a container exists,
-# so a self-referential ${containerEnv:PATH} is passed through literally by the devcontainer
-# CLI and the container dies at startup without /usr/bin; and a remoteEnv PATH replaces the
-# one userEnvProbe reads out of the login shell, taking the aspire, claude and codex bin dirs
-# with it.
+# moodle-cs puts phpcs and phpcbf in the composer global bin dir, which is on no PATH. Symlink
+# instead of setting PATH in devcontainer.json: containerEnv resolves ${containerEnv:PATH}
+# literally and kills startup, and remoteEnv replaces the PATH userEnvProbe reads from the login
+# shell, losing the aspire, claude and codex bin dirs.
 COMPOSER_BIN="/home/vscode/.config/composer/vendor/bin"
 for phptool in phpcs phpcbf; do
   if [ -x "${COMPOSER_BIN}/${phptool}" ]; then

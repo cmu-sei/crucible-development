@@ -26,11 +26,15 @@ ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt \
     PIP_CERT=/etc/ssl/certs/ca-certificates.crt
 
 # Install man pages and additional packages
-# unminimize runs apt-get update internally, so the index is fresh for the install that follows
 # Use a docker cache mount to increase rebuild speed
+# unminimize only runs apt-get update in its restore-documentation branch, so update explicitly or
+# the cache-mounted index goes stale and installs 404. Again after, since unminimize is slow enough
+# for the archive to rotate underneath it.
 RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    apt-get update && \
     yes | unminimize && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
     php \
     php-cli \
@@ -50,12 +54,16 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     libfontconfig1 libfreetype6 fonts-liberation fonts-freefont-ttf
 
 # Install Composer, used to install the Moodle coding standard in postcreate.sh
+# The release phar can be checksum-pinned; getcomposer.org/installer cannot. It is architecture
+# independent, so no TARGETARCH case. Bump both ARGs together or sha256sum -c fails the build.
 ARG COMPOSER_VERSION=2.10.3
+ARG COMPOSER_SHA256=7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6
 RUN set -eux; \
-    curl -fsSL -o /tmp/composer-setup.php https://getcomposer.org/installer; \
-    php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer \
-    --version="${COMPOSER_VERSION}" --quiet; \
-    rm /tmp/composer-setup.php; \
+    curl -fsSL -o /tmp/composer.phar \
+    "https://github.com/composer/composer/releases/download/${COMPOSER_VERSION}/composer.phar"; \
+    echo "${COMPOSER_SHA256}  /tmp/composer.phar" | sha256sum -c -; \
+    install -m 0755 /tmp/composer.phar /usr/local/bin/composer; \
+    rm /tmp/composer.phar; \
     composer --version
 
 # Install Vale

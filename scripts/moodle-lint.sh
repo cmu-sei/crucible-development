@@ -45,9 +45,8 @@ for arg in "$@"; do
   esac
 done
 
-# devcontainer.json puts the composer global bin on PATH, but only for shells VS Code
-# starts. Fall back to the absolute path so the script also works from a bare docker exec
-# or a non-interactive runner.
+# postcreate.sh symlinks phpcs and phpcbf into /usr/local/bin. Fall back to the composer global
+# bin dir for a container whose postcreate did not get that far.
 if ! command -v "$tool" >/dev/null 2>&1; then
   composerbin="${COMPOSER_HOME:-$HOME/.config/composer}/vendor/bin/$tool"
   if [ -x "$composerbin" ]; then
