@@ -220,6 +220,43 @@ configure_lptmanager() {
   php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=competency_iri_prefix --set=https://niccs.cisa.gov/workforce-development/nice-framework/ksat/
 }
 
+configure_session_cookie() {
+  echo "Configuring session cookie name"
+
+  # Cookies are scoped by host and ignore the port, so every Moodle instance on
+  # localhost shares one jar. Both default to the MoodleSession cookie name, which
+  # means signing in to 8082 silently overwrites the 8081 session, and the next
+  # click on 8081 fails with a session timeout - in either direction. Give each
+  # instance its own cookie name, taken from the port in SITE_URL.
+  #
+  # The image has no environment variable for this and chmods config.php read-only
+  # in its final step, so the value is written here instead.
+  config_file="$MOODLE_DIR/config.php"
+  cookie_suffix=$(echo "${SITE_URL:-}" | sed 's/.*://; s/[^0-9]//g')
+
+  if [ -z "$cookie_suffix" ]; then
+    log "No port found in SITE_URL, leaving the default session cookie name"
+    return 0
+  fi
+
+  if grep -q 'CFG->sessioncookie' "$config_file"; then
+    log "Session cookie name already set, skipping"
+    return 0
+  fi
+
+  config_mode=$(stat -c %a "$config_file")
+  chmod u+w "$config_file"
+  # Redirect through cat rather than mv so the original owner and mode survive.
+  awk -v line="\$CFG->sessioncookie = '$cookie_suffix';" \
+    '/^require_once/ && !inserted { print line; inserted = 1 } { print }' \
+    "$config_file" > /tmp/config_with_cookie.php
+  cat /tmp/config_with_cookie.php > "$config_file"
+  rm -f /tmp/config_with_cookie.php
+  chmod "$config_mode" "$config_file"
+
+  log "Session cookie name set to MoodleSession$cookie_suffix"
+}
+
 configure_site() {
   echo "Configuring Site"
   php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --set='';
@@ -653,6 +690,7 @@ php /var/www/html/admin/cli/upgrade.php --non-interactive --allow-unstable || \
   log "upgrade.php returned non-zero (continuing)"
 
 # Execute sections based on status
+execute_section "Session Cookie Name" configure_session_cookie
 execute_section "Site Configuration" configure_site
 execute_section "Boost Dark Theme Configuration" configure_boost_dark_theme
 configure_oauth2
