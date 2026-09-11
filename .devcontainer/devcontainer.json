@@ -64,6 +64,8 @@
     // repo cloning in CI. Resolves to an empty string on developer machines.
     "CRUCIBLE_CI_SKIP_CLONE": "${localEnv:CRUCIBLE_CI_SKIP_CLONE}"
   },
+  // Nothing here sets PATH. phpcs and phpcbf reach it by symlink from postcreate.sh; see
+  // the comment there for why neither containerEnv nor remoteEnv works for that.
   "mounts": [
     // crucible repo data
     "source=crucible-dev-data,target=/mnt/data/,type=volume",
@@ -98,7 +100,10 @@
     // Playwright browser cache persists across rebuilds
     "source=crucible-dev-playwright,target=/home/vscode/.cache/ms-playwright,type=volume",
     // npm cache persists across rebuilds
-    "source=crucible-dev-npm,target=/home/vscode/.npm,type=volume"
+    "source=crucible-dev-npm,target=/home/vscode/.npm,type=volume",
+    // Composer global install (moodle-cs) and its download cache persist across rebuilds
+    "source=crucible-dev-composer,target=/home/vscode/.config/composer,type=volume",
+    "source=crucible-dev-composer-cache,target=/home/vscode/.cache/composer,type=volume"
   ],
   "postCreateCommand": "bash -l .devcontainer/postcreate.sh",
   "postStartCommand": "bash -l .devcontainer/poststart.sh",
