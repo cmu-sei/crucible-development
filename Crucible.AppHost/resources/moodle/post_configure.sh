@@ -367,6 +367,34 @@ configure_boost_dark_theme() {
 [data-bs-theme="dark"] .btn-icon.icons-collapse-expand:hover,
 [data-bs-theme="dark"] .btn-icon.icons-collapse-expand:focus {
   color: var(--bs-emphasis-color);
+}
+
+/* local_boost_dark dark/light mode toggle.
+   Plugin 1.4.0 turned the bare sun/moon icons into a pill: a rounded border, an
+   opaque background, a circular badge behind the icon and a text label, all set
+   through inline style attributes on the anchor in templates/dark-icon.mustache.
+   Restore the icon-only control, which sits better in the navbar. Inline styles
+   outrank every selector, so each property has to be !important, and the icon
+   colour is handed to inherit so it picks up the navbar foreground instead of
+   the plugin hardcoded blues. */
+.kraus-layout-dark .nav-link.dark-mode,
+.kraus-layout-dark .nav-link.light-mode {
+  gap: 0 !important;
+  padding: 5px 8px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.kraus-layout-dark .nav-link > span[aria-hidden="true"] {
+  width: auto !important;
+  height: auto !important;
+  flex: none !important;
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.kraus-layout-dark .nav-link > span[aria-hidden="true"] + span {
+  display: none !important;
 }'
 
   # theme_boost_union renamed the colored navbar options for Moodle 5.2: primarylight and
