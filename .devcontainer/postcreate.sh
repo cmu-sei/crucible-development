@@ -14,6 +14,8 @@ sudo chown -R $(whoami): /home/vscode/.nuget
 sudo chown -R $(whoami): /home/vscode/.cache/ms-playwright
 sudo chown -R $(whoami): /home/vscode/.npm
 sudo chown -R $(whoami): /home/vscode/.config/gh
+mkdir -p /home/vscode/.cache/composer
+sudo chown -R $(whoami): /home/vscode/.config/composer /home/vscode/.cache/composer
 
 scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
@@ -33,6 +35,16 @@ DOTNET_EF_PID=$!
 
 (npm config -g set fund false && npm install -g @angular/cli@latest) &
 ANGULAR_PID=$!
+
+# Moodle coding standard for PHP_CodeSniffer, used by scripts/moodle-lint.sh.
+# Note the vendor is moodlehq, not moodle: moodle/moodle-cs does not exist on packagist.
+# The composer plugin registers installed_paths on install, so `--standard=moodle` resolves
+# with no further configuration.
+(
+  composer global config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
+  composer global require moodlehq/moodle-cs
+) &
+MOODLE_CS_PID=$!
 
 if [ ! -x /home/vscode/.local/bin/codex ]; then
   (
@@ -60,8 +72,21 @@ if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
   PLAYWRIGHT_SETUP_PID=$!
 fi
 
-wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_AGENTS_PID:-} $GH_STACK_PID
+wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_AGENTS_PID:-} $GH_STACK_PID $MOODLE_CS_PID
 echo "Tool installs complete."
+
+# moodle-cs puts phpcs and phpcbf in the composer global bin dir, which is on no PATH. Symlink
+# instead of setting PATH in devcontainer.json: containerEnv resolves ${containerEnv:PATH}
+# literally and kills startup, and remoteEnv replaces the PATH userEnvProbe reads from the login
+# shell, losing the aspire, claude and codex bin dirs.
+COMPOSER_BIN="/home/vscode/.config/composer/vendor/bin"
+for phptool in phpcs phpcbf; do
+  if [ -x "${COMPOSER_BIN}/${phptool}" ]; then
+    sudo ln -sf "${COMPOSER_BIN}/${phptool}" "/usr/local/bin/${phptool}"
+  else
+    echo "Warning: ${COMPOSER_BIN}/${phptool} missing, moodle-cs install may have failed" >&2
+  fi
+done
 
 # Generate dotnet dev-cert. Needed if not using aspire extension launch profiles
 dotnet dev-certs https --trust
