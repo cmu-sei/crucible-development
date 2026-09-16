@@ -33,3 +33,10 @@ for ROOT in "${ROOTS[@]}"; do
         chmod 777 "$DIR"
     done
 done
+
+# Already-seeded trees keep the image's 0755 directories, which breaks the container's
+# sed -i on lib/classes/check/environment/publicpaths.php. Widen every directory, not
+# just the roots.
+for ROOT in "${ROOTS[@]}"; do
+    find "$ROOT" -type d ! -perm -002 -exec chmod a+rwx {} + 2>/dev/null || true
+done

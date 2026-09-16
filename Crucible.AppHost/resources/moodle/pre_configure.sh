@@ -25,6 +25,8 @@ for MOUNTPATH in $MOUNTPATHS; do
         PARENT_DIR=$(dirname "$MOUNTPATH")
         mkdir -p "$PARENT_DIR"
         cp -r /moodle/$RELATIVE_PATH "$PARENT_DIR"
+        # sed -i later in this boot needs a writable directory, not just a writable file.
+        find "$MOUNTPATH" -type d -exec chmod a+rwx {} + 2>/dev/null || true
     else
         echo "$MOUNTPATH is not empty, persisting files";
     fi
