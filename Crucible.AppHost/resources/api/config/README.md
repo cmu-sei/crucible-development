@@ -158,9 +158,9 @@ In `local/hybrid/player-vm-api.conf`, keep the Proxmox settings, replace
 `Vsphere__Hosts__0__Enabled=false` with the `Vsphere__...` entries from
 `local/vsphere/player-vm-api.conf`, including `Vsphere__Hosts__0__Enabled=true`.
 
-In `local/hybrid/caster-api.conf`, replace the empty/disabled
-`Terraform__EnvironmentVariables__Direct__VSPHERE_...` entries with the corresponding
-entries from `local/vsphere/caster-api.conf`. Keep the Proxmox entries and the single
+In `local/hybrid/caster-api.conf`, add the
+`Terraform__EnvironmentVariables__Direct__VSPHERE_...` entries from
+`local/vsphere/caster-api.conf`. Keep the Proxmox entries and the single
 `TF_CLI_CONFIG_FILE` entry. Replace matching keys rather than appending duplicates.
 For VMC, apply the upload adjustments above to the hybrid Player VM file.
 

@@ -7,10 +7,8 @@
     }
   },
   "Launch": {
-    "Prod": [
-      "PGAdmin"
-    ],
-    "Dev": [],
+    "Prod": ["PGAdmin", "Lrsql", "Moodle"],
+    "Dev": ["Topomojo", "Player", "Alloy", "Caster", "Steamfitter", "Cite", "Gallery"],
     "XdebugMode": "off",
     "AddAllApplications": false,
     "ApiConfig": {
