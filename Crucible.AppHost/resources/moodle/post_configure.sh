@@ -6,7 +6,19 @@ LOG_FILE="/tmp/moodle_script.log"
 MOODLE_DIR="/var/www/html"
 MOODLE_CLI="$MOODLE_DIR/admin/cli"
 OAUTH2_ISSUER_ID=""
-BEDROCK_MODEL_ID="us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+# Shared by both Moodle instances, so it has to suit both provider plugins.
+#
+# Claude 3.5 Sonnet v2 (the previous value) is end of life on Bedrock: it still resolves as an
+# inference profile but every call returns "This model version has reached the end of its life".
+#
+# Sonnet 4.5 rather than a Claude 5 model because aiprovider_bedrock on 5.0 hardcodes
+# temperature 0.7 in its request body, and Claude 5 rejects temperature outright
+# ("`temperature` is deprecated for this model"). modelextraparams can only replace values, not
+# remove them, so a Claude 5 model there needs a plugin patch. 5.2's core provider sends no
+# temperature and works with either.
+#
+# Check candidates with `aws bedrock list-inference-profiles` before changing this.
+BEDROCK_MODEL_ID="us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 # Function to log messages
 log() {
@@ -208,6 +220,43 @@ configure_lptmanager() {
   php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=competency_iri_prefix --set=https://niccs.cisa.gov/workforce-development/nice-framework/ksat/
 }
 
+configure_session_cookie() {
+  echo "Configuring session cookie name"
+
+  # Cookies are scoped by host and ignore the port, so every Moodle instance on
+  # localhost shares one jar. Both default to the MoodleSession cookie name, which
+  # means signing in to 8082 silently overwrites the 8081 session, and the next
+  # click on 8081 fails with a session timeout - in either direction. Give each
+  # instance its own cookie name, taken from the port in SITE_URL.
+  #
+  # The image has no environment variable for this and chmods config.php read-only
+  # in its final step, so the value is written here instead.
+  config_file="$MOODLE_DIR/config.php"
+  cookie_suffix=$(echo "${SITE_URL:-}" | sed 's/.*://; s/[^0-9]//g')
+
+  if [ -z "$cookie_suffix" ]; then
+    log "No port found in SITE_URL, leaving the default session cookie name"
+    return 0
+  fi
+
+  if grep -q 'CFG->sessioncookie' "$config_file"; then
+    log "Session cookie name already set, skipping"
+    return 0
+  fi
+
+  config_mode=$(stat -c %a "$config_file")
+  chmod u+w "$config_file"
+  # Redirect through cat rather than mv so the original owner and mode survive.
+  awk -v line="\$CFG->sessioncookie = '$cookie_suffix';" \
+    '/^require_once/ && !inserted { print line; inserted = 1 } { print }' \
+    "$config_file" > /tmp/config_with_cookie.php
+  cat /tmp/config_with_cookie.php > "$config_file"
+  rm -f /tmp/config_with_cookie.php
+  chmod "$config_mode" "$config_file"
+
+  log "Session cookie name set to MoodleSession$cookie_suffix"
+}
+
 configure_site() {
   echo "Configuring Site"
   php /var/www/html/admin/cli/cfg.php --name=curlsecurityblockedhosts --set='';
@@ -318,11 +367,56 @@ configure_boost_dark_theme() {
 [data-bs-theme="dark"] .btn-icon.icons-collapse-expand:hover,
 [data-bs-theme="dark"] .btn-icon.icons-collapse-expand:focus {
   color: var(--bs-emphasis-color);
+}
+
+/* local_boost_dark dark/light mode toggle.
+   Plugin 1.4.0 turned the bare sun/moon icons into a pill: a rounded border, an
+   opaque background, a circular badge behind the icon and a text label, all set
+   through inline style attributes on the anchor in templates/dark-icon.mustache.
+   Restore the icon-only control, which sits better in the navbar. Inline styles
+   outrank every selector, so each property has to be !important, and the icon
+   colour is handed to inherit so it picks up the navbar foreground instead of
+   the plugin hardcoded blues. */
+.kraus-layout-dark .nav-link.dark-mode,
+.kraus-layout-dark .nav-link.light-mode {
+  gap: 0 !important;
+  padding: 5px 8px !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.kraus-layout-dark .nav-link > span[aria-hidden="true"] {
+  width: auto !important;
+  height: auto !important;
+  flex: none !important;
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.kraus-layout-dark .nav-link > span[aria-hidden="true"] + span {
+  display: none !important;
 }'
+
+  # theme_boost_union renamed the colored navbar options for Moodle 5.2: primarylight and
+  # primarydark became coloredlight and coloreddark. The old value is not migrated, and an
+  # unrecognised value falls through to the default branch of layout/includes/navbar.php,
+  # which emits bg-body instead of bg-primary, so the topbar loses the brand color. Ask the
+  # installed theme which spelling it knows rather than keying off the Moodle version. Both
+  # values produce the same bg-primary plus data-bs-theme="dark" markup that the custom SCSS
+  # below targets.
+  boost_union_lib="/var/www/html/theme/boost_union/lib.php"
+  if [ -f "/var/www/html/public/theme/boost_union/lib.php" ]; then
+    boost_union_lib="/var/www/html/public/theme/boost_union/lib.php"
+  fi
+  navbarcolor="primarydark"
+  if grep -q "THEME_BOOST_UNION_SETTING_NAVBARCOLOR_COLOREDDARK" "$boost_union_lib" 2>/dev/null; then
+    navbarcolor="coloreddark"
+  fi
+  log "Using theme_boost_union navbarcolor=$navbarcolor"
 
   php /var/www/html/admin/cli/cfg.php --name=theme --set=boost_union
   php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=brandcolor --set='#CC0000'
-  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=navbarcolor --set=primarydark
+  php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=navbarcolor --set="$navbarcolor"
   php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=scss --set="$boost_union_scss"
 
   php /var/www/html/admin/cli/cfg.php --component=local_boost_dark --name=enable --set=1
@@ -588,6 +682,26 @@ configure_ai_bedrock() {
 }
 
 
+configure_ai_placements() {
+  # AI placements ship disabled: with no settings.php of their own, the enabled flag is only
+  # written when something calls \core\plugininfo\aiplacement::enable_plugin(), which is what
+  # the Site administration > AI > AI placements toggles do. Without this the provider is
+  # configured but no AI feature appears anywhere in the UI.
+  for placement in courseassist editor competency; do
+    if [ ! -d "/var/www/html/ai/placement/$placement" ] && \
+       [ ! -d "/var/www/html/public/ai/placement/$placement" ]; then
+      log "Placement aiplacement_$placement not installed, skipping"
+      continue
+    fi
+    log "Enabling aiplacement_$placement"
+    php /var/www/html/admin/cli/cfg.php --component="aiplacement_$placement" --name=enabled --set=1
+  done
+
+  # enable_plugin() resets the plugin manager caches after writing the flag; cfg.php does not.
+  php /var/www/html/admin/cli/purge_caches.php
+}
+
+
 create_course() {
   echo "Creating course"
   moosh course-list | grep -q 'Test Course' || moosh course-create 'Test Course';
@@ -614,6 +728,7 @@ php /var/www/html/admin/cli/upgrade.php --non-interactive --allow-unstable || \
   log "upgrade.php returned non-zero (continuing)"
 
 # Execute sections based on status
+execute_section "Session Cookie Name" configure_session_cookie
 execute_section "Site Configuration" configure_site
 execute_section "Boost Dark Theme Configuration" configure_boost_dark_theme
 configure_oauth2
@@ -633,6 +748,9 @@ execute_section "Demo Activities" configure_demo_activities
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then
     log "AWS credentials found, configuring Bedrock AI provider..."
     execute_section "Configure AWS Bedrock AI Provider" configure_ai_bedrock
+    # Gated on the same credentials: a placement with no working provider behind it just
+    # surfaces AI buttons that fail.
+    execute_section "Enable AI Placements" configure_ai_placements
 else
     log "AWS credentials not found, skipping Bedrock AI provider configuration"
 fi

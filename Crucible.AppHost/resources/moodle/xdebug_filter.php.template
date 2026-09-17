@@ -15,6 +15,15 @@ $includePaths = [
     "/var/www/html/ai/classes",
 ];
 
+// Moodle 5.1+ serves from /var/www/html/public, and this one file is baked into the
+// image for every version Aspire runs. Add the public/ spelling of each path so the
+// filter matches either layout; a path that does not exist is simply never matched.
+foreach ($includePaths as $path) {
+    if (strpos($path, "/var/www/html/public/") !== 0) {
+        $includePaths[] = str_replace("/var/www/html/", "/var/www/html/public/", $path);
+    }
+}
+
 if (extension_loaded('xdebug') && !empty($includePaths)) {
     // Filter code coverage
     xdebug_set_filter(

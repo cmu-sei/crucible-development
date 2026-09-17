@@ -109,6 +109,10 @@ Crucible.AppHost/appsettings.Development.json.*.tmp
 # Proxmox installer ISO (setup-proxmox-windows.ps1 discovers this in the repo root)
 proxmox-ve_*.iso
 
-# Personal TODO files
+# Local LLM endpoint settings (internal host and model names stay out of the repo)
+.devcontainer/local-llm.env
+.opencode/
+
+# Personal working notes
 TODO/
 node_modules
