@@ -1037,7 +1037,7 @@ configure_proxmox_api_profile() {
     fi
 
     PROXMOX_HOST="$PROXMOX_HOST" PROXMOX_API_TOKEN="$PROXMOX_API_TOKEN" \
-        node "$REPO_ROOT/scripts/api-config.cjs" setup-proxmox
+        bash "$REPO_ROOT/scripts/api-config.sh" setup-proxmox
 }
 
 # ============================================================

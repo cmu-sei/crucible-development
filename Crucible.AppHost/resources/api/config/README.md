@@ -228,7 +228,7 @@ These profiles configure the three APIs; they do not configure Moodle dashboard 
 
 Prefer app defaults: most new settings require no change here. When development needs
 a fixed override, add its native `KEY=value` to the relevant templates. The setup script
-copies those lines unchanged. Add a placeholder and a prompt in `scripts/api-config.cjs`
+copies those lines unchanged. Add a placeholder and a prompt in `scripts/api-config.sh`
 only for settings users commonly need to choose; reuse an existing placeholder when
 another app needs the same answer. Keep uncommon settings as manual file edits.
 
@@ -255,13 +255,13 @@ The resolver accepts any app name containing letters, digits, hyphens, or unders
 starting with a letter or digit, and requires `local/<profile>/<resource-name>.conf`.
 There is no app allowlist in the C# helper. Setup still targets the three wired APIs;
 to include another app in guided generation and selection checks, add its templates
-and launch-name mapping in `scripts/api-config.cjs`.
+and launch-name mapping in `scripts/api-config.jq`.
 
 ## Validation
 
 ```bash
 dotnet test tests/Crucible.AppHost.Config.Tests/Crucible.AppHost.Config.Tests.csproj
-node --test scripts/tests/api-config.test.cjs
+bash scripts/tests/api-config-smoke.sh
 ```
 
 These tests use temporary profiles and dummy values, without connecting to hypervisors.
