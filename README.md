@@ -25,6 +25,11 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
 - [Library Development](#library-development)
   - [.NET Libraries (crucible-common-dotnet)](#net-libraries-crucible-common-dotnet)
   - [Angular Libraries (Crucible.Common.Ui)](#angular-libraries-cruciblecommonui)
+- [Hypervisor Configuration](#hypervisor-configuration)
+- [Proxmox OIDC Authentication](#proxmox-oidc-authentication)
+  - [Setup](#proxmox-oidc-setup)
+  - [Login Flow](#proxmox-oidc-login-flow)
+  - [Role-Based Access Control](#proxmox-oidc-rbac)
 - [Devcontainer CI](#devcontainer-ci)
 
 ## Getting Started
@@ -1111,6 +1116,141 @@ The AppHost uses a health check to ensure UIs don't start until the library is f
 3. Edit files in `/mnt/data/crucible/libraries/Crucible.Common.Ui`
 4. The watch process rebuilds the library automatically
 5. UIs using `ng serve` pick up the changes via the npm link
+
+## Hypervisor Configuration
+
+TopoMojo, Player VM API, and Caster can opt into local API configuration profiles.
+Application settings and credentials live in ignored files under
+`Crucible.AppHost/resources/api/config/local/`; only templates are committed.
+AppHost keeps resource dependencies, endpoints, and database wiring in code.
+
+```bash
+# Guided menu: configure, select, or disable a profile
+./scripts/configure-hypervisors.sh
+
+# Go straight to setup for a backend
+./scripts/configure-hypervisors.sh proxmox
+./scripts/configure-hypervisors.sh vsphere --profile lab-a
+
+# Switch to an existing profile without prompting or rewriting its files
+./scripts/toggle-hypervisor.sh lab-a
+
+# Disable file configuration globally; local files are retained
+./scripts/toggle-hypervisor.sh remove
+```
+
+Setup asks once for connection details and fills the TopoMojo, Player VM, and Caster
+templates. Passwords and tokens are hidden during entry. Proxmox setup reuses saved
+credentials when available. Existing profiles offer **keep**, **regenerate**, or
+**cancel**; regeneration backs up the old files alongside them.
+Edit the resulting `.conf` files for advanced settings.
+Only Proxmox and vSphere starting templates are provided. Use any local profile name
+and customize the generated files for other environments.
+
+Restart Aspire after changing selection or file contents. File configuration is disabled
+by default. Disabling it restores the apps' own configuration and AppHost defaults;
+it does not disable the apps.
+
+For manual setup, `configure-hypervisors.sh init TEMPLATE [--profile NAME]` copies
+templates without selecting them or overwriting existing files. Replace their
+placeholders before selecting the profile. Use `list` to see available templates.
+The toggle clears per-app profile overrides and preserves per-app disable flags.
+Running it without arguments opens the same guided menu.
+
+Use `Launch.ApiConfig` in your local AppHost settings to select profiles per app:
+
+```json
+{
+  "Launch": {
+    "ApiConfig": {
+      "Enabled": true,
+      "Profile": "proxmox",
+      "Apps": {
+        "player-vm-api": { "Profile": "hybrid" },
+        "caster-api": { "Enabled": false }
+      }
+    }
+  }
+}
+```
+
+Player VM and Caster support hybrid profiles; TopoMojo selects one backend.
+Create custom profiles before referencing them. For VMC and hybrid customization, syntax, precedence,
+per-app overrides, Proxmox provisioning, and testing, see the
+[API profile guide](Crucible.AppHost/resources/api/config/README.md).
+
+## Proxmox OIDC Authentication
+
+Configure Proxmox to authenticate users via Keycloak OIDC, enabling unified SSO across Crucible services and Proxmox with role-based access control.
+
+### Proxmox OIDC Setup
+
+#### Prerequisites (Windows Host)
+
+Run once to configure port forwarding for Keycloak:
+
+```powershell
+# From Windows PowerShell (as Administrator)
+.\scripts\setup-keycloak-portforward.ps1
+```
+
+This configures:
+- Port forwarding: `172.29.16.1:8080` → `127.0.0.1:8080`
+- Firewall rules for ports 8080 and 8443
+- Windows hosts entry: `172.29.16.1 keycloak`
+
+#### Proxmox Configuration
+
+Configure Proxmox infrastructure and OIDC:
+
+```bash
+export PROXMOX_HOST='172.29.24.139'
+export KEYCLOAK_HOST='172.29.16.1'  # Optional, auto-detected
+./scripts/crucible-proxmox.sh setup
+```
+
+This creates:
+- OIDC realm `keycloak-crucible` in Proxmox
+- Three role-based Proxmox groups
+- VM templates (Alpine, TinyCore, Puppy)
+- TopoMojo, Caster, Player, Alloy resources
+
+### Proxmox OIDC Login Flow
+
+1. Navigate to: `https://172.29.24.139:8006`
+2. Select **"Keycloak Crucible Realm"** from realm dropdown
+3. Click Login → redirects to `http://keycloak:8080`
+4. Login with Keycloak credentials (`admin`/`admin`)
+5. Redirected back to Proxmox
+
+#### Assign Groups After First Login
+
+```bash
+ssh -i ~/.ssh/crucible_proxmox root@172.29.24.139
+
+# Assign Administrator role
+/usr/local/bin/oidc-group-sync.sh admin@keycloak-crucible Administrators
+
+# Assign VM Operator role
+/usr/local/bin/oidc-group-sync.sh developer@keycloak-crucible "Content Developer"
+
+# Assign Read-only role
+/usr/local/bin/oidc-group-sync.sh observer@keycloak-crucible Test
+```
+
+Log out and back in for permissions to take effect.
+
+### Proxmox OIDC RBAC
+
+Three Proxmox groups are created with role-based permissions:
+
+| Keycloak Role | Proxmox Group | Proxmox Role | Access Level |
+|---------------|---------------|--------------|--------------|
+| **Administrators** | crucible-admins | Administrator | Full datacenter access |
+| **Content Developer** | crucible-developers | PVEVMAdmin | VM operator (create/manage VMs) |
+| **Test** | crucible-observers | PVEAuditor | Read-only |
+
+**Emergency Access:** `root@pam` login remains available as fallback if OIDC fails.
 
 ## Devcontainer CI
 

@@ -247,6 +247,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("KC_HOSTNAME", "localhost")
             .WithEnvironment("KC_HTTPS_PORT", "8443")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
+            .WithEnvironment("KC_HOSTNAME_STRICT_BACKCHANNEL", "false")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
@@ -353,6 +354,9 @@ public static partial class BuilderExtensions
             .WithEnvironment("IdentityClient__UserName", "admin")
             .WithEnvironment("IdentityClient__Password", "admin");
 
+        if (IsEnabled(playerMode))
+            vmApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
+
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
         {
@@ -361,6 +365,7 @@ public static partial class BuilderExtensions
 
         var vmUiRoot = "/mnt/data/crucible/player/vm.ui";
 
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.json", overwrite: true);
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
@@ -427,7 +432,11 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "caster.api")
             .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
-            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
+            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true")
+            .WithEnvironment("Terraform__EnvironmentVariables__Direct__TF_CLI_CONFIG_FILE", "/terraform/terraformrc");
+
+        if (IsEnabled(casterMode))
+            casterApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
@@ -533,6 +542,12 @@ public static partial class BuilderExtensions
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");
+        if (IsEnabled(topoMojoMode))
+        {
+            // Load the selected profile after TopoMojo's own .conf files so it wins.
+            topoApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig,
+                configPathEnvironmentVariable: "APPSETTINGS_PATH");
+        }
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
         const int topoWorkUiPort = 4201;
@@ -557,7 +572,6 @@ public static partial class BuilderExtensions
                 .WithArgs("--", "topomojo-work", "--configuration", "development", "--port", topoWorkUiPort.ToString())
                 .WithHttpEndpoint(port: topoWorkUiPort, isProxied: false)
                 .WithHttpHealthCheck();
-
 
             if (launchpointIncluded && effectiveLaunchpointMode == "dev")
             {

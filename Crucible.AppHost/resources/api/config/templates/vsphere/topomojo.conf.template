@@ -1,0 +1,19 @@
+# Copy with configure-hypervisors.sh init, then replace <placeholders>.
+# Literal KEY=value: no shell quoting, expansion or inline comments.
+# Certificate validation is disabled here for local development only.
+Pod__Type=Vsphere
+Pod__HypervisorType=Vsphere
+Pod__Url=https://<vcenter-host>/sdk
+Pod__AccessToken=
+Pod__User=<username>
+Pod__Password=<password>
+Pod__VmStore=[<datastore>] topomojo
+Pod__DiskStore=[<datastore>] topomojo
+Pod__IsoStore=[<datastore>] topomojo
+Pod__PoolPath=<pool-path>
+Pod__IgnoreCertificateErrors=true
+Pod__TicketUrlHandler=querystring
+Pod__SupportsSubfolders=true
+FileUpload__IsoRoot=/mnt/isos
+FileUpload__UseDatastoreApi=false
+FileUpload__TempRoot=/tmp/topoiso

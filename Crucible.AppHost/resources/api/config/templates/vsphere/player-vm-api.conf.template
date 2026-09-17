@@ -1,0 +1,13 @@
+# Copy with configure-hypervisors.sh init, then replace <placeholders>.
+# Literal KEY=value: no shell quoting, expansion or inline comments.
+# Certificate validation is disabled here for local development only.
+# Additional local vSphere host indices remain configured unless explicitly disabled.
+Proxmox__Enabled=false
+Vsphere__Hosts__0__Enabled=true
+Vsphere__Hosts__0__Address=<vcenter-host>
+Vsphere__Hosts__0__Username=<username>
+Vsphere__Hosts__0__Password=<password>
+Vsphere__Hosts__0__DsName=<datastore>
+Vsphere__Hosts__0__BaseFolder=topomojo
+Vsphere__IsoUploadViaApi=false
+Vsphere__IsoRoot=/mnt/isos

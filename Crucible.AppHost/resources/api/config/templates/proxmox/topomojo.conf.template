@@ -1,0 +1,19 @@
+# Copy with configure-hypervisors.sh init, then replace <placeholders>.
+# Literal KEY=value: no shell quoting, expansion or inline comments.
+# Certificate validation is disabled here for local development only.
+Pod__Type=Proxmox
+Pod__HypervisorType=Proxmox
+Pod__Url=https://<proxmox-host>:<proxmox-port>
+Pod__AccessToken=<user@realm!token-id=token-secret>
+Pod__User=
+Pod__Password=
+Pod__VmStore=<vm-storage>
+Pod__DiskStore=<vm-storage>
+Pod__IsoStore=<iso-storage>
+Pod__PoolPath=
+Pod__IgnoreCertificateErrors=true
+Pod__TicketUrlHandler=none
+Pod__SupportsSubfolders=false
+FileUpload__IsoRoot=/mnt/proxmox-iso
+FileUpload__UseDatastoreApi=false
+FileUpload__TempRoot=/tmp/topoiso
