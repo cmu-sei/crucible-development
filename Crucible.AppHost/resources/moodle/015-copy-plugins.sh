@@ -7,6 +7,14 @@ if [ -z "$PLUGINS" ]; then
   exit 0
 fi
 
+# Moodle 5.1+ moved the whole plugin tree under public/; older releases install
+# straight into the Moodle root.
+WEBROOT="/var/www/html"
+if [ -d "$WEBROOT/public" ]; then
+  WEBROOT="$WEBROOT/public"
+fi
+echo "Installing plugins under $WEBROOT"
+
 TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR"
 
@@ -48,61 +56,61 @@ for entry in $PLUGINS; do
 
   # Move to the corresponding path
   case "$plugin_type" in
-     mod) target="/var/www/html/mod/$plugin_subdir" ;;
-    block) target="/var/www/html/blocks/$plugin_subdir" ;;
-    theme) target="/var/www/html/theme/$plugin_subdir" ;;
-    local) target="/var/www/html/local/$plugin_subdir" ;;
-    report) target="/var/www/html/report/$plugin_subdir" ;;
-    auth) target="/var/www/html/auth/$plugin_subdir" ;;
-    filter) target="/var/www/html/filter/$plugin_subdir" ;;
-    gradeexport) target="/var/www/html/grade/export/$plugin_subdir" ;;
-    gradeimport) target="/var/www/html/grade/import/$plugin_subdir" ;;
-    gradereport) target="/var/www/html/grade/report/$plugin_subdir" ;;
-    message) target="/var/www/html/message/output/$plugin_subdir" ;;
-    tool) target="/var/www/html/admin/tool/$plugin_subdir" ;;
-    profilefield) target="/var/www/html/user/profile/field/$plugin_subdir" ;;
-    quiz) target="/var/www/html/mod/quiz/report/$plugin_subdir" ;;
-    plagiarism) target="/var/www/html/plagiarism/$plugin_subdir" ;;
-    portfolio) target="/var/www/html/portfolio/$plugin_subdir" ;;
-    repository) target="/var/www/html/repository/$plugin_subdir" ;;
-    search) target="/var/www/html/search/$plugin_subdir" ;;
-    reportbuilder) target="/var/www/html/reportbuilder/source/$plugin_subdir" ;;
-    payment) target="/var/www/html/payment/gateway/$plugin_subdir" ;;
-    enrol) target="/var/www/html/enrol/$plugin_subdir" ;;
-    assignfeedback) target="/var/www/html/mod/assign/feedback/$plugin_subdir" ;;
-    assignsubmission) target="/var/www/html/mod/assign/submission/$plugin_subdir" ;;
-    quizaccess) target="/var/www/html/mod/quiz/accessrule/$plugin_subdir" ;;
-    workshopallocation) target="/var/www/html/mod/workshop/allocation/$plugin_subdir" ;;
-    workshopassessment) target="/var/www/html/mod/workshop/assessment/$plugin_subdir" ;;
-    workshopform) target="/var/www/html/mod/workshop/form/$plugin_subdir" ;;
-    question) target="/var/www/html/question/type/$plugin_subdir" ;;
-    qbehaviour) target="/var/www/html/question/behaviour/$plugin_subdir" ;;
-    qformat) target="/var/www/html/question/format/$plugin_subdir" ;;
-    editor) target="/var/www/html/lib/editor/$plugin_subdir" ;;
-    tiny) target="/var/www/html/lib/editor/tiny/plugins/$plugin_subdir" ;;
-    atto) target="/var/www/html/lib/editor/atto/plugins/$plugin_subdir" ;;
-    tinymce) target="/var/www/html/lib/editor/tinymce/plugins/$plugin_subdir" ;;
-    availability) target="/var/www/html/availability/condition/$plugin_subdir" ;;
-    datafield) target="/var/www/html/mod/data/field/$plugin_subdir" ;;
-    dataprocessor) target="/var/www/html/mod/data/preset/$plugin_subdir" ;;
-    scormreport) target="/var/www/html/mod/scorm/report/$plugin_subdir" ;;
-    lti) target="/var/www/html/mod/lti/source/$plugin_subdir" ;;
-    contenttype) target="/var/www/html/contentbank/contenttype/$plugin_subdir" ;;
-    courseformat) target="/var/www/html/course/format/$plugin_subdir" ;;
-    customfield) target="/var/www/html/customfield/field/$plugin_subdir" ;;
-    paymentgateway) target="/var/www/html/payment/gateway/$plugin_subdir" ;;
-    analytics) target="/var/www/html/analytics/indicator/$plugin_subdir" ;;
-    aiprovider) target="/var/www/html/ai/provider/$plugin_subdir" ;;
-    aiplacement) target="/var/www/html/ai/placement/$plugin_subdir" ;;
-    cachelock) target="/var/www/html/cache/lock/$plugin_subdir" ;;
-    cachestore) target="/var/www/html/cache/stores/$plugin_subdir" ;;
-    coresearch) target="/var/www/html/search/engine/$plugin_subdir" ;;
-    localcache) target="/var/www/html/local/cache/$plugin_subdir" ;;
-    logstore) target="/var/www/html/admin/tool/log/store/$plugin_subdir" ;;
+     mod) target="$WEBROOT/mod/$plugin_subdir" ;;
+    block) target="$WEBROOT/blocks/$plugin_subdir" ;;
+    theme) target="$WEBROOT/theme/$plugin_subdir" ;;
+    local) target="$WEBROOT/local/$plugin_subdir" ;;
+    report) target="$WEBROOT/report/$plugin_subdir" ;;
+    auth) target="$WEBROOT/auth/$plugin_subdir" ;;
+    filter) target="$WEBROOT/filter/$plugin_subdir" ;;
+    gradeexport) target="$WEBROOT/grade/export/$plugin_subdir" ;;
+    gradeimport) target="$WEBROOT/grade/import/$plugin_subdir" ;;
+    gradereport) target="$WEBROOT/grade/report/$plugin_subdir" ;;
+    message) target="$WEBROOT/message/output/$plugin_subdir" ;;
+    tool) target="$WEBROOT/admin/tool/$plugin_subdir" ;;
+    profilefield) target="$WEBROOT/user/profile/field/$plugin_subdir" ;;
+    quiz) target="$WEBROOT/mod/quiz/report/$plugin_subdir" ;;
+    plagiarism) target="$WEBROOT/plagiarism/$plugin_subdir" ;;
+    portfolio) target="$WEBROOT/portfolio/$plugin_subdir" ;;
+    repository) target="$WEBROOT/repository/$plugin_subdir" ;;
+    search) target="$WEBROOT/search/$plugin_subdir" ;;
+    reportbuilder) target="$WEBROOT/reportbuilder/source/$plugin_subdir" ;;
+    payment) target="$WEBROOT/payment/gateway/$plugin_subdir" ;;
+    enrol) target="$WEBROOT/enrol/$plugin_subdir" ;;
+    assignfeedback) target="$WEBROOT/mod/assign/feedback/$plugin_subdir" ;;
+    assignsubmission) target="$WEBROOT/mod/assign/submission/$plugin_subdir" ;;
+    quizaccess) target="$WEBROOT/mod/quiz/accessrule/$plugin_subdir" ;;
+    workshopallocation) target="$WEBROOT/mod/workshop/allocation/$plugin_subdir" ;;
+    workshopassessment) target="$WEBROOT/mod/workshop/assessment/$plugin_subdir" ;;
+    workshopform) target="$WEBROOT/mod/workshop/form/$plugin_subdir" ;;
+    question) target="$WEBROOT/question/type/$plugin_subdir" ;;
+    qbehaviour) target="$WEBROOT/question/behaviour/$plugin_subdir" ;;
+    qformat) target="$WEBROOT/question/format/$plugin_subdir" ;;
+    editor) target="$WEBROOT/lib/editor/$plugin_subdir" ;;
+    tiny) target="$WEBROOT/lib/editor/tiny/plugins/$plugin_subdir" ;;
+    atto) target="$WEBROOT/lib/editor/atto/plugins/$plugin_subdir" ;;
+    tinymce) target="$WEBROOT/lib/editor/tinymce/plugins/$plugin_subdir" ;;
+    availability) target="$WEBROOT/availability/condition/$plugin_subdir" ;;
+    datafield) target="$WEBROOT/mod/data/field/$plugin_subdir" ;;
+    dataprocessor) target="$WEBROOT/mod/data/preset/$plugin_subdir" ;;
+    scormreport) target="$WEBROOT/mod/scorm/report/$plugin_subdir" ;;
+    lti) target="$WEBROOT/mod/lti/source/$plugin_subdir" ;;
+    contenttype) target="$WEBROOT/contentbank/contenttype/$plugin_subdir" ;;
+    courseformat) target="$WEBROOT/course/format/$plugin_subdir" ;;
+    customfield) target="$WEBROOT/customfield/field/$plugin_subdir" ;;
+    paymentgateway) target="$WEBROOT/payment/gateway/$plugin_subdir" ;;
+    analytics) target="$WEBROOT/analytics/indicator/$plugin_subdir" ;;
+    aiprovider) target="$WEBROOT/ai/provider/$plugin_subdir" ;;
+    aiplacement) target="$WEBROOT/ai/placement/$plugin_subdir" ;;
+    cachelock) target="$WEBROOT/cache/lock/$plugin_subdir" ;;
+    cachestore) target="$WEBROOT/cache/stores/$plugin_subdir" ;;
+    coresearch) target="$WEBROOT/search/engine/$plugin_subdir" ;;
+    localcache) target="$WEBROOT/local/cache/$plugin_subdir" ;;
+    logstore) target="$WEBROOT/admin/tool/log/store/$plugin_subdir" ;;
     *)
       echo "Warning: Unknown plugin type: $plugin_type"
-      echo "Attempting to install in /var/www/html/$plugin_type/$plugin_subdir"
-      target="/var/www/html/$plugin_type/$plugin_subdir"
+      echo "Attempting to install in $WEBROOT/$plugin_type/$plugin_subdir"
+      target="$WEBROOT/$plugin_type/$plugin_subdir"
       mkdir -p "$(dirname "$target")"
       ;;
   esac

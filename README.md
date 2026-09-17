@@ -537,8 +537,49 @@ The following Moodle task configurations are available:
 - **`.env/moodle.env`** - Moodle without Xdebug (faster, for general development/testing)
 - **`.env/moodle-xdebug.env`** - Moodle with Xdebug enabled (for PHP debugging)
 - **`.env/catapult.env`** - Moodle + the ADL CATAPULT cmi5 player + LRS, for cmi5/xAPI content (launches Moodle, Catapult, and Lrsql together)
+- **`.env/moodle52.env`** - Moodle 5.2 test instance (see below)
 
 Use the appropriate task based on whether you need to debug PHP code. Xdebug has significant performance overhead, so only enable it when actively debugging.
+
+### Testing a New Moodle Version
+
+Moodle versions run side by side rather than upgrading in place, because booting a newer
+Moodle against an older instance's database runs irreversible upgrade migrations - after
+that, the older version will not start against it. Each instance therefore gets its own
+container name, port, database, and `moodle-core` mount:
+
+| | Moodle 5.0 | Moodle 5.2 |
+| --- | --- | --- |
+| Launch task | `.env/moodle.env` | `.env/moodle52.env` |
+| URL | http://localhost:8081 | http://localhost:8082 |
+| Container | `moodle` | `moodle52` |
+| Database | `moodle` | `moodle52` |
+| Core mount | `/mnt/data/crucible/moodle/moodle-core/` | `/mnt/data/crucible/moodle/moodle-core-52/` |
+| Container web root | `/var/www/html` | `/var/www/html/public` |
+
+Both instances share the same Dockerfile (`resources/moodle/Dockerfile.MoodleCustom`); the
+base image comes from the `MOODLE_BASE_IMAGE` build arg. The plugins mounted from
+`repos.json` are shared, but marketplace plugin versions are pinned per instance in
+`AppHost.cs` since those downloads are branch-specific.
+
+Moodle 5.1 moved everything web-accessible under `public/`, so on 5.1+ the core directories
+and every plugin live one level deeper in the container (`admin/cli` stays outside the web
+root in both layouts). Each `MoodleInstance` declares its `WebRoot`, and the resource
+scripts (`pre_configure.sh`, `015-copy-plugins.sh`, the Dockerfile, `xdebug_filter.php`)
+detect the layout at build/boot time, so one image definition serves both. The host side of
+the `moodle-core` mounts stays flat regardless of version. The base image re-points nginx at
+`public/` itself on boot.
+
+To add another version, add a `MoodleInstance` entry in `AddMoodle` with an unused port,
+a new database name, a new mount root, and the web root that version uses, plus a
+`Launch__<Name>` flag in `LaunchOptions`. New instances are left out of
+`AddAllApplications` so they only build when asked for.
+
+The Moodle containers use `ContainerLifetime.Persistent`, and Aspire reuses an existing
+container rather than recreating it when its bind mounts change. After changing mount paths
+(a web root, a mount root), delete the container in the dashboard so it comes back with the
+new mounts - otherwise it keeps running with the old ones and fails in confusing ways, such
+as an empty mount shadowing core files.
 
 ### Dynamic Crucible Integration
 

@@ -43,14 +43,14 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Player: {launchOptions.Player}, Caster: {launchOptions.Caster}, Alloy: {launchOptions.Alloy}");
     Console.WriteLine($"  Gallery: {launchOptions.Gallery}, Cite: {launchOptions.Cite}");
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
-    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
+    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Moodle52: {launchOptions.Moodle52}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
     Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, TopoMojo Launchpoint: {launchOptions.TopoMojoLaunchpoint}, Gameboard: {launchOptions.Gameboard}");
     Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
     Console.WriteLine($"  Dev: [{string.Join(", ", launchOptions.Dev)}]");
 }
 
-public static class BuilderExtensions
+public static partial class BuilderExtensions
 {
     /// <summary>
     /// Checks if a mode is enabled (not "off")
@@ -477,7 +477,8 @@ public static class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm alloy steamfitter caster")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
             .WithEnvironment("CorsPolicy__Origins__0", "http://localhost:4403") // for alloy-ui
-            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081"); // for moodle
+            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081") // for moodle
+            .WithEnvironment("CorsPolicy__Origins__2", "http://localhost:8082"); // for moodle52
 
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
@@ -528,6 +529,7 @@ public static class BuilderExtensions
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201") // for topo-ui
             .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
+            .WithEnvironment("Headers__Cors__Origins__2", "http://localhost:8082") // for moodle52
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");
@@ -905,128 +907,6 @@ public static class BuilderExtensions
         }
     }
 
-    public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
-    {
-        var moodleMode = ResolveMode(options.Moodle, "Moodle", options);
-
-        if (!options.AddAllApplications && !IsEnabled(moodleMode))
-            return;
-
-        var moodleDb = postgres.AddDatabase("moodleDb", "moodle");
-
-        // Read AWS credentials from ~/.aws/credentials file
-        var awsCreds = ReadAwsCredentials();
-
-        // Check which Crucible services are enabled
-        var playerMode = ResolveMode(options.Player, "Player", options);
-        var casterMode = ResolveMode(options.Caster, "Caster", options);
-        var alloyMode = ResolveMode(options.Alloy, "Alloy", options);
-        var topoMojoMode = ResolveMode(options.TopoMojo, "TopoMojo", options);
-        var topoMojoLaunchpointMode = ResolveMode(options.TopoMojoLaunchpoint, "TopoMojoLaunchpoint", options);
-        var steamfitterMode = ResolveMode(options.Steamfitter, "Steamfitter", options);
-        var citeMode = ResolveMode(options.Cite, "Cite", options);
-        var galleryMode = ResolveMode(options.Gallery, "Gallery", options);
-        var blueprintMode = ResolveMode(options.Blueprint, "Blueprint", options);
-        var gameboardMode = ResolveMode(options.Gameboard, "Gameboard", options);
-
-        var moodle = builder.AddContainer("moodle", "moodle-custom-image")
-            .WaitFor(postgres)
-            .WaitFor(keycloak)
-            .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
-            .WithLifetime(ContainerLifetime.Persistent)
-            .WithContainerName("moodle")
-            .WithHttpEndpoint(port: 8081, targetPort: 8080)
-            .WithHttpHealthCheck(endpointName: "http")
-            .WithEnvironment("memory_limit", "512M") // needs to be set for moosh plugin-list to work
-            .WithEnvironment("XDEBUG_MODE", options.XdebugMode)
-            .WithEnvironment("REVERSEPROXY", "true")
-            .WithEnvironment("SITE_URL", "http://localhost:8081")
-            .WithEnvironment("SSLPROXY", "false")
-            .WithEnvironment("MOODLE_ADMIN_USERNAME", "admin")
-            .WithEnvironment("MOODLE_ADMIN_PASSWORD", "admin")
-            .WithEnvironment("DB_USER", postgres.Resource.UserNameReference)
-            .WithEnvironment("DB_PASS", postgres.Resource.PasswordParameter)
-            .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
-            .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName);
-
-        // Only set AWS credentials if the credentials file exists
-        if (awsCreds != null)
-        {
-            moodle
-                .WithEnvironment("AWS_ACCESS_KEY_ID", awsCreds["aws_access_key_id"])
-                .WithEnvironment("AWS_SECRET_ACCESS_KEY", awsCreds["aws_secret_access_key"])
-                .WithEnvironment("AWS_SESSION_TOKEN", awsCreds["aws_session_token"])
-                .WithEnvironment("AWS_REGION", awsCreds["region"]);
-        }
-
-        moodle
-            // Pass which Crucible services are enabled
-            .WithEnvironment("CRUCIBLE_PLAYER_ENABLED", IsEnabled(playerMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_CASTER_ENABLED", IsEnabled(casterMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_ALLOY_ENABLED", IsEnabled(alloyMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_TOPOMOJO_ENABLED", IsEnabled(topoMojoMode) || IsEnabled(topoMojoLaunchpointMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_STEAMFITTER_ENABLED", IsEnabled(steamfitterMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_CITE_ENABLED", IsEnabled(citeMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_GALLERY_ENABLED", IsEnabled(galleryMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_BLUEPRINT_ENABLED", IsEnabled(blueprintMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_GAMEBOARD_ENABLED", IsEnabled(gameboardMode) ? "1" : "0")
-            .WithEnvironment("CRUCIBLE_CATAPULT_ENABLED", IsEnabled(ResolveMode(options.Catapult, "Catapult", options)) ? "1" : "0")
-            .WithEnvironment("PLUGINS", @"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/2025070100/download theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/2025041407/download local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/2026010600/download")
-            .WithEnvironment("PRE_CONFIGURE_COMMANDS", @"/usr/local/bin/pre_configure.sh;")
-            .WithEnvironment("POST_CONFIGURE_COMMANDS", @"/usr/local/bin/post_configure.sh")
-            // Bind mount moodle-core directories (writable for xdebug)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/theme", "/var/www/html/theme", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/lib", "/var/www/html/lib", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/provider", "/var/www/html/ai/provider", isReadOnly: false)
-            .WithBindMount("/mnt/data/crucible/moodle/moodle-core/ai/classes", "/var/www/html/ai/classes", isReadOnly: false);
-
-        // When CATAPULT is enabled, mount the Apache-2.0 cmi5 sample package from the
-        // cloned CATAPULT repo (single source of truth - avoids vendoring a duplicate
-        // binary). post_configure.sh uses it to seed/repair the demo cmi5 activity.
-        if (IsEnabled(ResolveMode(options.Catapult, "Catapult", options)))
-        {
-            moodle.WithBindMount(
-                "/mnt/data/crucible/catapult/catapult/course_examples/packages/single_au_basic_framed.zip",
-                "/usr/local/share/cmi5/sample_cmi5.zip",
-                isReadOnly: true);
-        }
-
-        // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
-        var moodlePlugins = ReadMoodlePlugins();
-        foreach (var plugin in moodlePlugins)
-        {
-            moodle.WithBindMount(plugin.HostPath, plugin.ContainerPath, isReadOnly: true);
-            Console.WriteLine($"  Mounting Moodle plugin: {plugin.Name} -> {plugin.ContainerPath}");
-        }
-
-        // Copy dotnet dev-cert(s) into resources/moodle/certs so they get trusted through the Dockerfile
-        builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
-        {
-            var aspireDevCertDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".aspnet", "dev-certs", "trust");
-            var moodleCertDir = Path.Combine(builder.AppHostDirectory, "resources", "moodle", "certs");
-
-            if (Directory.Exists(aspireDevCertDir))
-            {
-                Directory.CreateDirectory(moodleCertDir);
-                foreach (var pem in Directory.GetFiles(aspireDevCertDir, "*.pem"))
-                {
-                    var destName = Path.GetFileNameWithoutExtension(pem) + ".crt";
-                    File.Copy(pem, Path.Combine(moodleCertDir, destName), overwrite: true);
-                }
-            }
-
-            return Task.CompletedTask;
-        });
-
-        if (!IsEnabled(moodleMode))
-        {
-            moodle.WithExplicitStart();
-        }
-    }
-
     public static void AddLrsql(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
         var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
@@ -1401,198 +1281,5 @@ public static class BuilderExtensions
             .WithEnvironment("XApiOptions__UiUrl", uiUrl)
             .WithEnvironment("XApiOptions__EmailDomain", "crucible.local")
             .WithEnvironment("XApiOptions__Platform", platform);
-    }
-
-
-    private static Dictionary<string, string>? ReadAwsCredentials()
-    {
-        var homeDir = Environment.GetEnvironmentVariable("HOME") ?? "";
-        var credentialsPath = Path.Combine(homeDir, ".aws", "sso-credentials");
-
-        if (!File.Exists(credentialsPath))
-        {
-            Console.WriteLine($"AWS credentials file not found at {credentialsPath}. AWS environment variables will not be set.");
-            return null;
-        }
-
-        var creds = new Dictionary<string, string>
-        {
-            ["aws_access_key_id"] = "",
-            ["aws_secret_access_key"] = "",
-            ["aws_session_token"] = "",
-            ["region"] = "us-east-1"
-        };
-
-        try
-        {
-            var json = File.ReadAllText(credentialsPath);
-            var doc = System.Text.Json.JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            if (root.TryGetProperty("AccessKeyId", out var accessKeyId))
-                creds["aws_access_key_id"] = accessKeyId.GetString() ?? "";
-
-            if (root.TryGetProperty("SecretAccessKey", out var secretAccessKey))
-                creds["aws_secret_access_key"] = secretAccessKey.GetString() ?? "";
-
-            if (root.TryGetProperty("SessionToken", out var sessionToken))
-                creds["aws_session_token"] = sessionToken.GetString() ?? "";
-
-            if (root.TryGetProperty("Region", out var region))
-                creds["region"] = region.GetString() ?? "us-east-1";
-
-            Console.WriteLine($"AWS credentials loaded from {credentialsPath}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Warning: Failed to parse AWS credentials from {credentialsPath}: {ex.Message}");
-            return null;
-        }
-
-        return creds;
-    }
-
-    private class MoodlePlugin
-    {
-        public string Name { get; set; } = "";
-        public string HostPath { get; set; } = "";
-        public string ContainerPath { get; set; } = "";
-    }
-
-    private static string MapPluginToContainerPath(string pluginName)
-    {
-        var parts = pluginName.Split('_', 2);
-        if (parts.Length < 2) return $"/var/www/html/{pluginName}";
-
-        var pluginType = parts[0];
-        var pluginSubdir = parts[1];
-
-        return pluginType switch
-        {
-            "mod" => $"/var/www/html/mod/{pluginSubdir}",
-            "block" => $"/var/www/html/blocks/{pluginSubdir}",
-            "tool" => $"/var/www/html/admin/tool/{pluginSubdir}",
-            "logstore" => $"/var/www/html/admin/tool/log/store/{pluginSubdir}",
-            "local" => $"/var/www/html/local/{pluginSubdir}",
-            "qtype" => $"/var/www/html/question/type/{pluginSubdir}",
-            "qbehaviour" => $"/var/www/html/question/behaviour/{pluginSubdir}",
-            "qformat" => $"/var/www/html/question/format/{pluginSubdir}",
-            "aiplacement" => $"/var/www/html/ai/placement/{pluginSubdir}",
-            "aiprovider" => $"/var/www/html/ai/provider/{pluginSubdir}",
-            "gradereport" => $"/var/www/html/grade/report/{pluginSubdir}",
-            "theme" => $"/var/www/html/theme/{pluginSubdir}",
-            _ => $"/var/www/html/{pluginType}/{pluginSubdir}"
-        };
-    }
-
-    private static string MapPluginToHostPath(string pluginName, string moodleBasePath)
-    {
-        var parts = pluginName.Split('_', 2);
-        if (parts.Length < 2) return Path.Combine(moodleBasePath, pluginName);
-
-        var pluginType = parts[0];
-        var pluginSubdir = parts[1];
-
-        return pluginType switch
-        {
-            "mod" => Path.Combine(moodleBasePath, "mod", pluginSubdir),
-            "block" => Path.Combine(moodleBasePath, "blocks", pluginSubdir),
-            "tool" => Path.Combine(moodleBasePath, "admin", "tool", pluginSubdir),
-            "logstore" => Path.Combine(moodleBasePath, "admin", "tool", "log", "store", pluginSubdir),
-            "local" => Path.Combine(moodleBasePath, "local", pluginSubdir),
-            "qtype" => Path.Combine(moodleBasePath, "question", "type", pluginSubdir),
-            "qbehaviour" => Path.Combine(moodleBasePath, "question", "behaviour", pluginSubdir),
-            "qformat" => Path.Combine(moodleBasePath, "question", "format", pluginSubdir),
-            "aiplacement" => Path.Combine(moodleBasePath, "ai", "placement", pluginSubdir),
-            "aiprovider" => Path.Combine(moodleBasePath, "ai", "provider", pluginSubdir),
-            "gradereport" => Path.Combine(moodleBasePath, "grade", "report", pluginSubdir),
-            "theme" => Path.Combine(moodleBasePath, "theme", pluginSubdir),
-            _ => Path.Combine(moodleBasePath, pluginType, pluginSubdir)
-        };
-    }
-
-    private static List<MoodlePlugin> ReadMoodlePlugins()
-    {
-        var plugins = new List<MoodlePlugin>();
-        var workspaceRoot = "/workspaces/crucible-development";
-        var reposJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.json");
-        var reposLocalJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.local.json");
-
-        if (!File.Exists(reposJsonPath))
-        {
-            Console.WriteLine($"Warning: {reposJsonPath} not found. No Moodle plugins will be loaded.");
-            return plugins;
-        }
-
-        try
-        {
-            // Read and parse repos.json
-            var reposJson = File.ReadAllText(reposJsonPath);
-            var reposDoc = System.Text.Json.JsonDocument.Parse(reposJson);
-
-            // Read and parse repos.local.json if it exists
-            System.Text.Json.JsonDocument? reposLocalDoc = null;
-            if (File.Exists(reposLocalJsonPath))
-            {
-                Console.WriteLine("Found repos.local.json, merging with repos.json...");
-                var reposLocalJson = File.ReadAllText(reposLocalJsonPath);
-                reposLocalDoc = System.Text.Json.JsonDocument.Parse(reposLocalJson);
-            }
-
-            // Process groups from both files
-            var moodleBasePath = "/mnt/data/crucible/moodle";
-
-            ProcessReposDocument(reposDoc, plugins, moodleBasePath);
-            if (reposLocalDoc != null)
-            {
-                ProcessReposDocument(reposLocalDoc, plugins, moodleBasePath);
-            }
-
-            Console.WriteLine($"Loaded {plugins.Count} Moodle plugin(s) from repos.json{(reposLocalDoc != null ? " + repos.local.json" : "")}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error reading Moodle plugins from repos.json: {ex.Message}");
-        }
-
-        return plugins;
-    }
-
-    private static void ProcessReposDocument(System.Text.Json.JsonDocument doc, List<MoodlePlugin> plugins, string moodleBasePath)
-    {
-        if (!doc.RootElement.TryGetProperty("groups", out var groups))
-            return;
-
-        foreach (var group in groups.EnumerateArray())
-        {
-            if (!group.TryGetProperty("name", out var groupName) || groupName.GetString() != "moodle")
-                continue;
-
-            if (!group.TryGetProperty("repos", out var repos))
-                continue;
-
-            foreach (var repo in repos.EnumerateArray())
-            {
-                if (!repo.TryGetProperty("name", out var nameProperty))
-                    continue;
-
-                var pluginName = nameProperty.GetString();
-                if (string.IsNullOrEmpty(pluginName))
-                    continue;
-
-                // Skip if already added (repos.local.json takes precedence)
-                if (plugins.Any(p => p.Name == pluginName))
-                    continue;
-
-                var plugin = new MoodlePlugin
-                {
-                    Name = pluginName,
-                    HostPath = MapPluginToHostPath(pluginName, moodleBasePath),
-                    ContainerPath = MapPluginToContainerPath(pluginName)
-                };
-
-                plugins.Add(plugin);
-            }
-        }
     }
 }
