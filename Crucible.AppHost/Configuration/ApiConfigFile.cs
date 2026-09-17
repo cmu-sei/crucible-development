@@ -18,8 +18,8 @@ public sealed record ApiConfigFile(string Path, IReadOnlyDictionary<string, stri
         if (!Regex.IsMatch(profile, @"\A[a-zA-Z0-9][a-zA-Z0-9_-]*\z"))
             throw new InvalidOperationException($"API configuration for {app}: select a profile containing only letters, digits, '-' and '_'.");
 
-        if (app is not ("topomojo" or "player-vm-api" or "caster-api"))
-            throw new InvalidOperationException($"API configuration does not support app '{app}'.");
+        if (!Regex.IsMatch(app, @"\A[a-zA-Z0-9][a-zA-Z0-9_-]*\z"))
+            throw new InvalidOperationException("API configuration app names must start with a letter or digit and contain only letters, digits, '-' and '_'.");
 
         var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(
             appHostDirectory, "resources", "api", "config", "local", profile, $"{app}.conf"));

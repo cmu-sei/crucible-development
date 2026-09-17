@@ -8,7 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Test the configuration boundary without building the 30+ external repos. -->
-    <Compile Include="../../Crucible.AppHost/ApiConfig*.cs" Link="AppHost/%(Filename)%(Extension)" />
+    <Compile Include="../../Crucible.AppHost/Configuration/ApiConfig*.cs" Link="AppHost/Configuration/%(Filename)%(Extension)" />
     <PackageReference Include="Aspire.Hosting" Version="13.5.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageReference Include="xunit" Version="2.9.3" />

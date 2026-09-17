@@ -540,7 +540,11 @@ public static class BuilderExtensions
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");
         if (IsEnabled(topoMojoMode))
-            topoApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
+        {
+            // Load the selected profile after TopoMojo's own .conf files so it wins.
+            topoApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig,
+                configPathEnvironmentVariable: "APPSETTINGS_PATH");
+        }
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
         const int topoWorkUiPort = 4201;

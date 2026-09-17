@@ -236,6 +236,27 @@ AppHost only delivers the files, so adding profile settings does not require App
 code changes. Existing profiles are not automatically changed when templates change:
 edit them directly or regenerate with a backup.
 
+### Wiring another app
+
+`WithApiConfig` injects the selected file's entries as environment variables by default.
+For an app that loads a config file itself, explicitly name the environment variable
+through which it accepts that path:
+
+```csharp
+api.WithApiConfig(builder.AppHostDirectory, options.ApiConfig,
+    configPathEnvironmentVariable: "APPSETTINGS_PATH");
+```
+
+This passes only the resolved absolute path, not the individual entries. TopoMojo uses
+this option so the selected profile loads after its own `.conf` files. Other apps may
+use a different environment variable name. Disabled configuration remains a no-op.
+
+The resolver accepts any app name containing letters, digits, hyphens, or underscores,
+starting with a letter or digit, and requires `local/<profile>/<resource-name>.conf`.
+There is no app allowlist in the C# helper. Setup still targets the three wired APIs;
+to include another app in guided generation and selection checks, add its templates
+and launch-name mapping in `scripts/api-config.cjs`.
+
 ## Validation
 
 ```bash

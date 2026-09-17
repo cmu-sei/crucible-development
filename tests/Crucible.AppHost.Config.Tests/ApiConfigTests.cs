@@ -56,6 +56,40 @@ public sealed class ApiConfigTests : IDisposable
         Assert.Throws<InvalidOperationException>(() =>
             ApiConfigFile.Resolve(root, "caster-api", new() { Enabled = true, Profile = profile }));
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(".")]
+    [InlineData("..")]
+    [InlineData("../escape")]
+    [InlineData(@"..\escape")]
+    [InlineData("nested/app")]
+    [InlineData(@"nested\app")]
+    [InlineData("/absolute")]
+    [InlineData(@"C:\absolute")]
+    [InlineData("app.conf")]
+    [InlineData("-app")]
+    [InlineData("_app")]
+    [InlineData("app name")]
+    [InlineData("app\n")]
+    public void InvalidAppNamesFailBeforeResolvingAPath(string app)
+    {
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            ApiConfigFile.Resolve(root, app, new() { Enabled = true, Profile = "test" }));
+        Assert.Contains("app names", error.Message);
+    }
+
+    [Theory]
+    [InlineData("another-api")]
+    [InlineData("App_2")]
+    [InlineData("3")]
+    public void AnySafeAppNameCanResolveItsProfile(string app)
+    {
+        var path = Write("test", app, "Example__Value=profile");
+        var config = ApiConfigFile.Resolve(root, app, new() { Enabled = true, Profile = "test" });
+        Assert.Equal(path, config!.Path);
+        Assert.Equal("profile", config.Values["Example__Value"]);
+    }
+
     [Fact]
     public void MissingSelectedFileFailsWithAppAndPath()
     {
@@ -93,6 +127,8 @@ public sealed class ApiConfigTests : IDisposable
     [Theory]
     [InlineData("player-vm-api")]
     [InlineData("caster-api")]
+    [InlineData("another-api")]
+    [InlineData("topomojo")]
     public async Task FileValuesOverrideMatchingAppsettingsButPreserveOtherKeys(string app)
     {
         Write("test", app, "Example__Value=profile");
@@ -112,15 +148,40 @@ public sealed class ApiConfigTests : IDisposable
         finally { Environment.SetEnvironmentVariable(key, previous); }
     }
 
-    [Fact]
-    public async Task TopomojoReceivesAnAbsoluteFilePathInsteadOfOverridableEntries()
+    [Theory]
+    [InlineData("topomojo", "APPSETTINGS_PATH")]
+    [InlineData("another-api", "CUSTOM_CONFIG_PATH")]
+    public async Task ExplicitFileDeliveryPassesAnAbsolutePathInsteadOfEntries(string app, string variable)
     {
-        var path = Write("proxmox", "topomojo", "Pod__HypervisorType=Proxmox");
-        var env = await EnvironmentFor("topomojo", new() { Enabled = true, Profile = "proxmox" });
-        Assert.Equal(path, env["APPSETTINGS_PATH"]);
+        var path = Write("proxmox", app, "Pod__HypervisorType=Proxmox");
+        var env = await EnvironmentFor(app, new() { Enabled = true, Profile = "proxmox" }, variable);
+        Assert.Equal(path, env[variable]);
+        Assert.True(Path.IsPathFullyQualified((string)env[variable]));
         Assert.False(env.ContainsKey("Pod__HypervisorType"));
-        var disabled = await EnvironmentFor("topomojo", new());
-        Assert.False(disabled.ContainsKey("APPSETTINGS_PATH"));
+        Assert.Equal(2, env.Count); // Existing environment plus the requested path only.
+        var disabled = await EnvironmentFor(app, new(), variable);
+        Assert.False(disabled.ContainsKey(variable));
+        var appDisabled = await EnvironmentFor(app, new()
+        {
+            Enabled = true, Profile = "missing",
+            Apps = { [app] = new() { Enabled = false } }
+        }, variable);
+        Assert.False(appDisabled.ContainsKey(variable));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            EnvironmentFor(app, new() { Enabled = true, Profile = "missing" }, variable));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("CONFIG=PATH")]
+    [InlineData("CONFIG\nPATH")]
+    public async Task InvalidFilePathEnvironmentVariableFails(string variable)
+    {
+        Write("test", "another-api", "Example__Value=profile");
+        var error = await Assert.ThrowsAsync<ArgumentException>(() =>
+            EnvironmentFor("another-api", new() { Enabled = true, Profile = "test" }, variable));
+        Assert.Equal("configPathEnvironmentVariable", error.ParamName);
     }
 
     [Fact]
@@ -149,7 +210,8 @@ public sealed class ApiConfigTests : IDisposable
         Assert.False(options.Apps["caster-api"].Enabled);
     }
 
-    private async Task<Dictionary<string, object>> EnvironmentFor(string app, ApiConfigOptions options)
+    private async Task<Dictionary<string, object>> EnvironmentFor(
+        string app, ApiConfigOptions options, string? configPathEnvironmentVariable = null)
     {
         var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions
         {
@@ -157,7 +219,7 @@ public sealed class ApiConfigTests : IDisposable
         });
         var resource = builder.AddExecutable(app, "unused", root)
             .WithEnvironment("Existing", "unchanged")
-            .WithApiConfig(root, options);
+            .WithApiConfig(root, options, configPathEnvironmentVariable);
         var env = new Dictionary<string, object>();
         var context = new EnvironmentCallbackContext(builder.ExecutionContext, resource.Resource, env, default);
         foreach (var annotation in resource.Resource.Annotations.OfType<EnvironmentCallbackAnnotation>())
