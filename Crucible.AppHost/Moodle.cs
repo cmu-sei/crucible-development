@@ -133,13 +133,17 @@ public static partial class BuilderExtensions
         if (!IsEnabled(ResolveMode(options.TopoMojo, "TopoMojo", options)))
             return null;
 
-        // Find the TopoMojo API resource builder by display name
-        var topoMojoApiBuilder = builder.Resources
-            .OfType<IResourceBuilder<ProjectResource>>()
-            .FirstOrDefault(r => r.Resource.Name.StartsWith("topomojo") && !r.Resource.Name.Contains("ui"));
+        // builder.Resources holds IResource, not IResourceBuilder<T> - a builder wraps a
+        // resource rather than being one - so filtering it for IResourceBuilder<ProjectResource>
+        // never matched and this always bailed out. Match the resource, then wrap it.
+        var topoMojoApi = builder.Resources
+            .OfType<ProjectResource>()
+            .FirstOrDefault(r => r.Name.StartsWith("topomojo") && !r.Name.Contains("ui"));
 
-        if (topoMojoApiBuilder == null)
+        if (topoMojoApi == null)
             return null;
+
+        var topoMojoApiBuilder = builder.CreateResourceBuilder(topoMojoApi);
 
         return builder.AddExecutable("get-topomojo-apikey", "bash",
             builder.AppHostDirectory,
