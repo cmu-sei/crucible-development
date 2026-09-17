@@ -160,8 +160,8 @@ In `local/hybrid/player-vm-api.conf`, keep the Proxmox settings, replace
 
 In `local/hybrid/caster-api.conf`, add the
 `Terraform__EnvironmentVariables__Direct__VSPHERE_...` entries from
-`local/vsphere/caster-api.conf`. Keep the Proxmox entries and the single
-`TF_CLI_CONFIG_FILE` entry. Replace matching keys rather than appending duplicates.
+`local/vsphere/caster-api.conf`. Keep the Proxmox entries.
+Replace matching keys rather than appending duplicates.
 For VMC, apply the upload adjustments above to the hybrid Player VM file.
 
 The generated `local/hybrid/topomojo.conf` still uses Proxmox only. To use vSphere

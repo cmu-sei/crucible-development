@@ -1,7 +1,6 @@
 # Copy with configure-hypervisors.sh init, then replace <placeholders>.
 # Literal KEY=value: no shell quoting, expansion or inline comments.
 # Certificate validation is disabled here for local development only.
-Terraform__EnvironmentVariables__Direct__TF_CLI_CONFIG_FILE=/terraform/terraformrc
 Terraform__EnvironmentVariables__Direct__PROXMOX_VE_ENDPOINT=https://<proxmox-host>:<proxmox-port>
 Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN=<user@realm!token-id=token-secret>
 Terraform__EnvironmentVariables__Direct__PROXMOX_VE_INSECURE=true

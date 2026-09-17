@@ -432,7 +432,8 @@ public static class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "caster.api")
             .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
-            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
+            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true")
+            .WithEnvironment("Terraform__EnvironmentVariables__Direct__TF_CLI_CONFIG_FILE", "/terraform/terraformrc");
 
         if (IsEnabled(casterMode))
             casterApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
