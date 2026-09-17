@@ -1,0 +1,15 @@
+# Copy with configure-hypervisors.sh init, then replace <placeholders>.
+# Literal KEY=value: no shell quoting, expansion or inline comments.
+# Certificate validation is disabled here for local development only.
+Terraform__EnvironmentVariables__Direct__TF_CLI_CONFIG_FILE=/terraform/terraformrc
+Terraform__EnvironmentVariables__Direct__PROXMOX_VE_ENDPOINT=
+Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN=
+Terraform__EnvironmentVariables__Direct__PROXMOX_VE_INSECURE=false
+Terraform__EnvironmentVariables__Direct__VSPHERE_SERVER=<vcenter-host>
+Terraform__EnvironmentVariables__Direct__VSPHERE_USER=<username>
+Terraform__EnvironmentVariables__Direct__VSPHERE_PASSWORD=<password>
+Terraform__EnvironmentVariables__Direct__VSPHERE_ALLOW_UNVERIFIED_SSL=true
+Terraform__EnvironmentVariables__Direct__VSPHERE_DATACENTER=<datacenter>
+Terraform__EnvironmentVariables__Direct__VSPHERE_CLUSTER=<cluster>
+Terraform__EnvironmentVariables__Direct__VSPHERE_RESOURCE_POOL=<resource-pool>
+Terraform__EnvironmentVariables__Direct__VSPHERE_DATASTORE=<datastore>

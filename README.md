@@ -26,9 +26,6 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [.NET Libraries (crucible-common-dotnet)](#net-libraries-crucible-common-dotnet)
   - [Angular Libraries (Crucible.Common.Ui)](#angular-libraries-cruciblecommonui)
 - [Hypervisor Configuration](#hypervisor-configuration)
-  - [Supported Hypervisors](#supported-hypervisors)
-  - [Quick Start](#hypervisor-quick-start)
-  - [Configuration Options](#hypervisor-configuration-options)
 - [Proxmox OIDC Authentication](#proxmox-oidc-authentication)
   - [Setup](#proxmox-oidc-setup)
   - [Login Flow](#proxmox-oidc-login-flow)
@@ -1081,138 +1078,65 @@ The AppHost uses a health check to ensure UIs don't start until the library is f
 
 ## Hypervisor Configuration
 
-Crucible supports three hypervisor types for VM orchestration: Proxmox, vSphere (on-premises), and VMware Cloud (VMC). Configure hypervisors centrally via `Crucible.AppHost/appsettings.Development.json` and the AppHost will automatically inject environment variables into TopoMojo, Player VM, and Caster.
-
-### Supported Hypervisors
-
-| Application | Proxmox | vSphere On-Prem | VMware Cloud (VMC) |
-|-------------|---------|-----------------|---------------------|
-| **TopoMojo** | ✅ | ✅ | ✅ |
-| **Player VM** | ✅ | ❌ | ❌ |
-| **Caster** | ✅ | ✅ | ✅ |
-
-### Hypervisor Quick Start
-
-Use the toggle script to configure any hypervisor:
+TopoMojo, Player VM API, and Caster can opt into local API configuration profiles.
+Application settings and credentials live in ignored files under
+`Crucible.AppHost/resources/api/config/local/`; only templates are committed.
+AppHost keeps resource dependencies, endpoints, and database wiring in code.
 
 ```bash
-# Proxmox
-./scripts/toggle-hypervisor.sh proxmox
+# Guided menu: configure, select, or disable a profile
+./scripts/configure-hypervisors.sh
 
-# vSphere on-premises (interactive - prompts for credentials)
-./scripts/toggle-hypervisor.sh vsphere
+# Go straight to setup for a backend
+./scripts/configure-hypervisors.sh proxmox
+./scripts/configure-hypervisors.sh vsphere --profile lab-a
 
-# VMware Cloud on AWS (interactive)
-./scripts/toggle-hypervisor.sh vmc
+# Switch to an existing profile without prompting or rewriting its files
+./scripts/toggle-hypervisor.sh lab-a
 
-# Remove hypervisor configuration
+# Disable file configuration globally; local files are retained
 ./scripts/toggle-hypervisor.sh remove
-
-# Non-interactive with credentials
-./scripts/toggle-hypervisor.sh vsphere \
-  --url https://vcenter.example.com/sdk \
-  --user administrator@vsphere.local \
-  --password 'password' \
-  --non-interactive
 ```
 
-The script updates `Crucible.AppHost/appsettings.Development.json`, then just restart Aspire:
+Setup asks once for connection details and fills the TopoMojo, Player VM, and Caster
+templates. Passwords and tokens are hidden during entry. Proxmox setup reuses saved
+credentials when available. Existing profiles offer **keep**, **regenerate**, or
+**cancel**; regeneration backs up the old files alongside them.
+Edit the resulting `.conf` files for advanced settings.
+Only Proxmox and vSphere starting templates are provided. Use any local profile name
+and customize the generated files for other environments.
 
-```bash
-aspire run
-```
+Restart Aspire after changing selection or file contents. File configuration is disabled
+by default. Disabling it restores the apps' own configuration and AppHost defaults;
+it does not disable the apps.
 
-### Multiple Hypervisors at Once (dev)
+For manual setup, `configure-hypervisors.sh init TEMPLATE [--profile NAME]` copies
+templates without selecting them or overwriting existing files. Replace their
+placeholders before selecting the profile. Use `list` to see available templates.
+The toggle clears per-app profile overrides and preserves per-app disable flags.
+Running it without arguments opens the same guided menu.
 
-Player VM API and Caster support **Proxmox and vSphere/VMC simultaneously** — vm.api routes per-VM, Caster picks per-project. This is useful in dev when a feature must be tested against both. (TopoMojo is single-backend.)
-
-Use `configure-hypervisors.sh` to write the nested `Launch.Hypervisors` block, which can hold both backends at once:
-
-```bash
-# Configure BOTH backends
-./scripts/configure-hypervisors.sh set-proxmox            # uses ~/.crucible-proxmox, or --url/--token
-./scripts/configure-hypervisors.sh set-vmc \
-  --url https://vcenter.sddc-x.vmwarevmc.com/sdk \
-  --user cloudadmin@vmc.local --password 'pw'
-
-# Pick which backend TopoMojo uses (single-backend)
-./scripts/configure-hypervisors.sh topomojo Proxmox
-
-./scripts/configure-hypervisors.sh show          # view current config
-./scripts/configure-hypervisors.sh remove Vsphere
-```
-
-This produces:
+Use `Launch.ApiConfig` in your local AppHost settings to select profiles per app:
 
 ```json
 {
   "Launch": {
-    "Hypervisors": {
-      "Proxmox": { "Url": "https://10.0.100.2:443", "Token": "root@pam!CRUCIBLE=..." },
-      "Vsphere": { "Url": "https://vcenter.../sdk", "User": "...", "Password": "...",
-                   "PoolPath": "Datacenter/Cluster/Pool", "VmStore": "[WorkloadDatastore] topomojo/" }
-    },
-    "TopomojoHypervisor": "Proxmox"
+    "ApiConfig": {
+      "Enabled": true,
+      "Profile": "proxmox",
+      "Apps": {
+        "player-vm-api": { "Profile": "hybrid" },
+        "caster-api": { "Enabled": false }
+      }
+    }
   }
 }
 ```
 
-You can also hand-edit this block directly — AppHost reads it on startup. The nested `Launch.Hypervisors` config supersedes the legacy flat `Launch.Hypervisor*` fields when present.
-
-> **TopoMojo caveat:** in dev, TopoMojo is driven by its own `appsettings.Development.conf` (loaded last via its `ConfToEnv()` loader, which **overrides** AppHost env vars). `TopomojoHypervisor` only takes effect in prod. To change TopoMojo's hypervisor in dev, edit `/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/appsettings.Development.conf` (or use `toggle-hypervisor.sh`).
-
-### Hypervisor Configuration Options
-
-#### Proxmox Example
-
-```json
-{
-  "Launch": {
-    "HypervisorType": "Proxmox",
-    "HypervisorUrl": "https://172.29.24.139:443",
-    "HypervisorToken": "root@pam!CRUCIBLE=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-    "HypervisorVmStore": "local-lvm",
-    "HypervisorDiskStore": "local-lvm",
-    "HypervisorIsoStore": "local"
-  }
-}
-```
-
-#### vSphere On-Premises Example
-
-```json
-{
-  "Launch": {
-    "HypervisorType": "Vsphere",
-    "HypervisorUrl": "https://vcenter.example.com/sdk",
-    "HypervisorUser": "administrator@vsphere.local",
-    "HypervisorPassword": "your-password",
-    "HypervisorVmStore": "[datastore1] topomojo",
-    "HypervisorDiskStore": "[datastore1] topomojo",
-    "HypervisorIsoStore": "[datastore1] topomojo",
-    "HypervisorPoolPath": "Datacenter/Cluster"
-  }
-}
-```
-
-#### VMware Cloud (VMC) Example
-
-```json
-{
-  "Launch": {
-    "HypervisorType": "Vsphere",
-    "HypervisorUrl": "https://vcenter.sddc-12-34-56-78.vmwarevmc.com/sdk",
-    "HypervisorUser": "cloudadmin@vmc.local",
-    "HypervisorPassword": "your-vmc-password",
-    "HypervisorVmStore": "[WorkloadDatastore] topomojo/",
-    "HypervisorDiskStore": "[WorkloadDatastore] topomojo/",
-    "HypervisorIsoStore": "[WorkloadDatastore] topomojo/",
-    "HypervisorPoolPath": "SDDC-Datacenter/Cluster-1/Compute-ResourcePool"
-  }
-}
-```
-
-See `Crucible.AppHost/appsettings.Development.json.example` for complete configuration examples.
+Player VM and Caster support hybrid profiles; TopoMojo selects one backend.
+Create custom profiles before referencing them. For VMC and hybrid customization, syntax, precedence,
+per-app overrides, Proxmox provisioning, and testing, see the
+[API profile guide](Crucible.AppHost/resources/api/config/README.md).
 
 ## Proxmox OIDC Authentication
 

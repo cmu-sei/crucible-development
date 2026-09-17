@@ -1029,34 +1029,15 @@ VERIFYEOF
     log_info "Issuer URL: $KEYCLOAK_ISSUER"
 }
 
-toggle_topomojo_hypervisor() {
-    log_step "Configuring TopoMojo for Proxmox..."
-
-    local apphost_dir="/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api"
-    local appsettings_dev="$apphost_dir/appsettings.Development.conf"
-
+configure_proxmox_api_profile() {
+    log_step "Preparing local Proxmox API profile..."
     if [ "$DRY_RUN" = "true" ]; then
-        log_info "[DRY RUN] Would configure TopoMojo"
+        log_info "[DRY RUN] Would initialize and select the local Proxmox API profile"
         return 0
     fi
 
-    # Create appsettings
-    cat > "$appsettings_dev" << EOF
-Pod__HypervisorType=Proxmox
-Pod__Url=https://${PROXMOX_HOST}:443
-Pod__AccessToken=${PROXMOX_API_TOKEN}
-Pod__VmStore=local-lvm
-Pod__DiskStore=local-lvm
-Pod__IsoStore=local
-Pod__IsoRoot=/mnt/proxmox-iso
-Pod__IgnoreCertificateErrors=true
-Pod__TicketUrlHandler=none
-Pod__SupportsSubfolders=false
-FileUpload__IsoRoot=/mnt/proxmox-iso
-FileUpload__UseDatastoreApi=false
-EOF
-
-    log_success "TopoMojo configured for Proxmox"
+    PROXMOX_HOST="$PROXMOX_HOST" PROXMOX_API_TOKEN="$PROXMOX_API_TOKEN" \
+        node "$REPO_ROOT/scripts/api-config.cjs" setup-proxmox
 }
 
 # ============================================================
@@ -3495,7 +3476,7 @@ phase1_proxmox_infrastructure() {
     setup_proxmox_token || return 1
     setup_proxmox_nfs || return 1
     setup_proxmox_oidc || log_warning "OIDC configuration skipped (see warnings above)"
-    toggle_topomojo_hypervisor || return 1
+    configure_proxmox_api_profile || return 1
 
     log_success "Proxmox infrastructure configured"
 }
@@ -3703,26 +3684,8 @@ mode_setup() {
     fi
     echo ""
 
-    # Configure AppHost to use Proxmox
-    local toggle_script="$(dirname "$0")/toggle-hypervisor.sh"
-    if [ -f "$toggle_script" ]; then
-        log_info "Configuring AppHost to use Proxmox..."
+    log_info "API configuration uses the local Proxmox profile; restart Aspire to apply changes."
 
-        # Load config to get PROXMOX_API_TOKEN if not already set
-        if [ -z "$PROXMOX_API_TOKEN" ]; then
-            load_config || true
-        fi
-
-        if [ -n "$PROXMOX_API_TOKEN" ]; then
-            bash "$toggle_script" proxmox --non-interactive
-        else
-            log_warning "PROXMOX_API_TOKEN not set - AppHost configuration skipped"
-            log_warning "Run manually: ./scripts/toggle-hypervisor.sh proxmox"
-        fi
-    else
-        log_warning "toggle-hypervisor.sh not found - AppHost configuration skipped"
-    fi
-    echo ""
 }
 
 mode_reset() {

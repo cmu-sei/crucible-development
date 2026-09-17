@@ -102,6 +102,10 @@ Crucible.AppHost/resources/ui/settings.shared.json
 # Local Proxmox setup config (contains API token)
 Crucible.AppHost/resources/proxmox/config
 
+# Environment-specific API profiles, including credentials, backups and temp files
+Crucible.AppHost/resources/api/config/local/
+Crucible.AppHost/appsettings.Development.json.*.tmp
+
 # Proxmox installer ISO (setup-proxmox-windows.ps1 discovers this in the repo root)
 proxmox-ve_*.iso
 
