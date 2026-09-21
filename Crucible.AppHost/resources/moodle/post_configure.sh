@@ -495,6 +495,31 @@ configure_demo_activities() {
   php /usr/local/bin/create_demo_activities.php --course="Test Course"
 }
 
+# The two lab activities that need another Crucible service to be up before they
+# can be created: mod_topomojo needs a workspace GUID from TopoMojo and
+# mod_crucible needs an event template GUID from Alloy. Deliberately not wrapped
+# in execute_section - each script no-ops when its activity is already there, so
+# running them every start backfills whichever one had to be skipped last time
+# (service disabled, service still starting, or no content authored yet).
+#
+# Separate scripts because mod_topomojo and mod_crucible both declare a global
+# setup(); seeding both in one PHP process fatals on redeclare.
+configure_lab_activities() {
+  if [ "${CRUCIBLE_TOPOMOJO_ENABLED:-0}" = "1" ]; then
+    echo "Ensuring TopoMojo demo activity"
+    php /usr/local/bin/create_topomojo_activity.php --course="Test Course"
+  else
+    log "TOPOMOJO disabled - skipping TopoMojo demo activity"
+  fi
+
+  if [ "${CRUCIBLE_ALLOY_ENABLED:-0}" = "1" ]; then
+    echo "Ensuring Crucible demo activity"
+    php /usr/local/bin/create_crucible_activity.php --course="Test Course"
+  else
+    log "ALLOY disabled - skipping Crucible demo activity"
+  fi
+}
+
 configure_crucible_dashboard_blocks() {
   echo "Ensuring Crucible dashboard blocks"
   php /usr/local/bin/create_crucible_dashboard_blocks.php
@@ -743,6 +768,7 @@ execute_section "Course Creation" create_course
 execute_section "cmi5 Demo Activity" configure_cmi5_activity
 execute_section "Group Quiz Demo Activity" configure_groupquiz_activity
 execute_section "Demo Activities" configure_demo_activities
+configure_lab_activities
 
 # Only configure AWS Bedrock if credentials are available
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then
