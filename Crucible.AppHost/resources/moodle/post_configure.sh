@@ -369,6 +369,27 @@ configure_boost_dark_theme() {
   color: var(--bs-emphasis-color);
 }
 
+/* Moodle 5.2 activity header intro box in dark mode.
+   Up to 5.0 core painted the gray-100 panel on ".path-mod .activity-header:not(:empty)",
+   which local_boost_dark 1.3.7 overrides. Moodle 5.2 moved that background down onto the
+   new ".activity-details" wrapper (theme/boost/scss/moodle/modules.scss) and the plugin
+   still only knows the old selector, so every activity intro renders as a near-white
+   #f8f9fa panel holding dark-mode light text at about 1.2:1 - confirmed on mod_page,
+   mod_quiz and mod_crucible on 5.2, fine on 5.0. Match the colour the plugin gives
+   .activity-header so the header and the box below it read as one surface. The selector
+   does not exist before 5.1, so this is a no-op on the 5.0 instance.
+
+   Darkening the box also strands the activity dates row inside it: core sets
+   ".path-mod .activity-dates .date-item { color: $gray-700 }", which is #495057 on the
+   new dark panel. */
+[data-bs-theme="dark"] .path-mod .activity-details:not(:empty) {
+  background-color: var(--bs-main-navbar-background, #393e4f);
+}
+
+[data-bs-theme="dark"] .path-mod .activity-dates .date-item {
+  color: var(--bs-body-color);
+}
+
 /* local_boost_dark dark/light mode toggle.
    Plugin 1.4.0 turned the bare sun/moon icons into a pill: a rounded border, an
    opaque background, a circular badge behind the icon and a text label, all set
