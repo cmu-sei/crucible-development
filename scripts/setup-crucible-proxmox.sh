@@ -481,6 +481,82 @@ EOF
     log_success "SSH config updated - you can now use: ssh proxmox"
 }
 
+# Generate the self-signed TLS cert the reverse proxy serves.
+#
+# Deliberately NOT /etc/pve/local/pve-ssl.pem, for two reasons:
+#   1. Its SANs do not include the vmbr0 address. With Pod__TicketUrlHandler=none
+#      TopoMojo hands the browser the Proxmox console URL unchanged, so the
+#      browser opens wss://<vmbr0 ip>/api2/json/.../vncwebsocket directly. A
+#      hostname mismatch there gives no interstitial to click -- the console just
+#      reports "disconnected" with nothing in the UI to act on.
+#   2. pvecm updatecerts regenerates pve-ssl.pem, so any SAN added to it is lost
+#      on the next cluster cert refresh.
+# Still self-signed, so the browser needs it trusted once; the point is that it is
+# now trustable (import crucible-console.pem into the client's root store) instead
+# of failing hostname verification no matter what the user accepts.
+setup_proxmox_console_cert() {
+    log_step "Setting up console TLS certificate..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would generate /etc/nginx/crucible-console.pem"
+        return 0
+    fi
+
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "bash -s" << 'ENDSSH'
+set -e
+
+CONSOLE_CERT=/etc/nginx/crucible-console.pem
+CONSOLE_KEY=/etc/nginx/crucible-console.key
+HOSTNAME=$(hostname)
+
+# Every global IPv4 on the host, so whichever address ends up in a console ticket
+# URL is covered without having to know which interface it came from.
+SANS="DNS:$HOSTNAME,DNS:$HOSTNAME.mshome.net,DNS:localhost,IP:127.0.0.1"
+for ip in $(ip -4 -o addr show scope global | awk '{split($4, a, "/"); print a[1]}' | sort -u); do
+    SANS="$SANS,IP:$ip"
+done
+
+# Regenerate when the cert is missing, expiring within 30 days, or no longer
+# covers every current address -- the Hyper-V vEthernet address changes on each
+# Windows reboot, so the SAN set is not stable across runs.
+regenerate=1
+if [ -f "$CONSOLE_CERT" ] && openssl x509 -in "$CONSOLE_CERT" -noout -checkend 2592000 >/dev/null 2>&1; then
+    have=$(openssl x509 -in "$CONSOLE_CERT" -noout -ext subjectAltName 2>/dev/null || true)
+    regenerate=0
+    for want in $(echo "$SANS" | tr ',' ' '); do
+        case "$want" in
+            IP:*) probe="IP Address:${want#IP:}" ;;
+            *)    probe="DNS:${want#DNS:}" ;;
+        esac
+        echo "$have" | grep -qF "$probe" || regenerate=1
+    done
+fi
+
+if [ "$regenerate" = "0" ]; then
+    echo "✓ console certificate already covers $SANS"
+else
+    echo "Generating console certificate for $SANS"
+    mkdir -p /etc/nginx
+    openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+        -keyout "$CONSOLE_KEY" -out "$CONSOLE_CERT" \
+        -subj "/CN=$HOSTNAME.mshome.net" \
+        -addext "subjectAltName=$SANS" 2>/dev/null
+    chmod 600 "$CONSOLE_KEY"
+    chmod 644 "$CONSOLE_CERT"
+    # Only reload if nginx is already serving; on a first run the vhost does not
+    # exist yet and setup_proxmox_nginx restarts it anyway.
+    if systemctl is-active --quiet nginx; then
+        nginx -t && systemctl reload nginx
+    fi
+    echo "✓ console certificate generated"
+fi
+ENDSSH
+
+    log_success "Console TLS certificate in place"
+    log_info "Trust it on the client to avoid per-browser exceptions:"
+    log_info "  scp $PROXMOX_USER@$PROXMOX_HOST:/etc/nginx/crucible-console.pem ."
+}
+
 setup_proxmox_nginx() {
     log_step "Setting up nginx reverse proxy..."
 
@@ -520,8 +596,8 @@ server {
 server {
     listen 443 ssl;
     server_name _;
-    ssl_certificate /etc/pve/local/pve-ssl.pem;
-    ssl_certificate_key /etc/pve/local/pve-ssl.key;
+    ssl_certificate /etc/nginx/crucible-console.pem;
+    ssl_certificate_key /etc/nginx/crucible-console.key;
     proxy_redirect off;
 
     location ~ /api2/json/nodes/.+/qemu/.+/vncwebsocket.* {
@@ -3472,6 +3548,7 @@ phase1_proxmox_infrastructure() {
     print_section "Phase 1/9: Proxmox Infrastructure Setup"
 
     setup_proxmox_ssh || return 1
+    setup_proxmox_console_cert || return 1
     setup_proxmox_nginx || return 1
     setup_proxmox_token || return 1
     setup_proxmox_nfs || return 1
