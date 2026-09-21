@@ -53,7 +53,7 @@
       "source": "richlander/dotnet-inspect",
       "sourceType": "github",
       "skillPath": "skills/dotnet-inspect/SKILL.md",
-      "computedHash": "b813eb759009392c278fdaf03a1f1d252f5fa163c6b0862c4b51d5080118d476"
+      "computedHash": "73227c4be0d67e9127fbb1f8b93c8da7ac492f2190922902ffb5433e871a4c27"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
@@ -77,7 +77,7 @@
       "source": "microsoft/playwright-cli",
       "sourceType": "github",
       "skillPath": "skills/playwright-cli/SKILL.md",
-      "computedHash": "19b6942c9cbcf9b9e3000fc497f8f156b8251d66055de806017e4aaa651e0c7b"
+      "computedHash": "1e6cef0264b72fbf47618ccb82644b9a72934b2eeb35186842332928492a3cd2"
     },
     "provider-actions": {
       "source": "hashicorp/agent-skills",
