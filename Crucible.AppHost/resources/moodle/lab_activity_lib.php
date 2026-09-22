@@ -51,10 +51,18 @@ function lab_pick_item(array $items, string $preferred): ?stdClass {
  *
  * @param stdClass $course The course to add to.
  * @param string $modname The module name, 'topomojo' or 'crucible'.
- * @param string $name The activity name, which is also its identity here.
+ * @param string $name The activity name to create it under.
  * @param array $fields The module specific instance fields, intro included.
+ * @param array $match Instance fields identifying an activity this seeder already
+ *      created, when the name is not one. Defaults to the name.
  */
-function lab_create_activity(stdClass $course, string $modname, string $name, array $fields): void {
+function lab_create_activity(
+    stdClass $course,
+    string $modname,
+    string $name,
+    array $fields,
+    array $match = []
+): void {
     global $DB;
 
     $module = $DB->get_record('modules', ['name' => $modname]);
@@ -63,8 +71,10 @@ function lab_create_activity(stdClass $course, string $modname, string $name, ar
         return;
     }
 
-    if ($DB->record_exists($modname, ['course' => $course->id, 'name' => $name])) {
-        cli_writeln("  '{$name}' already exists.");
+    $existing = $DB->get_records($modname, ($match ?: ['name' => $name]) + ['course' => $course->id]);
+    if ($existing) {
+        $first = reset($existing);
+        cli_writeln("  '{$first->name}' already exists.");
         return;
     }
 
