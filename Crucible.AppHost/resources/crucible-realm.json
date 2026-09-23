@@ -4953,6 +4953,26 @@
       "groups": []
     },
     {
+      "username": "service-account-moodle-client",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": false,
+      "serviceAccountClientId": "moodle-client",
+      "credentials": [],
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-crucible"
+      ],
+      "clientRoles": {
+        "realm-management": [
+          "view-users"
+        ]
+      },
+      "notBefore": 0,
+      "groups": []
+    },
+    {
       "id": "f7401957-4717-43ea-95a0-e05393252b17",
       "createdTimestamp": 1697743622380,
       "username": "user1",
