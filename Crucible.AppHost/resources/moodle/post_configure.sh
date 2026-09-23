@@ -234,6 +234,15 @@ configure_nice_framework() {
     --file=/usr/local/share/competency/nice-framework-v2.0.0.csv
 }
 
+# The organization categories and category scoped roles block_crucible's org role
+# sync assigns between. It creates neither side itself: an org with no matching
+# top level category is skipped, and a missing role shortname is warned about and
+# skipped, so without these the sync runs and does nothing.
+configure_org_roles() {
+  echo "Ensuring org categories and roles"
+  php /usr/local/bin/create_org_roles.php
+}
+
 configure_session_cookie() {
   echo "Configuring session cookie name"
 
@@ -797,6 +806,7 @@ execute_section "xAPI Configuration" configure_xapi
 execute_section "lptmanager Configuration" configure_lptmanager
 execute_section "NICE Competency Framework" configure_nice_framework
 execute_section "Crucible Configuration" configure_crucible
+execute_section "Org Categories and Roles" configure_org_roles
 execute_section "Crucible Dashboard Blocks v2" configure_crucible_dashboard_blocks
 execute_section "cmi5launch Configuration" configure_cmi5launch
 execute_section "TopoMojo Configuration" configure_topomojo
