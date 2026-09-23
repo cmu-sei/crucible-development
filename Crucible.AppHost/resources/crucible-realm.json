@@ -490,6 +490,38 @@
       "realmRoles": [],
       "clientRoles": {},
       "subGroups": []
+    },
+    {
+      "name": "cyber-managers",
+      "path": "/cyber-managers",
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
+    },
+    {
+      "name": "lab-builders",
+      "path": "/lab-builders",
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
+    },
+    {
+      "name": "curriculum-developers",
+      "path": "/curriculum-developers",
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
+    },
+    {
+      "name": "ex-cyber-managers",
+      "path": "/ex-cyber-managers",
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
     }
   ],
   "defaultRole": {
@@ -4841,6 +4873,10 @@
       "firstName": "Content",
       "lastName": "Developer",
       "attributes": {
+        "organization": [
+          "Demo Org",
+          "Second Org"
+        ],
         "terms_and_conditions": [
           "1733933674"
         ]
@@ -4862,7 +4898,9 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": [],
+      "groups": [
+        "/curriculum-developers"
+      ],
       "email": "contentdev@localhost"
     },
     {
@@ -4908,6 +4946,9 @@
       "firstName": "Demo",
       "lastName": "User",
       "attributes": {
+        "organization": [
+          "Demo Org"
+        ],
         "terms_and_conditions": [
           "1742337017"
         ]
@@ -4929,7 +4970,8 @@
       ],
       "notBefore": 0,
       "groups": [
-        "/White Cell"
+        "/White Cell",
+        "/cyber-managers"
       ],
       "email": "demo-user@localhost"
     },
@@ -4943,6 +4985,9 @@
       "firstName": "Rangetech",
       "lastName": "Admin",
       "attributes": {
+        "organization": [
+          "Demo Org Reserve"
+        ],
         "terms_and_conditions": [
           "1733932342"
         ]
@@ -4963,7 +5008,9 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": [],
+      "groups": [
+        "/lab-builders"
+      ],
       "email": "rangetech@localhost"
     },
     {
@@ -5028,6 +5075,9 @@
       "firstName": "User1",
       "lastName": "User",
       "attributes": {
+        "organization": [
+          "Demo Org"
+        ],
         "terms_and_conditions": [
           "1703175332"
         ]
@@ -5048,7 +5098,10 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": [],
+      "groups": [
+        "/cyber-managers",
+        "/lab-builders"
+      ],
       "email": "user1@localhost"
     },
     {
@@ -5060,6 +5113,9 @@
       "emailVerified": false,
       "firstName": "user2",
       "attributes": {
+        "organization": [
+          "Demo Org"
+        ],
         "terms_and_conditions": [
           "1710960650"
         ]
@@ -5080,7 +5136,9 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": [],
+      "groups": [
+        "/ex-cyber-managers"
+      ],
       "email": "user2@localhost"
     }
   ]
