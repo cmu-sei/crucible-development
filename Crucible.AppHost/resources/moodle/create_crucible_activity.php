@@ -11,8 +11,8 @@
 // that is down, and an Alloy with no event templates yet all just log and exit 0,
 // because the dev stack is routinely brought up with only some services enabled.
 //
-// The activity is matched by name, so editing the text below will not update one
-// that already exists; delete it in the course and re-run.
+// The activity is matched by its event template, so editing the text below will
+// not update one that already exists; delete it in the course and re-run.
 
 define('CLI_SCRIPT', true);
 require('/var/www/html/config.php');
@@ -80,4 +80,11 @@ lab_create_activity($course, 'crucible', $options['name'], [
     'showcontentlicense' => 0,
     'grade' => 100,
     'grademethod' => \mod_crucible\utils\scaletypes::CRUCIBLE_HIGHESTATTEMPTGRADE,
+], [
+    // Not the name: mod/crucible/view.php overwrites the activity name with the
+    // Alloy event template's name every time anyone opens the activity, so the
+    // name seeded above survives only until the first view. Matching on it made
+    // this script add another copy of the same lab on every run. The event
+    // template is what the activity actually is, so match on that instead.
+    'eventtemplateid' => $template->id,
 ]);
