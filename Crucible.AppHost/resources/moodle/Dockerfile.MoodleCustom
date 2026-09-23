@@ -64,9 +64,13 @@ COPY create_cmi5_activity.php /usr/local/bin/
 COPY create_groupquiz_activity.php /usr/local/bin/
 COPY create_crucible_dashboard_blocks.php /usr/local/bin/
 COPY create_demo_activities.php /usr/local/bin/
+COPY import_competency_framework.php /usr/local/bin/
+
+# Competency framework CSVs, in tool_lpimportcsv's format, for the importer above.
+COPY nice-framework-v2.0.0.csv /usr/local/share/competency/
 
 # Make scripts executable
-RUN chmod 755 /usr/local/bin/pre_configure.sh && chmod 755 /usr/local/bin/post_configure.sh && chmod 755 /usr/local/bin/setup_environment.php && chmod 755 /usr/local/bin/create_cmi5_activity.php && chmod 755 /usr/local/bin/create_groupquiz_activity.php && chmod 755 /usr/local/bin/create_crucible_dashboard_blocks.php && chmod 755 /usr/local/bin/create_demo_activities.php
+RUN chmod 755 /usr/local/bin/pre_configure.sh && chmod 755 /usr/local/bin/post_configure.sh && chmod 755 /usr/local/bin/setup_environment.php && chmod 755 /usr/local/bin/create_cmi5_activity.php && chmod 755 /usr/local/bin/create_groupquiz_activity.php && chmod 755 /usr/local/bin/create_crucible_dashboard_blocks.php && chmod 755 /usr/local/bin/create_demo_activities.php && chmod 755 /usr/local/bin/import_competency_framework.php
 
 # Switch back to nobody for security
 USER nobody
