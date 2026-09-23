@@ -38,10 +38,11 @@ public static partial class BuilderExtensions
     /// was upgraded by hand past its pin: drop its database, or uninstall the plugin, before
     /// rebuilding it.
     /// </summary>
-    private static string MarketplacePluginsFor(string toolUserdebug, string boostUnion, string boostDark) =>
+    private static string MarketplacePluginsFor(string toolUserdebug, string boostUnion, string boostDark, string dynamicCohorts) =>
         $"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/{toolUserdebug}/download " +
         $"theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/{boostUnion}/download " +
-        $"local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/{boostDark}/download";
+        $"local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/{boostDark}/download " +
+        $"tool_dynamic_cohorts=https://marketplace.moodle.com/api/plugins/tool_dynamic_cohorts/versions/{dynamicCohorts}/download";
 
     public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
@@ -61,7 +62,8 @@ public static partial class BuilderExtensions
                 MarketplacePlugins: MarketplacePluginsFor(
                     toolUserdebug: "2025070100",
                     boostUnion: "2025041407",
-                    boostDark: "2026052400")),
+                    boostDark: "2026052400",
+                    dynamicCohorts: "2026031300")),
             // Moodle 5.2 test instance. Left out of AddAllApplications so it only
             // builds and appears in the dashboard when Launch__Moodle52 asks for it.
             new MoodleInstance(
@@ -77,10 +79,18 @@ public static partial class BuilderExtensions
                 IncludeWithAll: false,
                 // Versions the plugin API reports for branch 5.2 (boost_union v5.2-r8,
                 // boost_dark 1.3.7, userdebug v5.0.3 which spans through 5.2).
+                //
+                // dynamic_cohorts is the same id as the 5.0 instance: upstream ships one
+                // build for 4.4 through 5.1 and none for 5.2. It declares
+                // $plugin->supported = [404, 501], so 5.2 lists it as unsupported on the
+                // plugins check page, but $plugin->requires is only 2022112800 and
+                // 015-copy-plugins.sh unzips into the tree directly, so it installs and
+                // upgrades anyway. Move the pin to a real 5.2 release when there is one.
                 MarketplacePlugins: MarketplacePluginsFor(
                     toolUserdebug: "2025070300",
                     boostUnion: "2026042012",
-                    boostDark: "2026052400")),
+                    boostDark: "2026052400",
+                    dynamicCohorts: "2026031300")),
         };
 
         var enabled = instances
