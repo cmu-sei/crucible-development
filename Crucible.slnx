@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="Crucible.AppHost/Crucible.AppHost.csproj" />
+  <Project Path="tests/Crucible.AppHost.Config.Tests/Crucible.AppHost.Config.Tests.csproj" />
 
   <Folder Name="/Alloy/">
     <Project Path="/mnt/data/crucible/alloy/alloy.api/Alloy.Api/Alloy.Api.csproj" />
