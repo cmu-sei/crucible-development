@@ -149,6 +149,13 @@ configure_oauth2() {
 
   if [ -z "$EXISTING_ID" ]; then
   # ---- User field mappings (only on initial creation) ----
+  # Deliberately just sub:idnumber. The sso* profile fields block_crucible reads
+  # (ssoorg, ssogroups, ssorole, ssoteam, ssoworkrole) are written by its
+  # sync_keycloak_users scheduled task off the Keycloak admin API, which is the
+  # single source of truth for them. Mapping the same values from ID token claims
+  # here would add a second writer that only fires at login, so a group removed in
+  # Keycloak would not take effect until the user signed in again. Add a mapping
+  # here only for claims nothing else provisions.
   mappings="sub:idnumber"
 
   for m in $mappings; do
