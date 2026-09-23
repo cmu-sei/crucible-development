@@ -834,11 +834,23 @@ else
     log "AWS credentials not found, skipping Bedrock AI provider configuration"
 fi
 
-# On subsequent runs add admin user to the list of site admins
-ADMINUSERID=$(moosh user-list | grep admin@localhost | sed -e "s/admin.*(\([0-9]\)),.*/\1/")
-if [ -n "$ADMINUSERID" ]; then
-    log "Found user admin@localhost with ID: $ADMINUSERID and resetting siteadmins list"
-    php admin/cli/cfg.php --name=siteadmins --set="2,$ADMINUSERID"
-fi
+# On subsequent runs add admin user to the list of site admins.
+#
+# moosh prints one "username (id), email, fullname" line per user, so the id is
+# read off the line whose *username* is admin@localhost. Matching the email
+# anywhere in the line instead also matches every other account whose address
+# ends that way - crucible-admin@localhost and ogadmin@localhost both do - and a
+# per-line sed leaves those extra lines in the value, which then goes into
+# siteadmins verbatim and stops is_siteadmin() recognising the admin at all.
+ADMINUSERID=$(moosh user-list | sed -n 's/^admin@localhost (\([0-9][0-9]*\)),.*/\1/p' | head -n 1)
+case "$ADMINUSERID" in
+    "" | *[!0-9]*)
+        log "Could not read a numeric id for admin@localhost; leaving siteadmins alone"
+        ;;
+    *)
+        log "Found user admin@localhost with ID: $ADMINUSERID and resetting siteadmins list"
+        php admin/cli/cfg.php --name=siteadmins --set="2,$ADMINUSERID"
+        ;;
+esac
 
 log "Script completed successfully!"
