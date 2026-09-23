@@ -220,6 +220,20 @@ configure_lptmanager() {
   php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=competency_iri_prefix --set=https://niccs.cisa.gov/workforce-development/nice-framework/ksat/
 }
 
+# The NICE Framework, as the site's competency framework. A fresh container has
+# none, and without one aiplacement_competency's Classify drawer, tool_lptmanager
+# and the competency reports all have nothing to work with. NICE rather than an
+# invented framework because the competency_iri_prefix above already points at
+# NICCS, so the IRIs lptmanager sends to the LRS resolve.
+#
+# ~2170 competencies, so this takes a couple of minutes on a first boot. The
+# script no-ops once the framework is there.
+configure_nice_framework() {
+  echo "Ensuring NICE competency framework"
+  php /usr/local/bin/import_competency_framework.php \
+    --file=/usr/local/share/competency/nice-framework-v2.0.0.csv
+}
+
 configure_session_cookie() {
   echo "Configuring session cookie name"
 
@@ -781,6 +795,7 @@ configure_oauth2
 execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
 execute_section "lptmanager Configuration" configure_lptmanager
+execute_section "NICE Competency Framework" configure_nice_framework
 execute_section "Crucible Configuration" configure_crucible
 execute_section "Crucible Dashboard Blocks v2" configure_crucible_dashboard_blocks
 execute_section "cmi5launch Configuration" configure_cmi5launch
