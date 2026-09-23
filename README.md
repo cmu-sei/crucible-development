@@ -13,6 +13,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [Default Credentials](#default-credentials)
 - [Claude Code](#claude-code)
 - [Codex CLI](#codex-cli)
+- [OMP](#omp)
 - [Playwright Testing](#playwright-testing)
 - [GitHub CLI](#github-cli)
 - [Memory Optimization](#memory-optimization)
@@ -166,6 +167,8 @@ The config file is mounted to `/home/vscode/.aws/config` inside the container an
 
 Once the container is running with valid credentials, run `claude` in the terminal to start Claude Code.
 
+Each alias in the `/model` picker is pinned to a specific Bedrock model id by the `ANTHROPIC_*_MODEL` variables in `containerEnv` in `.devcontainer/devcontainer.json`, which is also where the labels the picker displays come from. Because those are repo-managed, a model change reaches everyone on their next container rebuild — pick whichever entry suits the task with `/model`. Do not add an `availableModels` allowlist to `~/.claude/settings.json`: it filters the picker down to the ids it lists, which makes pinned models silently disappear.
+
 ## Codex CLI
 
 The dev container installs the [Codex CLI](https://developers.openai.com/codex) with the official standalone installer and configures it to use AWS Bedrock by default.
@@ -176,19 +179,17 @@ Repo-level agent instructions live in `AGENTS.md`. `CLAUDE.md` is kept as a syml
 
 Personal Codex overrides belong in `/home/vscode/.codex/config.toml`. This file is not checked in and is stored in the `crucible-dev-codex` Docker volume, along with Codex sessions, history, auth, and package metadata. Do not edit `/etc/codex/config.toml` inside the container; it is repo-managed.
 
-The default Codex config uses:
+The default model and provider are set in `.devcontainer/codex/config.toml`, which documents why each value is what it is. Read that file rather than relying on a copy here; switch models for a session with `/model` or `codex --model`, or persistently in your own `~/.codex/config.toml`.
 
-```toml
-model = "openai.gpt-5.5"
-model_provider = "amazon-bedrock"
-
-[model_providers.amazon-bedrock.aws]
-region = "us-east-2"
-```
-
-AWS authentication uses the same `/home/vscode/.aws` mount described in [Claude Code](#claude-code), `AWS_BEARER_TOKEN_BEDROCK`, or the standard AWS SDK credential chain. Codex updates automatically on container start via `codex update`.
+AWS authentication uses the same `/home/vscode/.aws` mount described in [Claude Code](#claude-code), `AWS_BEARER_TOKEN_BEDROCK`, or the standard AWS SDK credential chain. The provider resolves its Region from `AWS_REGION`, set in `.devcontainer/devcontainer.json`. Codex updates automatically on container start via `codex update`.
 
 Once the container is running with valid Bedrock credentials, run `codex` in the terminal to start Codex CLI.
+
+## OMP
+
+The dev container also installs [OMP (Oh My Pi)](https://github.com/can1357/oh-my-pi), pinned to a checksum-verified release in `.devcontainer/Dockerfile`. It discovers Bedrock through the same AWS credential chain as the agents above and fetches its model catalog at runtime, so no model list is maintained in this repo.
+
+What is repo-managed is its choice of default: `.devcontainer/postcreate.sh` seeds OMP's `modelRoles` on first create, because OMP's own default trails the current generation. The seed is skipped once the setting exists, so a model you select yourself persists in `~/.omp/agent/config.yml` on the `crucible-dev-omp` volume and survives rebuilds. Change it in the TUI, or with `omp config set modelRoles '{"default":"<model-id>"}'`; `omp models` lists what is available.
 
 ## Playwright Testing
 

@@ -88,6 +88,17 @@ for phptool in phpcs phpcbf; do
   fi
 done
 
+# Seed OMP model roles
+#
+# Seeded only when unset: ~/.omp is a named volume, so a role picked in the TUI (or here)
+# persists in ~/.omp/agent/config.yml and must survive later creates.
+if command -v omp > /dev/null && [ "$(omp config get modelRoles 2>/dev/null)" = "{}" ]; then
+  echo "Seeding OMP model roles..."
+  omp config set modelRoles \
+    '{"default":"us.anthropic.claude-opus-5-5","smol":"us.anthropic.claude-haiku-4-5-20251001-v1:0"}' \
+    || echo "Warning: could not seed OMP model roles; run 'omp config set modelRoles ...' by hand" >&2
+fi
+
 # Generate dotnet dev-cert. Needed if not using aspire extension launch profiles
 dotnet dev-certs https --trust
 

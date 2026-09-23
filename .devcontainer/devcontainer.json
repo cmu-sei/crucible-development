@@ -58,7 +58,25 @@
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.
     "CLAUDE_CODE_USE_BEDROCK": "1", // vars for Claude Code using Amazon Bedrock
     "AWS_REGION": "us-east-1",
+    // Claude Code's model pins. On Bedrock each alias in the /model picker resolves to
+    // whatever id is pinned here, and the _NAME/_DESCRIPTION pairs are what the picker
+    // shows instead of the raw Bedrock id.
+    "ANTHROPIC_DEFAULT_FABLE_MODEL": "us.anthropic.claude-fable-5-1",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL_NAME": "Fable",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL_DESCRIPTION": "Fable 5.1 · Most capable",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "us.anthropic.claude-opus-5-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME": "Opus",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL_DESCRIPTION": "Opus 5.5 · Deep reasoning for complex work",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "us.anthropic.claude-sonnet-5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME": "Sonnet",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION": "Sonnet 5 · Best for everyday tasks",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME": "Haiku",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL_DESCRIPTION": "Haiku 4.5 · Fastest",
+    // One extra picker entry beyond the four aliases, for long sessions.
+    "ANTHROPIC_CUSTOM_MODEL_OPTION": "opus[1m]",
+    "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME": "Opus (1M context)",
+    "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION": "Opus 5.5 for long sessions",
     "SSL_CERT_DIR": "/usr/local/share/ca-certificates/:/etc/ssl/certs/:/home/vscode/.aspnet/dev-certs/trust/",
     // Set on the host by .github/workflows/devcontainer-ci.yml to skip external
     // repo cloning in CI. Resolves to an empty string on developer machines.
