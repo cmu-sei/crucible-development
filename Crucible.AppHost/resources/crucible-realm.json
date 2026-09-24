@@ -490,6 +490,38 @@
       "realmRoles": [],
       "clientRoles": {},
       "subGroups": []
+    },
+    {
+      "name": "cyber-managers",
+      "path": "/cyber-managers",
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
+    },
+    {
+      "name": "lab-builders",
+      "path": "/lab-builders",
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
+    },
+    {
+      "name": "curriculum-developers",
+      "path": "/curriculum-developers",
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
+    },
+    {
+      "name": "ex-cyber-managers",
+      "path": "/ex-cyber-managers",
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {},
+      "subGroups": []
     }
   ],
   "defaultRole": {
@@ -4733,6 +4765,10 @@
       "firstName": "Content",
       "lastName": "Developer",
       "attributes": {
+        "organization": [
+          "Demo Org",
+          "Second Org"
+        ],
         "terms_and_conditions": [
           "1733933674"
         ]
@@ -4754,7 +4790,9 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [
+        "/curriculum-developers"
+      ]
     },
     {
       "id": "3d8332fa-2e35-4823-b83f-732eb9483690",
@@ -4798,6 +4836,9 @@
       "firstName": "Demo",
       "lastName": "User",
       "attributes": {
+        "organization": [
+          "Demo Org"
+        ],
         "terms_and_conditions": [
           "1742337017"
         ]
@@ -4819,7 +4860,8 @@
       ],
       "notBefore": 0,
       "groups": [
-        "/White Cell"
+        "/White Cell",
+        "/cyber-managers"
       ]
     },
     {
@@ -4832,6 +4874,9 @@
       "firstName": "Rangetech",
       "lastName": "Admin",
       "attributes": {
+        "organization": [
+          "Demo Org Reserve"
+        ],
         "terms_and_conditions": [
           "1733932342"
         ]
@@ -4852,7 +4897,9 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [
+        "/lab-builders"
+      ]
     },
     {
       "id": "6b2541f3-7b60-4c09-ba0a-d421bfbabb46",
@@ -4906,6 +4953,26 @@
       "groups": []
     },
     {
+      "username": "service-account-moodle-client",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": false,
+      "serviceAccountClientId": "moodle-client",
+      "credentials": [],
+      "disableableCredentialTypes": [],
+      "requiredActions": [],
+      "realmRoles": [
+        "default-roles-crucible"
+      ],
+      "clientRoles": {
+        "realm-management": [
+          "view-users"
+        ]
+      },
+      "notBefore": 0,
+      "groups": []
+    },
+    {
       "id": "f7401957-4717-43ea-95a0-e05393252b17",
       "createdTimestamp": 1697743622380,
       "username": "user1",
@@ -4915,6 +4982,9 @@
       "firstName": "User1",
       "lastName": "User",
       "attributes": {
+        "organization": [
+          "Demo Org"
+        ],
         "terms_and_conditions": [
           "1703175332"
         ]
@@ -4935,7 +5005,10 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [
+        "/cyber-managers",
+        "/lab-builders"
+      ]
     },
     {
       "id": "c0ce45b2-5634-4f5e-9a6a-87a0738e814c",
@@ -4946,6 +5019,9 @@
       "emailVerified": false,
       "firstName": "user2",
       "attributes": {
+        "organization": [
+          "Demo Org"
+        ],
         "terms_and_conditions": [
           "1710960650"
         ]
@@ -4966,7 +5042,9 @@
         "default-roles-crucible"
       ],
       "notBefore": 0,
-      "groups": []
+      "groups": [
+        "/ex-cyber-managers"
+      ]
     }
   ]
 }

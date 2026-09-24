@@ -149,6 +149,13 @@ configure_oauth2() {
 
   if [ -z "$EXISTING_ID" ]; then
   # ---- User field mappings (only on initial creation) ----
+  # Deliberately just sub:idnumber. The sso* profile fields block_crucible reads
+  # (ssoorg, ssogroups, ssorole, ssoteam, ssoworkrole) are written by its
+  # sync_keycloak_users scheduled task off the Keycloak admin API, which is the
+  # single source of truth for them. Mapping the same values from ID token claims
+  # here would add a second writer that only fires at login, so a group removed in
+  # Keycloak would not take effect until the user signed in again. Add a mapping
+  # here only for claims nothing else provisions.
   mappings="sub:idnumber"
 
   for m in $mappings; do
@@ -218,6 +225,29 @@ configure_lptmanager() {
   php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_api_secret --set=defaultsecret
   php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=enable_lrs_sync --set=1
   php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=competency_iri_prefix --set=https://niccs.cisa.gov/workforce-development/nice-framework/ksat/
+}
+
+# The NICE Framework, as the site's competency framework. A fresh container has
+# none, and without one aiplacement_competency's Classify drawer, tool_lptmanager
+# and the competency reports all have nothing to work with. NICE rather than an
+# invented framework because the competency_iri_prefix above already points at
+# NICCS, so the IRIs lptmanager sends to the LRS resolve.
+#
+# ~2170 competencies, so this takes a couple of minutes on a first boot. The
+# script no-ops once the framework is there.
+configure_nice_framework() {
+  echo "Ensuring NICE competency framework"
+  php /usr/local/bin/import_competency_framework.php \
+    --file=/usr/local/share/competency/nice-framework-v2.0.0.csv
+}
+
+# The organization categories and category scoped roles block_crucible's org role
+# sync assigns between. It creates neither side itself: an org with no matching
+# top level category is skipped, and a missing role shortname is warned about and
+# skipped, so without these the sync runs and does nothing.
+configure_org_roles() {
+  echo "Ensuring org categories and roles"
+  php /usr/local/bin/create_org_roles.php
 }
 
 configure_session_cookie() {
@@ -725,7 +755,9 @@ configure_oauth2
 execute_section "Enable Oauth2 Plugin" enable_oauth2_plugin
 execute_section "xAPI Configuration" configure_xapi
 execute_section "lptmanager Configuration" configure_lptmanager
+execute_section "NICE Competency Framework" configure_nice_framework
 execute_section "Crucible Configuration" configure_crucible
+execute_section "Org Categories and Roles" configure_org_roles
 execute_section "Crucible Dashboard Blocks v2" configure_crucible_dashboard_blocks
 execute_section "cmi5launch Configuration" configure_cmi5launch
 execute_section "TopoMojo Configuration" configure_topomojo
@@ -745,11 +777,23 @@ else
     log "AWS credentials not found, skipping Bedrock AI provider configuration"
 fi
 
-# On subsequent runs add admin user to the list of site admins
-ADMINUSERID=$(moosh user-list | grep admin@localhost | sed -e "s/admin.*(\([0-9]\)),.*/\1/")
-if [ -n "$ADMINUSERID" ]; then
-    log "Found user admin@localhost with ID: $ADMINUSERID and resetting siteadmins list"
-    php admin/cli/cfg.php --name=siteadmins --set="2,$ADMINUSERID"
-fi
+# On subsequent runs add admin user to the list of site admins.
+#
+# moosh prints one "username (id), email, fullname" line per user, so the id is
+# read off the line whose *username* is admin@localhost. Matching the email
+# anywhere in the line instead also matches every other account whose address
+# ends that way - crucible-admin@localhost and ogadmin@localhost both do - and a
+# per-line sed leaves those extra lines in the value, which then goes into
+# siteadmins verbatim and stops is_siteadmin() recognising the admin at all.
+ADMINUSERID=$(moosh user-list | sed -n 's/^admin@localhost (\([0-9][0-9]*\)),.*/\1/p' | head -n 1)
+case "$ADMINUSERID" in
+    "" | *[!0-9]*)
+        log "Could not read a numeric id for admin@localhost; leaving siteadmins alone"
+        ;;
+    *)
+        log "Found user admin@localhost with ID: $ADMINUSERID and resetting siteadmins list"
+        php admin/cli/cfg.php --name=siteadmins --set="2,$ADMINUSERID"
+        ;;
+esac
 
 log "Script completed successfully!"
