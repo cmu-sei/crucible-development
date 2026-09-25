@@ -52,6 +52,9 @@
     "ghcr.io/cmu-sei/devcontainer-features/claude:1.0": {},
     "ghcr.io/cmu-sei/devcontainer-features/codex:1.0": {},
     "ghcr.io/cmu-sei/devcontainer-features/herdr:1.0": {},
+    // Also installs the AWS CLI, its shell completions and the AWS Toolkit extension
+    // through its dependency on ghcr.io/devcontainers/features/aws-cli.
+    "ghcr.io/cmu-sei/devcontainer-features/aws-session-manager-plugin:1.0": {},
     // Chromium and Firefox OS packages for crucible-tests, whose own browser builds postcreate.sh
     // installs; Chromium for playwright-cli; the headed-browser desktop on non-WSL hosts.
     "ghcr.io/cmu-sei/devcontainer-features/playwright:1.0": {
@@ -140,7 +143,6 @@
         "shardulm94.trailing-spaces",
         "shd101wyy.markdown-preview-enhanced",
         "pflannery.vscode-versionlens",
-        "AmazonWebServices.aws-toolkit-vscode",
         "bmewburn.vscode-intelephense-client",
         "xdebug.php-debug"
       ],

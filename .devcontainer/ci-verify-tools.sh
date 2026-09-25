@@ -37,6 +37,7 @@ check terraform  terraform version
 check go         go version
 check task       task --version
 check aws        aws --version
+check ssm-plugin session-manager-plugin --version
 check vale       vale --version
 check playwright playwright-cli --version
 # The playwright feature skips its desktop on WSL, which displays headed browsers through WSLg.

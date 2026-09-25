@@ -3,7 +3,6 @@ FROM mcr.microsoft.com/devcontainers/dotnet:2.0.5-10.0-noble
 
 ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
-ARG AWS_CLI_VERSION="2.32.9"
 
 # Switch to root for configuring image
 USER root
@@ -94,33 +93,6 @@ RUN set -eux; \
 RUN install -d -o vscode -g vscode /home/vscode/.omp /home/vscode/.data \
     /home/vscode/.data/claude /home/vscode/.data/codex /home/vscode/.data/herdr \
     /home/vscode/.data/playwright /home/vscode/.data/shell-history
-
-# Install AWS CLI with Session Manager Plugin
-RUN case "${TARGETARCH}" in \
-    amd64)  AWSCLI_PKG="awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip" \
-    SSM_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" ;; \
-    arm64)  AWSCLI_PKG="awscli-exe-linux-aarch64-${AWS_CLI_VERSION}.zip" \
-    SSM_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_arm64/session-manager-plugin.deb" ;; \
-    *)      echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
-    esac && \
-    curl "https://awscli.amazonaws.com/${AWSCLI_PKG}" -o /tmp/awscliv2.zip && \
-    unzip -q /tmp/awscliv2.zip -d /tmp && \
-    /tmp/aws/install --update && \
-    curl "${SSM_URL}" -o /tmp/session-manager-plugin.deb && \
-    dpkg -i /tmp/session-manager-plugin.deb && \
-    rm -rf /tmp/awscliv2.zip /tmp/aws /tmp/session-manager-plugin.deb
-
-# Configure AWS CLI bash completion
-RUN echo '' >> /home/vscode/.bashrc && \
-    echo '# AWS CLI completion' >> /home/vscode/.bashrc && \
-    echo 'bind "set show-all-if-ambiguous on"' >> /home/vscode/.bashrc && \
-    echo 'complete -C /usr/local/bin/aws_completer aws' >> /home/vscode/.bashrc
-
-# Configure AWS CLI zsh completion (using bashcompinit for AWS CLI v2 compatibility)
-RUN echo '' >> /home/vscode/.zshrc && \
-    echo '# AWS CLI completion' >> /home/vscode/.zshrc && \
-    echo 'autoload -Uz bashcompinit && bashcompinit' >> /home/vscode/.zshrc && \
-    echo 'complete -C /usr/local/bin/aws_completer aws' >> /home/vscode/.zshrc
 
 # Codex system config is bind-mounted into this directory at container runtime.
 RUN mkdir -p /etc/codex
