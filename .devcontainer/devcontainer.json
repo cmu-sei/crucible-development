@@ -1,6 +1,9 @@
 {
   "name": "Crucible Development",
-  "runArgs": ["--name", "crucible-dev"],
+  "runArgs": [
+    "--name",
+    "crucible-dev"
+  ],
   "build": {
     "dockerfile": "Dockerfile"
   },
@@ -45,8 +48,6 @@
       "installYarnUsingApt": false
     },
     "ghcr.io/jaggedmountain/k-alias/k-alias:1": {},
-    // These keep their state under ~/.data (see the mounts below) and pin their tool versions;
-    // bump a tool with the feature's "version" option instead of updating it in place.
     "ghcr.io/cmu-sei/devcontainer-features/shell-history:1.0": {},
     "ghcr.io/cmu-sei/devcontainer-features/claude:1.0": {},
     "ghcr.io/cmu-sei/devcontainer-features/codex:1.0": {},

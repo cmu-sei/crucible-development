@@ -43,7 +43,8 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     php-xml \
     php-curl \
     php-zip \
-    php-mbstring
+    php-mbstring \
+    libnss3-tools
 
 # Install Composer, used to install the Moodle coding standard in postcreate.sh
 # The release phar can be checksum-pinned; getcomposer.org/installer cannot. It is architecture
