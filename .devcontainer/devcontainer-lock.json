@@ -1,5 +1,13 @@
 {
   "features": {
+    "ghcr.io/cmu-sei/devcontainer-features/aws-session-manager-plugin:1.0": {
+      "version": "1.0.0",
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/aws-session-manager-plugin@sha256:b69b4b5e3c93efda749022719adef9c7bec7aa73936cf3d200f739ae0648ef6b",
+      "integrity": "sha256:b69b4b5e3c93efda749022719adef9c7bec7aa73936cf3d200f739ae0648ef6b",
+      "dependsOn": [
+        "ghcr.io/devcontainers/features/aws-cli:1"
+      ]
+    },
     "ghcr.io/cmu-sei/devcontainer-features/claude:1.0": {
       "version": "1.0.0",
       "resolved": "ghcr.io/cmu-sei/devcontainer-features/claude@sha256:0d37864a6cacffdbf4e400c498f630b3128d9f3ce1548fd5e5a358850f12cb47",
@@ -34,6 +42,11 @@
       "version": "1.0.2",
       "resolved": "ghcr.io/devcontainers-extra/features/markdownlint-cli2@sha256:6e420b26373f1d9bbcd8930d792e5656d9e624495868e775967fe7c3e29de90b",
       "integrity": "sha256:6e420b26373f1d9bbcd8930d792e5656d9e624495868e775967fe7c3e29de90b"
+    },
+    "ghcr.io/devcontainers/features/aws-cli:1": {
+      "version": "1.1.4",
+      "resolved": "ghcr.io/devcontainers/features/aws-cli@sha256:1f93c8315b7a6d76982ebb2269f8b0d50413fc0f965c032edf4aee0caceb73ef",
+      "integrity": "sha256:1f93c8315b7a6d76982ebb2269f8b0d50413fc0f965c032edf4aee0caceb73ef"
     },
     "ghcr.io/devcontainers/features/common-utils:2.5": {
       "version": "2.5.7",
