@@ -5,17 +5,23 @@
 # Show git dirty status in zsh prompt
 git config devcontainers-theme.show-dirty 1
 
-mkdir -p /mnt/data/terraform/root /home/vscode/.codex
+mkdir -p /mnt/data/terraform/root
 sudo chown -R $(whoami): /home/vscode/.microsoft
 sudo chown -R $(whoami): /mnt/data/
-sudo chown -R $(whoami): /home/vscode/.claude
-sudo chown -R $(whoami): /home/vscode/.codex
 sudo chown -R $(whoami): /home/vscode/.nuget
-sudo chown -R $(whoami): /home/vscode/.cache/ms-playwright
 sudo chown -R $(whoami): /home/vscode/.npm
 sudo chown -R $(whoami): /home/vscode/.config/gh
 mkdir -p /home/vscode/.cache/composer
 sudo chown -R $(whoami): /home/vscode/.config/composer /home/vscode/.cache/composer
+
+# The shell-history feature writes .zsh_history; before it, the Dockerfile wrote zsh_history to
+# this same volume. Fold the old file in once, ahead of anything already written to the new one.
+HIST_DIR=/home/vscode/.data/shell-history
+if [ -f "${HIST_DIR}/zsh_history" ]; then
+  cat "${HIST_DIR}/zsh_history" "${HIST_DIR}/.zsh_history" 2>/dev/null > "${HIST_DIR}/.zsh_history.tmp" \
+    && mv -f "${HIST_DIR}/.zsh_history.tmp" "${HIST_DIR}/.zsh_history" \
+    && rm -f "${HIST_DIR}/zsh_history"
+fi
 
 scripts/clone-repos.sh
 scripts/add-moodle-mounts.sh
@@ -46,14 +52,6 @@ ANGULAR_PID=$!
 ) &
 MOODLE_CS_PID=$!
 
-if [ ! -x /home/vscode/.local/bin/codex ]; then
-  (
-    set -euo pipefail
-    curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
-  ) &
-  CODEX_PID=$!
-fi
-
 # Install Playwright test dependencies in the dev container
 PLAYWRIGHT_TESTING_DIR="/mnt/data/crucible/crucible-tests"
 if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
@@ -72,7 +70,7 @@ if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
   PLAYWRIGHT_SETUP_PID=$!
 fi
 
-wait $DOTNET_EF_PID $ANGULAR_PID ${CODEX_PID:-} ${PLAYWRIGHT_AGENTS_PID:-} $GH_STACK_PID $MOODLE_CS_PID
+wait $DOTNET_EF_PID $ANGULAR_PID ${PLAYWRIGHT_SETUP_PID:-} $GH_STACK_PID $MOODLE_CS_PID
 echo "Tool installs complete."
 
 # moodle-cs puts phpcs and phpcbf in the composer global bin dir, which is on no PATH. Symlink
@@ -126,23 +124,9 @@ chmod 600 "${KEY_FILE}"
 sudo cp "${CERT_FILE}" /usr/local/share/ca-certificates/custom/crucible-dev.crt
 sudo update-ca-certificates
 
-# Playwright's Chromium uses the user's NSS database on Linux, so OS-level
-# trust alone is not enough for generated dev certs or corporate root CAs.
+# The playwright feature imports these into Chromium's NSS trust store at post-start, after
+# this script has added crucible-dev.crt.
 CUSTOM_CERT_SOURCE="/usr/local/share/ca-certificates/custom"
-NSSDB="${HOME}/.pki/nssdb"
-mkdir -p "${NSSDB}"
-if [ ! -f "${NSSDB}/cert9.db" ]; then
-  certutil -N -d "sql:${NSSDB}" --empty-password
-fi
-
-if compgen -G "${CUSTOM_CERT_SOURCE}"'/*.crt' > /dev/null; then
-  for cert in "${CUSTOM_CERT_SOURCE}"/*.crt; do
-    nickname="$(basename "${cert}" .crt)"
-    certutil -D -d "sql:${NSSDB}" -n "${nickname}" >/dev/null 2>&1 || true
-    certutil -A -d "sql:${NSSDB}" -n "${nickname}" -t "C,," -i "${cert}"
-  done
-  echo "Imported custom CA certificates into Chromium NSS trust store."
-fi
 
 echo "Crucible-dev certificates generated and trusted."
 
