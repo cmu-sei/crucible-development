@@ -39,6 +39,10 @@ check task       task --version
 check aws        aws --version
 check vale       vale --version
 check playwright playwright-cli --version
+# The playwright feature skips its desktop on WSL, which displays headed browsers through WSLg.
+if ! grep -qi microsoft /proc/version 2>/dev/null; then
+  check pw-desktop playwright-desktop status
+fi
 check claude     claude --version
 check codex      codex --version
 check omp        omp --version

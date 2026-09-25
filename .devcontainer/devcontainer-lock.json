@@ -1,5 +1,30 @@
 {
   "features": {
+    "ghcr.io/cmu-sei/devcontainer-features/claude:1.0": {
+      "version": "1.0.0",
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/claude@sha256:0d37864a6cacffdbf4e400c498f630b3128d9f3ce1548fd5e5a358850f12cb47",
+      "integrity": "sha256:0d37864a6cacffdbf4e400c498f630b3128d9f3ce1548fd5e5a358850f12cb47"
+    },
+    "ghcr.io/cmu-sei/devcontainer-features/codex:1.0": {
+      "version": "1.0.0",
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/codex@sha256:27cc875a1105f181a501b5e6edae7e44cb5f12ed821c09e01a1371561dac0e41",
+      "integrity": "sha256:27cc875a1105f181a501b5e6edae7e44cb5f12ed821c09e01a1371561dac0e41"
+    },
+    "ghcr.io/cmu-sei/devcontainer-features/herdr:1.0": {
+      "version": "1.0.0",
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/herdr@sha256:427a18f70dc1f28149f8373c1fb4795baba5af8d6a69956016428317249ec505",
+      "integrity": "sha256:427a18f70dc1f28149f8373c1fb4795baba5af8d6a69956016428317249ec505"
+    },
+    "ghcr.io/cmu-sei/devcontainer-features/playwright:1.0": {
+      "version": "1.0.0",
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/playwright@sha256:897edcdf53bc65303ac7d3f0501a41dff87fc6fdd14ff93b24070932f70a09eb",
+      "integrity": "sha256:897edcdf53bc65303ac7d3f0501a41dff87fc6fdd14ff93b24070932f70a09eb"
+    },
+    "ghcr.io/cmu-sei/devcontainer-features/shell-history:1.0": {
+      "version": "1.0.0",
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/shell-history@sha256:c015634a823ad45f6b1481cccfdb82a818ad48ff7b056d0d37444d0620f3a444",
+      "integrity": "sha256:c015634a823ad45f6b1481cccfdb82a818ad48ff7b056d0d37444d0620f3a444"
+    },
     "ghcr.io/devcontainers-extra/features/go-task:1.0": {
       "version": "1.0.6",
       "resolved": "ghcr.io/devcontainers-extra/features/go-task@sha256:4d1db153919976cadd3209ca05d655a761a01707767716994dad677b4538dc1b",
