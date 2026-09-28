@@ -53,7 +53,7 @@
       "source": "richlander/dotnet-inspect",
       "sourceType": "github",
       "skillPath": "skills/dotnet-inspect/SKILL.md",
-      "computedHash": "73227c4be0d67e9127fbb1f8b93c8da7ac492f2190922902ffb5433e871a4c27"
+      "computedHash": "abaa7852df0d4ecd64d09938a45daad2c7f71a35e9b5ccba2431216297deddec"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
