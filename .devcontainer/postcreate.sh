@@ -14,6 +14,7 @@ sudo chown -R $(whoami): /home/vscode/.nuget
 sudo chown -R $(whoami): /home/vscode/.cache/ms-playwright
 sudo chown -R $(whoami): /home/vscode/.npm
 sudo chown -R $(whoami): /home/vscode/.config/gh
+sudo chown -R $(whoami): /home/vscode/.ssh && chmod 700 /home/vscode/.ssh
 mkdir -p /home/vscode/.cache/composer
 sudo chown -R $(whoami): /home/vscode/.config/composer /home/vscode/.cache/composer
 

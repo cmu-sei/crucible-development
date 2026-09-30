@@ -19,10 +19,16 @@
     Hyper-V network switch (default: Default Switch)
 .PARAMETER ProxmoxISO
     Path to Proxmox ISO file (default: auto-detect in repo root)
+.PARAMETER Generation
+    Hyper-V VM generation (default: 1). Generation 1 attaches the installer ISO
+    over IDE; on Generation 2 (SCSI) the Proxmox installer can fail with
+    "no device with valid ISO found"
 .PARAMETER SkipVMCreation
     Skip VM creation, only setup port forwarding
 .EXAMPLE
     .\scripts\setup-proxmox-windows.ps1
+.EXAMPLE
+    .\scripts\setup-proxmox-windows.ps1 -Generation 2
 .EXAMPLE
     .\scripts\setup-proxmox-windows.ps1 -SkipVMCreation
 #>
@@ -35,6 +41,8 @@ param(
     [int]$DiskSize = 100,
     [string]$SwitchName = "Default Switch",
     [string]$ProxmoxISO = "",
+    [ValidateSet(1, 2)]
+    [int]$Generation = 1,
     [switch]$SkipVMCreation
 )
 
@@ -165,6 +173,7 @@ function Create-ProxmoxVM {
     Write-Host "  Processors: $ProcessorCount"
     Write-Host "  Disk Size: ${DiskSize}GB"
     Write-Host "  Network Switch: $SwitchName"
+    Write-Host "  Generation: $Generation"
     Write-Host ""
 
     # Check if Hyper-V is available
@@ -266,7 +275,7 @@ function Create-ProxmoxVM {
     $vm = New-VM -Name $VMName `
         -Path $VMPath `
         -MemoryStartupBytes $MemoryBytes `
-        -Generation 2 `
+        -Generation $Generation `
         -SwitchName $SwitchName
 
     # Configure VM
@@ -274,7 +283,9 @@ function Create-ProxmoxVM {
     Set-VMProcessor -VM $vm -Count $ProcessorCount
     Set-VMProcessor -VM $vm -ExposeVirtualizationExtensions $true  # Nested virtualization
     Set-VMMemory -VM $vm -DynamicMemoryEnabled $false
-    Set-VMFirmware -VM $vm -EnableSecureBoot Off
+    if ($Generation -eq 2) {
+        Set-VMFirmware -VM $vm -EnableSecureBoot Off
+    }
     Set-VM -VM $vm -CheckpointType Disabled
 
     # Create virtual hard disk
@@ -283,14 +294,23 @@ function Create-ProxmoxVM {
     New-VHD -Path $vhdPath -SizeBytes $DiskSizeBytes -Dynamic | Out-Null
     Add-VMHardDiskDrive -VM $vm -Path $vhdPath
 
-    # Add DVD drive and mount ISO
+    # Mount ISO; Generation 1 VMs come with an empty IDE DVD drive, so reuse it
     Write-Host "Mounting Proxmox ISO..." -ForegroundColor Cyan
-    Add-VMDvdDrive -VM $vm -Path $ProxmoxISO
+    $dvd = Get-VMDvdDrive -VM $vm
+    if ($dvd) {
+        Set-VMDvdDrive -VMDvdDrive $dvd -Path $ProxmoxISO
+    } else {
+        Add-VMDvdDrive -VM $vm -Path $ProxmoxISO
+        $dvd = Get-VMDvdDrive -VM $vm
+    }
 
     # Set boot order (DVD first, then HD)
-    $dvd = Get-VMDvdDrive -VM $vm
-    $hd = Get-VMHardDiskDrive -VM $vm
-    Set-VMFirmware -VM $vm -BootOrder $dvd, $hd
+    if ($Generation -eq 2) {
+        $hd = Get-VMHardDiskDrive -VM $vm
+        Set-VMFirmware -VM $vm -BootOrder $dvd, $hd
+    } else {
+        Set-VMBios -VM $vm -StartupOrder @("CD", "IDE", "LegacyNetworkAdapter", "Floppy")
+    }
 
     Write-Host ""
     Write-Host "VM created successfully!" -ForegroundColor Green
@@ -334,7 +354,7 @@ try {
         Write-Host "   - Set timezone/keyboard"
         Write-Host "   - Set root password"
         Write-Host "   - Network: ACCEPT DHCP (note the IP address)"
-        Write-Host "   - Hostname: proxmox-ve.local"
+        Write-Host "   - Hostname: pve.local (setup-crucible-proxmox.sh expects node 'pve'; otherwise set PROXMOX_NODE)"
         Write-Host ""
         Write-Host "3. After installation, configure static IP:" -ForegroundColor Cyan
         Write-Host "   - Login to console as root"

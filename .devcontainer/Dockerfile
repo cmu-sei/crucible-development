@@ -14,9 +14,15 @@ RUN mkdir -p /etc/apt/keyrings && \
     echo "deb [signed-by=/etc/apt/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
 
 # Custom Cert Support
+# COPY preserves source file modes, and root CAs dropped in by hand are often
+# 0600 (e.g. a cert exported by `dotnet dev-certs`). These are public
+# certificates, so force them world-readable: non-root tooling globs this
+# directory (postcreate.sh's NSS import, minikube/start-minikube.sh's cert
+# staging) and an unreadable file fails the whole glob.
 COPY ./certs /usr/local/share/ca-certificates/custom/
 RUN find /usr/local/share/ca-certificates/custom -type f ! -name '*.crt' -delete \
-    && if find /usr/local/share/ca-certificates/custom -type f -name '*.crt' -print -quit | grep -q .; then \
+    && chmod 0644 /usr/local/share/ca-certificates/custom/*.crt 2>/dev/null || true; \
+    if find /usr/local/share/ca-certificates/custom -type f -name '*.crt' -print -quit | grep -q .; then \
     update-ca-certificates; \
     fi
 

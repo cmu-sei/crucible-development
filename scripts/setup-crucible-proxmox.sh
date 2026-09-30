@@ -240,12 +240,14 @@ load_config() {
 # includes a repository package index for pve-manager. The latter catches a common
 # fresh-install problem: an enterprise source is configured without credentials, so
 # the installed PVE version is the only candidate and an upgrade cannot proceed.
+# Hosts without an active subscription are switched to the pve-no-subscription
+# repository; hosts with one are left alone so a broken enterprise setup is reported.
 check_proxmox_prerequisites() {
     log_step "Checking Proxmox VE version and package repository..."
 
     local output
     if ! output=$(ssh -i "$SSH_KEY_PATH" -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
-        "$PROXMOX_USER@$PROXMOX_HOST" bash <<'CHECKEOF'
+        "$PROXMOX_USER@$PROXMOX_HOST" bash 2>&1 <<'CHECKEOF'
 set -euo pipefail
 
 pve_version="$(pveversion | sed -n 's#^pve-manager/\([^/]*\)/.*#\1#p')"
@@ -260,10 +262,46 @@ if [ "$pve_major" -lt 9 ]; then
     exit 1
 fi
 
-if ! apt-cache policy pve-manager | grep -Eq '^[[:space:]]*[0-9]+[[:space:]]+https?://'; then
-    echo "No package repository candidate for pve-manager is available in the local APT cache." >&2
-    echo "Configure working Proxmox Enterprise access or the no-subscription repository, then run apt update." >&2
-    exit 1
+has_pve_candidate() {
+    # Capture first: under pipefail, grep -q exiting early SIGPIPEs apt-cache
+    local policy
+    policy="$(apt-cache policy pve-manager)"
+    grep -Eq '^[[:space:]]*[0-9]+[[:space:]]+https?://' <<<"$policy"
+}
+
+if ! has_pve_candidate; then
+    if pvesubscription get 2>/dev/null | grep -Eqi '^status:[[:space:]]*active'; then
+        echo "No package repository candidate for pve-manager is available in the local APT cache." >&2
+        echo "This host has an active subscription; check its enterprise repository access, then run apt update." >&2
+        exit 1
+    fi
+
+    echo "No Proxmox subscription found; switching to the pve-no-subscription repository."
+    for sources in /etc/apt/sources.list.d/pve-enterprise.sources /etc/apt/sources.list.d/ceph.sources; do
+        [ -f "$sources" ] || continue
+        # Mark every stanza disabled; reversible by deleting the Enabled lines
+        sed -i '/^Enabled:/d; /^Types:/a Enabled: no' "$sources"
+        echo "  Disabled $sources"
+    done
+
+    codename="$(. /etc/os-release && echo "$VERSION_CODENAME")"
+    if ! grep -rqs 'pve-no-subscription' /etc/apt/sources.list /etc/apt/sources.list.d/; then
+        cat > /etc/apt/sources.list.d/proxmox.sources <<SOURCES
+Types: deb
+URIs: http://download.proxmox.com/debian/pve
+Suites: $codename
+Components: pve-no-subscription
+Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+SOURCES
+        echo "  Added /etc/apt/sources.list.d/proxmox.sources ($codename pve-no-subscription)"
+    fi
+
+    apt-get update -q >/dev/null || true
+    if ! has_pve_candidate; then
+        echo "pve-manager is still unavailable after enabling pve-no-subscription." >&2
+        echo "Check that the Proxmox host can reach download.proxmox.com, then run apt update." >&2
+        exit 1
+    fi
 fi
 
 printf 'Proxmox VE %s is ready for Crucible provisioning.\n' "$pve_version"
@@ -817,14 +855,18 @@ setup_proxmox_oidc() {
     KEYCLOAK_HOST="${KEYCLOAK_HOST:-}"
 
     if [ -z "$KEYCLOAK_HOST" ]; then
-        # For Proxmox OIDC, we need the Windows host IP (Hyper-V switch) not Docker IP
-        # Standard Hyper-V Default Switch uses x.x.16.1 gateway pattern
-        # Extract first 2 octets from PROXMOX_HOST and assume .16.1 gateway
-        # e.g., 172.29.24.139 -> 172.29.16.1 (Hyper-V Default Switch gateway)
-        local proxmox_subnet=$(echo "$PROXMOX_HOST" | cut -d. -f1-2)
-        KEYCLOAK_HOST="${proxmox_subnet}.16.1"
+        # For Proxmox OIDC, we need the Windows host IP (Hyper-V switch) not Docker IP.
+        # On the Default Switch that is the Proxmox host's default gateway; Windows
+        # picks the switch subnet at random, so ask Proxmox rather than guessing.
+        KEYCLOAK_HOST=$(ssh -i "$SSH_KEY_PATH" -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+            "$PROXMOX_USER@$PROXMOX_HOST" "ip -4 route show default | awk '{print \$3; exit}'" 2>/dev/null)
 
-        log_info "Auto-detected KEYCLOAK_HOST: $KEYCLOAK_HOST (Hyper-V Default Switch gateway)"
+        if [ -z "$KEYCLOAK_HOST" ]; then
+            log_warning "Could not read the Proxmox default gateway; set KEYCLOAK_HOST and re-run setup"
+            return 1
+        fi
+
+        log_info "Auto-detected KEYCLOAK_HOST: $KEYCLOAK_HOST (Proxmox default gateway)"
         log_info "If this is incorrect, set KEYCLOAK_HOST environment variable before running setup"
     fi
 
@@ -3547,7 +3589,6 @@ phase1_proxmox_infrastructure() {
 
     print_section "Phase 1/9: Proxmox Infrastructure Setup"
 
-    setup_proxmox_ssh || return 1
     setup_proxmox_console_cert || return 1
     setup_proxmox_nginx || return 1
     setup_proxmox_token || return 1
@@ -3664,6 +3705,8 @@ mode_setup() {
     echo "  Dry Run: $DRY_RUN"
     echo ""
 
+    # The preflight runs over SSH, so the key must be installed first
+    setup_proxmox_ssh || exit 1
     check_proxmox_prerequisites || exit 1
 
     if [ "$DRY_RUN" = "true" ]; then
