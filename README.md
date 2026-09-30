@@ -100,9 +100,9 @@ The default admin user credentials are:
 To speed up container rebuilds, several caches are stored in named Docker volumes and persist across rebuilds:
 
 - `crucible-dev-nuget` — NuGet package cache (`~/.nuget/packages`)
-- `crucible-dev-playwright` — Playwright browser binaries (`~/.cache/ms-playwright`)
+- `crucible-dev-playwright` — Playwright browser binaries (`~/.cache/ms-playwright`, which links to `~/.data/playwright`)
 - `crucible-dev-npm` — npm cache (`~/.npm`)
-- `crucible-dev-codex` — Codex sessions, history, configuration, auth, and package metadata (`~/.codex`)
+- `crucible-dev-codex` — Codex sessions, history, configuration, and auth (`~/.codex`, which links to `~/.data/codex`)
 
 If one of these caches becomes corrupted or you need a fully clean rebuild, remove the volume(s) before rebuilding the dev container:
 
@@ -168,13 +168,13 @@ Once the container is running with valid credentials, run `claude` in the termin
 
 ## Codex CLI
 
-The dev container installs the [Codex CLI](https://developers.openai.com/codex) with the official standalone installer and configures it to use AWS Bedrock by default.
+The dev container installs the [Codex CLI](https://developers.openai.com/codex) with the [cmu-sei `codex` dev container feature](https://github.com/cmu-sei/devcontainer-features/tree/main/src/codex) and configures it to use AWS Bedrock by default.
 
 Repo-managed Codex defaults live in `.devcontainer/codex/config.toml` and are mounted read-only at `/etc/codex/config.toml` inside the container. Because this is a bind mount, updates to the repo config are picked up after `git pull` and container restart.
 
 Repo-level agent instructions live in `AGENTS.md`. `CLAUDE.md` is kept as a symlink to `AGENTS.md` so Codex CLI and Claude Code use the same repository guidance.
 
-Personal Codex overrides belong in `/home/vscode/.codex/config.toml`. This file is not checked in and is stored in the `crucible-dev-codex` Docker volume, along with Codex sessions, history, auth, and package metadata. Do not edit `/etc/codex/config.toml` inside the container; it is repo-managed.
+Personal Codex overrides belong in `/home/vscode/.codex/config.toml`. This file is not checked in and is stored in the `crucible-dev-codex` Docker volume, along with Codex sessions, history, and auth. Do not edit `/etc/codex/config.toml` inside the container; it is repo-managed.
 
 The default Codex config uses:
 
@@ -253,12 +253,12 @@ Headed mode (visible browser windows) works differently depending on your platfo
 **Mac** -- There is no native display server, so a VNC-based virtual display is used. Start it on demand:
 
 ```bash
-scripts/desktop.sh start   # Start VNC/noVNC on display :0
-scripts/desktop.sh status  # Check if services are running
-scripts/desktop.sh stop    # Stop VNC services
+playwright-desktop start   # Start VNC/noVNC on display :1
+playwright-desktop status  # Check if services are running
+playwright-desktop stop    # Stop VNC services
 ```
 
-After starting, view the desktop at <http://localhost:6080> (password: `crucible`). Headed browsers (including the Playwright MCP server) will render to this virtual display.
+After starting, view the desktop at <http://localhost:6080> (password: `crucible`). Headed browsers (including the Playwright MCP server) will render to this virtual display. The desktop comes from the [cmu-sei `playwright` dev container feature](https://github.com/cmu-sei/devcontainer-features/tree/main/src/playwright), which also installs the browsers' system packages, `playwright-cli`, and trust for local CAs in Chromium.
 
 VNC services are **not** started automatically to conserve resources. They are only needed when running headed/UI mode tests or using the Playwright MCP server in headed mode.
 
