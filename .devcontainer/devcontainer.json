@@ -144,7 +144,8 @@
         "shd101wyy.markdown-preview-enhanced",
         "pflannery.vscode-versionlens",
         "bmewburn.vscode-intelephense-client",
-        "xdebug.php-debug"
+        "xdebug.php-debug",
+        "ms-vscode.live-server"
       ],
       "settings": {
         "editor.formatOnSave": true,
