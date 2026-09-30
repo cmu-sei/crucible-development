@@ -1,8 +1,7 @@
-model = "openai.gpt-5.5"
-model_provider = "amazon-bedrock"
-
-[model_providers.amazon-bedrock.aws]
-region = "us-east-2"
+model = "us.openai.gpt-6.1-sol"
+model_provider = "amazon-bedrock-runtime"
+model_reasoning_effort = "medium"
+sandbox_mode = "danger-full-access"
 
 [projects."/workspaces/crucible-development"]
 trust_level = "trusted"
