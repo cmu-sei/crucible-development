@@ -471,7 +471,7 @@ Moodle automatically configures itself based on which Crucible services are runn
 - Moodle (with optional Xdebug - see Moodle Configuration below)
 - Lrsql (Learning Record Store for xAPI)
 - Misp (threat intelligence platform)
-- PGAdmin (database administration)
+- PGAdmin (database administration; always listed in the dashboard, starts on demand unless enabled)
 - Docs (MkDocs documentation server)
 
 ## Shared UI Settings
