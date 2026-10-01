@@ -519,6 +519,35 @@ EOF
     log_success "SSH config updated - you can now use: ssh proxmox"
 }
 
+# Give Proxmox the same custom CAs the dev container trusts. Behind a TLS-inspecting
+# proxy (e.g. Zscaler) HTTPS downloads such as the Puppy ISO otherwise fail certificate
+# verification, while plain-HTTP and uninspected hosts work, so it looks host-specific.
+setup_proxmox_ca_trust() {
+    local ca_dir="/usr/local/share/ca-certificates/custom"
+    local remote_dir="/usr/local/share/ca-certificates/crucible"
+
+    log_step "Installing custom CA certificates on Proxmox..."
+
+    if ! compgen -G "$ca_dir/*.crt" >/dev/null; then
+        log_info "No custom CA certificates in $ca_dir; skipping"
+        return 0
+    fi
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would copy $ca_dir/*.crt to $remote_dir and run update-ca-certificates"
+        return 0
+    fi
+
+    if ! ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "mkdir -p $remote_dir" ||
+       ! scp -q -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$ca_dir"/*.crt "$PROXMOX_USER@$PROXMOX_HOST:$remote_dir/" ||
+       ! ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "update-ca-certificates >/dev/null"; then
+        log_error "Failed to install custom CA certificates on Proxmox"
+        return 1
+    fi
+
+    log_success "Custom CA certificates trusted on Proxmox"
+}
+
 # Generate the self-signed TLS cert the reverse proxy serves.
 #
 # Deliberately NOT /etc/pve/local/pve-ssl.pem, for two reasons:
@@ -1176,7 +1205,7 @@ create_alpine_template() {
         return 0
     fi
 
-    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF'
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF' || return 1
 set -e
 
 TEMPLATE_ID=105
@@ -1196,7 +1225,7 @@ IMAGE_PATH="/var/lib/vz/template/iso/${ALPINE_CLOUD_IMAGE}"
 if [ ! -f "$IMAGE_PATH" ]; then
     echo "Downloading Alpine cloud image..."
     cd /var/lib/vz/template/iso
-    wget -q --show-progress "$ALPINE_CLOUD_URL" || exit 1
+    wget -q --show-progress --progress=dot:giga "$ALPINE_CLOUD_URL" || exit 1
 fi
 
 # Enable cloud-init snippets on local storage and add Alpine guest bootstrap.
@@ -1277,7 +1306,7 @@ create_tinycore_template() {
         return 0
     fi
 
-    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF'
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF' || return 1
 set -e
 
 TEMPLATE_ID=106
@@ -1289,7 +1318,7 @@ ISO_PATH="/var/lib/vz/template/iso/${ISO_NAME}"
 if [ ! -f "$ISO_PATH" ]; then
     echo "Downloading TinyCore ISO..."
     cd /var/lib/vz/template/iso
-    wget -q --show-progress "$ISO_URL" || exit 1
+    wget -q --show-progress --progress=dot:giga "$ISO_URL" || exit 1
 fi
 
 # Delete existing VM if exists
@@ -1330,7 +1359,7 @@ create_puppy_vm() {
         return 0
     fi
 
-    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF'
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF' || return 1
 set -e
 
 VMID=103
@@ -1342,7 +1371,7 @@ ISO_PATH="/var/lib/vz/template/iso/${ISO_NAME}"
 if [ ! -f "$ISO_PATH" ]; then
     echo "Downloading Puppy Linux ISO..."
     cd /var/lib/vz/template/iso
-    wget -q --show-progress "$ISO_URL" || exit 1
+    wget -q --show-progress --progress=dot:giga "$ISO_URL" || exit 1
 fi
 
 # Delete existing VM if exists
@@ -1420,9 +1449,6 @@ create_topomojo_workspace_basic() {
     fi
 
     log_success "TopoMojo workspace created: $workspace_id"
-
-    # Create Proxmox workspace template VMs (9001, 9002)
-    create_proxmox_workspace_templates
 
     # Create stock templates (once, globally)
     create_stock_templates_once "$token"
@@ -1737,62 +1763,61 @@ create_proxmox_workspace_templates() {
         return 0
     fi
 
-    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF'
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF' || return 1
 set -e
+
+# Create only what is missing: TopoMojo templates point at these VMs by name, so a
+# destroy/recreate here would pull them out from under existing workspaces.
 
 # VM 9001: TinyCore-ISO
 if qm status 9001 &>/dev/null; then
-    qm stop 9001 2>/dev/null || true
-    qm destroy 9001 2>/dev/null || true
+    echo "✓ Workspace template VM 9001 (TinyCore-ISO) already exists"
+else
+    qm create 9001 \
+        --name "TinyCore-ISO" \
+        --memory 2048 \
+        --cores 2 \
+        --net0 virtio,bridge=vmbr0 \
+        --scsihw virtio-scsi-pci \
+        --ostype l26
+
+    qm set 9001 --ide2 local:iso/TinyCore-current.iso,media=cdrom
+    qm set 9001 --boot "order=ide2"
+    qm template 9001
+
+    echo "✓ Created workspace template VM 9001 (TinyCore-ISO)"
 fi
-
-qm create 9001 \
-    --name "TinyCore-ISO" \
-    --memory 2048 \
-    --cores 2 \
-    --net0 virtio,bridge=vmbr0 \
-    --scsihw virtio-scsi-pci \
-    --ostype l26
-
-qm set 9001 --ide2 local:iso/TinyCore-current.iso,media=cdrom
-qm set 9001 --boot "order=ide2"
-qm template 9001
-
-echo "✓ Created workspace template VM 9001 (TinyCore-ISO)"
 
 # VM 9002: Alpine-Disk
 if qm status 9002 &>/dev/null; then
-    qm stop 9002 2>/dev/null || true
-    qm destroy 9002 2>/dev/null || true
+    echo "✓ Workspace template VM 9002 (Alpine-Disk) already exists"
+else
+    qm create 9002 \
+        --name "Alpine-Disk" \
+        --memory 2048 \
+        --cores 2 \
+        --net0 virtio,bridge=vmbr0 \
+        --scsihw virtio-scsi-pci \
+        --ostype l26
+
+    qm set 9002 --scsi0 local-lvm:10
+    qm set 9002 --ide2 local:iso/TinyCore-current.iso,media=cdrom
+    qm set 9002 --boot "order=scsi0;ide2"
+    qm template 9002
+
+    echo "✓ Created workspace template VM 9002 (Alpine-Disk)"
 fi
-
-qm create 9002 \
-    --name "Alpine-Disk" \
-    --memory 2048 \
-    --cores 2 \
-    --net0 virtio,bridge=vmbr0 \
-    --scsihw virtio-scsi-pci \
-    --ostype l26
-
-qm set 9002 --scsi0 local-lvm:10
-qm set 9002 --ide2 local:iso/TinyCore-current.iso,media=cdrom
-qm set 9002 --boot "order=scsi0;ide2"
-qm template 9002
-
-echo "✓ Created workspace template VM 9002 (Alpine-Disk)"
 
 # VM 9003: Puppy-Linux (clone from VM 103)
 if qm status 9003 &>/dev/null; then
-    qm stop 9003 2>/dev/null || true
-    qm destroy 9003 2>/dev/null || true
-fi
-
-if qm status 103 &>/dev/null; then
+    echo "✓ Workspace template VM 9003 (Puppy-Linux) already exists"
+elif qm status 103 &>/dev/null; then
     qm clone 103 9003 --name "Puppy-Linux" --full
     qm template 9003
     echo "✓ Created workspace template VM 9003 (Puppy-Linux)"
 else
     echo "⚠ VM 103 (puppy-test) not found, skipping Puppy template"
+    exit 1
 fi
 VMEOF
 
@@ -3589,6 +3614,7 @@ phase1_proxmox_infrastructure() {
 
     print_section "Phase 1/9: Proxmox Infrastructure Setup"
 
+    setup_proxmox_ca_trust || return 1
     setup_proxmox_console_cert || return 1
     setup_proxmox_nginx || return 1
     setup_proxmox_token || return 1
@@ -3626,6 +3652,11 @@ phase4_topomojo_workspaces() {
     create_topomojo_workspace_basic || log_warning "TopoMojo basic workspace creation failed"
     create_topomojo_workspace_with_variants || log_warning "TopoMojo workspace with variants creation failed"
     create_topomojo_workspace_penalty || log_warning "TopoMojo penalty test workspace creation failed"
+
+    # Last, because deleting a duplicate TopoMojo template above makes TopoMojo destroy
+    # the Proxmox VM it points at; this restores 9001-9003 even when every workspace
+    # already existed
+    create_proxmox_workspace_templates || log_warning "Proxmox workspace template VM creation failed"
 
     log_success "TopoMojo workspaces created"
 }

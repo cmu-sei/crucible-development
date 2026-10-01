@@ -538,6 +538,10 @@ public static partial class BuilderExtensions
             .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Oidc__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("Oidc__Audience", "topomojo")
+            // TopoMojo's default map only matches lowercase "administrator", but Keycloak sends
+            // "Administrator". Without this the realm admin is a plain user whenever another
+            // account (e.g. the Moodle service account) took the first-user Administrator slot.
+            .WithEnvironment("Oidc__UserRolesClaimMap__Administrator", "Administrator")
             .WithEnvironment("OpenApi__Client__AuthorizationUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("OpenApi__Client__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
             .WithEnvironment("OpenApi__Client__ClientId", "topomojo.api")

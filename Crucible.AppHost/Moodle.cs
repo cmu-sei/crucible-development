@@ -314,7 +314,7 @@ public static partial class BuilderExtensions
         }
 
         // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
-        var moodlePlugins = ReadMoodlePlugins(instance.WebRoot);
+        var moodlePlugins = ReadMoodlePlugins(builder.AppHostDirectory, instance.WebRoot);
         foreach (var plugin in moodlePlugins)
         {
             moodle.WithBindMount(plugin.HostPath, plugin.ContainerPath, isReadOnly: true);
@@ -390,10 +390,12 @@ public static partial class BuilderExtensions
         };
     }
 
-    private static List<MoodlePlugin> ReadMoodlePlugins(string webRoot)
+    private static List<MoodlePlugin> ReadMoodlePlugins(string appHostDirectory, string webRoot)
     {
         var plugins = new List<MoodlePlugin>();
-        var workspaceRoot = "/workspaces/crucible-development";
+        // Resolve from the AppHost rather than hardcoding the checkout name: the repo can be
+        // cloned under any folder (e.g. crucible-dev), and a miss silently mounts no plugins.
+        var workspaceRoot = Path.GetFullPath(Path.Combine(appHostDirectory, ".."));
         var reposJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.json");
         var reposLocalJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.local.json");
 
