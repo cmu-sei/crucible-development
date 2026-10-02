@@ -245,10 +245,18 @@ public static partial class BuilderExtensions
             .WithEnvironment("KC_HOSTNAME", "localhost")
             .WithEnvironment("KC_HTTPS_PORT", "8443")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
+            .WithEnvironment("KC_HOSTNAME_STRICT_BACKCHANNEL", "false")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
             .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
+
+        // The realm import only reaches a fresh database, so set crucible-admin's password and
+        // Administrator role on every launch; the API service identities below log in as it.
+        builder.AddExecutable("keycloak-service-account", "bash",
+            builder.AppHostDirectory,
+            $"{builder.AppHostDirectory}/../scripts/ensure-keycloak-service-account.sh")
+            .WaitFor(keycloak);
 
         return keycloak;
     }
@@ -348,8 +356,11 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "player.vm.api")
             .WithEnvironment("IdentityClient__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
             .WithEnvironment("IdentityClient__ClientId", "player.vm.admin")
-            .WithEnvironment("IdentityClient__UserName", "admin")
+            .WithEnvironment("IdentityClient__UserName", "crucible-admin")
             .WithEnvironment("IdentityClient__Password", "admin");
+
+        if (IsEnabled(playerMode))
+            vmApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
 
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
@@ -359,6 +370,7 @@ public static partial class BuilderExtensions
 
         var vmUiRoot = "/mnt/data/crucible/player/vm.ui";
 
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.json", overwrite: true);
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
         var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
@@ -425,7 +437,17 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "caster.api")
             .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
-            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
+            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true")
+            // Mount the caster-certs ConfigMap (created by minikube/start-minikube.sh) so terraform
+            // in the job pod trusts custom/corporate CAs (e.g. Zscaler) when reaching registry.terraform.io.
+            // terraform is a Go binary: SSL_CERT_DIR adds these dirs while the system bundle file is still loaded.
+            .WithEnvironment("Terraform__KubernetesJobs__ConfigMaps__0__Name", "caster-certs")
+            .WithEnvironment("Terraform__KubernetesJobs__ConfigMaps__0__MountPath", "/usr/local/share/ca-certificates")
+            .WithEnvironment("Terraform__EnvironmentVariables__Direct__SSL_CERT_DIR", "/etc/ssl/certs:/usr/local/share/ca-certificates")
+            .WithEnvironment("Terraform__EnvironmentVariables__Direct__TF_CLI_CONFIG_FILE", "/terraform/terraformrc");
+
+        if (IsEnabled(casterMode))
+            casterApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
@@ -470,7 +492,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "alloy.admin")
             .WithEnvironment("ResourceOwnerAuthorization__ClientSecret", "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW")
-            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm alloy steamfitter caster")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
@@ -521,6 +543,10 @@ public static partial class BuilderExtensions
             .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Oidc__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("Oidc__Audience", "topomojo")
+            // TopoMojo's default map only matches lowercase "administrator", but Keycloak sends
+            // "Administrator". Without this the realm admin is a plain user whenever another
+            // account (e.g. the Moodle service account) took the first-user Administrator slot.
+            .WithEnvironment("Oidc__UserRolesClaimMap__Administrator", "Administrator")
             .WithEnvironment("OpenApi__Client__AuthorizationUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("OpenApi__Client__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
             .WithEnvironment("OpenApi__Client__ClientId", "topomojo.api")
@@ -531,6 +557,12 @@ public static partial class BuilderExtensions
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");
+        if (IsEnabled(topoMojoMode))
+        {
+            // Load the selected profile after TopoMojo's own .conf files so it wins.
+            topoApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig,
+                configPathEnvironmentVariable: "APPSETTINGS_PATH");
+        }
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
         const int topoWorkUiPort = 4201;
@@ -555,7 +587,6 @@ public static partial class BuilderExtensions
                 .WithArgs("--", "topomojo-work", "--configuration", "development", "--port", topoWorkUiPort.ToString())
                 .WithHttpEndpoint(port: topoWorkUiPort, isProxied: false)
                 .WithHttpHealthCheck();
-
 
             if (launchpointIncluded && effectiveLaunchpointMode == "dev")
             {
@@ -668,7 +699,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "steamfitter.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "steamfitter.admin")
-            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "steamfitter player player-vm cite gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
@@ -722,7 +753,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "cite.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "cite.admin")
-            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "openid profile email gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
@@ -776,7 +807,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "gallery.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "gallery.admin")
-            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm steamfitter")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
@@ -829,7 +860,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "blueprint.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "blueprint.admin")
-            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
