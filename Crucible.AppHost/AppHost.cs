@@ -253,6 +253,13 @@ public static partial class BuilderExtensions
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
             .WithRealmImport($"{builder.AppHostDirectory}/resources/crucible-realm.json");
 
+        // The realm import only reaches a fresh database, so set crucible-admin's password and
+        // Administrator role on every launch; the API service identities below log in as it.
+        builder.AddExecutable("keycloak-service-account", "bash",
+            builder.AppHostDirectory,
+            $"{builder.AppHostDirectory}/../scripts/ensure-keycloak-service-account.sh")
+            .WaitFor(keycloak);
+
         return keycloak;
     }
 

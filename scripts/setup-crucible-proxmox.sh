@@ -167,6 +167,8 @@ KEYCLOAK_USER="${KEYCLOAK_USER:-admin}"
 KEYCLOAK_PASSWORD="${KEYCLOAK_PASSWORD:-admin}"
 # Removed skip flags - setup always runs all phases
 DRY_RUN=false
+# Why phase 5 left out the Caster projects; later phases skip what points at them
+CASTER_PROJECTS_SKIPPED_REASON=""
 
 # ============================================================
 # UTILITY FUNCTIONS
@@ -1817,7 +1819,6 @@ elif qm status 103 &>/dev/null; then
     echo "✓ Created workspace template VM 9003 (Puppy-Linux)"
 else
     echo "⚠ VM 103 (puppy-test) not found, skipping Puppy template"
-    exit 1
 fi
 VMEOF
 
@@ -2262,6 +2263,10 @@ upsert_caster_file() {
 
     log_error "Failed to upsert $file_name (HTTP $http_code): $body"
     return 1
+}
+
+proxmox_vm_exists() {
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "qm status $1 >/dev/null 2>&1"
 }
 
 create_caster_project() {
@@ -3614,7 +3619,7 @@ phase1_proxmox_infrastructure() {
 
     print_section "Phase 1/9: Proxmox Infrastructure Setup"
 
-    setup_proxmox_ca_trust || return 1
+    setup_proxmox_ca_trust || log_warning "Custom CAs not trusted on Proxmox; HTTPS downloads behind a TLS-inspecting proxy may fail"
     setup_proxmox_console_cert || return 1
     setup_proxmox_nginx || return 1
     setup_proxmox_token || return 1
@@ -3665,6 +3670,17 @@ phase5_caster_projects() {
 
     print_section "Phase 5/9: Caster Projects"
 
+    # Both projects' main.tf clone VMs 103 (Puppy) and 106 (TinyCore), so without them
+    # every plan/apply fails
+    local vmid
+    for vmid in 103 106; do
+        if ! proxmox_vm_exists "$vmid"; then
+            CASTER_PROJECTS_SKIPPED_REASON="Proxmox VM $vmid not found"
+            log_warning "$CASTER_PROJECTS_SKIPPED_REASON; not adding Caster projects \"Proxmox Test\" and \"Proxmox Test with Alloy\", whose Terraform clones it"
+            return 0
+        fi
+    done
+
     create_caster_project1 || log_warning "Caster project 1 creation failed"
     create_caster_project2 || log_warning "Caster project 2 creation failed"
 
@@ -3686,7 +3702,11 @@ phase7_alloy_events() {
     print_section "Phase 7/9: Alloy Events"
 
     create_alloy_event_no_caster || log_warning "Alloy event (no Caster) creation failed"
-    create_alloy_event_with_caster || log_warning "Alloy event (with Caster) creation failed"
+    if [ -n "$CASTER_PROJECTS_SKIPPED_REASON" ]; then
+        log_warning "$CASTER_PROJECTS_SKIPPED_REASON; not adding Alloy event \"Alloy Event (with Caster)\", whose Caster project was not added"
+    else
+        create_alloy_event_with_caster || log_warning "Alloy event (with Caster) creation failed"
+    fi
 
     log_success "Alloy events created"
 }
@@ -3696,7 +3716,11 @@ phase8_steamfitter_tasks() {
     print_section "Phase 8/9: Steamfitter Moodle Test Tasks"
 
     create_steamfitter_grading_tasks || log_warning "Steamfitter Moodle grading task creation failed"
-    create_alloy_event_task_grading || log_warning "Alloy task-grading event creation failed"
+    if [ -n "$CASTER_PROJECTS_SKIPPED_REASON" ]; then
+        log_warning "$CASTER_PROJECTS_SKIPPED_REASON; not adding Alloy event \"Moodle Task Grading Test Event\", whose Caster project was not added"
+    else
+        create_alloy_event_task_grading || log_warning "Alloy task-grading event creation failed"
+    fi
 
     log_success "Steamfitter Moodle test tasks created"
 }
@@ -3704,6 +3728,11 @@ phase8_steamfitter_tasks() {
 phase9_moodle_task_grading_lab() {
 
     print_section "Phase 9/9: Moodle Task-Grading Lab"
+
+    if [ -n "$CASTER_PROJECTS_SKIPPED_REASON" ]; then
+        log_warning "$CASTER_PROJECTS_SKIPPED_REASON; not adding the Moodle task-grading lab, whose Alloy event was not added"
+        return 0
+    fi
 
     create_moodle_task_grading_lab || log_warning "Moodle task-grading lab creation failed"
 
