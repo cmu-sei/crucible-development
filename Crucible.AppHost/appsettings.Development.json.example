@@ -1,0 +1,30 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Aspire.Hosting.Dcp": "Warning"
+    }
+  },
+  "Launch": {
+    "Prod": ["PGAdmin", "Lrsql", "Moodle"],
+    "Dev": ["Topomojo", "Player", "Alloy", "Caster", "Steamfitter", "Cite", "Gallery"],
+    "XdebugMode": "off",
+    "AddAllApplications": false,
+    "ApiConfig": {
+      "Enabled": false,
+      "Profile": "proxmox",
+      "Apps": {
+        "player-vm-api": {
+          "Enabled": true
+        },
+        "caster-api": {
+          "Enabled": true
+        },
+        "topomojo": {
+          "Enabled": true
+        }
+      }
+    }
+  }
+}
