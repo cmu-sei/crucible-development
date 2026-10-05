@@ -253,12 +253,41 @@ public static partial class BuilderExtensions
 
         // The realm import only reaches a fresh database, so set crucible-admin's password and
         // Administrator role on every launch; the API service identities below log in as it.
-        builder.AddExecutable("keycloak-service-account", "bash",
+        builder.AddExecutable(KeycloakServiceAccountResource, "bash",
             builder.AppHostDirectory,
             $"{builder.AppHostDirectory}/../scripts/ensure-keycloak-service-account.sh")
             .WaitFor(keycloak);
 
         return keycloak;
+    }
+
+    private const string KeycloakServiceAccountResource = "keycloak-service-account";
+
+    /// <summary>
+    /// Wait for Keycloak *and* for the crucible-admin fix-up to finish. Waiting on Keycloak alone
+    /// races it: on a reused Keycloak database the realm import is skipped, so the Administrator
+    /// realm role only exists once ensure-keycloak-service-account.sh has run, and every API that
+    /// authenticates as crucible-admin gets 401s until it is restarted.
+    /// </summary>
+    private static IResourceBuilder<T> WaitForKeycloakAdmin<T>(
+        this IResourceBuilder<T> resource,
+        IDistributedApplicationBuilder builder,
+        IResourceBuilder<KeycloakResource> keycloak)
+        where T : IResourceWithWaitSupport
+    {
+        resource.WaitFor(keycloak);
+
+        // Registered by AddKeycloak above; builder.Resources holds IResource, so wrap it to wait.
+        var serviceAccount = builder.Resources
+            .OfType<ExecutableResource>()
+            .FirstOrDefault(r => r.Name == KeycloakServiceAccountResource);
+
+        if (serviceAccount != null)
+        {
+            resource.WaitForCompletion(builder.CreateResourceBuilder(serviceAccount));
+        }
+
+        return resource;
     }
 
     public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
@@ -343,7 +372,7 @@ public static partial class BuilderExtensions
 
         var vmApi = builder.AddProject<Projects.Player_Vm_Api>("player-vm-api", launchProfileName: "Player.Vm.Api")
             .WaitFor(postgres)
-            .WaitFor(keycloak)
+            .WaitForKeycloakAdmin(builder, keycloak)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(vmDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -480,7 +509,7 @@ public static partial class BuilderExtensions
 
         var alloyApi = builder.AddProject<Projects.Alloy_Api>("alloy-api", launchProfileName: "Alloy.Api")
             .WaitFor(postgres)
-            .WaitFor(keycloak)
+            .WaitForKeycloakAdmin(builder, keycloak)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(alloyDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -687,7 +716,7 @@ public static partial class BuilderExtensions
 
         var steamfitterApi = builder.AddProject<Projects.Steamfitter_Api>("steamfitter-api", launchProfileName: "Steamfitter.Api")
             .WaitFor(postgres)
-            .WaitFor(keycloak)
+            .WaitForKeycloakAdmin(builder, keycloak)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(steamfitterDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -741,7 +770,7 @@ public static partial class BuilderExtensions
 
         var citeApi = builder.AddProject<Projects.Cite_Api>("cite-api", launchProfileName: "Cite.Api")
             .WaitFor(postgres)
-            .WaitFor(keycloak)
+            .WaitForKeycloakAdmin(builder, keycloak)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(citeDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -795,7 +824,7 @@ public static partial class BuilderExtensions
 
         var galleryApi = builder.AddProject<Projects.Gallery_Api>("gallery-api", launchProfileName: "Api")
             .WaitFor(postgres)
-            .WaitFor(keycloak)
+            .WaitForKeycloakAdmin(builder, keycloak)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(galleryDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -849,7 +878,7 @@ public static partial class BuilderExtensions
 
         var blueprintApi = builder.AddProject<Projects.Blueprint_Api>("blueprint-api", launchProfileName: "Blueprint.Api")
             .WaitFor(postgres)
-            .WaitFor(keycloak)
+            .WaitForKeycloakAdmin(builder, keycloak)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(blueprintDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
