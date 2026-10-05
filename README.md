@@ -566,6 +566,13 @@ base image comes from the `MOODLE_BASE_IMAGE` build arg. The plugins mounted fro
 `repos.json` are shared, but marketplace plugin versions are pinned per instance in
 `AppHost.cs` since those downloads are branch-specific.
 
+The base image's PHP version moves with the Moodle branch - 5.0 and 5.2 ship PHP 8.3, 5.3
+ships 8.4 - and Alpine names both the Xdebug package and the `conf.d` directory after it
+(`php83-pecl-xdebug`, `/etc/php83/conf.d`). The Dockerfile resolves that from the image's
+own `php` rather than hardcoding a version, because the hardcoded form fails silently:
+installing `php83-pecl-xdebug` onto a PHP 8.4 image pulls in a second runtime and drops the
+ini where the running PHP never reads it, so the build succeeds and Xdebug is simply absent.
+
 Moodle 5.1 moved everything web-accessible under `public/`, so on 5.1+ the core directories
 and every plugin live one level deeper in the container (`admin/cli` stays outside the web
 root in both layouts). Each `MoodleInstance` declares its `WebRoot`, and the resource

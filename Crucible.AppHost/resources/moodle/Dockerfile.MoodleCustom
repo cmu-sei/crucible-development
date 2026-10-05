@@ -2,15 +2,24 @@
 # Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
 # Base image is a build arg so the same Dockerfile serves every Moodle version
-# Aspire runs side by side. Stay on the plain tags (not -php84): the php83 paths
-# below match those.
+# Aspire runs side by side. Stay on the plain tags (not -php84): those are a second
+# PHP build of the same Moodle branch, and the ABI resolution below already picks up
+# whatever PHP the plain tag ships.
 ARG MOODLE_BASE_IMAGE=erseco/alpine-moodle:v5.0.0
 FROM ${MOODLE_BASE_IMAGE}
 
 USER root
 
-# Install Xdebug cleanly without apk update
-RUN apk add --no-cache php83-pecl-xdebug ca-certificates
+# Install Xdebug cleanly without apk update. Alpine names both the package and the
+# conf.d directory after PHP's major.minor, and that moves with the Moodle branch
+# (5.0 and 5.2 ship PHP 8.3, 5.3 ships 8.4), so resolve it from the image's own php
+# rather than hardcoding one. Hardcoding php83 on a php84 image installs a second
+# PHP runtime and drops the ini where the running PHP never reads it, which leaves
+# Xdebug quietly absent instead of failing the build.
+RUN set -eu; \
+    php_abi="php$(php -r 'echo PHP_MAJOR_VERSION . PHP_MINOR_VERSION;')"; \
+    echo "Installing Xdebug for ${php_abi}"; \
+    apk add --no-cache "${php_abi}-pecl-xdebug" ca-certificates
 
 # Copy custom CA certificates
 COPY certs/ /usr/local/share/ca-certificates/custom/
@@ -39,8 +48,12 @@ RUN set -eu; \
     cp -pr "$MOODLE_WEB_ROOT/ai/classes" /moodle/ai/; \
     chown -R nobody:nobody /moodle
 
-# Copy Xdebug configuration
-COPY xdebug.ini /etc/php83/conf.d/50_xdebug.ini
+# Copy Xdebug configuration. Staged through /tmp because the conf.d path carries the
+# PHP ABI resolved above, which a COPY destination cannot compute.
+COPY xdebug.ini /tmp/xdebug.ini
+RUN set -eu; \
+    php_abi="php$(php -r 'echo PHP_MAJOR_VERSION . PHP_MINOR_VERSION;')"; \
+    mv /tmp/xdebug.ini "/etc/${php_abi}/conf.d/50_xdebug.ini"
 
 # Copy nginx configuration with fastcgi_read_timeout 300
 COPY nginx.conf /etc/nginx/nginx.conf
