@@ -192,23 +192,21 @@ public static partial class BuilderExtensions
                 endpoint.IsProxied = false; // so tools (e.g. dotnet ef migrations) can connect to db when apphost is off
             });
 
-        if (IsEnabled(pgAdminMode) || options.AddAllApplications)
+        // Always registered so it can be started from the dashboard; only auto-starts when enabled
+        postgres.WithPgAdmin(pgAdmin =>
         {
-            postgres.WithPgAdmin(pgAdmin =>
+            pgAdmin.WithEndpoint("http", endpoint =>
             {
-                pgAdmin.WithEndpoint("http", endpoint =>
-                {
-                    endpoint.Port = 33000;
-                    endpoint.IsProxied = false;
-                });
-                pgAdmin.WithLifetime(ContainerLifetime.Persistent);
-
-                if (!IsEnabled(pgAdminMode))
-                {
-                    pgAdmin.WithExplicitStart();
-                }
+                endpoint.Port = 33000;
+                endpoint.IsProxied = false;
             });
-        }
+            pgAdmin.WithLifetime(ContainerLifetime.Persistent);
+
+            if (!IsEnabled(pgAdminMode))
+            {
+                pgAdmin.WithExplicitStart();
+            }
+        });
 
         return postgres;
     }

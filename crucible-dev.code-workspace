@@ -10,7 +10,26 @@
   "settings": {
     "dotnet.defaultSolution": "Crucible.slnx",
     "cSpell.files": ["**/*.md"],
-    "git.repositoryScanMaxDepth": 3
+    "git.repositoryScanMaxDepth": 3,
+    // Workspace-level so they cover /mnt/data/crucible too; the folder-level
+    // .vscode/settings.json copies only apply to this repo's folder
+    "files.watcherExclude": {
+      "**/node_modules/**": true,
+      "**/.angular/**": true,
+      "**/dist/**": true,
+      "**/bin/**": true,
+      "**/obj/**": true,
+      "**/.git/objects/**": true,
+      "**/.git/subtree-cache/**": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.angular": true,
+      "**/dist": true,
+      "**/bin": true,
+      "**/obj": true,
+      "**/.git": true
+    }
   },
   "extensions": {
     "recommendations": ["ms-vscode-remote.remote-containers"]
