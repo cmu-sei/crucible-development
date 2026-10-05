@@ -11,6 +11,10 @@
     "silent_redirect_uri": "http://localhost:4401/auth-callback-silent.html"
   },
   "AppTitle": "Steamfitter",
-  "AppTopBarHexColor": "#BB0000",
-  "AppTopBarHexTextColor": "#FFFFFF"
+  "AppTopBarHexColor": "#B1282F",
+  "AppTopBarHexTextColor": "#FFFFFF",
+  "AppLightModePrimaryHexColor": "#B1282F",
+  "AppLightModePrimaryHexTextColor": "#FFFFFF",
+  "AppDarkModePrimaryHexColor": "#DD676D",
+  "AppDarkModePrimaryHexTextColor": "#000000"
 }
