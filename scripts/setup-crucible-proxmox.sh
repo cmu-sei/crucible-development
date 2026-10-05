@@ -221,6 +221,12 @@ load_config() {
         candidates+=("$LEGACY_CONFIG_FILE")
     fi
 
+    # A host given on the command line (-h) or in the environment outranks the saved one. The
+    # config is sourced and contains `export PROXMOX_HOST`, so without this the saved value
+    # silently replaces an explicit -h - and because mode_cleanall/mode_clean_vms call this
+    # unconditionally, that means destroying VMs on whichever host was saved last.
+    local requested_host="$PROXMOX_HOST"
+
     local config
     for config in "${candidates[@]}"; do
         if [ -f "$config" ]; then
@@ -229,13 +235,34 @@ load_config() {
             set -e
             if [ -n "$PROXMOX_HOST" ] || [ -n "$PROXMOX_API_TOKEN" ]; then
                 CONFIG_FILE="$config"
+                restore_requested_host "$requested_host"
                 log_info "Loaded config from $CONFIG_FILE"
                 return 0
             fi
         fi
     done
 
+    restore_requested_host "$requested_host"
     return 1
+}
+
+# Put an explicitly requested host back after sourcing a config, and drop a token that was
+# issued against a different host - it is a root@pam token on that host, so it cannot
+# authenticate here and leaving it in place produces 401s instead of minting a new one.
+restore_requested_host() {
+    local requested_host="$1"
+
+    [ -n "$requested_host" ] || return 0
+
+    if [ -n "$PROXMOX_HOST" ] && [ "$PROXMOX_HOST" != "$requested_host" ]; then
+        log_warning "Saved config targets $PROXMOX_HOST; using requested host $requested_host"
+        if [ -n "${PROXMOX_API_TOKEN:-}" ]; then
+            log_warning "Discarding the saved API token - it belongs to $PROXMOX_HOST"
+            PROXMOX_API_TOKEN=""
+        fi
+    fi
+
+    PROXMOX_HOST="$requested_host"
 }
 
 # Verify that this setup targets a Proxmox VE 9 host and that the local APT cache
@@ -4172,12 +4199,9 @@ parse_args() {
         esac
     done
 
-    # Fall back to environment variables if not set via command line
-    if [ -z "$PROXMOX_HOST" ]; then
-        PROXMOX_HOST="${PROXMOX_HOST:-}"
-    fi
-
-    # Check for config file if still no PROXMOX_HOST
+    # PROXMOX_HOST may already be set from the environment; load the saved config only when
+    # neither the command line nor the environment supplied one. load_config now preserves an
+    # explicit host anyway, so this is just avoiding the log line.
     if [ -z "$PROXMOX_HOST" ]; then
         load_config >/dev/null || true
     fi
