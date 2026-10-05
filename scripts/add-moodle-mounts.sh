@@ -11,6 +11,7 @@ fi
 ROOTS=(
     "/mnt/data/crucible/moodle/moodle-core"
     "/mnt/data/crucible/moodle/moodle-core-52"
+    "/mnt/data/crucible/moodle/moodle-core-53"
 )
 
 # Bind-mounted core directories, relative to a root. The host layout stays flat even
