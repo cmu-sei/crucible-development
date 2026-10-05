@@ -18,9 +18,20 @@ SERVICE_ROLE="Administrator"
 
 echo "Waiting for the $REALM realm..." >&2
 for _ in $(seq 1 60); do
-    curl -ksf -o /dev/null "$KEYCLOAK_URL/realms/$REALM" && break
+    if curl -ksf -o /dev/null "$KEYCLOAK_URL/realms/$REALM"; then
+        realm_ready=1
+        break
+    fi
     sleep 2
 done
+
+# Fail here rather than falling through to a confusing admin-API error: every API now waits for
+# this script to complete, so a clear message is the difference between a 2-minute and a 2-hour
+# diagnosis.
+if [ -z "${realm_ready:-}" ]; then
+    echo "The $REALM realm did not appear at $KEYCLOAK_URL after 120s" >&2
+    exit 1
+fi
 
 # KC_BOOTSTRAP_ADMIN_PASSWORD in AppHost.cs; Aspire's default bootstrap username
 admin_token=$(curl -ksf "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \

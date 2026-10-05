@@ -1,11 +1,21 @@
 #!/bin/bash
 set -e
 
-# Wait for TopoMojo API to be ready
+# Wait for TopoMojo API to be ready. Bounded: Moodle does WaitForCompletion on this script, so
+# an unbounded loop here hangs the Moodle resource indefinitely with nothing explaining why.
 echo "Waiting for TopoMojo API..." >&2
-until curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/user/ticket | grep -qE "200|401"; do
+for _ in $(seq 1 60); do
+    if curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/api/user/ticket | grep -qE "200|401"; then
+        ready=1
+        break
+    fi
     sleep 2
 done
+
+if [ -z "${ready:-}" ]; then
+    echo "TopoMojo API did not become ready at http://localhost:5000 after 120s" >&2
+    exit 1
+fi
 echo "TopoMojo API is ready" >&2
 
 # Get database connection details
