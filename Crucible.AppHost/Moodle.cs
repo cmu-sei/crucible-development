@@ -103,7 +103,7 @@ public static partial class BuilderExtensions
         // Fetched once and shared by every instance: the script writes a single
         // ~/.topomojo-apikey, and an Aspire resource name can only be registered once,
         // so this cannot move inside the per-instance call.
-        var topoMojoApiKey = builder.AddTopoMojoApiKeyScript(options);
+        var topoMojoApiKey = builder.AddTopoMojoApiKeyScript();
 
         foreach (var instance in enabled)
         {
@@ -138,11 +138,13 @@ public static partial class BuilderExtensions
     /// starts without TOPOMOJO_APIKEY.
     /// </summary>
     private static IResourceBuilder<ExecutableResource>? AddTopoMojoApiKeyScript(
-        this IDistributedApplicationBuilder builder, LaunchOptions options)
+        this IDistributedApplicationBuilder builder)
     {
-        if (!IsEnabled(ResolveMode(options.TopoMojo, "TopoMojo", options)))
-            return null;
-
+        // Deliberately no mode check: AddTopoMojo also registers the API for AddAllApplications
+        // and for a launchpoint-only launch, so re-deriving the mode here drifted from it and
+        // left Moodle without TOPOMOJO_APIKEY. Whether the resource exists is the real signal,
+        // and AddTopoMojo runs before AddMoodle.
+        //
         // builder.Resources holds IResource, not IResourceBuilder<T> - a builder wraps a
         // resource rather than being one - so filtering it for IResourceBuilder<ProjectResource>
         // never matched and this always bailed out. Match the resource, then wrap it.
