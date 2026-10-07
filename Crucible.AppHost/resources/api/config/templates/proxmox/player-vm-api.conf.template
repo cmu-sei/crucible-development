@@ -1,0 +1,13 @@
+# Copy with configure-hypervisors.sh init, then replace <placeholders>.
+# Literal KEY=value: no shell quoting, expansion or inline comments.
+# Certificate validation is disabled here for local development only.
+# Disable any additional local vSphere host indices explicitly as well.
+Proxmox__Enabled=true
+Proxmox__Host=<proxmox-host>
+Proxmox__Port=<proxmox-port>
+Proxmox__Token=<user@realm!token-id=token-secret>
+Proxmox__IsoStorage=<iso-storage>
+Proxmox__IsoUploadViaApi=true
+Proxmox__ValidateCertificate=false
+Proxmox__StateRefreshIntervalSeconds=60
+Vsphere__Hosts__0__Enabled=false
