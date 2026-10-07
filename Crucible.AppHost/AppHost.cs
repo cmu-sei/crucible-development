@@ -43,7 +43,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Player: {launchOptions.Player}, Caster: {launchOptions.Caster}, Alloy: {launchOptions.Alloy}");
     Console.WriteLine($"  Gallery: {launchOptions.Gallery}, Cite: {launchOptions.Cite}");
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
-    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Moodle52: {launchOptions.Moodle52}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
+    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Moodle52: {launchOptions.Moodle52}, Moodle53: {launchOptions.Moodle53}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
     Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, TopoMojo Launchpoint: {launchOptions.TopoMojoLaunchpoint}, Gameboard: {launchOptions.Gameboard}");
     Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
@@ -527,7 +527,8 @@ public static partial class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
             .WithEnvironment("CorsPolicy__Origins__0", "http://localhost:4403") // for alloy-ui
             .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081") // for moodle
-            .WithEnvironment("CorsPolicy__Origins__2", "http://localhost:8082"); // for moodle52
+            .WithEnvironment("CorsPolicy__Origins__2", "http://localhost:8082") // for moodle52
+            .WithEnvironment("CorsPolicy__Origins__3", "http://localhost:8083"); // for moodle53
 
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
@@ -583,6 +584,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201") // for topo-ui
             .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
             .WithEnvironment("Headers__Cors__Origins__2", "http://localhost:8082") // for moodle52
+            .WithEnvironment("Headers__Cors__Origins__3", "http://localhost:8083") // for moodle53
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");

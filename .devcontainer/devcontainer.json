@@ -63,7 +63,7 @@
       "version": "13.5"
     },
     "ghcr.io/cmu-sei/devcontainer-features/herdr:1.0": {},
-    "ghcr.io/cmu-sei/devcontainer-features/claude:1.0": {},
+    "ghcr.io/cmu-sei/devcontainer-features/claude:1.1": { "bedrock": true },
     "ghcr.io/cmu-sei/devcontainer-features/codex:1.0": {}
   },
   // IDs without version tags. aws-cli is not declared above; it arrives as a dependency of
@@ -92,9 +92,7 @@
   ],
   "containerEnv": {
     "NUGET_PACKAGES": "/home/vscode/.nuget/packages", // this might not be needed. will try removing later.
-    "CLAUDE_CODE_USE_BEDROCK": "1", // vars for Claude Code using Amazon Bedrock
-    "AWS_REGION": "us-east-1",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "AWS_REGION": "us-east-1", // Bedrock region for Claude Code (the claude feature turns Bedrock on)
     "SSL_CERT_DIR": "/usr/local/share/ca-certificates/:/etc/ssl/certs/:/home/vscode/.aspnet/dev-certs/trust/",
     // Set on the host by .github/workflows/devcontainer-ci.yml to skip external
     // repo cloning in CI. Resolves to an empty string on developer machines.
@@ -151,7 +149,8 @@
     // Moodle. Declared explicitly because the containers are persistent: recreating one
     // replaces the listening socket, and an auto-detected forward does not survive that.
     8081, // Moodle 5.0
-    8082 // Moodle 5.2
+    8082, // Moodle 5.2
+    8083 // Moodle 5.3
   ],
   "customizations": {
     "vscode": {

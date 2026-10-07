@@ -91,6 +91,37 @@ public static partial class BuilderExtensions
                     boostUnion: "2026042012",
                     boostDark: "2026052400",
                     dynamicCohorts: "2026031300")),
+            // Moodle 5.3 test instance - the next LTS. Also left out of
+            // AddAllApplications; Launch__Moodle53 asks for it.
+            new MoodleInstance(
+                Name: "moodle53",
+                BaseImage: "erseco/alpine-moodle:v5.3.0",
+                Port: 8083,
+                DbResourceName: "moodle53Db",
+                DbName: "moodle53",
+                CoreMountRoot: "/mnt/data/crucible/moodle/moodle-core-53",
+                // Same public/ layout as 5.2.
+                WebRoot: "/var/www/html/public",
+                Mode: ResolveMode(options.Moodle53, "Moodle53", options),
+                IncludeWithAll: false,
+                // Only tool_userdebug lists 5.3 (2026091600) in its supported range so far;
+                // the plugin API has no 5.3 build of the other three and falls back to the
+                // latest release when asked for branch=5.3. Same situation the 5.2 instance
+                // is in with dynamic_cohorts: $plugin->requires is low enough and
+                // 015-copy-plugins.sh unzips into the tree directly, so they install and
+                // upgrade even though the plugins check page lists them as unsupported.
+                //
+                // boost_union is the newest 5.2 build (v5.2-r10) rather than the r8 the 5.2
+                // instance pins - a fresh instance can start anywhere, and pins only move
+                // forward from there. boost_dark stays on 1.3.7 to match production and the
+                // other two instances.
+                //
+                // Move each of these to a real 5.3 release as upstream ships one.
+                MarketplacePlugins: MarketplacePluginsFor(
+                    toolUserdebug: "2025070300",
+                    boostUnion: "2026042014",
+                    boostDark: "2026052400",
+                    dynamicCohorts: "2026031300")),
         };
 
         var enabled = instances
