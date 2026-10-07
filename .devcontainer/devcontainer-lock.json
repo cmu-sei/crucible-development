@@ -8,6 +8,11 @@
         "ghcr.io/devcontainers/features/aws-cli:1"
       ]
     },
+    "ghcr.io/cmu-sei/devcontainer-features/claude:1.1": {
+      "version": "1.1.0",
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/claude@sha256:b3cc98b38eaf3ddb90f35e4a4b688c8c0a329e1f281adfaffe8bcf80295f9400",
+      "integrity": "sha256:b3cc98b38eaf3ddb90f35e4a4b688c8c0a329e1f281adfaffe8bcf80295f9400"
+    },
     "ghcr.io/cmu-sei/devcontainer-features/codex:1.0": {
       "version": "1.0.2",
       "resolved": "ghcr.io/cmu-sei/devcontainer-features/codex@sha256:b72cd08887c43968579879335ec8b13bd6983751255d3b0354929d9c7e2989f1",
