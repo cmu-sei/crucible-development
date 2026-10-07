@@ -124,19 +124,22 @@ public static partial class BuilderExtensions
                     dynamicCohorts: "2026031300")),
         };
 
-        var anyAdded = false;
+        var enabled = instances
+            .Where(instance => IsEnabled(instance.Mode) || (options.AddAllApplications && instance.IncludeWithAll))
+            .ToArray();
 
-        foreach (var instance in instances)
-        {
-            if (!IsEnabled(instance.Mode) && !(options.AddAllApplications && instance.IncludeWithAll))
-                continue;
-
-            builder.AddMoodleInstance(postgres, keycloak, options, instance);
-            anyAdded = true;
-        }
-
-        if (!anyAdded)
+        if (enabled.Length == 0)
             return;
+
+        // Fetched once and shared by every instance: the script writes a single
+        // ~/.topomojo-apikey, and an Aspire resource name can only be registered once,
+        // so this cannot move inside the per-instance call.
+        var topoMojoApiKey = builder.AddTopoMojoApiKeyScript(options);
+
+        foreach (var instance in enabled)
+        {
+            builder.AddMoodleInstance(postgres, keycloak, options, instance, topoMojoApiKey);
+        }
 
         // Copy dotnet dev-cert(s) into resources/moodle/certs so they get trusted through the Dockerfile
         builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
@@ -158,6 +161,47 @@ public static partial class BuilderExtensions
 
             return Task.CompletedTask;
         });
+    }
+
+    /// <summary>
+    /// Get or create TopoMojo's API key before any Moodle instance starts, so post_configure.sh
+    /// can wire mod_topomojo up. Returns null when TopoMojo is not running, in which case Moodle
+    /// starts without TOPOMOJO_APIKEY.
+    /// </summary>
+    private static IResourceBuilder<ExecutableResource>? AddTopoMojoApiKeyScript(
+        this IDistributedApplicationBuilder builder, LaunchOptions options)
+    {
+        // Mirror the effective mode AddTopoMojo starts the API on, including its fallback to the
+        // launchpoint mode - a launchpoint-only launch does run the API, and keying off
+        // options.TopoMojo alone skipped the key there. Resource existence is NOT the signal:
+        // with --all and TopoMojo off, AddTopoMojo registers the API but marks it
+        // WithExplicitStart, so it never comes up and this script would block Moodle for the
+        // whole readiness timeout waiting for it.
+        var topoMojoMode = ResolveMode(options.TopoMojo, "TopoMojo", options);
+
+        if (!IsEnabled(topoMojoMode))
+            topoMojoMode = ResolveMode(options.TopoMojoLaunchpoint, "TopoMojoLaunchpoint", options);
+
+        if (!IsEnabled(topoMojoMode))
+            return null;
+
+        // builder.Resources holds IResource, not IResourceBuilder<T> - a builder wraps a
+        // resource rather than being one - so filtering it for IResourceBuilder<ProjectResource>
+        // never matched and this always bailed out. Match the resource, then wrap it.
+        var topoMojoApi = builder.Resources
+            .OfType<ProjectResource>()
+            .FirstOrDefault(r => r.Name.StartsWith("topomojo") && !r.Name.Contains("ui"));
+
+        if (topoMojoApi == null)
+            return null;
+
+        var topoMojoApiBuilder = builder.CreateResourceBuilder(topoMojoApi);
+
+        return builder.AddExecutable("get-topomojo-apikey", "bash",
+            builder.AppHostDirectory,
+            "-c",
+            $"bash {builder.AppHostDirectory}/../scripts/get-or-create-topomojo-apikey.sh")
+            .WaitFor(topoMojoApiBuilder);
     }
 
     /// <summary>
@@ -193,7 +237,7 @@ public static partial class BuilderExtensions
         }
     }
 
-    private static void AddMoodleInstance(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, MoodleInstance instance)
+    private static void AddMoodleInstance(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, MoodleInstance instance, IResourceBuilder<ExecutableResource>? topoMojoApiKey)
     {
         var moodleMode = instance.Mode;
 
@@ -241,6 +285,25 @@ public static partial class BuilderExtensions
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName);
 
+        if (topoMojoApiKey != null)
+        {
+            // Wait for the shared API key script to finish before this instance starts.
+            moodle.WaitForCompletion(topoMojoApiKey);
+
+            // Read the API key file at runtime (via callback) rather than during graph
+            // construction: the file is produced by the script, so on a fresh machine
+            // it does not exist yet at build time. The callback runs when Moodle starts,
+            // after WaitForCompletion has ensured the script finished and wrote the file.
+            var apiKeyFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".topomojo-apikey");
+            moodle.WithEnvironment(context =>
+            {
+                if (File.Exists(apiKeyFilePath))
+                {
+                    context.EnvironmentVariables["TOPOMOJO_APIKEY"] = File.ReadAllText(apiKeyFilePath).Trim();
+                }
+            });
+        }
+
         // Only set AWS credentials if the credentials file exists
         if (awsCreds != null)
         {
@@ -278,7 +341,8 @@ public static partial class BuilderExtensions
             .WithBindMount($"{instance.CoreMountRoot}/lib", $"{instance.WebRoot}/lib", isReadOnly: false)
             .WithBindMount($"{instance.CoreMountRoot}/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount($"{instance.CoreMountRoot}/ai/provider", $"{instance.WebRoot}/ai/provider", isReadOnly: false)
-            .WithBindMount($"{instance.CoreMountRoot}/ai/classes", $"{instance.WebRoot}/ai/classes", isReadOnly: false);
+            .WithBindMount($"{instance.CoreMountRoot}/ai/classes", $"{instance.WebRoot}/ai/classes", isReadOnly: false)
+            .WithBindMount("/tmp/crucible", "/tmp/crucible", isReadOnly: true);
 
         // When CATAPULT is enabled, mount the Apache-2.0 cmi5 sample package from the
         // cloned CATAPULT repo (single source of truth - avoids vendoring a duplicate
@@ -292,7 +356,7 @@ public static partial class BuilderExtensions
         }
 
         // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
-        var moodlePlugins = ReadMoodlePlugins(instance.WebRoot);
+        var moodlePlugins = ReadMoodlePlugins(builder.AppHostDirectory, instance.WebRoot);
         foreach (var plugin in moodlePlugins)
         {
             moodle.WithBindMount(plugin.HostPath, plugin.ContainerPath, isReadOnly: true);
@@ -368,10 +432,12 @@ public static partial class BuilderExtensions
         };
     }
 
-    private static List<MoodlePlugin> ReadMoodlePlugins(string webRoot)
+    private static List<MoodlePlugin> ReadMoodlePlugins(string appHostDirectory, string webRoot)
     {
         var plugins = new List<MoodlePlugin>();
-        var workspaceRoot = "/workspaces/crucible-development";
+        // Resolve from the AppHost rather than hardcoding the checkout name: the repo can be
+        // cloned under any folder (e.g. crucible-dev), and a miss silently mounts no plugins.
+        var workspaceRoot = Path.GetFullPath(Path.Combine(appHostDirectory, ".."));
         var reposJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.json");
         var reposLocalJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.local.json");
 

@@ -96,15 +96,9 @@
         "description": "${role_default-roles}",
         "composite": true,
         "composites": {
-          "realm": [
-            "offline_access",
-            "uma_authorization"
-          ],
+          "realm": ["offline_access", "uma_authorization"],
           "client": {
-            "account": [
-              "view-profile",
-              "manage-account"
-            ]
+            "account": ["view-profile", "manage-account"]
           }
         },
         "clientRole": false,
@@ -180,9 +174,7 @@
           "composite": true,
           "composites": {
             "client": {
-              "realm-management": [
-                "query-clients"
-              ]
+              "realm-management": ["query-clients"]
             }
           },
           "clientRole": true,
@@ -283,10 +275,7 @@
           "composite": true,
           "composites": {
             "client": {
-              "realm-management": [
-                "query-users",
-                "query-groups"
-              ]
+              "realm-management": ["query-users", "query-groups"]
             }
           },
           "clientRole": true,
@@ -406,9 +395,7 @@
           "composite": true,
           "composites": {
             "client": {
-              "account": [
-                "view-consent"
-              ]
+              "account": ["view-consent"]
             }
           },
           "clientRole": true,
@@ -458,9 +445,7 @@
           "composite": true,
           "composites": {
             "client": {
-              "account": [
-                "manage-account-links"
-              ]
+              "account": ["manage-account-links"]
             }
           },
           "clientRole": true,
@@ -476,9 +461,7 @@
       "name": "Administrators",
       "path": "/Administrators",
       "attributes": {},
-      "realmRoles": [
-        "Administrator"
-      ],
+      "realmRoles": ["Administrator"],
       "clientRoles": {},
       "subGroups": []
     },
@@ -532,9 +515,7 @@
     "clientRole": false,
     "containerId": "fcd98ec3-93e0-416c-aa5c-e41e7b8c6b02"
   },
-  "requiredCredentials": [
-    "password"
-  ],
+  "requiredCredentials": ["password"],
   "otpPolicyType": "totp",
   "otpPolicyAlgorithm": "HmacSHA1",
   "otpPolicyInitialCounter": 0,
@@ -548,9 +529,7 @@
     "totpAppFreeOTPName"
   ],
   "webAuthnPolicyRpEntityName": "keycloak",
-  "webAuthnPolicySignatureAlgorithms": [
-    "ES256"
-  ],
+  "webAuthnPolicySignatureAlgorithms": ["ES256"],
   "webAuthnPolicyRpId": "",
   "webAuthnPolicyAttestationConveyancePreference": "not specified",
   "webAuthnPolicyAuthenticatorAttachment": "not specified",
@@ -560,9 +539,7 @@
   "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyAcceptableAaguids": [],
   "webAuthnPolicyPasswordlessRpEntityName": "keycloak",
-  "webAuthnPolicyPasswordlessSignatureAlgorithms": [
-    "ES256"
-  ],
+  "webAuthnPolicyPasswordlessSignatureAlgorithms": ["ES256"],
   "webAuthnPolicyPasswordlessRpId": "",
   "webAuthnPolicyPasswordlessAttestationConveyancePreference": "not specified",
   "webAuthnPolicyPasswordlessAuthenticatorAttachment": "not specified",
@@ -574,19 +551,14 @@
   "scopeMappings": [
     {
       "clientScope": "offline_access",
-      "roles": [
-        "offline_access"
-      ]
+      "roles": ["offline_access"]
     }
   ],
   "clientScopeMappings": {
     "account": [
       {
         "client": "account-console",
-        "roles": [
-          "manage-account",
-          "view-groups"
-        ]
+        "roles": ["manage-account", "view-groups"]
       }
     ]
   },
@@ -601,9 +573,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "/realms/crucible/account/*"
-      ],
+      "redirectUris": ["/realms/crucible/account/*"],
       "webOrigins": [],
       "notBefore": 0,
       "bearerOnly": false,
@@ -645,9 +615,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "/realms/crucible/account/*"
-      ],
+      "redirectUris": ["/realms/crucible/account/*"],
       "webOrigins": [],
       "notBefore": 0,
       "bearerOnly": false,
@@ -741,12 +709,8 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW",
-      "redirectUris": [
-        "/*"
-      ],
-      "webOrigins": [
-        "/*"
-      ],
+      "redirectUris": ["/*"],
+      "webOrigins": ["/*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -806,12 +770,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4402/*"
-      ],
-      "webOrigins": [
-        "http://localhost:4402"
-      ],
+      "redirectUris": ["http://localhost:4402/*"],
+      "webOrigins": ["http://localhost:4402"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -863,12 +823,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4403/*"
-      ],
-      "webOrigins": [
-        "http://localhost:4403"
-      ],
+      "redirectUris": ["http://localhost:4403/*"],
+      "webOrigins": ["http://localhost:4403"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -958,12 +914,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "/*"
-      ],
-      "webOrigins": [
-        "/*"
-      ],
+      "redirectUris": ["/*"],
+      "webOrigins": ["/*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1012,12 +964,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4309/*"
-      ],
-      "webOrigins": [
-        "http://localhost:4309"
-      ],
+      "redirectUris": ["http://localhost:4309/*"],
+      "webOrigins": ["http://localhost:4309"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1065,12 +1013,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4310/auth-callback*"
-      ],
-      "webOrigins": [
-        "http://localhost:4310"
-      ],
+      "redirectUris": ["http://localhost:4310/auth-callback*"],
+      "webOrigins": ["http://localhost:4310"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1119,12 +1063,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "/*"
-      ],
-      "webOrigins": [
-        "/*"
-      ],
+      "redirectUris": ["/*"],
+      "webOrigins": ["/*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1177,10 +1117,7 @@
         "http://localhost:5006/api/oauth2-redirect.html",
         "http://localhost:5002/api/oauth2-redirect.html"
       ],
-      "webOrigins": [
-        "http://localhost:5006",
-        "http://localhost:5002"
-      ],
+      "webOrigins": ["http://localhost:5006", "http://localhost:5002"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1236,9 +1173,7 @@
         "http://localhost:4202/oidc",
         "http://localhost:4202/oidc-silent.html"
       ],
-      "webOrigins": [
-        "http://localhost:4202"
-      ],
+      "webOrigins": ["http://localhost:4202"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1291,12 +1226,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4300/*"
-      ],
-      "webOrigins": [
-        "http://localhost:4300"
-      ],
+      "redirectUris": ["http://localhost:4300/*"],
+      "webOrigins": ["http://localhost:4300"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1406,12 +1337,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "/*"
-      ],
-      "webOrigins": [
-        "/*"
-      ],
+      "redirectUris": ["/*"],
+      "webOrigins": ["/*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1459,9 +1386,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4302/*"
-      ],
+      "redirectUris": ["http://localhost:4302/*"],
       "webOrigins": [
         "http://localhost:4302",
         "http://localhost:4302/healthcheck-ui"
@@ -1520,13 +1445,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "",
-        "http://localhost:4305/auth-callback*"
-      ],
-      "webOrigins": [
-        "http://localhost:4305"
-      ],
+      "redirectUris": ["", "http://localhost:4305/auth-callback*"],
+      "webOrigins": ["http://localhost:4305"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1649,12 +1569,8 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "KAVqRPFpIYsIL3xsK0h8wscDc1W5q50F",
-      "redirectUris": [
-        "/*"
-      ],
-      "webOrigins": [
-        "/*"
-      ],
+      "redirectUris": ["/*"],
+      "webOrigins": ["/*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1786,12 +1702,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "/admin/crucible/console/*"
-      ],
-      "webOrigins": [
-        "+"
-      ],
+      "redirectUris": ["/admin/crucible/console/*"],
+      "webOrigins": ["+"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1918,10 +1830,7 @@
         "http://localhost:4201/assets/oidc-silent.html",
         "http://localhost:5004/topo/oidc"
       ],
-      "webOrigins": [
-        "http://localhost:4201",
-        "http://localhost:5004"
-      ],
+      "webOrigins": ["http://localhost:4201", "http://localhost:5004"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1969,12 +1878,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:5097/*"
-      ],
-      "webOrigins": [
-        "http://localhost:5097"
-      ],
+      "redirectUris": ["http://localhost:5097/*"],
+      "webOrigins": ["http://localhost:5097"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -1994,12 +1899,7 @@
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
-      "defaultClientScopes": [
-        "xview2",
-        "web-origins",
-        "acr",
-        "roles"
-      ],
+      "defaultClientScopes": ["xview2", "web-origins", "acr", "roles"],
       "optionalClientScopes": [
         "address",
         "phone",
@@ -2025,9 +1925,7 @@
         "http://localhost:4200/auth-callback-silent.html",
         "http://localhost:4200/auth-callback"
       ],
-      "webOrigins": [
-        "http://localhost:4200"
-      ],
+      "webOrigins": ["http://localhost:4200"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2074,12 +1972,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4724/api/oauth2-redirect.html"
-      ],
-      "webOrigins": [
-        "http://localhost:4724"
-      ],
+      "redirectUris": ["http://localhost:4724/api/oauth2-redirect.html"],
+      "webOrigins": ["http://localhost:4724"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2133,12 +2027,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4724/*"
-      ],
-      "webOrigins": [
-        "*"
-      ],
+      "redirectUris": ["http://localhost:4724/*"],
+      "webOrigins": ["*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2196,9 +2086,7 @@
         "http://localhost:4725/auth-callback",
         "http://localhost:4725/auth-callback-silent.html"
       ],
-      "webOrigins": [
-        "http://localhost:4725"
-      ],
+      "webOrigins": ["http://localhost:4725"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2285,12 +2173,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4720/api/oauth2-redirect.html"
-      ],
-      "webOrigins": [
-        "http://localhost:4720"
-      ],
+      "redirectUris": ["http://localhost:4720/api/oauth2-redirect.html"],
+      "webOrigins": ["http://localhost:4720"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2340,12 +2224,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4720/*"
-      ],
-      "webOrigins": [
-        "*"
-      ],
+      "redirectUris": ["http://localhost:4720/*"],
+      "webOrigins": ["*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2399,9 +2279,7 @@
         "http://localhost:4721/auth-callback",
         "http://localhost:4721/auth-callback-silent.html"
       ],
-      "webOrigins": [
-        "http://localhost:4721"
-      ],
+      "webOrigins": ["http://localhost:4721"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2451,12 +2329,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4722/api/oauth2-redirect.html"
-      ],
-      "webOrigins": [
-        "http://localhost:4722"
-      ],
+      "redirectUris": ["http://localhost:4722/api/oauth2-redirect.html"],
+      "webOrigins": ["http://localhost:4722"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2506,12 +2380,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4722/*"
-      ],
-      "webOrigins": [
-        "*"
-      ],
+      "redirectUris": ["http://localhost:4722/*"],
+      "webOrigins": ["*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2563,9 +2433,7 @@
         "http://localhost:4723/auth-callback-silent.html",
         "http://localhost:4723/auth-callback"
       ],
-      "webOrigins": [
-        "http://localhost:4723"
-      ],
+      "webOrigins": ["http://localhost:4723"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2615,12 +2483,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4400/api/oauth2-redirect.html"
-      ],
-      "webOrigins": [
-        "http://localhost:4400"
-      ],
+      "redirectUris": ["http://localhost:4400/api/oauth2-redirect.html"],
+      "webOrigins": ["http://localhost:4400"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2673,12 +2537,8 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:4400/*"
-      ],
-      "webOrigins": [
-        "*"
-      ],
+      "redirectUris": ["http://localhost:4400/*"],
+      "webOrigins": ["*"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2734,9 +2594,7 @@
         "http://localhost:4401/auth-callback-silent.html",
         "http://localhost:4401/auth-callback"
       ],
-      "webOrigins": [
-        "http://localhost:4401"
-      ],
+      "webOrigins": ["http://localhost:4401"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2930,12 +2788,8 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "superset-client-secret",
-      "redirectUris": [
-        "http://localhost:8088/*"
-      ],
-      "webOrigins": [
-        "http://localhost:8088"
-      ],
+      "redirectUris": ["http://localhost:8088/*"],
+      "webOrigins": ["http://localhost:8088"],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -2957,6 +2811,104 @@
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "id": "a9b8c7d6-e5f4-3210-9876-543210fedcba",
+      "clientId": "proxmox-web",
+      "name": "Proxmox VE Web Interface",
+      "description": "OIDC client for Proxmox Virtual Environment web console authentication",
+      "rootUrl": "",
+      "adminUrl": "",
+      "baseUrl": "",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "proxmox-oidc-secret-change-me",
+      "redirectUris": ["https://*", "https://*/*"],
+      "webOrigins": ["+"],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oidc.ciba.grant.enabled": "false",
+        "client.secret.creation.time": "1762805282",
+        "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "access.token.lifespan": "3600",
+        "pkce.code.challenge.method": "S256"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "id": "pm-proxmox-username",
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "username",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "pm-proxmox-groups",
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "id": "pm-proxmox-roles",
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ],
       "defaultClientScopes": [
         "web-origins",
         "acr",
@@ -3833,9 +3785,7 @@
   },
   "smtpServer": {},
   "eventsEnabled": false,
-  "eventsListeners": [
-    "jboss-logging"
-  ],
+  "eventsListeners": ["jboss-logging"],
   "enabledEventTypes": [],
   "adminEventsEnabled": false,
   "adminEventsDetailsEnabled": false,
@@ -3877,9 +3827,7 @@
         "subType": "authenticated",
         "subComponents": {},
         "config": {
-          "allow-default-scopes": [
-            "true"
-          ]
+          "allow-default-scopes": ["true"]
         }
       },
       {
@@ -3889,9 +3837,7 @@
         "subType": "anonymous",
         "subComponents": {},
         "config": {
-          "max-clients": [
-            "200"
-          ]
+          "max-clients": ["200"]
         }
       },
       {
@@ -3909,9 +3855,7 @@
         "subType": "anonymous",
         "subComponents": {},
         "config": {
-          "allow-default-scopes": [
-            "true"
-          ]
+          "allow-default-scopes": ["true"]
         }
       },
       {
@@ -3940,12 +3884,8 @@
         "subType": "anonymous",
         "subComponents": {},
         "config": {
-          "host-sending-registration-request-must-match": [
-            "true"
-          ],
-          "client-uris-must-match": [
-            "true"
-          ]
+          "host-sending-registration-request-must-match": ["true"],
+          "client-uris-must-match": ["true"]
         }
       }
     ],
@@ -3959,18 +3899,12 @@
           "privateKey": [
             "MIIEpQIBAAKCAQEAu4+F+guhmMR46OIlH6mWrKLTTZZ3z4EAKx28ulfWh2FNNz8eOwNYrGKmqSGVk6oXaZMYrDjk7QU4cvtUxJFJVMxFgNKqYZ/O57af7Jya5a20r8t2O+xDP++e6poTGalVhIbf+zvUEnIM1pLx4RvDawyyp3Tigq7ibCcJvC48aT/5KvMcmwHAqKGK0LfSxoK+3NusTk+B1LVs6AnegjL3ARS27czrrCNeAHkfQuyjwnt4PzxGoW/cYQ0FKqfl561wXHSx5j5hiscQqS/T1IWanq1jFM8ETCgldpT9+og0wwGRE6w0m2Z1pKek/W+q5Z7Fg0mjpzOH9vpBHwiyJ3PAlQIDAQABAoIBAAS4UamPed9XkGhh6oe/s45AIbup3fV/nFK5cpqo47nv8arCgJ8BEE30RJfsg7Bd3y11uXD6FI6/ayJ/nyw8MMF8y4H4qzd+N01++8rPTRmbE7k50E2lPjMBc3kZbAIhEAkgAMp4gLd/HcIXnBUrZvFOdj9/EkUyI/oPSHAvJK+MVMpNizq3x/bOYOPoPq7mIWyhaCRFosYS5ds7P455Cwp0gh3Q/rYo1dUOdh9vdNAzwu7kR3FtfFTVOStJ1W8d/e1m4vcW/gm1IklxEGB34XfjQ+MKM2b32bIub/SN13L4V01al+pcaum2j08qc1mCD3U4zBD2VvjOrPctqTTadfkCgYEA6dyPLj/hpMbBwH09u6YD2UN+1/WAf5+lbMiZ3IjuW5Sdmf5kaoL/t9lmOAb69YituqRcSDJpJrA74J0mMXQvInD5fH1sTZ+88F1y7Zo+gjSmvBn1GnXn5VfMyzrwf5YLGsf9RETg/4cOzeIg4E1pHue95mzob8xky2PKGOu8/u0CgYEAzVDmUAcSMDPu+LtgitKaZgsqpodVCSjjxeT67PIS0Uk45YxSCCQgRjQRIRIFloeizPyrta4You/eEJDrza6u67g1ksd5T0xgPIjXRsVRFAa5qIYIc0KEma2umqvBdkMnPLeAVJRnOmmVHIiVJLUYR8MMkUxkLEiYrVzFss3Ka0kCgYEA0XUUYK4ioXzLSGZkBk+5Hr0PPMnMH4KTnY1GEXorUqcXSTfKJIPUGYyDuya1W3jhcUuIw7ky6M3rs0/NR3nyRXy+V7vWZuftR7PLHfiKiAA0XkE5gEueOZGcAWJ2yS9QHtqEgsLWasdCgTBJldx/jIivU1S0En4UwP5NomhxzDkCgYEAoPe9KZ7xlpMQ1zdosE3/OOOmU5skgyLouL0WMXB0alrC3c0Of017dC7cAxZzBRpf++BY6v6MWCpA6rID/WTnxOzOK75yEEar6KnMRbLrJw1Cv6ods+fBuA6gJqlj6skpWQPw+97Bs90VR6KZc4b7ez+jecLvgnyEHt7uLIoFGekCgYEA0/Op9ts9VxYDQKcQ90Dqpayck16vAfNQ31FgTv/LubdZ1S9JBRnCgz7HQI38oaBRfB8in0NLIT/F/IG8lSKvQDmmvjTJIGJngsj6xQ6KcxcPDrrSOVWOx3seXtvvcuSof+C+d1kNU8K3n+ArctHFT5BZxQo84kuR6HaWUhAED6s="
           ],
-          "keyUse": [
-            "ENC"
-          ],
+          "keyUse": ["ENC"],
           "certificate": [
             "MIICnzCCAYcCBgGJ4F1P2DANBgkqhkiG9w0BAQsFADATMREwDwYDVQQDDAhjcnVjaWJsZTAeFw0yMzA4MTAxNjUwNTlaFw0zMzA4MTAxNjUyMzlaMBMxETAPBgNVBAMMCGNydWNpYmxlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu4+F+guhmMR46OIlH6mWrKLTTZZ3z4EAKx28ulfWh2FNNz8eOwNYrGKmqSGVk6oXaZMYrDjk7QU4cvtUxJFJVMxFgNKqYZ/O57af7Jya5a20r8t2O+xDP++e6poTGalVhIbf+zvUEnIM1pLx4RvDawyyp3Tigq7ibCcJvC48aT/5KvMcmwHAqKGK0LfSxoK+3NusTk+B1LVs6AnegjL3ARS27czrrCNeAHkfQuyjwnt4PzxGoW/cYQ0FKqfl561wXHSx5j5hiscQqS/T1IWanq1jFM8ETCgldpT9+og0wwGRE6w0m2Z1pKek/W+q5Z7Fg0mjpzOH9vpBHwiyJ3PAlQIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQCKuDB2NHDzQkjc1nJw4b48fwYW24fMiDknfx+4L82hNytmAOmvUAJ3pfzxY5JybVckRbi1Z0MWDwx9/qybGQSUC2d/6HXlVFZT7iXnM+5rH4QL/LGaFdSHA/PYn12WUywt9urzE8Vx4Dm4iJB//7KwnAQGfWaVhzKMORpZwUCrrJxna5LAZg+Sa1Bt4T5zBOsw2h+ycGa75pKqJ2mm718jzK4evZVSlC1i6Es9FE2+aKLcwH9XC5U/DkV4mfEIVCm4JJ7xceOz+LafyS/yb6a/h28Pk303eK6ORdk8hRwLeOpjyusxvNCMn2z4dBAKFFcJz0QGj7rif2aRI1f2H0xf"
           ],
-          "priority": [
-            "100"
-          ],
-          "algorithm": [
-            "RSA-OAEP"
-          ]
+          "priority": ["100"],
+          "algorithm": ["RSA-OAEP"]
         }
       },
       {
@@ -3982,15 +3916,11 @@
           "privateKey": [
             "MIIEpAIBAAKCAQEA0v2rexBsiISp9Nou1PYTgESRU9wqmeOV2gb+Eg71jrOX2IcJO0VN232x21IVtWOxV4pKz12QtJUf37+M0m2pzVPM2hfx6dNu89znpOP5cOMLfuVxZzAapkQwrKzitMbLwTA5QxAsm6BFe586kVFbvd5E+DItFJOoWFL9eaRZEVUB7sO3KN//UJYd29zXEfK53UGWqOHhaLZD/oIh/8y5Sc5T7wPZaZKhtVMB62S8XpVbmTsM5fchIWe01rsdrm4W0+LqNgBB2TCCcmoTtbAbu+Ms16dGZkRLi5hXSQOG/uC/nsGHzGXwboyI6YoiTYYPxCTD0JilfflOMIFzQOls8wIDAQABAoIBADvkC8gcCmLaHZBGWqLS0whG7mW6ilEye/fuojIoEuYV7pVlB2bOrmIOlOznqQfbK5zowYGJUqkf53NQ4T1eKaQCFJUX1PCFtun8G7j/iW/U0w+LO5yJ2Ba4JoTtclDUWUQWVzrFHZRzcyW7NhnH2V3U+Qjm3UsI+vFPZWohD7NORRI7F6tk9ijKxQ+cqEu6AWXKTErjup2PBzYMgTtaITAvoZp6WGDKfvKIMinx506CUhGGi8+AIf3WFCK5LgNgajSL0PY2rSLJxQN2jtsuGutiwxuo8HvS36CN7nTatU4bzqHk0fRtVippvKSesrN39RvOZkwOk3R5189dVs9Ba8kCgYEA6rdEP2RqN/hx093sMUMAKFemzRuYjeCYnVo/d8IGOZNg8dH8bd3TEcCRsT4tCWQRaKIdw6yfCOlpPHSKjLMSGY/GcGejASIwFnR/VljBO2Oc1NzARleNW9xrFTRzFdJ1tUIbsZFPUbZzphJA8CUlLDN1KS7zds9ESY1e2iMvIoUCgYEA5h+lwMAPwlavHT+8fnIt0pLxhe06t/wSoaGp18BrYN6Ot0CoUXrylCqn5wCVBjbrJnnEy/f+LAkKLnJ+DzS10IdjuXOLkXka36bXgsj8m9IpjGQJlIfSeuMMhSDBIIkHk/Nhyiiod47iOcsPrvEzX2RTmFc9dPzhaGrA3Q+T9xcCgYBKrSI+lQEia54zjTDff3SmYTTFnxkLUsDbl2IIBSgb22MFrQyGHARSapUv8hs8GKVdR+72WY6DtFdyD5YhK7v/e/nju2VmL+1ix4/X9gcMkSXNp6pY9vQXnOpI5dYTxFEE6VKMTTISSl1DIh2dCgRoqrqE7tYxH8KXMC5UcstFTQKBgQDCVDFV3xqvwyHnsj4MDYGSlBIvRZDTc6OMKIfTsSM8T1T3fTtma0vUQV0+Xqh58gCLokLE9+wE5bFaXccEMj/jE6HsJp3SwBEokqzlPbLMJyJ88rGAY14j9f5JocpVHkJu9xU6cTEqnVd+9HKPChKW2JMbT3iPhUkYMyYgx5ntCwKBgQC37H1HbnTAzlTt6YppWak7dxRgaluB6iniT1cYDSsGNpZn2mlfbc3QQqRqU2eMU03RkcOFn0gTaRxvuMNKPEJpqnC5dTHPn6c2b9I+7cUug3BxpQdI5mWQGJFl8AjbyLVCJ/Q5X8saAdu3p4XTmvfvzIayPnF9iTw1D8UufudeBA=="
           ],
-          "keyUse": [
-            "SIG"
-          ],
+          "keyUse": ["SIG"],
           "certificate": [
             "MIICnzCCAYcCBgGJ4F1PTzANBgkqhkiG9w0BAQsFADATMREwDwYDVQQDDAhjcnVjaWJsZTAeFw0yMzA4MTAxNjUwNThaFw0zMzA4MTAxNjUyMzhaMBMxETAPBgNVBAMMCGNydWNpYmxlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0v2rexBsiISp9Nou1PYTgESRU9wqmeOV2gb+Eg71jrOX2IcJO0VN232x21IVtWOxV4pKz12QtJUf37+M0m2pzVPM2hfx6dNu89znpOP5cOMLfuVxZzAapkQwrKzitMbLwTA5QxAsm6BFe586kVFbvd5E+DItFJOoWFL9eaRZEVUB7sO3KN//UJYd29zXEfK53UGWqOHhaLZD/oIh/8y5Sc5T7wPZaZKhtVMB62S8XpVbmTsM5fchIWe01rsdrm4W0+LqNgBB2TCCcmoTtbAbu+Ms16dGZkRLi5hXSQOG/uC/nsGHzGXwboyI6YoiTYYPxCTD0JilfflOMIFzQOls8wIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQAaCb8NDHYcHsRc0lec3Tme3sbIqtM09Ht13TOh2+KZ1utt0XZk+gEPALH3vdCgUVErYMmgYImDzJ8b+tU+x4WnSc/QxV99381ljJ/+RAm7gyrqSidTyarBfcY5cH57QYiW8/iZNcDT99dDO5hZIuuyG8VESVEGLAUPYVQSN8KIWvEZLVcRTL9KdakaQSXDiBYnhtumRVYD2rLMwt0jh1Woi+anTRH3VmE3As6HZ8xiX8FXchdO9Pszu61zjxe9hvNJVs8U2VC2120Q31RGCvFXBnfnfj4wa3Z37nEIhqlW8xSnzuVE/E3TLWRgEn80Q2z0u3tXOYOaBnr5f397hwMe"
           ],
-          "priority": [
-            "100"
-          ]
+          "priority": ["100"]
         }
       },
       {
@@ -3999,15 +3929,9 @@
         "providerId": "aes-generated",
         "subComponents": {},
         "config": {
-          "kid": [
-            "9629dd0b-deb7-4100-b1cb-edc386c8c8aa"
-          ],
-          "secret": [
-            "CXJ2dbXimkxrm0kCMharwA"
-          ],
-          "priority": [
-            "100"
-          ]
+          "kid": ["9629dd0b-deb7-4100-b1cb-edc386c8c8aa"],
+          "secret": ["CXJ2dbXimkxrm0kCMharwA"],
+          "priority": ["100"]
         }
       },
       {
@@ -4016,18 +3940,12 @@
         "providerId": "hmac-generated",
         "subComponents": {},
         "config": {
-          "kid": [
-            "2fc08b5a-5806-4354-8266-bd36550fd82e"
-          ],
+          "kid": ["2fc08b5a-5806-4354-8266-bd36550fd82e"],
           "secret": [
             "UEXn-42kJ86OwlSQKxCv0iwt0n3aAw8DaEvYZSyiikCAMxa2HiRqYSGTSkkn5WjiGrzHQUkHLYV19RH3hjDhJA"
           ],
-          "priority": [
-            "100"
-          ],
-          "algorithm": [
-            "HS256"
-          ]
+          "priority": ["100"],
+          "algorithm": ["HS256"]
         }
       }
     ]
@@ -4690,9 +4608,7 @@
       "firstName": "Admin",
       "lastName": "User",
       "attributes": {
-        "terms_and_conditions": [
-          "1697642726"
-        ]
+        "terms_and_conditions": ["1697642726"]
       },
       "credentials": [
         {
@@ -4706,18 +4622,11 @@
       ],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "Administrator",
-        "default-roles-crucible"
-      ],
+      "realmRoles": ["Administrator", "default-roles-crucible"],
       "clientConsents": [
         {
           "clientId": "player.ui",
-          "grantedClientScopes": [
-            "email",
-            "profile",
-            "roles"
-          ],
+          "grantedClientScopes": ["email", "profile", "roles"],
           "createdDate": 1693252224685,
           "lastUpdatedDate": 1693252224733
         }
@@ -4735,9 +4644,7 @@
       "firstName": "OG",
       "lastName": "Admin",
       "attributes": {
-        "terms_and_conditions": [
-          "1730729259"
-        ]
+        "terms_and_conditions": ["1730729259"]
       },
       "credentials": [
         {
@@ -4751,11 +4658,10 @@
       ],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "default-roles-crucible"
-      ],
+      "realmRoles": ["Administrator", "default-roles-crucible"],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "ogadmin@localhost"
     },
     {
       "id": "8037bdb5-1abd-45a7-aaa1-c8dce0da86d8",
@@ -4767,13 +4673,8 @@
       "firstName": "Content",
       "lastName": "Developer",
       "attributes": {
-        "organization": [
-          "Demo Org",
-          "Second Org"
-        ],
-        "terms_and_conditions": [
-          "1733933674"
-        ]
+        "organization": ["Demo Org", "Second Org"],
+        "terms_and_conditions": ["1733933674"]
       },
       "credentials": [
         {
@@ -4787,14 +4688,10 @@
       ],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "Content Developer",
-        "default-roles-crucible"
-      ],
+      "realmRoles": ["Content Developer", "default-roles-crucible"],
       "notBefore": 0,
-      "groups": [
-        "/curriculum-developers"
-      ]
+      "groups": ["/curriculum-developers"],
+      "email": "contentdev@localhost"
     },
     {
       "id": "3d8332fa-2e35-4823-b83f-732eb9483690",
@@ -4806,9 +4703,7 @@
       "firstName": "Crucible",
       "lastName": "Admin",
       "attributes": {
-        "terms_and_conditions": [
-          "1705939925"
-        ]
+        "terms_and_conditions": ["1705939925"]
       },
       "credentials": [
         {
@@ -4816,17 +4711,16 @@
           "type": "password",
           "userLabel": "My password",
           "createdDate": 1705939914413,
-          "secretData": "{\"value\":\"RHgchyc2QAw8C/7HMvDhOf/ChAL+knQKYFO2UBRTAEw=\",\"salt\":\"wBAkmK5CyWLhKwck8sqfvg==\",\"additionalParameters\":{}}",
+          "secretData": "{\"value\":\"3E3znP6H4/QTbd2w1PznMm+PIygqTmvznggrzAarD+8=\",\"salt\":\"ldA2KO1HhEv6xQxWhktn3Q==\",\"additionalParameters\":{}}",
           "credentialData": "{\"hashIterations\":27500,\"algorithm\":\"pbkdf2-sha256\",\"additionalParameters\":{}}"
         }
       ],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "default-roles-crucible"
-      ],
+      "realmRoles": ["Administrator", "default-roles-crucible"],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "crucible-admin@localhost"
     },
     {
       "id": "a0c8dc48-c501-4362-bef2-945cf1695bd0",
@@ -4838,12 +4732,8 @@
       "firstName": "Demo",
       "lastName": "User",
       "attributes": {
-        "organization": [
-          "Demo Org"
-        ],
-        "terms_and_conditions": [
-          "1742337017"
-        ]
+        "organization": ["Demo Org"],
+        "terms_and_conditions": ["1742337017"]
       },
       "credentials": [
         {
@@ -4857,14 +4747,10 @@
       ],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "default-roles-crucible"
-      ],
+      "realmRoles": ["default-roles-crucible"],
       "notBefore": 0,
-      "groups": [
-        "/White Cell",
-        "/cyber-managers"
-      ]
+      "groups": ["/White Cell", "/cyber-managers"],
+      "email": "demo-user@localhost"
     },
     {
       "id": "987b237f-764e-460f-a80d-b761321d9e98",
@@ -4876,12 +4762,8 @@
       "firstName": "Rangetech",
       "lastName": "Admin",
       "attributes": {
-        "organization": [
-          "Demo Org Reserve"
-        ],
-        "terms_and_conditions": [
-          "1733932342"
-        ]
+        "organization": ["Demo Org Reserve"],
+        "terms_and_conditions": ["1733932342"]
       },
       "credentials": [
         {
@@ -4895,13 +4777,10 @@
       ],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "default-roles-crucible"
-      ],
+      "realmRoles": ["default-roles-crucible"],
       "notBefore": 0,
-      "groups": [
-        "/lab-builders"
-      ]
+      "groups": ["/lab-builders"],
+      "email": "rangetech@localhost"
     },
     {
       "id": "6b2541f3-7b60-4c09-ba0a-d421bfbabb46",
@@ -4913,9 +4792,7 @@
       "firstName": "Read",
       "lastName": "Only",
       "attributes": {
-        "terms_and_conditions": [
-          "1733933101"
-        ]
+        "terms_and_conditions": ["1733933101"]
       },
       "credentials": [
         {
@@ -4929,11 +4806,10 @@
       ],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "default-roles-crucible"
-      ],
+      "realmRoles": ["default-roles-crucible"],
       "notBefore": 0,
-      "groups": []
+      "groups": [],
+      "email": "readonly@localhost"
     },
     {
       "id": "6ae23f9b-26d0-4c15-a399-1a94b7d10f90",
@@ -4945,12 +4821,8 @@
       "serviceAccountClientId": "player.vm.webhooks",
       "credentials": [],
       "disableableCredentialTypes": [],
-      "requiredActions": [
-        "TERMS_AND_CONDITIONS"
-      ],
-      "realmRoles": [
-        "default-roles-crucible"
-      ],
+      "requiredActions": ["TERMS_AND_CONDITIONS"],
+      "realmRoles": ["default-roles-crucible"],
       "notBefore": 0,
       "groups": []
     },
@@ -4963,13 +4835,9 @@
       "credentials": [],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "default-roles-crucible"
-      ],
+      "realmRoles": ["default-roles-crucible"],
       "clientRoles": {
-        "realm-management": [
-          "view-users"
-        ]
+        "realm-management": ["view-users"]
       },
       "notBefore": 0,
       "groups": []
@@ -4984,12 +4852,8 @@
       "firstName": "User1",
       "lastName": "User",
       "attributes": {
-        "organization": [
-          "Demo Org"
-        ],
-        "terms_and_conditions": [
-          "1703175332"
-        ]
+        "organization": ["Demo Org"],
+        "terms_and_conditions": ["1703175332"]
       },
       "credentials": [
         {
@@ -5003,14 +4867,10 @@
       ],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "default-roles-crucible"
-      ],
+      "realmRoles": ["default-roles-crucible"],
       "notBefore": 0,
-      "groups": [
-        "/cyber-managers",
-        "/lab-builders"
-      ]
+      "groups": ["/cyber-managers", "/lab-builders"],
+      "email": "user1@localhost"
     },
     {
       "id": "c0ce45b2-5634-4f5e-9a6a-87a0738e814c",
@@ -5021,12 +4881,8 @@
       "emailVerified": false,
       "firstName": "user2",
       "attributes": {
-        "organization": [
-          "Demo Org"
-        ],
-        "terms_and_conditions": [
-          "1710960650"
-        ]
+        "organization": ["Demo Org"],
+        "terms_and_conditions": ["1710960650"]
       },
       "credentials": [
         {
@@ -5040,13 +4896,10 @@
       ],
       "disableableCredentialTypes": [],
       "requiredActions": [],
-      "realmRoles": [
-        "default-roles-crucible"
-      ],
+      "realmRoles": ["default-roles-crucible"],
       "notBefore": 0,
-      "groups": [
-        "/ex-cyber-managers"
-      ]
+      "groups": ["/ex-cyber-managers"],
+      "email": "user2@localhost"
     }
   ]
 }
