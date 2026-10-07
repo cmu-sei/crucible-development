@@ -2792,12 +2792,14 @@
       "redirectUris": [
         "http://localhost/admin/oauth2callback.php",
         "http://localhost:8081/admin/oauth2callback.php",
-        "http://localhost:8082/admin/oauth2callback.php"
+        "http://localhost:8082/admin/oauth2callback.php",
+        "http://localhost:8083/admin/oauth2callback.php"
       ],
       "webOrigins": [
         "http://localhost",
         "http://localhost:8081",
-        "http://localhost:8082"
+        "http://localhost:8082",
+        "http://localhost:8083"
       ],
       "notBefore": 0,
       "bearerOnly": false,

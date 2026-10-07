@@ -538,6 +538,7 @@ The following Moodle task configurations are available:
 - **`.env/moodle-xdebug.env`** - Moodle with Xdebug enabled (for PHP debugging)
 - **`.env/catapult.env`** - Moodle + the ADL CATAPULT cmi5 player + LRS, for cmi5/xAPI content (launches Moodle, Catapult, and Lrsql together)
 - **`.env/moodle52.env`** - Moodle 5.2 test instance (see below)
+- **`.env/moodle53.env`** - Moodle 5.3 test instance (see below)
 
 Use the appropriate task based on whether you need to debug PHP code. Xdebug has significant performance overhead, so only enable it when actively debugging.
 
@@ -548,32 +549,46 @@ Moodle against an older instance's database runs irreversible upgrade migrations
 that, the older version will not start against it. Each instance therefore gets its own
 container name, port, database, and `moodle-core` mount:
 
-| | Moodle 5.0 | Moodle 5.2 |
-| --- | --- | --- |
-| Launch task | `.env/moodle.env` | `.env/moodle52.env` |
-| URL | http://localhost:8081 | http://localhost:8082 |
-| Container | `moodle` | `moodle52` |
-| Database | `moodle` | `moodle52` |
-| Core mount | `/mnt/data/crucible/moodle/moodle-core/` | `/mnt/data/crucible/moodle/moodle-core-52/` |
-| Container web root | `/var/www/html` | `/var/www/html/public` |
+| | Moodle 5.0 | Moodle 5.2 | Moodle 5.3 |
+| --- | --- | --- | --- |
+| Launch task | `.env/moodle.env` | `.env/moodle52.env` | `.env/moodle53.env` |
+| URL | http://localhost:8081 | http://localhost:8082 | http://localhost:8083 |
+| Container | `moodle` | `moodle52` | `moodle53` |
+| Database | `moodle` | `moodle52` | `moodle53` |
+| Core mount | `/mnt/data/crucible/moodle/moodle-core/` | `/mnt/data/crucible/moodle/moodle-core-52/` | `/mnt/data/crucible/moodle/moodle-core-53/` |
+| Container web root | `/var/www/html` | `/var/www/html/public` | `/var/www/html/public` |
 
-Both instances share the same Dockerfile (`resources/moodle/Dockerfile.MoodleCustom`); the
+5.3 is the next LTS; 5.2 is what production rides until it reaches end of support. 5.0 is
+the instance with the seeded TopoMojo demo data.
+
+Every instance shares the same Dockerfile (`resources/moodle/Dockerfile.MoodleCustom`); the
 base image comes from the `MOODLE_BASE_IMAGE` build arg. The plugins mounted from
 `repos.json` are shared, but marketplace plugin versions are pinned per instance in
 `AppHost.cs` since those downloads are branch-specific.
+
+The base image's PHP version moves with the Moodle branch - 5.0 and 5.2 ship PHP 8.3, 5.3
+ships 8.4 - and Alpine names both the Xdebug package and the `conf.d` directory after it
+(`php83-pecl-xdebug`, `/etc/php83/conf.d`). The Dockerfile resolves that from the image's
+own `php` rather than hardcoding a version, because the hardcoded form fails silently:
+installing `php83-pecl-xdebug` onto a PHP 8.4 image pulls in a second runtime and drops the
+ini where the running PHP never reads it, so the build succeeds and Xdebug is simply absent.
 
 Moodle 5.1 moved everything web-accessible under `public/`, so on 5.1+ the core directories
 and every plugin live one level deeper in the container (`admin/cli` stays outside the web
 root in both layouts). Each `MoodleInstance` declares its `WebRoot`, and the resource
 scripts (`pre_configure.sh`, `015-copy-plugins.sh`, the Dockerfile, `xdebug_filter.php`)
-detect the layout at build/boot time, so one image definition serves both. The host side of
-the `moodle-core` mounts stays flat regardless of version. The base image re-points nginx at
-`public/` itself on boot.
+detect the layout at build/boot time, so one image definition serves every version. The host
+side of the `moodle-core` mounts stays flat regardless of version. The base image re-points
+nginx at `public/` itself on boot.
 
 To add another version, add a `MoodleInstance` entry in `AddMoodle` with an unused port,
 a new database name, a new mount root, and the web root that version uses, plus a
 `Launch__<Name>` flag in `LaunchOptions`. New instances are left out of
-`AddAllApplications` so they only build when asked for.
+`AddAllApplications` so they only build when asked for. The port also needs an
+`.env/<name>.env` task, `.vscode/launch.json` profiles, a mount root in
+`scripts/add-moodle-mounts.sh`, a `forwardPorts` entry in `.devcontainer/devcontainer.json`,
+the `moodle-client` redirect URI and web origin in `resources/crucible-realm.json`, and the
+CORS origins the Alloy and TopoMojo APIs allow in `AppHost.cs`.
 
 The Moodle containers use `ContainerLifetime.Persistent`, and Aspire reuses an existing
 container rather than recreating it when its bind mounts change. After changing mount paths

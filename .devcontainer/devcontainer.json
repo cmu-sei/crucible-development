@@ -149,7 +149,8 @@
     // Moodle. Declared explicitly because the containers are persistent: recreating one
     // replaces the listening socket, and an auto-detected forward does not survive that.
     8081, // Moodle 5.0
-    8082 // Moodle 5.2
+    8082, // Moodle 5.2
+    8083 // Moodle 5.3
   ],
   "customizations": {
     "vscode": {
