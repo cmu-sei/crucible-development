@@ -411,6 +411,29 @@ public static partial class BuilderExtensions
         .WithExplicitStart()
         .WithParentRelationship(minikubeStart); ;
 
+        // Dev git server for Caster module sources. Job pods reach the devcontainer as
+        // host.minikube.internal; caster-api runs in the devcontainer, where that name
+        // doesn't resolve, so git rewrites it to localhost for caster-api only.
+        var gitea = builder.AddContainer("gitea", "gitea/gitea", "1.27.3")
+            .WithLifetime(ContainerLifetime.Persistent)
+            .WithContainerName("gitea")
+            .WithVolume("crucible-dev-gitea", "/data")
+            .WithHttpEndpoint(port: 3010, targetPort: 3000)
+            .WithHttpHealthCheck(path: "/api/healthz", endpointName: "http")
+            .WithEnvironment("GITEA__security__INSTALL_LOCK", "true")
+            .WithEnvironment("GITEA__security__MIN_PASSWORD_LENGTH", "5")
+            .WithEnvironment("GITEA__server__ROOT_URL", "http://host.minikube.internal:3010/")
+            .WithEnvironment("GITEA__server__DISABLE_SSH", "true")
+            .WithEnvironment("GITEA__service__DISABLE_REGISTRATION", "true")
+            .WithEnvironment("GITEA__repository__DEFAULT_BRANCH", "main");
+
+        var giteaSeed = builder.AddExecutable("gitea-seed", "bash", $"{builder.AppHostDirectory}/resources/gitea/", [
+            "-c",
+            "./seed-gitea.sh"
+        ])
+        .WaitFor(gitea)
+        .WithParentRelationship(gitea);
+
         var casterApi = builder.AddProject<Projects.Caster_Api>("caster-api", launchProfileName: "Caster.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
@@ -425,7 +448,13 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "caster.api")
             .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
-            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
+            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true")
+            .WithEnvironment("Terraform__ModuleSources__0__Name", "crucible-modules")
+            .WithEnvironment("Terraform__ModuleSources__0__Url", "http://host.minikube.internal:3010/crucible/crucible-terraform-modules.git")
+            .WithEnvironment("Terraform__ModuleSources__0__Layout", "Subdirectories")
+            .WithEnvironment("GIT_CONFIG_COUNT", "1")
+            .WithEnvironment("GIT_CONFIG_KEY_0", "url.http://localhost:3010/.insteadOf")
+            .WithEnvironment("GIT_CONFIG_VALUE_0", "http://host.minikube.internal:3010/");
 
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
@@ -438,6 +467,8 @@ public static partial class BuilderExtensions
             casterApi.WithExplicitStart();
             casterUi.WithExplicitStart();
             minikubeStart.WithExplicitStart();
+            gitea.WithExplicitStart();
+            giteaSeed.WithExplicitStart();
         }
     }
 

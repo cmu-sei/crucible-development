@@ -207,6 +207,29 @@ EOF
   echo "Registry mirrors ready."
 }
 
+# -----------------------------------------------------------------------------
+# Host Alias for Pods
+# minikube start normally adds host.minikube.internal to CoreDNS, but older
+# clusters can lack it. Without it Caster job pods can't fetch modules from
+# the dev Gitea by name.
+# -----------------------------------------------------------------------------
+
+ensure_coredns_host_alias() {
+  local corefile gateway
+  corefile=$(kubectl -n kube-system get configmap coredns -o jsonpath='{.data.Corefile}')
+
+  if grep -q 'host.minikube.internal' <<< "$corefile"; then
+    return
+  fi
+
+  gateway=$(docker network inspect minikube -f '{{(index .IPAM.Config 0).Gateway}}')
+  echo "Adding host.minikube.internal (${gateway}) to CoreDNS..."
+
+  corefile=$(sed "s|^\(\s*\)forward \. /etc/resolv.conf|\1hosts {\n\1   ${gateway} host.minikube.internal\n\1   fallthrough\n\1}\n&|" <<< "$corefile")
+  kubectl -n kube-system create configmap coredns --from-literal=Corefile="$corefile" \
+    --dry-run=client -o yaml | kubectl apply -f -
+}
+
 start_registry_mirrors
 
 log_header "Checking minikube cluster status"
@@ -228,6 +251,8 @@ else
     minikube ssh "sudo sed -i 's/serializeImagePulls: true/serializeImagePulls: false/' /var/lib/kubelet/config.yaml || echo 'serializeImagePulls: false' | sudo tee -a /var/lib/kubelet/config.yaml"
     minikube ssh "sudo systemctl restart kubelet"
 fi
+
+ensure_coredns_host_alias
 
 # Set up certificates and secrets in the cluster
 log_header "Setting up TLS secrets and CA certificates"
