@@ -412,13 +412,15 @@ public static partial class BuilderExtensions
         .WithParentRelationship(minikubeStart); ;
 
         // Dev git server for Caster module sources. Job pods reach the devcontainer as
-        // host.minikube.internal; caster-api runs in the devcontainer, where that name
-        // doesn't resolve, so git rewrites it to localhost for caster-api only.
+        // host.minikube.internal, so the port binds on all interfaces rather than
+        // Aspire's loopback default; caster-api runs in the devcontainer, where that
+        // name doesn't resolve, so git rewrites it to localhost for caster-api only.
         var gitea = builder.AddContainer("gitea", "gitea/gitea", "1.27.3")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("gitea")
             .WithVolume("crucible-dev-gitea", "/data")
             .WithHttpEndpoint(port: 3010, targetPort: 3000)
+            .WithEndpoint("http", endpoint => endpoint.TargetHost = "0.0.0.0")
             .WithHttpHealthCheck(path: "/api/healthz", endpointName: "http")
             .WithEnvironment("GITEA__security__INSTALL_LOCK", "true")
             .WithEnvironment("GITEA__security__MIN_PASSWORD_LENGTH", "5")
