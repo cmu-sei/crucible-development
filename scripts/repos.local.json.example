@@ -28,6 +28,11 @@
       "name": "internal-tool",
       "url": "git@github.com:your-private-org/internal-tool.git",
       "_comment": "Example: Private GitHub repository using SSH"
+    },
+    {
+      "name": "crucible-terraform-modules",
+      "url": "https://git.example.com/scm/your-project/crucible-terraform-modules.git",
+      "_comment": "Example: Caster module catalog on a private git server. Keep it in repos[], not the moodle group, which bind mounts every entry into Moodle as a plugin. See README: Adding a Private Module Source"
     }
   ]
 }
