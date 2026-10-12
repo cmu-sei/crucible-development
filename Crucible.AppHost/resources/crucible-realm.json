@@ -2112,7 +2112,8 @@
         "player-vm",
         "gallery",
         "email",
-        "player"
+        "player",
+        "caster"
       ],
       "optionalClientScopes": [
         "address",
@@ -2171,7 +2172,8 @@
         "player-vm",
         "gallery",
         "email",
-        "player"
+        "player",
+        "caster"
       ],
       "optionalClientScopes": [
         "address",
@@ -2264,7 +2266,8 @@
         "player-vm",
         "gallery",
         "email",
-        "player"
+        "player",
+        "caster"
       ],
       "optionalClientScopes": [
         "address",
