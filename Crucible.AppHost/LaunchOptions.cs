@@ -22,6 +22,7 @@ public class LaunchOptions
     public bool Lrsql { get; set; }
     public bool PGAdmin { get; set; }
     public bool Docs { get; set; }
+    public bool Gitea { get; set; }
     public bool Misp { get; set; }
     public bool Superset { get; set; }
     public bool Catapult { get; set; }

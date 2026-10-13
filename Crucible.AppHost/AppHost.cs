@@ -45,7 +45,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
     Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Moodle52: {launchOptions.Moodle52}, Moodle53: {launchOptions.Moodle53}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
     Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, TopoMojo Launchpoint: {launchOptions.TopoMojoLaunchpoint}, Gameboard: {launchOptions.Gameboard}");
-    Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, AddAllApplications: {launchOptions.AddAllApplications}");
+    Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, Gitea: {launchOptions.Gitea}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
     Console.WriteLine($"  Dev: [{string.Join(", ", launchOptions.Dev)}]");
 }
@@ -411,13 +411,54 @@ public static partial class BuilderExtensions
         .WithExplicitStart()
         .WithParentRelationship(minikubeStart); ;
 
-        // Dev git server for Caster module sources. Job pods reach the devcontainer as
-        // host.minikube.internal, so the port binds on all interfaces rather than
-        // Aspire's loopback default; caster-api runs in the devcontainer, where that
-        // name doesn't resolve, so git rewrites it to localhost for caster-api only.
+        var casterApi = builder.AddProject<Projects.Caster_Api>("caster-api", launchProfileName: "Caster.Api")
+            .WaitFor(postgres)
+            .WaitFor(keycloak)
+            .WaitForCompletion(minikubeStart)
+            .WithHttpHealthCheck("api/health/ready")
+            .WithReference(casterDb, "PostgreSQL")
+            .WithEnvironment("Database__Provider", "PostgreSQL")
+            .WithEnvironment("Database__DevModeRecreate", "false")
+            .WithEnvironment("Authorization__Authority", "https://localhost:8443/realms/crucible")
+            .WithEnvironment("Authorization__AuthorizationUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/auth")
+            .WithEnvironment("Authorization__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
+            .WithEnvironment("Authorization__ClientId", "caster.api")
+            .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
+            .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
+            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
+
+        builder.AddGitea(casterApi, casterMode, options);
+
+        var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
+
+        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+
+        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+
+        if (!IsEnabled(casterMode))
+        {
+            casterApi.WithExplicitStart();
+            casterUi.WithExplicitStart();
+            minikubeStart.WithExplicitStart();
+        }
+    }
+
+    /// <summary>
+    /// Adds a dev Gitea as Caster's module source. Off unless Gitea is enabled.
+    /// </summary>
+    private static void AddGitea(this IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> casterApi, string casterMode, LaunchOptions options)
+    {
+        var giteaMode = ResolveMode(options.Gitea, "Gitea", options);
+
+        if (!options.AddAllApplications && !IsEnabled(giteaMode))
+            return;
+
+        // Job pods reach the devcontainer as host.minikube.internal, so the port binds
+        // on all interfaces rather than Aspire's loopback default; caster-api runs in
+        // the devcontainer, where that name doesn't resolve, so git rewrites it to
+        // localhost for caster-api only. Not persistent: it stops with the AppHost,
+        // and the volume keeps the repository between runs.
         var gitea = builder.AddContainer("gitea", "gitea/gitea", "1.27.3")
-            .WithLifetime(ContainerLifetime.Persistent)
-            .WithContainerName("gitea")
             .WithVolume("crucible-dev-gitea", "/data")
             .WithHttpEndpoint(port: 3010, targetPort: 3000)
             .WithEndpoint("http", endpoint => endpoint.TargetHost = "0.0.0.0")
@@ -436,21 +477,7 @@ public static partial class BuilderExtensions
         .WaitFor(gitea)
         .WithParentRelationship(gitea);
 
-        var casterApi = builder.AddProject<Projects.Caster_Api>("caster-api", launchProfileName: "Caster.Api")
-            .WaitFor(postgres)
-            .WaitFor(keycloak)
-            .WaitForCompletion(minikubeStart)
-            .WithHttpHealthCheck("api/health/ready")
-            .WithReference(casterDb, "PostgreSQL")
-            .WithEnvironment("Database__Provider", "PostgreSQL")
-            .WithEnvironment("Database__DevModeRecreate", "false")
-            .WithEnvironment("Authorization__Authority", "https://localhost:8443/realms/crucible")
-            .WithEnvironment("Authorization__AuthorizationUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/auth")
-            .WithEnvironment("Authorization__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
-            .WithEnvironment("Authorization__ClientId", "caster.api")
-            .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
-            .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
-            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true")
+        casterApi
             .WithEnvironment("Terraform__ModuleSources__0__Name", "crucible-modules")
             .WithEnvironment("Terraform__ModuleSources__0__Url", "http://host.minikube.internal:3010/crucible/crucible-terraform-modules.git")
             .WithEnvironment("Terraform__ModuleSources__0__Layout", "Subdirectories")
@@ -458,17 +485,8 @@ public static partial class BuilderExtensions
             .WithEnvironment("GIT_CONFIG_KEY_0", "url.http://localhost:3010/.insteadOf")
             .WithEnvironment("GIT_CONFIG_VALUE_0", "http://host.minikube.internal:3010/");
 
-        var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
-
-        File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
-
-        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
-
-        if (!IsEnabled(casterMode))
+        if (!IsEnabled(casterMode) || !IsEnabled(giteaMode))
         {
-            casterApi.WithExplicitStart();
-            casterUi.WithExplicitStart();
-            minikubeStart.WithExplicitStart();
             gitea.WithExplicitStart();
             giteaSeed.WithExplicitStart();
         }

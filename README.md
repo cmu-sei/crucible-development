@@ -524,9 +524,9 @@ docker cp crucible-postgres:/tmp/blueprint.dump db-dumps/blueprint.dump
 
 ## Caster Module Sources
 
-Launching Caster also starts a dev Gitea at `http://localhost:3010` (user `crucible-admin`, password `admin`). The `gitea-seed` resource pushes the branches and tags of the local module catalog at `/mnt/data/crucible/crucible-terraform-modules` into the public `crucible/crucible-terraform-modules` repository, and caster-api lists modules from it as source 0. Re-run `gitea-seed` from the dashboard after tagging a new catalog version.
+Caster can use a dev Gitea at `http://localhost:3010` (user `crucible-admin`, password `admin`) as its module source. It is off by default; turn it on with `Launch__Gitea=true` in your `.env` file (for example alongside `Launch__Caster=true` in `.env/caster.env`), or by adding `"Gitea"` to `Prod` (or `Dev`) in `appsettings.Development.json`. It starts with Caster and stops when the AppHost stops; the `crucible-dev-gitea` volume keeps the repository between runs. The `gitea-seed` resource pushes the branches and tags of the local module catalog at `/mnt/data/crucible/crucible-terraform-modules` into the public `crucible/crucible-terraform-modules` repository, and caster-api lists modules from it as source 0. Re-run `gitea-seed` from the dashboard after tagging a new catalog version.
 
-Job pods reach Gitea as `host.minikube.internal`. caster-api runs in the dev container, where that name doesn't resolve, so the AppHost rewrites it to `localhost` for caster-api through `GIT_CONFIG_*` environment variables.
+Job pods reach Gitea as `host.minikube.internal`. caster-api runs in the dev container, where that name doesn't resolve, so the AppHost rewrites it to `localhost` for caster-api through `GIT_CONFIG_*` environment variables. If a job pod can't resolve `host.minikube.internal`, delete and start minikube again (`delete-minikube`, then `minikube`, from the dashboard).
 
 ### Using a Private Catalog Repository
 
