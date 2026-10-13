@@ -833,7 +833,9 @@ public static partial class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "blueprint.admin")
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
-            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite caster")
+            .WithEnvironment("ClientSettings__CasterApiUrl", "http://localhost:4309/")
+            .WithEnvironment("ClientSettings__CasterUiUrl", "http://localhost:4310")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         if (IsEnabled(lrsqlMode))
