@@ -46,7 +46,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
     Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Moodle52: {launchOptions.Moodle52}, Moodle53: {launchOptions.Moodle53}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
     Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, TopoMojo Launchpoint: {launchOptions.TopoMojoLaunchpoint}, Gameboard: {launchOptions.Gameboard}");
-    Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, AddAllApplications: {launchOptions.AddAllApplications}");
+    Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, Gitea: {launchOptions.Gitea}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
     Console.WriteLine($"  Dev: [{string.Join(", ", launchOptions.Dev)}]");
 }
@@ -457,6 +457,8 @@ public static partial class BuilderExtensions
         if (IsEnabled(casterMode))
             casterApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
 
+        builder.AddGitea(casterApi, casterMode, options);
+
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
@@ -468,6 +470,55 @@ public static partial class BuilderExtensions
             casterApi.WithExplicitStart();
             casterUi.WithExplicitStart();
             minikubeStart.WithExplicitStart();
+        }
+    }
+
+    /// <summary>
+    /// Adds a dev Gitea as Caster's module source. Off unless Gitea is enabled.
+    /// </summary>
+    private static void AddGitea(this IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> casterApi, string casterMode, LaunchOptions options)
+    {
+        var giteaMode = ResolveMode(options.Gitea, "Gitea", options);
+
+        if (!options.AddAllApplications && !IsEnabled(giteaMode))
+            return;
+
+        // Job pods reach the devcontainer as host.minikube.internal, so the port binds
+        // on all interfaces rather than Aspire's loopback default; caster-api runs in
+        // the devcontainer, where that name doesn't resolve, so git rewrites it to
+        // localhost for caster-api only. Not persistent: it stops with the AppHost,
+        // and the volume keeps the repository between runs.
+        var gitea = builder.AddContainer("gitea", "gitea/gitea", "1.27.3")
+            .WithVolume("crucible-dev-gitea", "/data")
+            .WithHttpEndpoint(port: 3010, targetPort: 3000)
+            .WithEndpoint("http", endpoint => endpoint.TargetHost = "0.0.0.0")
+            .WithHttpHealthCheck(path: "/api/healthz", endpointName: "http")
+            .WithEnvironment("GITEA__security__INSTALL_LOCK", "true")
+            .WithEnvironment("GITEA__security__MIN_PASSWORD_LENGTH", "5")
+            .WithEnvironment("GITEA__server__ROOT_URL", "http://host.minikube.internal:3010/")
+            .WithEnvironment("GITEA__server__DISABLE_SSH", "true")
+            .WithEnvironment("GITEA__service__DISABLE_REGISTRATION", "true")
+            .WithEnvironment("GITEA__repository__DEFAULT_BRANCH", "main");
+
+        var giteaSeed = builder.AddExecutable("gitea-seed", "bash", $"{builder.AppHostDirectory}/resources/gitea/", [
+            "-c",
+            "./seed-gitea.sh"
+        ])
+        .WaitFor(gitea)
+        .WithParentRelationship(gitea);
+
+        casterApi
+            .WithEnvironment("Terraform__ModuleSources__0__Name", "crucible-modules")
+            .WithEnvironment("Terraform__ModuleSources__0__Url", "http://host.minikube.internal:3010/crucible/crucible-terraform-modules.git")
+            .WithEnvironment("Terraform__ModuleSources__0__Layout", "Subdirectories")
+            .WithEnvironment("GIT_CONFIG_COUNT", "1")
+            .WithEnvironment("GIT_CONFIG_KEY_0", "url.http://localhost:3010/.insteadOf")
+            .WithEnvironment("GIT_CONFIG_VALUE_0", "http://host.minikube.internal:3010/");
+
+        if (!IsEnabled(casterMode) || !IsEnabled(giteaMode))
+        {
+            gitea.WithExplicitStart();
+            giteaSeed.WithExplicitStart();
         }
     }
 
@@ -877,7 +928,9 @@ public static partial class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "blueprint.admin")
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
-            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite caster")
+            .WithEnvironment("ClientSettings__CasterApiUrl", "http://localhost:4309/")
+            .WithEnvironment("ClientSettings__CasterUiUrl", "http://localhost:4310")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
         if (IsEnabled(lrsqlMode))

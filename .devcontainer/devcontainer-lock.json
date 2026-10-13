@@ -8,20 +8,20 @@
         "ghcr.io/devcontainers/features/aws-cli:1"
       ]
     },
-    "ghcr.io/cmu-sei/devcontainer-features/claude:1.1": {
+    "ghcr.io/cmu-sei/devcontainer-features/claude:1.2": {
+      "version": "1.2.0",
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/claude@sha256:150eb85c14bf303331b60a3adf8c30ad06c277fdb20d0919efdaadada894bc53",
+      "integrity": "sha256:150eb85c14bf303331b60a3adf8c30ad06c277fdb20d0919efdaadada894bc53"
+    },
+    "ghcr.io/cmu-sei/devcontainer-features/codex:1.1": {
       "version": "1.1.0",
-      "resolved": "ghcr.io/cmu-sei/devcontainer-features/claude@sha256:b3cc98b38eaf3ddb90f35e4a4b688c8c0a329e1f281adfaffe8bcf80295f9400",
-      "integrity": "sha256:b3cc98b38eaf3ddb90f35e4a4b688c8c0a329e1f281adfaffe8bcf80295f9400"
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/codex@sha256:2e179158adc25ee01ba3f6261708f436e1769aec012517713491305a01aec2d9",
+      "integrity": "sha256:2e179158adc25ee01ba3f6261708f436e1769aec012517713491305a01aec2d9"
     },
-    "ghcr.io/cmu-sei/devcontainer-features/codex:1.0": {
-      "version": "1.0.2",
-      "resolved": "ghcr.io/cmu-sei/devcontainer-features/codex@sha256:b72cd08887c43968579879335ec8b13bd6983751255d3b0354929d9c7e2989f1",
-      "integrity": "sha256:b72cd08887c43968579879335ec8b13bd6983751255d3b0354929d9c7e2989f1"
-    },
-    "ghcr.io/cmu-sei/devcontainer-features/herdr:1.0": {
-      "version": "1.0.0",
-      "resolved": "ghcr.io/cmu-sei/devcontainer-features/herdr@sha256:427a18f70dc1f28149f8373c1fb4795baba5af8d6a69956016428317249ec505",
-      "integrity": "sha256:427a18f70dc1f28149f8373c1fb4795baba5af8d6a69956016428317249ec505"
+    "ghcr.io/cmu-sei/devcontainer-features/herdr:1.1": {
+      "version": "1.1.0",
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/herdr@sha256:6a3ac81126383f26b92533b437ea11bb443bae67f1db95dc8fccebc513c688a3",
+      "integrity": "sha256:6a3ac81126383f26b92533b437ea11bb443bae67f1db95dc8fccebc513c688a3"
     },
     "ghcr.io/cmu-sei/devcontainer-features/playwright:1.0": {
       "version": "1.0.0",

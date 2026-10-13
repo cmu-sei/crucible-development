@@ -62,9 +62,9 @@
     "./features/aspire": {
       "version": "13.5"
     },
-    "ghcr.io/cmu-sei/devcontainer-features/herdr:1.0": {},
-    "ghcr.io/cmu-sei/devcontainer-features/claude:1.1": { "bedrock": true },
-    "ghcr.io/cmu-sei/devcontainer-features/codex:1.0": {}
+    "ghcr.io/cmu-sei/devcontainer-features/herdr:1.1": {},
+    "ghcr.io/cmu-sei/devcontainer-features/claude:1.2": { "bedrock": true },
+    "ghcr.io/cmu-sei/devcontainer-features/codex:1.1": {}
   },
   // IDs without version tags. aws-cli is not declared above; it arrives as a dependency of
   // aws-session-manager-plugin and is listed here so both install early with the stable layers.

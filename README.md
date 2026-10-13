@@ -20,6 +20,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [UI Development vs Production Mode](#ui-development-vs-production-mode)
 - [Shared UI Settings](#shared-ui-settings)
 - [Database Seeding and Backup](#database-seeding-and-backup)
+- [Caster Module Sources](#caster-module-sources)
 - [Moodle Configuration](#moodle-configuration)
 - [Local Configuration Files](#local-configuration-files)
 - [Library Development](#library-development)
@@ -525,6 +526,24 @@ pg_dump -U postgres blueprint > /tmp/blueprint.dump
 exit
 docker cp crucible-postgres:/tmp/blueprint.dump db-dumps/blueprint.dump
 ```
+
+## Caster Module Sources
+
+Caster can use a dev Gitea at `http://localhost:3010` (user `crucible-admin`, password `admin`) as its module source. It is off by default; turn it on with `Launch__Gitea=true` in your `.env` file (for example alongside `Launch__Caster=true` in `.env/caster.env`), or by adding `"Gitea"` to `Prod` (or `Dev`) in `appsettings.Development.json`. It starts with Caster and stops when the AppHost stops; the `crucible-dev-gitea` volume keeps the repository between runs. The `gitea-seed` resource pushes the branches and tags of the local module catalog at `/mnt/data/crucible/crucible-terraform-modules` into the public `crucible/crucible-terraform-modules` repository, and caster-api lists modules from it as source 0. Re-run `gitea-seed` from the dashboard after tagging a new catalog version.
+
+Job pods reach Gitea as `host.minikube.internal`. caster-api runs in the dev container, where that name doesn't resolve, so the AppHost rewrites it to `localhost` for caster-api through `GIT_CONFIG_*` environment variables. If a job pod can't resolve `host.minikube.internal`, delete and start minikube again (`delete-minikube`, then `minikube`, from the dashboard).
+
+### Using a Private Catalog Repository
+
+To work on the catalog from your own git server (for example an internal Bitbucket), add it to the top-level `repos` array of `scripts/repos.local.json` (see [Adding Private/Internal Repositories](#adding-privateinternal-repositories)). Don't put it in the `moodle` group, which bind mounts every entry into Moodle as a plugin.
+
+```json
+"repos": [
+  { "name": "crucible-terraform-modules", "url": "https://git.example.com/scm/your-project/crucible-terraform-modules.git" }
+]
+```
+
+It clones to `/mnt/data/crucible/crucible-terraform-modules`, and `gitea-seed` mirrors it into Gitea. Caster reads it from Gitea, not from your server.
 
 ## Moodle Configuration
 
