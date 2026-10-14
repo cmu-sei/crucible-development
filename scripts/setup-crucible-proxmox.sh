@@ -1426,6 +1426,34 @@ VMEOF
     log_success "Puppy Linux VM created (ID: $PUPPY_PROXMOX_ID)"
 }
 
+# TopoMojo lists an ISO named {Guid.Empty}__{name} in every workspace, and
+# Caster's Infrastructure__IsoLocations can select the same prefix. Hard links,
+# so the VMs keep their bare-named ISOs and no space is used. Runs even when the
+# template VMs already exist, so an existing host gains the links on a re-run.
+publish_stock_isos() {
+    log_step "Publishing stock ISOs for TopoMojo and Caster..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would link TinyCore-current.iso and fossapup64-9.5.iso as 00000000-0000-0000-0000-000000000000__<name>"
+        return 0
+    fi
+
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << 'VMEOF' || return 1
+set -e
+
+cd /var/lib/vz/template/iso
+for ISO_NAME in TinyCore-current.iso fossapup64-9.5.iso; do
+    STOCK_NAME="00000000-0000-0000-0000-000000000000__${ISO_NAME}"
+    if [ -f "$ISO_NAME" ] && [ ! -e "$STOCK_NAME" ]; then
+        ln "$ISO_NAME" "$STOCK_NAME"
+        echo "✓ local:iso/${STOCK_NAME}"
+    fi
+done
+VMEOF
+
+    log_success "Stock ISOs published"
+}
+
 # ============================================================
 # TOPOMOJO FUNCTIONS
 # ============================================================
@@ -3664,6 +3692,7 @@ phase2_vm_templates() {
     create_alpine_template || log_warning "Alpine template creation failed"
     create_tinycore_template || log_warning "TinyCore template creation failed"
     create_puppy_vm || log_warning "Puppy VM creation failed"
+    publish_stock_isos || log_warning "Stock ISO publishing failed"
 
     log_success "VM templates created"
 }
