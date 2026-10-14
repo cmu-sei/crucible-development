@@ -17,16 +17,17 @@ LogLaunchOptions(launchOptions);
 
 var postgres = builder.AddPostgres(launchOptions);
 var keycloak = builder.AddKeycloak(postgres);
+var keycloakServiceAccount = builder.AddKeycloakServiceAccount(keycloak);
 var commonUiDev = builder.AddCommonUIDev(launchOptions);
 
-builder.AddPlayer(postgres, keycloak, launchOptions, commonUiDev);
+builder.AddPlayer(postgres, keycloak, keycloakServiceAccount, launchOptions, commonUiDev);
 builder.AddCaster(postgres, keycloak, launchOptions, commonUiDev);
-builder.AddAlloy(postgres, keycloak, launchOptions, commonUiDev);
+builder.AddAlloy(postgres, keycloak, keycloakServiceAccount, launchOptions, commonUiDev);
 builder.AddTopoMojo(postgres, keycloak, launchOptions);
-builder.AddSteamfitter(postgres, keycloak, launchOptions, commonUiDev);
-builder.AddCite(postgres, keycloak, launchOptions, commonUiDev);
-builder.AddGallery(postgres, keycloak, launchOptions, commonUiDev);
-builder.AddBlueprint(postgres, keycloak, launchOptions, commonUiDev);
+builder.AddSteamfitter(postgres, keycloak, keycloakServiceAccount, launchOptions, commonUiDev);
+builder.AddCite(postgres, keycloak, keycloakServiceAccount, launchOptions, commonUiDev);
+builder.AddGallery(postgres, keycloak, keycloakServiceAccount, launchOptions, commonUiDev);
+builder.AddBlueprint(postgres, keycloak, keycloakServiceAccount, launchOptions, commonUiDev);
 builder.AddGameboard(postgres, keycloak, launchOptions);
 builder.AddMoodle(postgres, keycloak, launchOptions);
 builder.AddLrsql(postgres, keycloak, launchOptions);
@@ -245,6 +246,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("KC_HOSTNAME", "localhost")
             .WithEnvironment("KC_HTTPS_PORT", "8443")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
+            .WithEnvironment("KC_HOSTNAME_STRICT_BACKCHANNEL", "false")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
             .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
@@ -253,7 +255,21 @@ public static partial class BuilderExtensions
         return keycloak;
     }
 
-    public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    /// <summary>
+    /// The realm import only reaches a fresh database, so set crucible-admin's password and
+    /// Administrator role on every launch. APIs that authenticate as crucible-admin must
+    /// WaitForCompletion on this, not just WaitFor Keycloak: on a reused Keycloak database the
+    /// Administrator realm role only exists once this has run, and until then they get 401s.
+    /// </summary>
+    public static IResourceBuilder<ExecutableResource> AddKeycloakServiceAccount(this IDistributedApplicationBuilder builder, IResourceBuilder<KeycloakResource> keycloak)
+    {
+        return builder.AddExecutable("keycloak-service-account", "bash",
+            builder.AppHostDirectory,
+            $"{builder.AppHostDirectory}/../scripts/ensure-keycloak-service-account.sh")
+            .WaitFor(keycloak);
+    }
+
+    public static void AddPlayer(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, IResourceBuilder<ExecutableResource> keycloakServiceAccount, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var playerMode = ResolveMode(options.Player, "Player", options);
 
@@ -314,10 +330,10 @@ public static partial class BuilderExtensions
             playerUi.WithExplicitStart();
         }
 
-        builder.AddPlayerVm(postgres, keycloak, options, playerMode, lrsqlMode, commonUiSetup);
+        builder.AddPlayerVm(postgres, keycloak, keycloakServiceAccount, options, playerMode, lrsqlMode, commonUiSetup);
     }
 
-    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, string playerMode, string lrsqlMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, IResourceBuilder<ExecutableResource> keycloakServiceAccount, LaunchOptions options, string playerMode, string lrsqlMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm")
             .WithDevSettings();
@@ -336,6 +352,7 @@ public static partial class BuilderExtensions
         var vmApi = builder.AddProject<Projects.Player_Vm_Api>("player-vm-api", launchProfileName: "Player.Vm.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
+            .WaitForCompletion(keycloakServiceAccount)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(vmDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -348,8 +365,11 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "player.vm.api")
             .WithEnvironment("IdentityClient__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
             .WithEnvironment("IdentityClient__ClientId", "player.vm.admin")
-            .WithEnvironment("IdentityClient__UserName", "admin")
+            .WithEnvironment("IdentityClient__UserName", "crucible-admin")
             .WithEnvironment("IdentityClient__Password", "admin");
+
+        if (IsEnabled(playerMode))
+            vmApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
 
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
@@ -425,7 +445,17 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "caster.api")
             .WithEnvironment("Terraform__RootWorkingDirectory", "/mnt/data/terraform/root")
             .WithEnvironment("Terraform__KubernetesJobs__Enabled", "true")
-            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true");
+            .WithEnvironment("Terraform__KubernetesJobs__UseHostVolume", "true")
+            // Mount the caster-certs ConfigMap (created by minikube/start-minikube.sh) so terraform
+            // in the job pod trusts custom/corporate CAs (e.g. Zscaler) when reaching registry.terraform.io.
+            // terraform is a Go binary: SSL_CERT_DIR adds these dirs while the system bundle file is still loaded.
+            .WithEnvironment("Terraform__KubernetesJobs__ConfigMaps__0__Name", "caster-certs")
+            .WithEnvironment("Terraform__KubernetesJobs__ConfigMaps__0__MountPath", "/usr/local/share/ca-certificates")
+            .WithEnvironment("Terraform__EnvironmentVariables__Direct__SSL_CERT_DIR", "/etc/ssl/certs:/usr/local/share/ca-certificates")
+            .WithEnvironment("Terraform__EnvironmentVariables__Direct__TF_CLI_CONFIG_FILE", "/terraform/terraformrc");
+
+        if (IsEnabled(casterMode))
+            casterApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
 
         builder.AddGitea(casterApi, casterMode, options);
 
@@ -492,7 +522,7 @@ public static partial class BuilderExtensions
         }
     }
 
-    public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    public static void AddAlloy(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, IResourceBuilder<ExecutableResource> keycloakServiceAccount, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var alloyMode = ResolveMode(options.Alloy, "Alloy", options);
 
@@ -510,6 +540,7 @@ public static partial class BuilderExtensions
         var alloyApi = builder.AddProject<Projects.Alloy_Api>("alloy-api", launchProfileName: "Alloy.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
+            .WaitForCompletion(keycloakServiceAccount)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(alloyDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -521,7 +552,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "alloy.admin")
             .WithEnvironment("ResourceOwnerAuthorization__ClientSecret", "gn3D1s0UKCeqUB5ZjtN0aZsStiJjecRW")
-            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm alloy steamfitter caster")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
@@ -573,6 +604,10 @@ public static partial class BuilderExtensions
             .WithEnvironment("Database__DevModeRecreate", "false")
             .WithEnvironment("Oidc__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("Oidc__Audience", "topomojo")
+            // TopoMojo's default map only matches lowercase "administrator", but Keycloak sends
+            // "Administrator". Without this the realm admin is a plain user whenever another
+            // account (e.g. the Moodle service account) took the first-user Administrator slot.
+            .WithEnvironment("Oidc__UserRolesClaimMap__Administrator", "Administrator")
             .WithEnvironment("OpenApi__Client__AuthorizationUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/auth")
             .WithEnvironment("OpenApi__Client__TokenUrl", "https://localhost:8443/realms/crucible/protocol/openid-connect/token")
             .WithEnvironment("OpenApi__Client__ClientId", "topomojo.api")
@@ -584,6 +619,12 @@ public static partial class BuilderExtensions
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");
+        if (IsEnabled(topoMojoMode))
+        {
+            // Load the selected profile after TopoMojo's own .conf files so it wins.
+            topoApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig,
+                configPathEnvironmentVariable: "APPSETTINGS_PATH");
+        }
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
         const int topoWorkUiPort = 4201;
@@ -608,7 +649,6 @@ public static partial class BuilderExtensions
                 .WithArgs("--", "topomojo-work", "--configuration", "development", "--port", topoWorkUiPort.ToString())
                 .WithHttpEndpoint(port: topoWorkUiPort, isProxied: false)
                 .WithHttpHealthCheck();
-
 
             if (launchpointIncluded && effectiveLaunchpointMode == "dev")
             {
@@ -691,7 +731,7 @@ public static partial class BuilderExtensions
         }
     }
 
-    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    public static void AddSteamfitter(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, IResourceBuilder<ExecutableResource> keycloakServiceAccount, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var steamfitterMode = ResolveMode(options.Steamfitter, "Steamfitter", options);
         var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
@@ -710,6 +750,7 @@ public static partial class BuilderExtensions
         var steamfitterApi = builder.AddProject<Projects.Steamfitter_Api>("steamfitter-api", launchProfileName: "Steamfitter.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
+            .WaitForCompletion(keycloakServiceAccount)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(steamfitterDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -721,7 +762,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "steamfitter.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "steamfitter.admin")
-            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "steamfitter player player-vm cite gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
@@ -745,7 +786,7 @@ public static partial class BuilderExtensions
         }
     }
 
-    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    public static void AddCite(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, IResourceBuilder<ExecutableResource> keycloakServiceAccount, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var citeMode = ResolveMode(options.Cite, "Cite", options);
         var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
@@ -764,6 +805,7 @@ public static partial class BuilderExtensions
         var citeApi = builder.AddProject<Projects.Cite_Api>("cite-api", launchProfileName: "Cite.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
+            .WaitForCompletion(keycloakServiceAccount)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(citeDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -775,7 +817,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "cite.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "cite.admin")
-            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "openid profile email gallery")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
@@ -799,7 +841,7 @@ public static partial class BuilderExtensions
         }
     }
 
-    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    public static void AddGallery(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, IResourceBuilder<ExecutableResource> keycloakServiceAccount, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var galleryMode = ResolveMode(options.Gallery, "Gallery", options);
         var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
@@ -818,6 +860,7 @@ public static partial class BuilderExtensions
         var galleryApi = builder.AddProject<Projects.Gallery_Api>("gallery-api", launchProfileName: "Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
+            .WaitForCompletion(keycloakServiceAccount)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(galleryDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -829,7 +872,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "gallery.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "gallery.admin")
-            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm steamfitter")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
@@ -853,7 +896,7 @@ public static partial class BuilderExtensions
         }
     }
 
-    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    public static void AddBlueprint(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, IResourceBuilder<ExecutableResource> keycloakServiceAccount, LaunchOptions options, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var blueprintMode = ResolveMode(options.Blueprint, "Blueprint", options);
         var lrsqlMode = ResolveMode(options.Lrsql, "Lrsql", options);
@@ -872,6 +915,7 @@ public static partial class BuilderExtensions
         var blueprintApi = builder.AddProject<Projects.Blueprint_Api>("blueprint-api", launchProfileName: "Blueprint.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
+            .WaitForCompletion(keycloakServiceAccount)
             .WithHttpHealthCheck("api/health/ready")
             .WithReference(blueprintDb, "PostgreSQL")
             .WithEnvironment("Database__Provider", "PostgreSQL")
@@ -882,7 +926,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__ClientId", "blueprint.api")
             .WithEnvironment("ResourceOwnerAuthorization__Authority", "https://localhost:8443/realms/crucible")
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "blueprint.admin")
-            .WithEnvironment("ResourceOwnerAuthorization__UserName", "admin")
+            .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite caster")
             .WithEnvironment("ClientSettings__CasterApiUrl", "http://localhost:4309/")

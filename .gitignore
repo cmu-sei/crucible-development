@@ -99,9 +99,20 @@ Crucible.AppHost/.common-ui-build-ready
 # Local shared UI settings (user-editable, symlinked into apps)
 Crucible.AppHost/resources/ui/settings.shared.json
 
+# Local Proxmox setup config (contains API token)
+Crucible.AppHost/resources/proxmox/config
+
+# Environment-specific API profiles, including credentials, backups and temp files
+Crucible.AppHost/resources/api/config/local/
+Crucible.AppHost/appsettings.Development.json.*.tmp
+
+# Proxmox installer ISO (setup-proxmox-windows.ps1 discovers this in the repo root)
+proxmox-ve_*.iso
+
 # Local LLM endpoint settings (internal host and model names stay out of the repo)
 .devcontainer/local-llm.env
 .opencode/
 
 # Personal working notes
 TODO/
+node_modules
