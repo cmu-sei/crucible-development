@@ -2,7 +2,6 @@
 name: ci-watcher
 description: Read-only CI and main-sync watcher for the 17 Crucible test branches. Runs agent-docs/orchestration/ci-check.sh to report, per PR, whether the branch is level with origin/main, merges cleanly, and passed every CI check on its latest push (GREEN, BEHIND, CONFLICT, PENDING, RED); reads the logs of failed runs and classifies each failure; and, before a push, runs the CI test command on the worktree merged with current main. Launch after every push and before every pre-push summary, or when main moves. Edits, merges, commits and pushes nothing.
 tools: Read, Grep, Glob, Bash
-model: claude-sonnet-5-5
 effort: medium
 thinkingLevel: medium
 ---

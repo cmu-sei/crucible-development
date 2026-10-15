@@ -273,7 +273,7 @@ Dropped tests (D lines), each with the reason it was let go:
 
 ## Harnesses
 
-The agents, these docs and RULES are the same in Claude Code and Oh My Pi; what differs is how agents are launched, messaged and resumed (RULES, Agents and models). Details and model pins: [../omp/README.md](../omp/README.md).
+The agents, these docs and RULES are the same in Claude Code and Oh My Pi; what differs is how agents are launched, messaged and resumed (RULES, Agents and models). Agents name no model and run on the session's; details: [../omp/README.md](../omp/README.md).
 
 | Step | Claude Code | Oh My Pi |
 | --- | --- | --- |

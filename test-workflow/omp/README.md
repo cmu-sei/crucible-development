@@ -8,29 +8,22 @@ There is one set of agent files, read by both harnesses. `scripts/setup-test-wor
 | --- | --- | --- |
 | Agent definitions (the only copy) | `test-workflow/agents/*.md`, linked into `/mnt/data/crucible/.claude/agents/` | Claude Code dialect plus one omp key, `thinkingLevel`, mirroring `effort`. Edit the files in `test-workflow/agents/`. |
 | Symlink for omp | `/mnt/data/crucible/.omp/agents -> ../.claude/agents` | omp discovers project agents here from any cwd under the workspace. |
-| Model pins | `/mnt/data/crucible/.omp/config.yml` (from `test-workflow/dot-omp/config.yml`), `task.agentModelOverrides` | Provider-qualified omp model per agent; wins over frontmatter. Claude Code keeps using frontmatter `model`. |
+| Models | none pinned | No agent file names a `model` and `/mnt/data/crucible/.omp/config.yml` (from `test-workflow/dot-omp/config.yml`) has no `task.agentModelOverrides`, so every agent inherits the session's model. |
 | Project settings | same file | Idle TTL off, `prompt` rules for `git commit`, `git push`, `gh pr`, `gh release`, `eval`. Applies only when `omp` starts in `/mnt/data/crucible`. |
-| Check | `agent-docs/omp/check-agents.sh` | Exits 1 if the symlink is wrong, `thinkingLevel` differs from `effort`, a frontmatter `model` has a provider prefix, or an omp pin is missing, unqualified or orphaned. Run after edits to agent definitions or pins. |
+| Check | `agent-docs/omp/check-agents.sh` | Exits 1 if the symlink is wrong, `thinkingLevel` differs from `effort`, an agent file names a `model`, or `.omp/config.yml` pins one. Run after edits to agent definitions. |
 
 How one file serves both harnesses:
 
 | Frontmatter | Claude Code | Oh My Pi |
 | --- | --- | --- |
 | `tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch` | Used as written. | Lower-cased to `read, grep, glob, edit, write, bash`; `WebFetch` is dropped silently because `read` accepts URLs. The bodies that mention WebFetch also name the `read` tool. |
-| `model: claude-opus-5-5` | Full model id, used as written. | Resolved against the active provider, inconsistently on Bedrock: `claude-sonnet-5-5` resolves to the usable `us.anthropic.claude-sonnet-5-5`, but `claude-opus-5-5` resolves to `anthropic.claude-opus-5-5`, which Bedrock rejects for on-demand use (HTTP 400). Hence the pins in `task.agentModelOverrides`, which take precedence. |
+| `model` | Left out: the agent inherits the session's model (Claude Code also accepts `model: inherit`). | Left out: the agent inherits the parent session's model. `model: inherit` fails here ("No model selected"), because omp reads it as a model name. |
 | `effort: high` | Effort level. | Ignored; without `thinkingLevel` a child runs at omp's default, `high`, even for `effort: medium`. |
 | `thinkingLevel: high` | Ignored. | Honoured. |
 
 ### Model policy
 
-Claude Code uses each agent file's `model` and `effort`; omp uses `task.agentModelOverrides` and the file's `thinkingLevel`. Keep `effort` and `thinkingLevel` aligned; change the omp model in the project config rather than adding another frontmatter model key. Agents that write code run on Opus 5.5, the others on Sonnet 5.5 where judgement allows, in both harnesses:
-
-- `angular-test-writer`, `dotnet-test-writer`, `test-standard-maintainer`: Opus 5.5, high.
-- `api-test-reviewer`, `ui-test-reviewer`: Opus 5.5, high.
-- `test-bug-triager`: Opus 5.5, medium.
-- `jira-ticket-writer`, `ci-watcher`: Sonnet 5.5, medium.
-
-Start a fresh omp session from `/mnt/data/crucible` after changing pins. Existing agents keep their current sessions; the main session's model is independent of these child-agent pins.
+No agent is pinned to a model: every agent runs on the model of the session that launches it, in both harnesses (RULES, "Agents run on the session's model"). Start the session on the model the round needs. Reasoning effort is per agent: Claude Code reads `effort`, omp reads `thinkingLevel`; keep the two equal. Writers, reviewers and the maintainer run at high, the triager, `jira-ticket-writer` and `ci-watcher` at medium.
 
 ## Behaviour to know
 
@@ -51,7 +44,7 @@ Start in the workspace root so the project settings load:
 
 ```sh
 cd /mnt/data/crucible
-agent-docs/omp/check-agents.sh          # after any edit to the agent files or the model pins
+agent-docs/omp/check-agents.sh          # after any edit to the agent files
 omp --model amazon-bedrock/us.anthropic.claude-fable-5-1
 ```
 

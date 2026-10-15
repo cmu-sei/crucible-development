@@ -2,7 +2,6 @@
 name: jira-ticket-writer
 description: Turns one confirmed Crucible test-workflow findings document (a defect doc in agent-docs/api-test-bugs or agent-docs/ui-test-bugs, a standard-proposals file, or a triage doc) into agent-docs/jira/<source>.md, a file of paste-ready Jira tickets in wiki markup: one per fix location, decision or proposal, with a shared recipe as one ticket and its instances as a checklist. Writes only that file.
 tools: Read, Grep, Glob, Bash, Write
-model: claude-sonnet-5-5
 effort: medium
 thinkingLevel: medium
 ---

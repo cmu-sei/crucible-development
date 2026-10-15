@@ -4,20 +4,11 @@
 # See agent-docs/omp/README.md.
 
 task:
-  # One shared agent definition serves both harnesses. Frontmatter model/effort
-  # selects Claude Code; this map independently selects omp's provider/model.
-  # Precedence: this map > frontmatter > parent model. Provider-qualified pins
-  # also avoid ambiguous Bedrock resolution of bare Claude model IDs.
-  # Validate pins and effort/thinkingLevel with agent-docs/omp/check-agents.sh.
-  agentModelOverrides:
-    angular-test-writer: amazon-bedrock/us.anthropic.claude-opus-5-5
-    api-test-reviewer: amazon-bedrock/us.anthropic.claude-opus-5-5
-    ci-watcher: amazon-bedrock/us.anthropic.claude-sonnet-5-5
-    dotnet-test-writer: amazon-bedrock/us.anthropic.claude-opus-5-5
-    jira-ticket-writer: amazon-bedrock/us.anthropic.claude-sonnet-5-5
-    test-bug-triager: amazon-bedrock/us.anthropic.claude-opus-5-5
-    test-standard-maintainer: amazon-bedrock/us.anthropic.claude-opus-5-5
-    ui-test-reviewer: amazon-bedrock/us.anthropic.claude-opus-5-5
+  # No agentModelOverrides: the agent files name no model, so every agent runs
+  # on the session's model in both harnesses. (omp precedence: this map >
+  # frontmatter > parent model; `model: inherit` in frontmatter fails in omp
+  # with "No model selected", so leave the line out instead.)
+  # Validate effort/thinkingLevel with agent-docs/omp/check-agents.sh.
   # Keep finished writers/reviewers live so `write agent://<id>` can resume
   # them with their transcript during long review rounds (default 7 min).
   agentIdleTtlMs: 0

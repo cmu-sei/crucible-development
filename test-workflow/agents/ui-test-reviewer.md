@@ -2,7 +2,6 @@
 name: ui-test-reviewer
 description: Read-only reviewer for one Crucible Angular UI worktree after angular-test-writer reports. Judges the specs in scope against agent-docs/ui-testing/CONVENTIONS.md, checks every allow-list entry and the writer's broken-gate log, confirms or refutes each defect entry against production source, and returns ready or not ready with findings at file:line and severity. One per repo; edits nothing.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-5-5
 effort: high
 thinkingLevel: high
 ---

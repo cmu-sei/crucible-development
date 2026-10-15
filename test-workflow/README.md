@@ -62,7 +62,7 @@ Run from `/mnt/data/crucible/agent-docs`; [testing/README.md](testing/README.md)
 | `testing/deliver.sh summary <worktree>...` | the pre-push summary of a batch; changes nothing |
 | `testing/deliver.sh push --batch <id> <worktree>...` | commits as you, pushes, opens or updates the PRs; only after the word of the person running the round on that summary |
 | `orchestration/ci-check.sh status`, `local <worktree>` | per PR: GREEN, BEHIND, CONFLICT, PENDING or RED; `local` runs CI's tests on the tree merged with current main |
-| `omp/check-agents.sh` | checks the agent files and model pins after an edit |
+| `omp/check-agents.sh` | checks the agent files after an edit (no model line, matching reasoning levels) |
 
 ## Changing the method
 
@@ -74,4 +74,4 @@ Edit this folder and open a pull request. The links mean the agents and scripts 
 - [orchestration/ORCHESTRATOR.md](orchestration/ORCHESTRATOR.md): driving a round. [orchestration/workflow-overview.html](orchestration/workflow-overview.html): the one-page overview.
 - [testing/README.md](testing/README.md): the shared core (workflow, hand-offs, file formats, scripts).
 - [api-testing/README.md](api-testing/README.md) and [ui-testing/README.md](ui-testing/README.md): each stack's harness, with `CONVENTIONS.md`, `SETUP.md`, `WORKFLOW.md` and `CHANGELOG.md` beside them.
-- [omp/README.md](omp/README.md): running the agents under Oh My Pi, and the model policy per harness.
+- [omp/README.md](omp/README.md): running the agents under Oh My Pi, and why no agent names a model.

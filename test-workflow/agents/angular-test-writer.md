@@ -2,7 +2,6 @@
 name: angular-test-writer
 description: Writes Vitest + Angular Testing Library specs for one Crucible Angular UI (alloy, blueprint, caster, cite, gallery, steamfitter, player, vm, console) in its own worktree, on the standard in agent-docs/ui-testing, in writer mode setup, create or audit. Launch one per repo once the standard version is built; its report goes to ui-test-reviewer. Edits specs and its app's gap and defect docs, never the standard; never commits.
 tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch
-model: claude-opus-5-5
 effort: high
 thinkingLevel: high
 ---

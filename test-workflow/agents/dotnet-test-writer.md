@@ -2,7 +2,6 @@
 name: dotnet-test-writer
 description: Writes xUnit v3 tests for one Crucible-family .NET API (alloy, blueprint, caster, cite, gallery, steamfitter, player, vm) in its own worktree, on the standard in agent-docs/api-testing, in writer mode setup, create or audit. Launch one per repo once the standard version is built; its report goes to api-test-reviewer. Edits tests and its app's gap and defect docs, never the standard; never commits.
 tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch
-model: claude-opus-5-5
 effort: high
 thinkingLevel: high
 ---

@@ -11,11 +11,9 @@
 #   - the symlink is missing or points elsewhere
 #   - an agent has `effort` without a matching `thinkingLevel` (omp would run
 #     it at its default level, high)
-#   - an agent's `model` carries a provider prefix (Claude Code would not
-#     resolve it)
-#   - .omp/config.yml has no task.agentModelOverrides entry for an agent, or
-#     a pin is not provider/model qualified or names an unknown agent
-# Claude Code frontmatter and omp pins deliberately may select different models.
+#   - an agent file names a `model` (agents inherit the session's model in both
+#     harnesses; omp fails on `model: inherit`, so the line is left out)
+#   - .omp/config.yml pins a model with task.agentModelOverrides
 #
 # Usage: check-agents.sh        exit 1 on any finding
 
@@ -42,20 +40,13 @@ for f in "$src"/*.md; do
   if [[ -n "$effort" && "$level" != "$effort" ]]; then
     echo "LEVEL    $name: effort=$effort thinkingLevel=${level:-<none>}"; status=1
   fi
-  if [[ "$model" == */* ]]; then
-    echo "MODEL    $name: model '$model' has a provider prefix"; status=1
-  fi
-  agent="${name%.md}"
-  override="$(sed -n "s/^    ${agent}: *//p" "$cfg" | head -1)"
-  if [[ -z "$override" ]]; then
-    echo "PIN      $agent: no task.agentModelOverrides entry in .omp/config.yml"; status=1
-  elif [[ ! "$override" =~ ^[a-zA-Z0-9._-]+/[a-zA-Z0-9._:/-]+$ ]]; then
-    echo "PIN      $agent: override '$override' must be provider/model qualified"; status=1
+  if [[ -n "$model" ]]; then
+    echo "MODEL    $name: names model '$model'; leave the line out so the agent inherits the session's model"; status=1
   fi
 done
-for agent in $(sed -n '/^  agentModelOverrides:$/,/^  [^ ]/p' "$cfg" | sed -n 's/^    \([a-z-]*\):.*/\1/p'); do
-  [[ -f "$src/$agent.md" ]] || { echo "ORPHAN   $agent pinned in .omp/config.yml but no .claude/agents/$agent.md"; status=1; }
-done
+if grep -q '^  agentModelOverrides:' "$cfg" 2>/dev/null; then
+  echo "PIN      .omp/config.yml pins models (task.agentModelOverrides); agents inherit the session's model"; status=1
+fi
 
 (( status == 0 )) && echo "OK one agent set, readable by Claude Code and omp"
 exit $status

@@ -2,7 +2,6 @@
 name: test-standard-maintainer
 description: Sole writer of the Crucible test standards: the shared core agent-docs/testing/, agent-docs/api-testing/ and agent-docs/ui-testing/, with their scripts (check-repo.js, verify.sh, sync.sh, break-gate.sh, deliver.sh, status.sh). Launch alone, at a version boundary, with the proposals to apply and the pilot worktrees; it builds one standard version, proves it on the pilots without committing, and writes the CHANGELOG entry.
 tools: Read, Grep, Glob, Edit, Write, Bash, WebFetch
-model: claude-opus-5-5
 effort: high
 thinkingLevel: high
 ---

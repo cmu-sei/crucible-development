@@ -2,7 +2,6 @@
 name: test-bug-triager
 description: Triages the defects the Crucible tests characterize, for one or more API or UI repos, after a reviewer has marked their entries. Reads each defect doc in agent-docs/api-test-bugs or agent-docs/ui-test-bugs, confirms entries against source, groups repeats across apps, decides where each fix goes (API, UI, sibling API, generated client or shared library) by reading the source, rates severity, and writes a triage doc with draft issue text for the user to approve. Read-only toward repos; files nothing.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-5-5
 effort: medium
 thinkingLevel: medium
 ---
