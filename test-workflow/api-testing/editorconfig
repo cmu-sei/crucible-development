@@ -1,0 +1,11 @@
+# The block of the repository's root .editorconfig that the Crucible API test standard depends on
+# (agent-docs/api-testing). sync.sh checks that the repository's .editorconfig contains the
+# dotnet_diagnostic line under a [*.cs] section; a repository without an .editorconfig copies this file
+# to the root as .editorconfig and adds `root = true` at the top.
+
+[*.cs]
+
+# A skipped test reports nothing. A defect found while testing is characterized by a passing test of the
+# current behaviour, never parked with Skip. Runtime conditional skips (Assert.SkipWhen, SkipUnless) are
+# unaffected.
+dotnet_diagnostic.xUnit1004.severity = warning

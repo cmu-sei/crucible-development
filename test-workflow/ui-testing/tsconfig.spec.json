@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec",
+    "baseUrl": "./",
+    "types": ["node"]
+  },
+  "files": ["src/app/app.module.ts"],
+  "include": [
+    "src/**/*.spec.ts",
+    "src/**/*.d.ts",
+    "src/test-setup.ts",
+    "src/app/test-utils/**/*.ts"
+  ],
+  "angularCompilerOptions": {
+    "__comment": "Copy this block from the app tsconfig (tsconfig.app.json, which some repos keep under src/) so specs compile under the same strictness as the app; if the app tsconfig has no angularCompilerOptions, delete this whole block. Keep `files` in NgModule apps: the compiler needs the declaring NgModule in the program, or every `standalone: false` component fails with NG8001. Standalone apps (vm.ui, console.ui) delete `files`. Delete this key.",
+    "strictTemplates": false,
+    "strictInjectionParameters": false
+  }
+}

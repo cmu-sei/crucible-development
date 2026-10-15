@@ -1,0 +1,43 @@
+# Oh My Pi project settings for the Crucible workspace.
+# Loaded only when `omp` starts in /mnt/data/crucible (settings do not walk
+# ancestor directories; agent discovery under .omp/agents does).
+# See agent-docs/omp/README.md.
+
+task:
+  # One shared agent definition serves both harnesses. Frontmatter model/effort
+  # selects Claude Code; this map independently selects omp's provider/model.
+  # Precedence: this map > frontmatter > parent model. Provider-qualified pins
+  # also avoid ambiguous Bedrock resolution of bare Claude model IDs.
+  # Validate pins and effort/thinkingLevel with agent-docs/omp/check-agents.sh.
+  agentModelOverrides:
+    angular-test-writer: amazon-bedrock/us.anthropic.claude-opus-5-5
+    api-test-reviewer: amazon-bedrock/us.anthropic.claude-opus-5-5
+    ci-watcher: amazon-bedrock/us.anthropic.claude-sonnet-5-5
+    dotnet-test-writer: amazon-bedrock/us.anthropic.claude-opus-5-5
+    jira-ticket-writer: amazon-bedrock/us.anthropic.claude-sonnet-5-5
+    test-bug-triager: amazon-bedrock/us.anthropic.claude-opus-5-5
+    test-standard-maintainer: amazon-bedrock/us.anthropic.claude-opus-5-5
+    ui-test-reviewer: amazon-bedrock/us.anthropic.claude-opus-5-5
+  # Keep finished writers/reviewers live so `write agent://<id>` can resume
+  # them with their transcript during long review rounds (default 7 min).
+  agentIdleTtlMs: 0
+
+tools:
+  approval:
+    # Auto-approve Eval; its shells are not covered by bash.patterns.
+    eval: allow
+
+bash:
+  # Steps 1-6 of the test workflows never commit or deliver. `prompt` asks the
+  # user in the main session and fails the call inside a headless subagent,
+  # which is the intended split: only the orchestrator delivers. Deny and
+  # prompt rules also match segments of compound commands.
+  patterns:
+    - match: "git commit*"
+      approval: prompt
+    - match: "git push*"
+      approval: prompt
+    - match: "gh pr *"
+      approval: prompt
+    - match: "gh release *"
+      approval: prompt

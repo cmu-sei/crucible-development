@@ -1,0 +1,28 @@
+{
+  "test": {
+    "builder": "@angular/build:unit-test",
+    "options": {
+      "runnerConfig": "vitest.config.ts",
+      "tsConfig": "tsconfig.spec.json",
+      "setupFiles": ["src/test-setup.ts"],
+      "coverageInclude": ["src/app/**/*.ts"],
+      "coverageExclude": [
+        "**/generated/**",
+        "**/*.spec.ts",
+        "src/app/test-utils/**"
+      ],
+      "coverageReporters": ["text", "json", "html"],
+      "coverageThresholds": {
+        "statements": 0,
+        "branches": 0,
+        "functions": 0,
+        "lines": 0
+      }
+    },
+    "configurations": {
+      "coverage": {
+        "coverage": true
+      }
+    }
+  }
+}

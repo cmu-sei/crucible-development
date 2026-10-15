@@ -86,6 +86,9 @@ The playwright MCP server has also been configured in this repository and you sh
 ## Playwright Test Suite
 End-to-end Playwright tests live at `/mnt/data/crucible/crucible-tests/`. This repo contains test plans and spec files for all 11 Crucible applications. See the `README.md` in that directory for full details on test conventions, fixtures, and how to write/run tests. When asked to create, update, or run Playwright tests, work in that directory.
 
+## Crucible test workflow
+The test standard, scripts and agents that write, review and deliver the unit tests of the Crucible APIs and UIs live in `test-workflow/`. `scripts/setup-test-workflow.sh` links them into `/mnt/data/crucible`; the workflow's state (defect docs, allow-lists, work files) stays on the `/mnt/data` volume and must never be copied into this repo. See `test-workflow/README.md` before running or changing the workflow.
+
 ## Aspire workload
 IMPORTANT! The aspire workload is obsolete. You should never attempt to install or use the Aspire workload.
 

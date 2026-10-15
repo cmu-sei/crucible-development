@@ -1,0 +1,15 @@
+# The workflow's state lives on each person's /mnt/data volume and never in this repo (README.md,
+# "Method here, state on your volume"). The scripts write it to /mnt/data/crucible/agent-docs; these
+# are its folders and files, ignored here in case anything writes one to the wrong place.
+api-test-bugs/
+ui-test-bugs/
+api-test-gaps/
+ui-test-gaps/
+api-test-triage/
+ui-test-triage/
+test-work/
+jira/
+orchestration/rounds/
+orchestration/reviews/
+orchestration/archive/
+*-proposals-*.md

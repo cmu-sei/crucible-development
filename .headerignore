@@ -2,3 +2,6 @@
 # These carry their own upstream licenses; do not add SEI headers.
 .agents/
 .claude/
+# The Crucible test workflow (test-workflow/README.md), linked into the workspace as it is; several of
+# its scripts start with a shebang that a prepended header would break.
+test-workflow/

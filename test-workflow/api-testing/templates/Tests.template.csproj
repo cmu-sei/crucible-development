@@ -1,0 +1,60 @@
+<!--
+  TEMPLATE INSTRUCTIONS: delete this comment in the repo copy. Destination: <Tests>/<App>.Api.Tests.csproj
+  (caster.api: test/Caster.Api.Tests; vm.api: src/Player.Vm.Api.Tests). Substitute App and the project
+  reference path. In a repository without central package management (no Directory.Packages.props), add
+  Version="..." to each PackageReference with the versions in test-packages.props; sync.sh checks them
+  there instead. Keep ImplicitUsings as the repository's other projects have it (the shared files carry
+  their own usings). The templates assume it is enabled (they name Guid, Task, List and HttpClient without
+  a using); where the repository disables it, keep it disabled here and give each template-derived file
+  the System usings it needs. Keep Nullable off unless the API projects turn it on.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Required by xUnit v3: the test project is a self-executing host. -->
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>App.Api.Tests</RootNamespace>
+
+    <!--
+      Applies coverlet.runsettings to every run, so a coverage run cannot go without its exclusions. The
+      collector in that file is disabled by default, so an ordinary `dotnet test` collects nothing.
+    -->
+    <RunSettingsFilePath>$(MSBuildProjectDirectory)/coverlet.runsettings</RunSettingsFilePath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="NSubstitute" />
+    <!-- The shared harness in Support/Shared (agent-docs/api-testing). -->
+    <Using Include="Crucible.Api.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="NSubstitute" />
+    <!-- Hosts the API in process over TestServer, so the tests drive the real Startup. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\App.Api\App.Api.csproj" />
+  </ItemGroup>
+
+</Project>
