@@ -85,7 +85,7 @@ echo "Workspace: $ROOT"
 # The method: standards, scripts, glossary, orchestration guides.
 for d in testing api-testing ui-testing omp; do link "$METHOD/$d" "$DOCS/$d"; done
 link "$METHOD/GLOSSARY.md" "$DOCS/GLOSSARY.md"
-for f in RULES.md ORCHESTRATOR.md ci-check.sh workflow-overview.html; do
+for f in RULES.md ORCHESTRATOR.md ci-check.sh; do
   link "$METHOD/orchestration/$f" "$DOCS/orchestration/$f"
 done
 

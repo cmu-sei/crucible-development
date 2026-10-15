@@ -1,6 +1,6 @@
 # Crucible test workflow
 
-A shared test standard, with the scripts and agents that write, review and deliver tests for the 17 Crucible-family repos: the eight APIs (alloy, blueprint, caster, cite, gallery, steamfitter, player, vm) on xUnit v3 with Testcontainers PostgreSQL, and the nine Angular UIs (the same eight plus console) on Vitest and Angular Testing Library. Agents in Claude Code or Oh My Pi do the writing and reviewing; scripts do every check that can be scripted (the authorization-gate inventory, the removed-test accounting, the broken-gate check, verify, delivery). One page shows how a round runs: [orchestration/workflow-overview.html](orchestration/workflow-overview.html).
+A shared test standard, with the scripts and agents that write, review and deliver tests for the 17 Crucible-family repos: the eight APIs (alloy, blueprint, caster, cite, gallery, steamfitter, player, vm) on xUnit v3 with Testcontainers PostgreSQL, and the nine Angular UIs (the same eight plus console) on Vitest and Angular Testing Library. Agents in Claude Code or Oh My Pi do the writing and reviewing; scripts do every check that can be scripted (the authorization-gate inventory, the removed-test accounting, the broken-gate check, verify, delivery).
 
 ## Method here, state on your volume
 
@@ -25,7 +25,7 @@ Why: the Crucible repos are public, and the state describes real defects, securi
    | --- | --- |
    | `agent-docs/testing`, `api-testing`, `ui-testing`, `omp` | `testing/`, `api-testing/`, `ui-testing/`, `omp/` |
    | `agent-docs/GLOSSARY.md` | `GLOSSARY.md` |
-   | `agent-docs/orchestration/RULES.md`, `ORCHESTRATOR.md`, `ci-check.sh`, `workflow-overview.html` | `orchestration/` |
+   | `agent-docs/orchestration/RULES.md`, `ORCHESTRATOR.md`, `ci-check.sh` | `orchestration/` |
    | `.claude/agents/<agent>.md`, one link per agent | `agents/` |
    | `.omp/config.yml`; `.omp/agents` links to `../.claude/agents` | `dot-omp/config.yml` |
 
@@ -71,7 +71,7 @@ Edit this folder and open a pull request. The links mean the agents and scripts 
 ## Read more
 
 - [orchestration/RULES.md](orchestration/RULES.md): the standing rules. [GLOSSARY.md](GLOSSARY.md): the terms (gate, near miss, ready, green, round).
-- [orchestration/ORCHESTRATOR.md](orchestration/ORCHESTRATOR.md): driving a round. [orchestration/workflow-overview.html](orchestration/workflow-overview.html): the one-page overview.
+- [orchestration/ORCHESTRATOR.md](orchestration/ORCHESTRATOR.md): driving a round.
 - [testing/README.md](testing/README.md): the shared core (workflow, hand-offs, file formats, scripts).
 - [api-testing/README.md](api-testing/README.md) and [ui-testing/README.md](ui-testing/README.md): each stack's harness, with `CONVENTIONS.md`, `SETUP.md`, `WORKFLOW.md` and `CHANGELOG.md` beside them.
 - [omp/README.md](omp/README.md): running the agents under Oh My Pi, and why no agent names a model.
