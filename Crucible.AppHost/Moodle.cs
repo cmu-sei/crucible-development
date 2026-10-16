@@ -126,9 +126,11 @@ public static partial class BuilderExtensions
                 //
                 // boost_union comes from upstream's unreleased upgrade-503 branch (2026100500),
                 // which adds the colour mode toggle to the navbar; the newest marketplace build
-                // (v5.2-r10, 2026042014) has none. boost_dark is left out so it doesn't fight
-                // 5.3's native dark mode. An instance that already has boost_dark installed
-                // needs it uninstalled, or moodle53Db dropped, before rebuilding.
+                // (v5.2-r10, 2026042014) has none. Upstream force-pushes the branch, so re-pin
+                // to its current head whenever the pinned commit drops off it. boost_dark is
+                // left out so it doesn't fight 5.3's native dark mode. An instance that already
+                // has boost_dark installed needs it uninstalled, or moodle53Db dropped, before
+                // rebuilding.
                 //
                 // Move each of these to a real 5.3 release as upstream ships one.
                 MarketplacePlugins: MarketplacePluginsFor(
@@ -136,7 +138,7 @@ public static partial class BuilderExtensions
                     boostUnion: null,
                     boostDark: null,
                     dynamicCohorts: "2026031300",
-                    boostUnionUrl: "https://github.com/moodle-an-hochschulen/moodle-theme_boost_union/archive/4a0598982b40f03f8540f9b51dc45e969b271992.zip")),
+                    boostUnionUrl: "https://github.com/moodle-an-hochschulen/moodle-theme_boost_union/archive/e404d91b88beb5178fed5a9085df93d003fbcc7f.zip")),
         };
 
         var enabled = instances
