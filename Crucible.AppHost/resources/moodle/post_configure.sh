@@ -326,6 +326,19 @@ configure_boost_dark_theme() {
     color: #fff !important;
     background-color: rgba(255, 255, 255, 0.16) !important;
   }
+
+  /* Moodle 5.3 renders the primary navigation as design-system pills, which keep
+     Boost'\''s dark-mode grey (#ced4da, 3.9:1 on the red). The selected pill has its
+     own dark background and stays as it is. */
+  .mds-nav-pill:not(.mds-nav-pill--selected) {
+    color: rgba(255, 255, 255, 0.92) !important;
+  }
+
+  .mds-nav-pill:not(.mds-nav-pill--selected):hover,
+  .mds-nav-pill:not(.mds-nav-pill--selected):focus-visible {
+    color: #fff !important;
+    background-color: rgba(255, 255, 255, 0.16) !important;
+  }
 }
 
 /* Moodle aiplacement_courseassist dark-mode compatibility. */
