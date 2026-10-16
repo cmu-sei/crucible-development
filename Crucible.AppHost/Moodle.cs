@@ -37,12 +37,25 @@ public static partial class BuilderExtensions
     /// reports a plugin downgrade instead of upgrading. The same applies to an instance that
     /// was upgraded by hand past its pin: drop its database, or uninstall the plugin, before
     /// rebuilding it.
+    ///
+    /// A null version leaves that plugin out. boostUnionUrl replaces the boost_union
+    /// marketplace download with another zip, e.g. a GitHub commit archive while upstream
+    /// has no release for the instance's branch; 015-copy-plugins.sh takes any zip whose
+    /// single top-level folder holds the plugin's version.php.
     /// </summary>
-    private static string MarketplacePluginsFor(string toolUserdebug, string boostUnion, string boostDark, string dynamicCohorts) =>
-        $"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/{toolUserdebug}/download " +
-        $"theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/{boostUnion}/download " +
-        $"local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/{boostDark}/download " +
-        $"tool_dynamic_cohorts=https://marketplace.moodle.com/api/plugins/tool_dynamic_cohorts/versions/{dynamicCohorts}/download";
+    private static string MarketplacePluginsFor(string toolUserdebug, string? boostUnion, string? boostDark, string dynamicCohorts, string? boostUnionUrl = null) =>
+        string.Join(" ", new (string Component, string? Url)[]
+            {
+                ("tool_userdebug", MarketplaceDownload("tool_userdebug", toolUserdebug)),
+                ("theme_boost_union", boostUnionUrl ?? MarketplaceDownload("theme_boost_union", boostUnion)),
+                ("local_boost_dark", MarketplaceDownload("local_boost_dark", boostDark)),
+                ("tool_dynamic_cohorts", MarketplaceDownload("tool_dynamic_cohorts", dynamicCohorts)),
+            }
+            .Where(plugin => plugin.Url is not null)
+            .Select(plugin => $"{plugin.Component}={plugin.Url}"));
+
+    private static string? MarketplaceDownload(string component, string? version) =>
+        version is null ? null : $"https://marketplace.moodle.com/api/plugins/{component}/versions/{version}/download";
 
     public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
@@ -111,17 +124,21 @@ public static partial class BuilderExtensions
                 // 015-copy-plugins.sh unzips into the tree directly, so they install and
                 // upgrade even though the plugins check page lists them as unsupported.
                 //
-                // boost_union is the newest 5.2 build (v5.2-r10) rather than the r8 the 5.2
-                // instance pins - a fresh instance can start anywhere, and pins only move
-                // forward from there. boost_dark stays on 1.3.7 to match production and the
-                // other two instances.
+                // boost_union comes from upstream's unreleased upgrade-503 branch (2026100500),
+                // which adds the colour mode toggle to the navbar; the newest marketplace build
+                // (v5.2-r10, 2026042014) has none. Upstream force-pushes the branch, so re-pin
+                // to its current head whenever the pinned commit drops off it. boost_dark is
+                // left out so it doesn't fight 5.3's native dark mode. An instance that already
+                // has boost_dark installed needs it uninstalled, or moodle53Db dropped, before
+                // rebuilding.
                 //
                 // Move each of these to a real 5.3 release as upstream ships one.
                 MarketplacePlugins: MarketplacePluginsFor(
                     toolUserdebug: "2025070300",
-                    boostUnion: "2026042014",
-                    boostDark: "2026052400",
-                    dynamicCohorts: "2026031300")),
+                    boostUnion: null,
+                    boostDark: null,
+                    dynamicCohorts: "2026031300",
+                    boostUnionUrl: "https://github.com/moodle-an-hochschulen/moodle-theme_boost_union/archive/e404d91b88beb5178fed5a9085df93d003fbcc7f.zip")),
         };
 
         var enabled = instances
