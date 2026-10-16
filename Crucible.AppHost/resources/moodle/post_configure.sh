@@ -296,28 +296,36 @@ configure_site() {
 configure_boost_dark_theme() {
   echo "Configuring Boost Union and Boost Dark with the CMU development palette"
 
-  boost_union_scss='/* CMU Boost Dark topbar */
-.navbar.fixed-top.bg-primary[data-bs-theme="dark"] {
-  background-color: #CC0000 !important;
-  --bs-navbar-color: rgba(255, 255, 255, 0.92);
-  --bs-navbar-hover-color: #fff;
-}
+  boost_union_scss='/* CMU Boost Dark topbar.
+   Boost Union releases up to v5.2-r12 put data-bs-theme="dark" on the colored navbar itself.
+   Its Moodle 5.3 branch drops that attribute and, in dark mode, resets the colored navbar to the
+   body background with :root[data-bs-theme="dark"] .navbar.bg-primary. Match both, with the
+   :root form specific enough to win, so the topbar stays red in either colour mode. */
+.navbar.bg-primary[data-bs-theme="dark"],
+:root[data-bs-theme="dark"] .navbar.bg-primary {
+  &.fixed-top {
+    --bu-navbar-bg: #CC0000;
+    background-color: #CC0000 !important;
+    --bs-navbar-color: rgba(255, 255, 255, 0.92);
+    --bs-navbar-hover-color: #fff;
+  }
 
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link.active,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link[aria-current="true"],
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link {
-  color: rgba(255, 255, 255, 0.92) !important;
-}
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link,
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link.active,
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link[aria-current="true"],
+  .primary-navigation .moremenu .dropdownmoremenu > a.nav-link {
+    color: rgba(255, 255, 255, 0.92) !important;
+  }
 
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:hover,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus-visible,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:hover,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus-visible {
-  color: #fff !important;
-  background-color: rgba(255, 255, 255, 0.16) !important;
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:hover,
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus,
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus-visible,
+  .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:hover,
+  .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus,
+  .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus-visible {
+    color: #fff !important;
+    background-color: rgba(255, 255, 255, 0.16) !important;
+  }
 }
 
 /* Moodle aiplacement_courseassist dark-mode compatibility. */
