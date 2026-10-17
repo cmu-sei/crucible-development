@@ -86,6 +86,7 @@ for entry in $PLUGINS; do
     question) target="$WEBROOT/question/type/$plugin_subdir" ;;
     qbehaviour) target="$WEBROOT/question/behaviour/$plugin_subdir" ;;
     qformat) target="$WEBROOT/question/format/$plugin_subdir" ;;
+    qbank) target="$WEBROOT/question/bank/$plugin_subdir" ;;
     editor) target="$WEBROOT/lib/editor/$plugin_subdir" ;;
     tiny) target="$WEBROOT/lib/editor/tiny/plugins/$plugin_subdir" ;;
     atto) target="$WEBROOT/lib/editor/atto/plugins/$plugin_subdir" ;;
