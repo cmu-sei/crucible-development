@@ -20,11 +20,17 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [UI Development vs Production Mode](#ui-development-vs-production-mode)
 - [Shared UI Settings](#shared-ui-settings)
 - [Database Seeding and Backup](#database-seeding-and-backup)
+- [Caster Module Sources](#caster-module-sources)
 - [Moodle Configuration](#moodle-configuration)
 - [Local Configuration Files](#local-configuration-files)
 - [Library Development](#library-development)
   - [.NET Libraries (crucible-common-dotnet)](#net-libraries-crucible-common-dotnet)
   - [Angular Libraries (Crucible.Common.Ui)](#angular-libraries-cruciblecommonui)
+- [Hypervisor Configuration](#hypervisor-configuration)
+- [Proxmox OIDC Authentication](#proxmox-oidc-authentication)
+  - [Setup](#proxmox-oidc-setup)
+  - [Login Flow](#proxmox-oidc-login-flow)
+  - [Role-Based Access Control](#proxmox-oidc-rbac)
 - [Devcontainer CI](#devcontainer-ci)
 
 ## Getting Started
@@ -521,6 +527,24 @@ exit
 docker cp crucible-postgres:/tmp/blueprint.dump db-dumps/blueprint.dump
 ```
 
+## Caster Module Sources
+
+Caster can use a dev Gitea at `http://localhost:3010` (user `crucible-admin`, password `admin`) as its module source. It is off by default; turn it on with `Launch__Gitea=true` in your `.env` file (for example alongside `Launch__Caster=true` in `.env/caster.env`), or by adding `"Gitea"` to `Prod` (or `Dev`) in `appsettings.Development.json`. It starts with Caster and stops when the AppHost stops; the `crucible-dev-gitea` volume keeps the repository between runs. The `gitea-seed` resource pushes the branches and tags of the local module catalog at `/mnt/data/crucible/crucible-terraform-modules` into the public `crucible/crucible-terraform-modules` repository, and caster-api lists modules from it as source 0. Re-run `gitea-seed` from the dashboard after tagging a new catalog version.
+
+Job pods reach Gitea as `host.minikube.internal`. caster-api runs in the dev container, where that name doesn't resolve, so the AppHost rewrites it to `localhost` for caster-api through `GIT_CONFIG_*` environment variables. If a job pod can't resolve `host.minikube.internal`, delete and start minikube again (`delete-minikube`, then `minikube`, from the dashboard).
+
+### Using a Private Catalog Repository
+
+To work on the catalog from your own git server (for example an internal Bitbucket), add it to the top-level `repos` array of `scripts/repos.local.json` (see [Adding Private/Internal Repositories](#adding-privateinternal-repositories)). Don't put it in the `moodle` group, which bind mounts every entry into Moodle as a plugin.
+
+```json
+"repos": [
+  { "name": "crucible-terraform-modules", "url": "https://git.example.com/scm/your-project/crucible-terraform-modules.git" }
+]
+```
+
+It clones to `/mnt/data/crucible/crucible-terraform-modules`, and `gitea-seed` mirrors it into Gitea. Caster reads it from Gitea, not from your server.
+
 ## Moodle Configuration
 
 Moodle will be configured using files located in `scripts/` and `resources/moodle/`.
@@ -538,6 +562,7 @@ The following Moodle task configurations are available:
 - **`.env/moodle-xdebug.env`** - Moodle with Xdebug enabled (for PHP debugging)
 - **`.env/catapult.env`** - Moodle + the ADL CATAPULT cmi5 player + LRS, for cmi5/xAPI content (launches Moodle, Catapult, and Lrsql together)
 - **`.env/moodle52.env`** - Moodle 5.2 test instance (see below)
+- **`.env/moodle53.env`** - Moodle 5.3 test instance (see below)
 
 Use the appropriate task based on whether you need to debug PHP code. Xdebug has significant performance overhead, so only enable it when actively debugging.
 
@@ -548,32 +573,46 @@ Moodle against an older instance's database runs irreversible upgrade migrations
 that, the older version will not start against it. Each instance therefore gets its own
 container name, port, database, and `moodle-core` mount:
 
-| | Moodle 5.0 | Moodle 5.2 |
-| --- | --- | --- |
-| Launch task | `.env/moodle.env` | `.env/moodle52.env` |
-| URL | http://localhost:8081 | http://localhost:8082 |
-| Container | `moodle` | `moodle52` |
-| Database | `moodle` | `moodle52` |
-| Core mount | `/mnt/data/crucible/moodle/moodle-core/` | `/mnt/data/crucible/moodle/moodle-core-52/` |
-| Container web root | `/var/www/html` | `/var/www/html/public` |
+| | Moodle 5.0 | Moodle 5.2 | Moodle 5.3 |
+| --- | --- | --- | --- |
+| Launch task | `.env/moodle.env` | `.env/moodle52.env` | `.env/moodle53.env` |
+| URL | http://localhost:8081 | http://localhost:8082 | http://localhost:8083 |
+| Container | `moodle` | `moodle52` | `moodle53` |
+| Database | `moodle` | `moodle52` | `moodle53` |
+| Core mount | `/mnt/data/crucible/moodle/moodle-core/` | `/mnt/data/crucible/moodle/moodle-core-52/` | `/mnt/data/crucible/moodle/moodle-core-53/` |
+| Container web root | `/var/www/html` | `/var/www/html/public` | `/var/www/html/public` |
 
-Both instances share the same Dockerfile (`resources/moodle/Dockerfile.MoodleCustom`); the
+5.3 is the next LTS; 5.2 is what production rides until it reaches end of support. 5.0 is
+the instance with the seeded TopoMojo demo data.
+
+Every instance shares the same Dockerfile (`resources/moodle/Dockerfile.MoodleCustom`); the
 base image comes from the `MOODLE_BASE_IMAGE` build arg. The plugins mounted from
 `repos.json` are shared, but marketplace plugin versions are pinned per instance in
 `AppHost.cs` since those downloads are branch-specific.
+
+The base image's PHP version moves with the Moodle branch - 5.0 and 5.2 ship PHP 8.3, 5.3
+ships 8.4 - and Alpine names both the Xdebug package and the `conf.d` directory after it
+(`php83-pecl-xdebug`, `/etc/php83/conf.d`). The Dockerfile resolves that from the image's
+own `php` rather than hardcoding a version, because the hardcoded form fails silently:
+installing `php83-pecl-xdebug` onto a PHP 8.4 image pulls in a second runtime and drops the
+ini where the running PHP never reads it, so the build succeeds and Xdebug is simply absent.
 
 Moodle 5.1 moved everything web-accessible under `public/`, so on 5.1+ the core directories
 and every plugin live one level deeper in the container (`admin/cli` stays outside the web
 root in both layouts). Each `MoodleInstance` declares its `WebRoot`, and the resource
 scripts (`pre_configure.sh`, `015-copy-plugins.sh`, the Dockerfile, `xdebug_filter.php`)
-detect the layout at build/boot time, so one image definition serves both. The host side of
-the `moodle-core` mounts stays flat regardless of version. The base image re-points nginx at
-`public/` itself on boot.
+detect the layout at build/boot time, so one image definition serves every version. The host
+side of the `moodle-core` mounts stays flat regardless of version. The base image re-points
+nginx at `public/` itself on boot.
 
 To add another version, add a `MoodleInstance` entry in `AddMoodle` with an unused port,
 a new database name, a new mount root, and the web root that version uses, plus a
 `Launch__<Name>` flag in `LaunchOptions`. New instances are left out of
-`AddAllApplications` so they only build when asked for.
+`AddAllApplications` so they only build when asked for. The port also needs an
+`.env/<name>.env` task, `.vscode/launch.json` profiles, a mount root in
+`scripts/add-moodle-mounts.sh`, a `forwardPorts` entry in `.devcontainer/devcontainer.json`,
+the `moodle-client` redirect URI and web origin in `resources/crucible-realm.json`, and the
+CORS origins the Alloy and TopoMojo APIs allow in `AppHost.cs`.
 
 The Moodle containers use `ContainerLifetime.Persistent`, and Aspire reuses an existing
 container rather than recreating it when its bind mounts change. After changing mount paths
@@ -1111,6 +1150,141 @@ The AppHost uses a health check to ensure UIs don't start until the library is f
 3. Edit files in `/mnt/data/crucible/libraries/Crucible.Common.Ui`
 4. The watch process rebuilds the library automatically
 5. UIs using `ng serve` pick up the changes via the npm link
+
+## Hypervisor Configuration
+
+TopoMojo, Player VM API, and Caster can opt into local API configuration profiles.
+Application settings and credentials live in ignored files under
+`Crucible.AppHost/resources/api/config/local/`; only templates are committed.
+AppHost keeps resource dependencies, endpoints, and database wiring in code.
+
+```bash
+# Guided menu: configure, select, or disable a profile
+./scripts/configure-hypervisors.sh
+
+# Go straight to setup for a backend
+./scripts/configure-hypervisors.sh proxmox
+./scripts/configure-hypervisors.sh vsphere --profile lab-a
+
+# Switch to an existing profile without prompting or rewriting its files
+./scripts/toggle-hypervisor.sh lab-a
+
+# Disable file configuration globally; local files are retained
+./scripts/toggle-hypervisor.sh remove
+```
+
+Setup asks once for connection details and fills the TopoMojo, Player VM, and Caster
+templates. Passwords and tokens are hidden during entry. Proxmox setup reuses saved
+credentials when available. Existing profiles offer **keep**, **regenerate**, or
+**cancel**; regeneration backs up the old files alongside them.
+Edit the resulting `.conf` files for advanced settings.
+Only Proxmox and vSphere starting templates are provided. Use any local profile name
+and customize the generated files for other environments.
+
+Restart Aspire after changing selection or file contents. File configuration is disabled
+by default. Disabling it restores the apps' own configuration and AppHost defaults;
+it does not disable the apps.
+
+For manual setup, `configure-hypervisors.sh init TEMPLATE [--profile NAME]` copies
+templates without selecting them or overwriting existing files. Replace their
+placeholders before selecting the profile. Use `list` to see available templates.
+The toggle clears per-app profile overrides and preserves per-app disable flags.
+Running it without arguments opens the same guided menu.
+
+Use `Launch.ApiConfig` in your local AppHost settings to select profiles per app:
+
+```json
+{
+  "Launch": {
+    "ApiConfig": {
+      "Enabled": true,
+      "Profile": "proxmox",
+      "Apps": {
+        "player-vm-api": { "Profile": "hybrid" },
+        "caster-api": { "Enabled": false }
+      }
+    }
+  }
+}
+```
+
+Player VM and Caster support hybrid profiles; TopoMojo selects one backend.
+Create custom profiles before referencing them. For VMC and hybrid customization, syntax, precedence,
+per-app overrides, Proxmox provisioning, and testing, see the
+[API profile guide](Crucible.AppHost/resources/api/config/README.md).
+
+## Proxmox OIDC Authentication
+
+Configure Proxmox to authenticate users via Keycloak OIDC, enabling unified SSO across Crucible services and Proxmox with role-based access control.
+
+### Proxmox OIDC Setup
+
+#### Prerequisites (Windows Host)
+
+Run once to configure port forwarding for Keycloak:
+
+```powershell
+# From Windows PowerShell (as Administrator)
+.\scripts\setup-keycloak-portforward.ps1
+```
+
+This configures:
+- Port forwarding: `172.29.16.1:8080` → `127.0.0.1:8080`
+- Firewall rules for ports 8080 and 8443
+- Windows hosts entry: `172.29.16.1 keycloak`
+
+#### Proxmox Configuration
+
+Configure Proxmox infrastructure and OIDC:
+
+```bash
+export PROXMOX_HOST='172.29.24.139'
+export KEYCLOAK_HOST='172.29.16.1'  # Optional, auto-detected
+./scripts/crucible-proxmox.sh setup
+```
+
+This creates:
+- OIDC realm `keycloak-crucible` in Proxmox
+- Three role-based Proxmox groups
+- VM templates (Alpine, TinyCore, Puppy)
+- TopoMojo, Caster, Player, Alloy resources
+
+### Proxmox OIDC Login Flow
+
+1. Navigate to: `https://172.29.24.139:8006`
+2. Select **"Keycloak Crucible Realm"** from realm dropdown
+3. Click Login → redirects to `http://keycloak:8080`
+4. Login with Keycloak credentials (`admin`/`admin`)
+5. Redirected back to Proxmox
+
+#### Assign Groups After First Login
+
+```bash
+ssh -i ~/.ssh/crucible_proxmox root@172.29.24.139
+
+# Assign Administrator role
+/usr/local/bin/oidc-group-sync.sh admin@keycloak-crucible Administrators
+
+# Assign VM Operator role
+/usr/local/bin/oidc-group-sync.sh developer@keycloak-crucible "Content Developer"
+
+# Assign Read-only role
+/usr/local/bin/oidc-group-sync.sh observer@keycloak-crucible Test
+```
+
+Log out and back in for permissions to take effect.
+
+### Proxmox OIDC RBAC
+
+Three Proxmox groups are created with role-based permissions:
+
+| Keycloak Role | Proxmox Group | Proxmox Role | Access Level |
+|---------------|---------------|--------------|--------------|
+| **Administrators** | crucible-admins | Administrator | Full datacenter access |
+| **Content Developer** | crucible-developers | PVEVMAdmin | VM operator (create/manage VMs) |
+| **Test** | crucible-observers | PVEAuditor | Read-only |
+
+**Emergency Access:** `root@pam` login remains available as fallback if OIDC fails.
 
 ## Devcontainer CI
 

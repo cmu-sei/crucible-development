@@ -215,7 +215,7 @@ configure_xapi() {
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=mbox --set=0
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=send_name --set=1
   php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=send_user_idnumber --set=1
-  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=account_homepage --set=https://keycloak.dev.internal:8443/realms/crucible/
+  php /var/www/html/admin/cli/cfg.php --component=logstore_xapi --name=account_homepage --set=https://localhost:8443/realms/crucible/
 }
 
 configure_lptmanager() {
@@ -296,28 +296,49 @@ configure_site() {
 configure_boost_dark_theme() {
   echo "Configuring Boost Union and Boost Dark with the CMU development palette"
 
-  boost_union_scss='/* CMU Boost Dark topbar */
-.navbar.fixed-top.bg-primary[data-bs-theme="dark"] {
-  background-color: #CC0000 !important;
-  --bs-navbar-color: rgba(255, 255, 255, 0.92);
-  --bs-navbar-hover-color: #fff;
-}
+  boost_union_scss='/* CMU Boost Dark topbar.
+   Boost Union releases up to v5.2-r12 put data-bs-theme="dark" on the colored navbar itself.
+   Its Moodle 5.3 branch drops that attribute and, in dark mode, resets the colored navbar to the
+   body background with :root[data-bs-theme="dark"] .navbar.bg-primary. Match both, with the
+   :root form specific enough to win, so the topbar stays red in either colour mode. */
+.navbar.bg-primary[data-bs-theme="dark"],
+:root[data-bs-theme="dark"] .navbar.bg-primary {
+  &.fixed-top {
+    --bu-navbar-bg: #CC0000;
+    background-color: #CC0000 !important;
+    --bs-navbar-color: rgba(255, 255, 255, 0.92);
+    --bs-navbar-hover-color: #fff;
+  }
 
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link.active,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link[aria-current="true"],
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link {
-  color: rgba(255, 255, 255, 0.92) !important;
-}
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link,
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link.active,
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link[aria-current="true"],
+  .primary-navigation .moremenu .dropdownmoremenu > a.nav-link {
+    color: rgba(255, 255, 255, 0.92) !important;
+  }
 
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:hover,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus-visible,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:hover,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus,
-.navbar.bg-primary[data-bs-theme="dark"] .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus-visible {
-  color: #fff !important;
-  background-color: rgba(255, 255, 255, 0.16) !important;
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:hover,
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus,
+  .primary-navigation .moremenu .navbar-nav > .nav-item > a.nav-link:focus-visible,
+  .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:hover,
+  .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus,
+  .primary-navigation .moremenu .dropdownmoremenu > a.nav-link:focus-visible {
+    color: #fff !important;
+    background-color: rgba(255, 255, 255, 0.16) !important;
+  }
+
+  /* Moodle 5.3 renders the primary navigation as design-system pills, which keep
+     Boost'\''s dark-mode grey (#ced4da, 3.9:1 on the red). The selected pill has its
+     own dark background and stays as it is. */
+  .mds-nav-pill:not(.mds-nav-pill--selected) {
+    color: rgba(255, 255, 255, 0.92) !important;
+  }
+
+  .mds-nav-pill:not(.mds-nav-pill--selected):hover,
+  .mds-nav-pill:not(.mds-nav-pill--selected):focus-visible {
+    color: #fff !important;
+    background-color: rgba(255, 255, 255, 0.16) !important;
+  }
 }
 
 /* Moodle aiplacement_courseassist dark-mode compatibility. */
@@ -397,6 +418,27 @@ configure_boost_dark_theme() {
 [data-bs-theme="dark"] .btn-icon.icons-collapse-expand:hover,
 [data-bs-theme="dark"] .btn-icon.icons-collapse-expand:focus {
   color: var(--bs-emphasis-color);
+}
+
+/* Moodle 5.2 activity header intro box in dark mode.
+   Up to 5.0 core painted the gray-100 panel on ".path-mod .activity-header:not(:empty)",
+   which local_boost_dark 1.3.7 overrides. Moodle 5.2 moved that background down onto the
+   new ".activity-details" wrapper (theme/boost/scss/moodle/modules.scss) and the plugin
+   still only knows the old selector, so every activity intro renders as a near-white
+   #f8f9fa panel holding dark-mode light text at about 1.2:1 - confirmed on mod_page,
+   mod_quiz and mod_crucible on 5.2, fine on 5.0. Match the colour the plugin gives
+   .activity-header so the header and the box below it read as one surface. The selector
+   does not exist before 5.1, so this is a no-op on the 5.0 instance.
+
+   Darkening the box also strands the activity dates row inside it: core sets
+   ".path-mod .activity-dates .date-item { color: $gray-700 }", which is #495057 on the
+   new dark panel. */
+[data-bs-theme="dark"] .path-mod .activity-details:not(:empty) {
+  background-color: var(--bs-main-navbar-background, #393e4f);
+}
+
+[data-bs-theme="dark"] .path-mod .activity-dates .date-item {
+  color: var(--bs-body-color);
 }
 
 /* local_boost_dark dark/light mode toggle.
@@ -523,6 +565,31 @@ configure_groupquiz_activity() {
 configure_demo_activities() {
   echo "Ensuring demo activities"
   php /usr/local/bin/create_demo_activities.php --course="Test Course"
+}
+
+# The two lab activities that need another Crucible service to be up before they
+# can be created: mod_topomojo needs a workspace GUID from TopoMojo and
+# mod_crucible needs an event template GUID from Alloy. Deliberately not wrapped
+# in execute_section - each script no-ops when its activity is already there, so
+# running them every start backfills whichever one had to be skipped last time
+# (service disabled, service still starting, or no content authored yet).
+#
+# Separate scripts because mod_topomojo and mod_crucible both declare a global
+# setup(); seeding both in one PHP process fatals on redeclare.
+configure_lab_activities() {
+  if [ "${CRUCIBLE_TOPOMOJO_ENABLED:-0}" = "1" ]; then
+    echo "Ensuring TopoMojo demo activity"
+    php /usr/local/bin/create_topomojo_activity.php --course="Test Course"
+  else
+    log "TOPOMOJO disabled - skipping TopoMojo demo activity"
+  fi
+
+  if [ "${CRUCIBLE_ALLOY_ENABLED:-0}" = "1" ]; then
+    echo "Ensuring Crucible demo activity"
+    php /usr/local/bin/create_crucible_activity.php --course="Test Course"
+  else
+    log "ALLOY disabled - skipping Crucible demo activity"
+  fi
 }
 
 configure_crucible_dashboard_blocks() {
@@ -683,8 +750,15 @@ configure_topomojo() {
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enableapikey --set=1;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=enablemanagername --set=1;
   php /var/www/html/admin/cli/cfg.php --component=topomojo --name=managername --set='Admin User';
-  echo "TopoMojo API KEY needs to be generated and set manually"
-  #php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set=la9_eT_RaK640Pb2WZgdvj84__iXSAC4
+  php /var/www/html/admin/cli/cfg.php --component=topomojo --name=usingconsoleforge --set=1;
+
+  # Read API key from environment variable (set by AppHost from ~/.topomojo-apikey)
+  if [ -n "$TOPOMOJO_APIKEY" ]; then
+    php /var/www/html/admin/cli/cfg.php --component=topomojo --name=apikey --set="$TOPOMOJO_APIKEY";
+    echo "TopoMojo API key configured from environment variable"
+  else
+    echo "Warning: TOPOMOJO_APIKEY environment variable not set"
+  fi
 }
 
 
@@ -728,6 +802,9 @@ configure_ai_placements() {
 create_course() {
   echo "Creating course"
   moosh course-list | grep -q 'Test Course' || moosh course-create 'Test Course';
+
+  # Note: OAuth users (demo-user, contentdev) don't exist until first login
+  # Manual enrollment required after users authenticate via OAuth
 }
 
 # Main execution
@@ -765,6 +842,7 @@ execute_section "Course Creation" create_course
 execute_section "cmi5 Demo Activity" configure_cmi5_activity
 execute_section "Group Quiz Demo Activity" configure_groupquiz_activity
 execute_section "Demo Activities" configure_demo_activities
+configure_lab_activities
 
 # Only configure AWS Bedrock if credentials are available
 if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] && [ -n "$AWS_REGION" ]; then

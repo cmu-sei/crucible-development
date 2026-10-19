@@ -37,12 +37,25 @@ public static partial class BuilderExtensions
     /// reports a plugin downgrade instead of upgrading. The same applies to an instance that
     /// was upgraded by hand past its pin: drop its database, or uninstall the plugin, before
     /// rebuilding it.
+    ///
+    /// A null version leaves that plugin out. boostUnionUrl replaces the boost_union
+    /// marketplace download with another zip, e.g. a GitHub commit archive while upstream
+    /// has no release for the instance's branch; 015-copy-plugins.sh takes any zip whose
+    /// single top-level folder holds the plugin's version.php.
     /// </summary>
-    private static string MarketplacePluginsFor(string toolUserdebug, string boostUnion, string boostDark, string dynamicCohorts) =>
-        $"tool_userdebug=https://marketplace.moodle.com/api/plugins/tool_userdebug/versions/{toolUserdebug}/download " +
-        $"theme_boost_union=https://marketplace.moodle.com/api/plugins/theme_boost_union/versions/{boostUnion}/download " +
-        $"local_boost_dark=https://marketplace.moodle.com/api/plugins/local_boost_dark/versions/{boostDark}/download " +
-        $"tool_dynamic_cohorts=https://marketplace.moodle.com/api/plugins/tool_dynamic_cohorts/versions/{dynamicCohorts}/download";
+    private static string MarketplacePluginsFor(string toolUserdebug, string? boostUnion, string? boostDark, string dynamicCohorts, string? boostUnionUrl = null) =>
+        string.Join(" ", new (string Component, string? Url)[]
+            {
+                ("tool_userdebug", MarketplaceDownload("tool_userdebug", toolUserdebug)),
+                ("theme_boost_union", boostUnionUrl ?? MarketplaceDownload("theme_boost_union", boostUnion)),
+                ("local_boost_dark", MarketplaceDownload("local_boost_dark", boostDark)),
+                ("tool_dynamic_cohorts", MarketplaceDownload("tool_dynamic_cohorts", dynamicCohorts)),
+            }
+            .Where(plugin => plugin.Url is not null)
+            .Select(plugin => $"{plugin.Component}={plugin.Url}"));
+
+    private static string? MarketplaceDownload(string component, string? version) =>
+        version is null ? null : $"https://marketplace.moodle.com/api/plugins/{component}/versions/{version}/download";
 
     public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
@@ -91,21 +104,59 @@ public static partial class BuilderExtensions
                     boostUnion: "2026042012",
                     boostDark: "2026052400",
                     dynamicCohorts: "2026031300")),
+            // Moodle 5.3 test instance - the next LTS. Also left out of
+            // AddAllApplications; Launch__Moodle53 asks for it.
+            new MoodleInstance(
+                Name: "moodle53",
+                BaseImage: "erseco/alpine-moodle:v5.3.0",
+                Port: 8083,
+                DbResourceName: "moodle53Db",
+                DbName: "moodle53",
+                CoreMountRoot: "/mnt/data/crucible/moodle/moodle-core-53",
+                // Same public/ layout as 5.2.
+                WebRoot: "/var/www/html/public",
+                Mode: ResolveMode(options.Moodle53, "Moodle53", options),
+                IncludeWithAll: false,
+                // Only tool_userdebug lists 5.3 (2026091600) in its supported range so far;
+                // the plugin API has no 5.3 build of the other three and falls back to the
+                // latest release when asked for branch=5.3. Same situation the 5.2 instance
+                // is in with dynamic_cohorts: $plugin->requires is low enough and
+                // 015-copy-plugins.sh unzips into the tree directly, so they install and
+                // upgrade even though the plugins check page lists them as unsupported.
+                //
+                // boost_union comes from upstream's unreleased upgrade-503 branch (2026100500),
+                // which adds the colour mode toggle to the navbar; the newest marketplace build
+                // (v5.2-r10, 2026042014) has none. Upstream force-pushes the branch, so re-pin
+                // to its current head whenever the pinned commit drops off it. boost_dark is
+                // left out so it doesn't fight 5.3's native dark mode. An instance that already
+                // has boost_dark installed needs it uninstalled, or moodle53Db dropped, before
+                // rebuilding.
+                //
+                // Move each of these to a real 5.3 release as upstream ships one.
+                MarketplacePlugins: MarketplacePluginsFor(
+                    toolUserdebug: "2025070300",
+                    boostUnion: null,
+                    boostDark: null,
+                    dynamicCohorts: "2026031300",
+                    boostUnionUrl: "https://github.com/moodle-an-hochschulen/moodle-theme_boost_union/archive/e404d91b88beb5178fed5a9085df93d003fbcc7f.zip")),
         };
 
-        var anyAdded = false;
+        var enabled = instances
+            .Where(instance => IsEnabled(instance.Mode) || (options.AddAllApplications && instance.IncludeWithAll))
+            .ToArray();
 
-        foreach (var instance in instances)
-        {
-            if (!IsEnabled(instance.Mode) && !(options.AddAllApplications && instance.IncludeWithAll))
-                continue;
-
-            builder.AddMoodleInstance(postgres, keycloak, options, instance);
-            anyAdded = true;
-        }
-
-        if (!anyAdded)
+        if (enabled.Length == 0)
             return;
+
+        // Fetched once and shared by every instance: the script writes a single
+        // ~/.topomojo-apikey, and an Aspire resource name can only be registered once,
+        // so this cannot move inside the per-instance call.
+        var topoMojoApiKey = builder.AddTopoMojoApiKeyScript(options);
+
+        foreach (var instance in enabled)
+        {
+            builder.AddMoodleInstance(postgres, keycloak, options, instance, topoMojoApiKey);
+        }
 
         // Copy dotnet dev-cert(s) into resources/moodle/certs so they get trusted through the Dockerfile
         builder.Eventing.Subscribe<BeforeStartEvent>((@event, cancellationToken) =>
@@ -127,6 +178,47 @@ public static partial class BuilderExtensions
 
             return Task.CompletedTask;
         });
+    }
+
+    /// <summary>
+    /// Get or create TopoMojo's API key before any Moodle instance starts, so post_configure.sh
+    /// can wire mod_topomojo up. Returns null when TopoMojo is not running, in which case Moodle
+    /// starts without TOPOMOJO_APIKEY.
+    /// </summary>
+    private static IResourceBuilder<ExecutableResource>? AddTopoMojoApiKeyScript(
+        this IDistributedApplicationBuilder builder, LaunchOptions options)
+    {
+        // Mirror the effective mode AddTopoMojo starts the API on, including its fallback to the
+        // launchpoint mode - a launchpoint-only launch does run the API, and keying off
+        // options.TopoMojo alone skipped the key there. Resource existence is NOT the signal:
+        // with --all and TopoMojo off, AddTopoMojo registers the API but marks it
+        // WithExplicitStart, so it never comes up and this script would block Moodle for the
+        // whole readiness timeout waiting for it.
+        var topoMojoMode = ResolveMode(options.TopoMojo, "TopoMojo", options);
+
+        if (!IsEnabled(topoMojoMode))
+            topoMojoMode = ResolveMode(options.TopoMojoLaunchpoint, "TopoMojoLaunchpoint", options);
+
+        if (!IsEnabled(topoMojoMode))
+            return null;
+
+        // builder.Resources holds IResource, not IResourceBuilder<T> - a builder wraps a
+        // resource rather than being one - so filtering it for IResourceBuilder<ProjectResource>
+        // never matched and this always bailed out. Match the resource, then wrap it.
+        var topoMojoApi = builder.Resources
+            .OfType<ProjectResource>()
+            .FirstOrDefault(r => r.Name.StartsWith("topomojo") && !r.Name.Contains("ui"));
+
+        if (topoMojoApi == null)
+            return null;
+
+        var topoMojoApiBuilder = builder.CreateResourceBuilder(topoMojoApi);
+
+        return builder.AddExecutable("get-topomojo-apikey", "bash",
+            builder.AppHostDirectory,
+            "-c",
+            $"bash {builder.AppHostDirectory}/../scripts/get-or-create-topomojo-apikey.sh")
+            .WaitFor(topoMojoApiBuilder);
     }
 
     /// <summary>
@@ -162,7 +254,7 @@ public static partial class BuilderExtensions
         }
     }
 
-    private static void AddMoodleInstance(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, MoodleInstance instance)
+    private static void AddMoodleInstance(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, MoodleInstance instance, IResourceBuilder<ExecutableResource>? topoMojoApiKey)
     {
         var moodleMode = instance.Mode;
 
@@ -210,6 +302,25 @@ public static partial class BuilderExtensions
             .WithEnvironment("DB_HOST", postgres.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
             .WithEnvironment("DB_NAME", moodleDb.Resource.DatabaseName);
 
+        if (topoMojoApiKey != null)
+        {
+            // Wait for the shared API key script to finish before this instance starts.
+            moodle.WaitForCompletion(topoMojoApiKey);
+
+            // Read the API key file at runtime (via callback) rather than during graph
+            // construction: the file is produced by the script, so on a fresh machine
+            // it does not exist yet at build time. The callback runs when Moodle starts,
+            // after WaitForCompletion has ensured the script finished and wrote the file.
+            var apiKeyFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".topomojo-apikey");
+            moodle.WithEnvironment(context =>
+            {
+                if (File.Exists(apiKeyFilePath))
+                {
+                    context.EnvironmentVariables["TOPOMOJO_APIKEY"] = File.ReadAllText(apiKeyFilePath).Trim();
+                }
+            });
+        }
+
         // Only set AWS credentials if the credentials file exists
         if (awsCreds != null)
         {
@@ -247,7 +358,8 @@ public static partial class BuilderExtensions
             .WithBindMount($"{instance.CoreMountRoot}/lib", $"{instance.WebRoot}/lib", isReadOnly: false)
             .WithBindMount($"{instance.CoreMountRoot}/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount($"{instance.CoreMountRoot}/ai/provider", $"{instance.WebRoot}/ai/provider", isReadOnly: false)
-            .WithBindMount($"{instance.CoreMountRoot}/ai/classes", $"{instance.WebRoot}/ai/classes", isReadOnly: false);
+            .WithBindMount($"{instance.CoreMountRoot}/ai/classes", $"{instance.WebRoot}/ai/classes", isReadOnly: false)
+            .WithBindMount("/tmp/crucible", "/tmp/crucible", isReadOnly: true);
 
         // When CATAPULT is enabled, mount the Apache-2.0 cmi5 sample package from the
         // cloned CATAPULT repo (single source of truth - avoids vendoring a duplicate
@@ -261,7 +373,7 @@ public static partial class BuilderExtensions
         }
 
         // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
-        var moodlePlugins = ReadMoodlePlugins(instance.WebRoot);
+        var moodlePlugins = ReadMoodlePlugins(builder.AppHostDirectory, instance.WebRoot);
         foreach (var plugin in moodlePlugins)
         {
             moodle.WithBindMount(plugin.HostPath, plugin.ContainerPath, isReadOnly: true);
@@ -337,10 +449,12 @@ public static partial class BuilderExtensions
         };
     }
 
-    private static List<MoodlePlugin> ReadMoodlePlugins(string webRoot)
+    private static List<MoodlePlugin> ReadMoodlePlugins(string appHostDirectory, string webRoot)
     {
         var plugins = new List<MoodlePlugin>();
-        var workspaceRoot = "/workspaces/crucible-development";
+        // Resolve from the AppHost rather than hardcoding the checkout name: the repo can be
+        // cloned under any folder (e.g. crucible-dev), and a miss silently mounts no plugins.
+        var workspaceRoot = Path.GetFullPath(Path.Combine(appHostDirectory, ".."));
         var reposJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.json");
         var reposLocalJsonPath = Path.Combine(workspaceRoot, "scripts", "repos.local.json");
 

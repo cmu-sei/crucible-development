@@ -18,9 +18,11 @@ public class LaunchOptions
     public bool Gameboard { get; set; }
     public bool Moodle { get; set; }
     public bool Moodle52 { get; set; }
+    public bool Moodle53 { get; set; }
     public bool Lrsql { get; set; }
     public bool PGAdmin { get; set; }
     public bool Docs { get; set; }
+    public bool Gitea { get; set; }
     public bool Misp { get; set; }
     public bool Superset { get; set; }
     public bool Catapult { get; set; }
@@ -33,4 +35,6 @@ public class LaunchOptions
     public bool AddAllApplications { get; set; }
     public bool UseAspireProxy { get; set; }
     public bool LinkCommonUI { get; set; }
+
+    public ApiConfigOptions ApiConfig { get; set; } = new();
 }
