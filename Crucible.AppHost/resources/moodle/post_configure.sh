@@ -259,18 +259,25 @@ configure_lptmanager() {
   php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_trusted_validators --set="$LRS_AUTHORITY $LEARNER_HOMEPAGE"
 }
 
-# The NICE Framework, as the site's competency framework. A fresh container has
-# none, and without one aiplacement_competency's Classify drawer, tool_lptmanager
-# and the competency reports all have nothing to work with. NICE rather than an
+# The NICE Framework versions, as the site's competency frameworks. A fresh
+# container has none, and without one aiplacement_competency's Classify drawer,
+# tool_lptmanager and the competency reports all have nothing to work with. NICE rather than an
 # invented framework because the competency_iri_prefix above already points at
 # NICCS, so the IRIs lptmanager sends to the LRS resolve.
 #
-# ~2170 competencies, so this takes a couple of minutes on a first boot. The
-# script no-ops once the framework is there.
+# 2.0.0, 2.1.0 and 2.2.0, each its own framework, so content tagged against an
+# older version keeps its competencies while newer content uses the current one.
+# 2.1.0 and 2.2.0 are built from NIST's CPRT components JSON in the 2.0.0 layout.
+#
+# ~2200 competencies each, so this takes several minutes on a first boot. The
+# script no-ops for any framework that is already there.
 configure_nice_framework() {
-  echo "Ensuring NICE competency framework"
-  php /usr/local/bin/import_competency_framework.php \
-    --file=/usr/local/share/competency/nice-framework-v2.0.0.csv
+  echo "Ensuring NICE competency frameworks"
+  local version
+  for version in 2.0.0 2.1.0 2.2.0; do
+    php /usr/local/bin/import_competency_framework.php \
+      --file=/usr/local/share/competency/nice-framework-v${version}.csv
+  done
 }
 
 # The organization categories and category scoped roles block_crucible's org role
