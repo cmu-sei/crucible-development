@@ -225,6 +225,38 @@ configure_lptmanager() {
   php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_api_secret --set=defaultsecret
   php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=enable_lrs_sync --set=1
   php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=competency_iri_prefix --set=https://niccs.cisa.gov/workforce-development/nice-framework/ksat/
+
+  # The sync grades only statements written by a trusted LRS credential, and only for
+  # learners under that credential's learner homePage: the realm logstore_xapi's
+  # account_homepage names. Every dev app shares defaultkey, so that one credential is
+  # trusted to assert and validate. SQL LRS stamps
+  # the authority from the credential's id, which a fresh LRS database regenerates, so
+  # read it back from a statement instead of hardcoding it, writing a probe if there are none.
+  LEARNER_HOMEPAGE=https://localhost:8443/realms/crucible
+  LRS_AUTHORITY=$(php -r '
+    $lrs = "http://host.docker.internal:9274/xapi/statements";
+    $headers = "Authorization: Basic " . base64_encode("defaultkey:defaultsecret") . "\r\n"
+        . "X-Experience-API-Version: 1.0.3\r\nContent-Type: application/json\r\n";
+    $get = function () use ($lrs, $headers) {
+        $body = @file_get_contents("$lrs?limit=1", false, stream_context_create(["http" => ["header" => $headers]]));
+        return json_decode((string) $body)->statements[0]->authority->account ?? null;
+    };
+    $account = $get();
+    if ($account === null) {
+        $probe = ["actor" => ["mbox" => "mailto:post-configure@moodle.invalid"],
+            "verb" => ["id" => "http://adlnet.gov/expapi/verbs/initialized"],
+            "object" => ["id" => "https://moodle.invalid/post-configure/lrs-authority-probe"]];
+        @file_get_contents($lrs, false, stream_context_create(["http" =>
+            ["method" => "POST", "header" => $headers, "content" => json_encode($probe)]]));
+        $account = $get();
+    }
+    if (!isset($account->homePage, $account->name)) {
+        exit(1);
+    }
+    echo $account->homePage . " " . $account->name;
+  ') || { log "Could not read the LRS authority; the lptmanager sync will grade nothing."; return 1; }
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_trusted_asserters --set="$LRS_AUTHORITY $LEARNER_HOMEPAGE"
+  php /var/www/html/admin/cli/cfg.php --component=tool_lptmanager --name=lrs_trusted_validators --set="$LRS_AUTHORITY $LEARNER_HOMEPAGE"
 }
 
 # The NICE Framework, as the site's competency framework. A fresh container has
