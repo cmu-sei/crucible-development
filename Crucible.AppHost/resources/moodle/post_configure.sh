@@ -608,8 +608,11 @@ configure_cmi5launch() {
   fi
 
   echo "Configuring cmi5launch"
-  # CATAPULT player (reached from the Moodle container via host.docker.internal).
-  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchplayerurl --set=http://host.docker.internal:3398
+  # CATAPULT player, by container name on the shared Aspire network. Not
+  # host.docker.internal: that reaches the player only through VS Code's 3398 port
+  # forward on the host, which can hang and stall every player call. Launch URLs the
+  # browser opens come from the player's own PLAYER_STANDALONE_LAUNCH_URL_BASE.
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchplayerurl --set=http://catapult-player:3398
   php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchbasicname --set=catapult
   php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchbasepass --set=catapult-dev-secret
 
