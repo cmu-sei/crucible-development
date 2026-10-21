@@ -22,17 +22,17 @@ This spec defines where each Crucible app's colors come from, how they behave in
 
 Each app's brand color is the default for both its top-bar background and its light-mode `primary`. The two are configured by separate settings (§4), so they can be changed independently, but they ship with the same value.
 
-| Application | Brand color (light-mode `primary`) | Text on brand color |
-|---|---|---|
-| Alloy | `#006B6D` | `#FFFFFF` |
-| Blueprint | `#007CB5` | `#FFFFFF` |
-| Caster | `#AB650F` | `#FFFFFF` |
-| CITE | `#E81717` | `#FFFFFF` |
-| Gallery | `#008740` | `#FFFFFF` |
-| Gameboard | `#877200` | `#FFFFFF` |
-| Player (incl. Player VM, Console) | `#3B62A5` | `#FFFFFF` |
-| Steamfitter | `#B1282F` | `#FFFFFF` |
-| TopoMojo | `#B8558E` | `#000000` |
+| Application | Brand (top-bar) color | light-mode `primary`) | Text on brand color |
+|---|---|---|---|
+| Alloy | `#006B6D` | `#006B6D` | `#FFFFFF` |
+| Blueprint | `#007CB5` | `#0078AF` | `#FFFFFF` |
+| Caster | `#AB650F` | `#A4610E` | `#FFFFFF` |
+| CITE | `#E81717` | `#E81717` | `#FFFFFF` |
+| Gallery | `#008740` | `#008740` | `#FFFFFF` |
+| Gameboard | none | `#877200` | `#FFFFFF` |
+| Player (incl. Player VM, Console) | `#3B62A5` | `#3B62A5` | `#FFFFFF` |
+| Steamfitter | `#B1282F` | `#B1282F` | `#FFFFFF` |
+| TopoMojo | `#C41230` | `#C41230` | `#FFFFFF` |
 
 Rules:
 
@@ -64,15 +64,15 @@ Material's `primary` role also colors text buttons, links, focused outlines, sel
 | `primary` against the highest dark surface container (used as icons, outlines, and component boundaries) | 3:1 | 1.4.11 Non-text Contrast |
 | `on-primary` against the dark-mode `primary` | 4.5:1 | 1.4.3 Contrast (Minimum) |
 
-Every current brand color fails these checks, so every app ships a dark-mode override. These are the defaults:
+Every current brand color fails these checks, so every app that uses the shared theme ships a dark-mode override.  These are the defaults:
 
 | Application | Dark-mode `primary` | Dark-mode `on-primary` |
 |---|---|---|
 | Alloy | `#66A6A7` | `#000000` |
-| Blueprint | `#0094D9` | `#000000` |
-| Caster | `#CC7812` | `#000000` |
-| CITE | `#EF5A5A` | `#000000` |
-| Gallery | `#00A34D` | `#000000` |
+| Blueprint | `#00A3EE` | `#000000` |
+| Caster | `#DF8414` | `#000000` |
+| CITE | `#F48B8B` | `#000000` |
+| Gallery | `#00C75E` | `#000000` |
 | Gameboard | `#A68C00` | `#000000` |
 | Player (incl. Player VM, Console) | `#6A8DCA` | `#000000` |
 | Steamfitter | `#DD676D` | `#000000` |
