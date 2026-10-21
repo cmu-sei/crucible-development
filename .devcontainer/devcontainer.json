@@ -161,7 +161,10 @@
     // replaces the listening socket, and an auto-detected forward does not survive that.
     8081, // Moodle 5.0
     8082, // Moodle 5.2
-    8083 // Moodle 5.3
+    8083, // Moodle 5.3
+    // CATAPULT player. cmi5 launch URLs are pinned to localhost:3398, so a remapped
+    // forward breaks content launch.
+    3398 // CATAPULT cmi5 player
   ],
   "customizations": {
     "vscode": {
