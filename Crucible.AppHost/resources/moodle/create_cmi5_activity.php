@@ -16,6 +16,7 @@
 //   - If it has one but the player no longer serves that course -> recreate it.
 //   - Otherwise -> no-op.
 //   - If the player is unreachable -> no-op, leaving any existing activity in place.
+// Every run that reaches the player also refreshes the plugin's tenant token.
 //
 // The bundled package (sample_cmi5_geology.zip) is the Apache-2.0 licensed
 // "single_au_basic_framed" example from adlnet/CATAPULT (course_examples),
@@ -71,11 +72,11 @@ function cmi5_player_token(): string {
     $playerurl = trim((string) get_config('cmi5launch', 'cmi5launchplayerurl'));
     $basicname = (string) get_config('cmi5launch', 'cmi5launchbasicname');
     $basicpass = (string) get_config('cmi5launch', 'cmi5launchbasepass');
-    if ($playerurl === '') {
+    $tenantname = (string) get_config('cmi5launch', 'cmi5launchtenantname');
+    $tenantid = (int) get_config('cmi5launch', 'cmi5launchtenantid');
+    if ($playerurl === '' || $tenantname === '' || $tenantid <= 0) {
         return '';
     }
-
-    // Mint a token for the first tenant (id 1, created at player startup).
 
     $authch = curl_init($playerurl . '/api/v1/auth');
     curl_setopt_array($authch, [
@@ -83,7 +84,7 @@ function cmi5_player_token(): string {
         CURLOPT_POST           => true,
         CURLOPT_USERPWD        => $basicname . ':' . $basicpass,
         CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS     => json_encode(['tenantId' => 1, 'audience' => 'crucible']),
+        CURLOPT_POSTFIELDS     => json_encode(['tenantId' => $tenantid, 'audience' => $tenantname]),
         CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_TIMEOUT        => 15,
     ]);
@@ -119,15 +120,19 @@ function cmi5_player_has_course(int $playercourseid, string $token): bool {
     return $code === 200;
 }
 
-// ---- Make sure the player is up --------------------------------------------------
+// ---- Make sure the player is up, and give the plugin its tenant token ----------
 // Bail out before touching anything when the player is down: an unreachable player
 // would otherwise make every existing activity look stale and get deleted.
 $token = cmi5_player_token();
 if ($token === '') {
     cli_writeln("No tenant token from the CATAPULT player at '" . get_config('cmi5launch', 'cmi5launchplayerurl')
-        . "' (player down, or credentials wrong); leaving cmi5 activities as they are.");
+        . "' (player down, or tenant settings/credentials wrong); leaving cmi5 activities as they are.");
     exit(0);
 }
+// The token never expires and is signed with the player's fixed TOKEN_SECRET, so
+// minting a fresh one every run is harmless and replaces the manual
+// "cmi5launch token setup" page step.
+set_config('cmi5launchtenanttoken', $token, 'cmi5launch');
 
 // ---- Check for an existing, healthy cmi5launch activity in the course ---------
 $existing = $DB->get_records('cmi5launch', ['course' => $course->id]);
