@@ -1376,6 +1376,10 @@ public static partial class BuilderExtensions
         var catapult = builder.AddContainer("catapult-player", "catapult-player-image")
             .WithDockerfile("/mnt/data/crucible/catapult/catapult/player", catapultDockerfile)
             .WithContainerName("catapult-player")
+            // Imported package content lives on the container filesystem while the course
+            // rows live in MySQL. The container is recreated on every Aspire run, so without
+            // a volume the content goes and every existing cmi5 activity 404s on launch.
+            .WithVolume("crucible-dev-catapult-content", "/usr/src/app/var/content")
             .WaitFor(catapultMysql)
             .WithHttpEndpoint(port: 3398, targetPort: 3398)
             .WithEnvironment("DB_HOST", catapultMysql.Resource.PrimaryEndpoint.Property(EndpointProperty.Host))
