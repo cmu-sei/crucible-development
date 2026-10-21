@@ -98,8 +98,9 @@ function cmi5_player_token(): string {
 }
 
 // ---- Helper: is a Moodle cmi5launch record still served by the player? --------
-// Returns true only if the player currently knows about the course id stored on the
-// Moodle record.
+// Returns true only if the player still has the course id stored on the Moodle record
+// AND its first AU's content file. The course row lives in MySQL and outlives the
+// content directory, so the row alone does not mean a launch will work.
 function cmi5_player_has_course(int $playercourseid, string $token): bool {
     $playerurl = trim((string) get_config('cmi5launch', 'cmi5launchplayerurl'));
     if ($playercourseid <= 0) {
@@ -110,6 +111,26 @@ function cmi5_player_has_course(int $playercourseid, string $token): bool {
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token],
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT        => 15,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($code !== 200) {
+        return false;
+    }
+
+    $course = json_decode($resp, true);
+    $auurl = (string) ($course['metadata']['aus'][0]['url'] ?? '');
+    if ($auurl === '' || preg_match('#^https?://#', $auurl)) {
+        // No AU, or content hosted elsewhere: nothing on the player to check.
+        return $auurl !== '';
+    }
+
+    $ch = curl_init($playerurl . '/content/' . (int) $course['tenantId'] . '/' . $playercourseid . '/' . ltrim($auurl, '/'));
+    curl_setopt_array($ch, [
+        CURLOPT_NOBODY         => true,
         CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_TIMEOUT        => 15,
     ]);
@@ -143,7 +164,7 @@ foreach ($existing as $rec) {
         exit(0);
     }
     cli_writeln("Found stale cmi5launch activity '{$rec->name}' (player course id "
-        . $playercourseid . " missing); it will be replaced.");
+        . $playercourseid . " or its content missing); it will be replaced.");
     // Remove the stale course module so we can recreate cleanly.
     if ($cm = get_coursemodule_from_instance('cmi5launch', $rec->id, $course->id)) {
         course_delete_module($cm->id);
