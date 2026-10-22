@@ -115,6 +115,12 @@ declare -A RESOURCE_IDS=(
     [caster_project2_variables_tf]="21c1f0a6-61b4-463b-8391-a007dfe326f3"
     [caster_project2_tfvars]="20927122-097d-49f5-8696-552a0bdb413f"
 
+    [caster_project3]="179e967c-afea-4817-a929-53992806037b"
+    [caster_project3_dir]="cb310d78-6bff-4e9a-b4c6-f8801c59d945"
+    [caster_project3_main_tf]="4662176c-a569-4f05-980a-eb6b987bf0ca"
+    [caster_project3_variables_tf]="c02cf562-d568-4cf7-9aa3-006dbd458ede"
+    [caster_project3_tfvars]="e9139391-a6db-4540-b2f5-358c27c7aae6"
+
     # Alloy Events
     [alloy_event_no_caster]="e8bd8940-023f-4d6e-8255-9538dc21ad4a"
     [alloy_event_with_caster]="7ecc1dca-beb9-4b4a-83d8-b5ee80248a86"
@@ -2331,6 +2337,9 @@ create_caster_project() {
     local main_tf_id="$4"
     local variables_tf_id="$5"
     local tfvars_id="$6"
+    local directory_name="${7:-Basic_Topology}"
+    # main.tf to write instead of the two-VM Basic Topology one
+    local main_tf_content="${8:-}"
 
     log_step "Creating Caster project: $project_name"
 
@@ -2400,7 +2409,7 @@ create_caster_project() {
     if [ "$skip_dir_creation" != "true" ]; then
         log_info "Creating directory with projectId: $project_id"
 
-        local directory_payload="{\"id\": \"$directory_id\", \"projectId\": \"$project_id\", \"name\": \"Basic Topology\", \"terraformVersion\": \"1.5.0\"}"
+        local directory_payload="{\"id\": \"$directory_id\", \"projectId\": \"$project_id\", \"name\": \"$directory_name\", \"terraformVersion\": \"1.5.0\"}"
         local directory_response=$(curl -k -s -X POST "$CASTER_API_URL/directories" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
@@ -2419,7 +2428,8 @@ create_caster_project() {
     log_info "Creating/updating Terraform files in directory..."
 
     # Create main.tf
-    local main_tf_content='terraform {
+    if [ -z "$main_tf_content" ]; then
+    main_tf_content='terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
@@ -2518,6 +2528,7 @@ resource "crucible_player_virtual_machine" "puppy" {
     node = "pve"
   }
 }'
+    fi
 
     upsert_caster_file "$token" "$main_tf_id" "$directory_id" "main.tf" "$main_tf_content"
 
@@ -2664,6 +2675,157 @@ create_caster_project2() {
         "${RESOURCE_IDS[caster_project2_main_tf]}" \
         "${RESOURCE_IDS[caster_project2_variables_tf]}" \
         "${RESOURCE_IDS[caster_project2_tfvars]}"
+}
+
+# A topology too large for the dev Proxmox to run, for the Caster topology view: 21 VMs on
+# five SDN vnets and the external vmbr0. Plan it only. It registers nothing in Player, so
+# it plans in a workspace made by hand, without the team IDs Alloy supplies.
+caster_large_topology_main_tf() {
+    cat <<'TF'
+terraform {
+  required_providers {
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "0.106.0"
+    }
+  }
+}
+
+provider "proxmox" {
+  endpoint  = var.proxmox_endpoint
+  api_token = var.proxmox_api_token
+  insecure  = var.proxmox_insecure
+}
+
+# PLAN ONLY: 21 VMs is far more than the dev Proxmox can run.
+
+locals {
+  suffix = substr(replace(coalesce(var.view_id, var.username), "/[^A-Za-z0-9-]/", "-"), 0, 32)
+
+  # Segment => vnet ID (at most 8 characters) in the crucible SDN zone
+  segments = {
+    dmz     = "lgdmz"
+    corp    = "lgcorp"
+    servers = "lgsrv"
+    mgmt    = "lgmgmt"
+    attack  = "lgatk"
+  }
+
+  # Machine => its NICs in order; "wan" is the existing vmbr0. Every machine
+  # clones TinyCore (106), the smallest template.
+  machines = {
+    fw01   = ["wan", "dmz", "corp", "servers", "mgmt"]
+    web01  = ["dmz"]
+    web02  = ["dmz"]
+    mail01 = ["dmz"]
+    dc01   = ["servers"]
+    dc02   = ["servers"]
+    fs01   = ["servers"]
+    sql01  = ["servers"]
+    app01  = ["servers", "dmz"]
+    ws01   = ["corp"]
+    ws02   = ["corp"]
+    ws03   = ["corp"]
+    ws04   = ["corp"]
+    ws05   = ["corp"]
+    ws06   = ["corp"]
+    ws07   = ["corp"]
+    ws08   = ["corp"]
+    siem01 = ["mgmt", "servers"]
+    jump01 = ["mgmt"]
+    kali01 = ["attack", "wan"]
+    kali02 = ["attack"]
+  }
+}
+
+resource "proxmox_sdn_vnet" "segment" {
+  for_each = local.segments
+
+  id    = each.value
+  zone  = "crucible"
+  alias = "large-${each.key}"
+}
+
+resource "proxmox_sdn_applier" "apply" {
+  lifecycle {
+    replace_triggered_by = [proxmox_sdn_vnet.segment]
+  }
+
+  depends_on = [proxmox_sdn_vnet.segment]
+}
+
+resource "proxmox_virtual_environment_vm" "machine" {
+  for_each = local.machines
+
+  name      = "${each.key}-large-${local.suffix}"
+  node_name = "pve"
+
+  clone {
+    vm_id = 106
+  }
+
+  cpu {
+    cores = 1
+  }
+
+  memory {
+    dedicated = 256
+  }
+
+  dynamic "network_device" {
+    for_each = each.value
+
+    content {
+      bridge = network_device.value == "wan" ? "vmbr0" : proxmox_sdn_vnet.segment[network_device.value].id
+    }
+  }
+
+  depends_on = [proxmox_sdn_applier.apply]
+}
+TF
+}
+
+create_caster_project3() {
+    create_caster_project \
+        "Proxmox Test Large Topology" \
+        "${RESOURCE_IDS[caster_project3]}" \
+        "${RESOURCE_IDS[caster_project3_dir]}" \
+        "${RESOURCE_IDS[caster_project3_main_tf]}" \
+        "${RESOURCE_IDS[caster_project3_variables_tf]}" \
+        "${RESOURCE_IDS[caster_project3_tfvars]}" \
+        "Large_Topology" \
+        "$(caster_large_topology_main_tf)" || return 1
+
+    create_caster_workspace "${RESOURCE_IDS[caster_project3_dir]}" "plan-only"
+}
+
+# A workspace in a directory, found by name, so there is one to plan in.
+create_caster_workspace() {
+    local directory_id="$1"
+    local workspace_name="$2"
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create Caster workspace: $workspace_name"
+        return 0
+    fi
+
+    local token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[caster]}")
+    local existing=$(curl -k -s -X GET "$CASTER_API_URL/directories/$directory_id/workspaces" \
+        -H "Authorization: Bearer $token" 2>/dev/null | jq -r ".[]? | select(.name == \"$workspace_name\") | .id" | head -1)
+    if [ -n "$existing" ]; then
+        log_success "Caster workspace already exists: $existing"
+        return 0
+    fi
+
+    local response=$(curl -k -s -X POST "$CASTER_API_URL/workspaces" \
+        -H "Authorization: Bearer $token" \
+        -H "Content-Type: application/json" \
+        -d "{\"name\": \"$workspace_name\", \"directoryId\": \"$directory_id\"}" 2>/dev/null)
+    if ! echo "$response" | jq -e '.id' > /dev/null 2>&1; then
+        log_warning "Failed to create Caster workspace: ${response:0:200}"
+        return 1
+    fi
+    log_success "Caster workspace created: $(echo "$response" | jq -r '.id')"
 }
 
 # ============================================================
@@ -3739,6 +3901,7 @@ phase5_caster_projects() {
 
     create_caster_project1 || log_warning "Caster project 1 creation failed"
     create_caster_project2 || log_warning "Caster project 2 creation failed"
+    create_caster_project3 || log_warning "Caster project 3 creation failed"
 
     log_success "Caster projects created"
 }
