@@ -8,6 +8,9 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);ASPIRECERTIFICATES001</NoWarn>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    <!-- DCP and the dashboard come from the installed Aspire CLI, so keep the CLI pin in
+         .devcontainer/devcontainer.json on the same version as the SDK above -->
+    <AspireUseCliBundle>true</AspireUseCliBundle>
     <UserSecretsId>98efcc77-ed92-4f61-8c56-50f0fbbb7eb2</UserSecretsId>
   </PropertyGroup>
 
