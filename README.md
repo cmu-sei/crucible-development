@@ -15,6 +15,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
 - [Codex CLI](#codex-cli)
 - [Playwright Testing](#playwright-testing)
 - [GitHub CLI](#github-cli)
+- [Jira CLI](#jira-cli)
 - [Memory Optimization](#memory-optimization)
   - [Intelephense PHP Extension](#intelephense-php-extension)
   - [UI Development vs Production Mode](#ui-development-vs-production-mode)
@@ -355,6 +356,23 @@ To prevent accidental or unintended destructive actions, Claude Code has been co
 - `gh config clear-cache` — wipes cached auth data
 
 Claude will be blocked from running any of the above and will need to ask you to run them manually if they are genuinely required.
+
+## Jira CLI
+
+The dev container includes [jira-cli](https://github.com/ankitpokhrel/jira-cli) (`jira`). Its configuration and API token live in the `crucible-dev-jira` volume (`~/.config/.jira`), so they survive container rebuilds. The token is never read from the host.
+
+One-time setup inside the container:
+
+```bash
+# Paste your Jira API token at the prompt (kept out of shell history); new shells export it as JIRA_API_TOKEN
+read -rs "token?Jira API token: " && printf '%s' "$token" > ~/.config/.jira/token && chmod 600 ~/.config/.jira/token && unset token
+export JIRA_API_TOKEN="$(cat ~/.config/.jira/token)"
+
+# Point jira-cli at your Jira server and project
+jira init
+```
+
+Then `jira me` confirms the login. To remove the stored config and token, run `docker volume rm crucible-dev-jira` from the host while the dev container is stopped.
 
 
 

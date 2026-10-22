@@ -36,6 +36,7 @@ check docker     docker --version
 check terraform  terraform version
 check go         go version
 check task       task --version
+check jira       jira version
 check aws        aws --version
 check ssm-plugin session-manager-plugin --version
 check vale       vale --version

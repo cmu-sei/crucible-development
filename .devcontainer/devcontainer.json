@@ -44,6 +44,9 @@
     "ghcr.io/devcontainers-extra/features/go-task:1.0": {
       "version": "3.50.0"
     },
+    "ghcr.io/devcontainers-extra/features/jira-cli:1": {
+      "version": "1.7.0"
+    },
     "ghcr.io/devcontainers/features/github-cli:1.1": {
       "version": "2.92"
     },
@@ -82,6 +85,7 @@
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2",
     "ghcr.io/devcontainers/features/docker-in-docker",
     "ghcr.io/devcontainers-extra/features/go-task",
+    "ghcr.io/devcontainers-extra/features/jira-cli",
     "ghcr.io/devcontainers/features/github-cli",
     "ghcr.io/devcontainers/features/terraform",
     "ghcr.io/cmu-sei/devcontainer-features/playwright",
@@ -125,6 +129,8 @@
     "source=crucible-dev-ssh,target=/home/vscode/.ssh,type=volume",
     // GitHub CLI auth
     "source=crucible-dev-gh,target=/home/vscode/.config/gh,type=volume",
+    // jira-cli config from `jira init`, plus the API token file the shell exports
+    "source=crucible-dev-jira,target=/home/vscode/.config/.jira,type=volume",
     // MSBuild files for local library development
     "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.props,target=/mnt/data/Directory.Build.props,type=bind",
     "source=${localWorkspaceFolder}/.devcontainer/msbuild/Directory.Build.targets,target=/mnt/data/Directory.Build.targets,type=bind",
