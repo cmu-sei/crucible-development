@@ -11,6 +11,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [Opening the Workspace](#opening-the-workspace)
   - [Launch Profiles](#launch-profiles)
   - [Default Credentials](#default-credentials)
+  - [Keycloak Realm](#keycloak-realm)
 - [Claude Code](#claude-code)
 - [Codex CLI](#codex-cli)
 - [Playwright Testing](#playwright-testing)
@@ -101,6 +102,16 @@ The default admin user credentials are:
 
 - **Username:** `admin`
 - **Password:** `admin`
+
+### Keycloak Realm
+
+`Crucible.AppHost/resources/crucible-realm.json` is the shared definition of the `crucible` realm. On every launch the `keycloak-config` resource ([keycloak-config-cli](https://github.com/adorsys/keycloak-config-cli)) applies it to the running Keycloak, creating the realm on a fresh database. APIs that need the realm wait for it to finish.
+
+- **Unchanged file:** the import is skipped, so the launch stays fast and the live realm is left alone.
+- **Changed file:** everything the file defines is applied, overwriting manual edits to those same clients, users, roles and settings. Seeded users' passwords are reset to the file's values.
+- **Manual additions survive:** clients, users, roles and groups you add in the admin console are never deleted. Only things that were once in the file and were later removed from it are deleted.
+
+To change the shared realm, edit the file and commit it; every environment picks up the change on its next launch.
 
 ### Persistent Caches
 

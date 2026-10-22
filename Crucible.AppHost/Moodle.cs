@@ -57,7 +57,7 @@ public static partial class BuilderExtensions
     private static string? MarketplaceDownload(string component, string? version) =>
         version is null ? null : $"https://marketplace.moodle.com/api/plugins/{component}/versions/{version}/download";
 
-    public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, IResourceBuilder<ContainerResource> keycloakConfig, LaunchOptions options)
     {
         var instances = new[]
         {
@@ -155,7 +155,7 @@ public static partial class BuilderExtensions
 
         foreach (var instance in enabled)
         {
-            builder.AddMoodleInstance(postgres, keycloak, options, instance, topoMojoApiKey);
+            builder.AddMoodleInstance(postgres, keycloak, keycloakConfig, options, instance, topoMojoApiKey);
         }
 
         // Copy dotnet dev-cert(s) into resources/moodle/certs so they get trusted through the Dockerfile
@@ -254,7 +254,7 @@ public static partial class BuilderExtensions
         }
     }
 
-    private static void AddMoodleInstance(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, MoodleInstance instance, IResourceBuilder<ExecutableResource>? topoMojoApiKey)
+    private static void AddMoodleInstance(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, IResourceBuilder<ContainerResource> keycloakConfig, LaunchOptions options, MoodleInstance instance, IResourceBuilder<ExecutableResource>? topoMojoApiKey)
     {
         var moodleMode = instance.Mode;
 
@@ -284,6 +284,7 @@ public static partial class BuilderExtensions
         var moodle = builder.AddContainer(instance.Name, $"{instance.Name}-custom-image")
             .WaitFor(postgres)
             .WaitFor(keycloak)
+            .WaitForCompletion(keycloakConfig)
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
             .WithBuildArg("MOODLE_BASE_IMAGE", instance.BaseImage)
             .WithLifetime(ContainerLifetime.Persistent)
