@@ -4,243 +4,11 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
-    // ========== dotnet Configurations ==========
-    {
-      "name": "Default ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/default.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Exercise ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/exercise.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "TTX ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/ttx.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Alloy ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/alloy.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Blueprint ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/blueprint.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Caster ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/caster.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "CITE ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/cite.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Gallery ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/gallery.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Player ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/player.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Steamfitter ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/steamfitter.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "TopoMojo ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/topomojo.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Gameboard ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/gameboard.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Competition ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/competition.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Lrsql ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/lrsql.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Moodle ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/moodle.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Moodle 5.2 ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/moodle52.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Moodle 5.3 ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/moodle53.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Moodle + TopoMojo",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/moodle-topo.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Moodle-Xdebug",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/moodle-xdebug.env",
-      "presentation": {
-        "hidden": true
-      }
-    },
-    {
-      "name": "MISP ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/misp.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Superset ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/superset.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "Catapult ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/catapult.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-    {
-      "name": "All Apps (Stopped) ",
-      "type": "dotnet",
-      "request": "launch",
-      "projectPath": "${workspaceFolder}/Crucible.AppHost/Crucible.AppHost.csproj",
-      "envFile": "${workspaceFolder}/.env/all-stopped.env",
-      "presentation": {
-        "group": "a"
-      }
-    },
-
-    // ========== Aspire Configurations ==========
+    // ========== AppHost Configurations ==========
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Default (aspire)",
+      "name": "Default",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -248,13 +16,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Exercise (aspire)",
+      "name": "Exercise",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -262,13 +30,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "TTX (aspire)",
+      "name": "TTX",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -276,13 +44,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Alloy (aspire)",
+      "name": "Alloy",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -290,13 +58,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Blueprint (aspire)",
+      "name": "Blueprint",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -304,13 +72,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Caster (aspire)",
+      "name": "Caster",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -318,13 +86,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "CITE (aspire)",
+      "name": "CITE",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -332,13 +100,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Gallery (aspire)",
+      "name": "Gallery",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -346,13 +114,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Player (aspire)",
+      "name": "Player",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -360,13 +128,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Steamfitter (aspire)",
+      "name": "Steamfitter",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -374,13 +142,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "TopoMojo (aspire)",
+      "name": "TopoMojo",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -388,13 +156,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Gameboard (aspire)",
+      "name": "Gameboard",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -402,13 +170,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Competition (aspire)",
+      "name": "Competition",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -416,13 +184,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Lrsql (aspire)",
+      "name": "Lrsql",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -430,13 +198,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Moodle (aspire)",
+      "name": "Moodle",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -444,13 +212,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Moodle 5.2 (aspire)",
+      "name": "Moodle 5.2",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -458,13 +226,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Moodle 5.3 (aspire)",
+      "name": "Moodle 5.3",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -472,13 +240,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Moodle + Topomojo (aspire)",
+      "name": "Moodle + TopoMojo",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -486,13 +254,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Moodle-Xdebug (aspire)",
+      "name": "Moodle-Xdebug",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -506,7 +274,7 @@
     {
       "type": "aspire",
       "request": "launch",
-      "name": "MISP (aspire)",
+      "name": "MISP",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -514,13 +282,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Superset (aspire)",
+      "name": "Superset",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -528,13 +296,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Catapult (aspire)",
+      "name": "Catapult",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -542,13 +310,13 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
     {
       "type": "aspire",
       "request": "launch",
-      "name": "All Apps (Stopped) (aspire)",
+      "name": "All Apps (Stopped)",
       "program": "",
       "debuggers": {
         "apphost": {
@@ -556,7 +324,7 @@
         }
       },
       "presentation": {
-        "group": "b"
+        "group": "a"
       }
     },
 
@@ -721,13 +489,6 @@
       "configurations": ["Moodle-Xdebug", "Xdebug"],
       "presentation": {
         "group": "a"
-      }
-    },
-    {
-      "name": "Moodle Debug (aspire)",
-      "configurations": ["Moodle-Xdebug (aspire)", "Xdebug"],
-      "presentation": {
-        "group": "b"
       }
     }
   ]

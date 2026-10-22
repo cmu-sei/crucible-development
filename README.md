@@ -81,7 +81,7 @@ You can confirm you're in the workspace when the VS Code title bar shows **"cruc
 
 ### Launch Profiles
 
-Several VS Code launch profiles are pre-configured for different development scenarios. To use them:
+Several VS Code launch profiles are pre-configured for different development scenarios. Each one starts the AppHost through the Aspire VS Code extension with the matching `.env/<profile>.env` file, attaching the debugger to the AppHost and the .NET services it launches. To use them:
 
 1. Click the **Run and Debug** icon in the left panel (or press `Ctrl+Shift+D`)
 2. Use the dropdown at the top to select a profile
@@ -92,7 +92,7 @@ Each profile runs a different subset of services depending on what you're workin
 - **Default** - Launches most services (resource-intensive)
 - **Player**, **Blueprint**, **Caster**, **Steamfitter**, etc. - Focused on a single application
 - **Exercise**, **TTX** - Multi-app profiles for specific workflows
-- **Moodle**, **Moodle-Xdebug** - Moodle development with optional PHP debugging
+- **Moodle**, **Moodle Debug** - Moodle development, with **Moodle Debug** also attaching the PHP Xdebug listener
 
 Pressing F5 without changing the dropdown launches the Default profile (or your previously selected profile). Be aware that the Default profile launches many applications and uses significant system resources.
 
