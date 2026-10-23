@@ -276,6 +276,7 @@ public static partial class BuilderExtensions
     {
         // The 26.6 Keycloak image has no matching build; the newest 26.x client is used.
         return builder.AddContainer("keycloak-config", "adorsys/keycloak-config-cli", "6.5.1-26.5.5")
+            .WithParentRelationship(keycloak)
             // Not WaitFor: Keycloak's health waits on this container, so that would deadlock.
             // The availability check below waits for Keycloak to answer instead.
             .WaitForStart(keycloak)
