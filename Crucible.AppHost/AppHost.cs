@@ -248,7 +248,12 @@ public static partial class BuilderExtensions
             .WithEnvironment("KC_HOSTNAME_STRICT_BACKCHANNEL", "false")
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             // Limit Java heap to reduce memory usage (from ~636MB to ~400MB)
-            .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m");
+            .WithEnvironment("JAVA_OPTS", "-Xms256m -Xmx384m")
+            // Creates the realm with the seed users' fixed IDs on an empty database; skipped once the
+            // realm exists. keycloak-config applies the rest of the file. See KeycloakRealmBootstrap.
+            .WithRealmImport(KeycloakRealmBootstrap.Write(
+                $"{builder.AppHostDirectory}/resources/crucible-realm.json",
+                $"{builder.AppHostDirectory}/obj/keycloak-import"));
 
         // Keycloak only reports healthy once crucible-realm.json is applied, so WaitFor(keycloak)
         // covers both the server and the realm, including the crucible-admin service account.
@@ -261,9 +266,9 @@ public static partial class BuilderExtensions
     }
 
     /// <summary>
-    /// Applies crucible-realm.json to the live crucible realm with keycloak-config-cli, creating
-    /// the realm on a fresh database. Keycloak's own realm import only ever reaches a fresh
-    /// database, so changes to the file never reached existing environments.
+    /// Applies crucible-realm.json to the live crucible realm with keycloak-config-cli. Keycloak's
+    /// own realm import only ever reaches a fresh database, so on its own, changes to the file never
+    /// reached existing environments; it now only creates the realm (see KeycloakRealmBootstrap).
     ///
     /// The import is skipped while the file's checksum matches the last one applied, so the file
     /// only overwrites conflicting manual edits when the file itself changes. Remote state limits
