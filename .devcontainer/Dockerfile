@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM mcr.microsoft.com/devcontainers/dotnet:2.0.5-10.0-noble
+FROM mcr.microsoft.com/devcontainers/dotnet:2.3.2-10.0-noble
 
 ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
