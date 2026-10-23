@@ -113,6 +113,11 @@ The default admin user credentials are:
 
 To change the shared realm, edit the file and commit it; every environment picks up the change on its next launch.
 
+The file holds only what Crucible adds or changes: its clients, client scopes, roles, groups, seed users and non-default realm settings. Keycloak's built-ins (authentication flows, the `account`/`admin-cli`/`realm-management` clients, default roles, keys) are left to Keycloak, so they stay current across Keycloak upgrades. When editing:
+
+- Don't paste in a full realm export. Copy only the entries you changed, and leave out `id` fields.
+- A client's `defaultClientScopes` replaces the client's whole list, so keep `basic` in it. Without `basic`, Keycloak 25 and later leave the `sub` claim out of that client's tokens.
+
 ### Persistent Caches
 
 To speed up container rebuilds, several caches are stored in named Docker volumes and persist across rebuilds:
