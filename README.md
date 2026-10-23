@@ -135,7 +135,7 @@ The file holds only what Crucible adds or changes: its clients, client scopes, r
 
 3. Copy only the entries you changed from `out/` into `crucible-realm.json`, following the rules above.
 
-The normalizer's output still includes Keycloak's built-in clients (`account`, `realm-management` and so on); don't copy those. It ignores users and components, so seed-user changes are written by hand. It has no baseline for newer Keycloak versions, hence `fallback-version=26.0.5`, so it may keep a few settings whose defaults changed since then. Ignore its warnings about master-realm clients and roles.
+The normalizer's output still includes Keycloak's built-in clients (`account`, `realm-management` and so on); don't copy those. It ignores users and components, so seed-user changes are written by hand. It has no baseline for newer Keycloak versions, hence `fallback-version=26.0.5`. The baseline cuts both ways: it may keep a few settings whose defaults changed since then, and it drops values that match the baseline even where Keycloak now creates something different (it once dropped `post.logout.redirect.uris`, `directAccessGrantsEnabled` and `frontchannelLogout`). Compare a client's normalized output against the client in the admin console before relying on an omission. Ignore its warnings about master-realm clients and roles.
 
 ### Persistent Caches
 

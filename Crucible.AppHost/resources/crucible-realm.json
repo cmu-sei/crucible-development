@@ -82,7 +82,8 @@
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -103,7 +104,8 @@
         "microprofile-jwt",
         "player"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "blueprint.admin",
@@ -144,7 +146,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "gallery.ui",
@@ -183,7 +186,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "superset",
@@ -220,7 +224,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "alloy.ui",
@@ -233,7 +238,8 @@
         "oidc.ciba.grant.enabled": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -255,7 +261,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "player.vm.webhooks",
@@ -271,7 +278,8 @@
         "backchannel.logout.session.required": "true",
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "protocolMappers": [
         {
@@ -332,7 +340,10 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "redirectUris": [],
+      "webOrigins": [],
+      "frontchannelLogout": true
     },
     {
       "clientId": "topomojo.ui",
@@ -353,7 +364,8 @@
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -370,7 +382,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "blueprint.ui",
@@ -445,7 +458,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "misp",
@@ -497,7 +511,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "cite.ui",
@@ -536,7 +551,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "proxmox-web",
@@ -614,7 +630,9 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "directAccessGrantsEnabled": false,
+      "frontchannelLogout": true
     },
     {
       "clientId": "player.vm.console.ui",
@@ -655,7 +673,9 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "directAccessGrantsEnabled": false,
+      "frontchannelLogout": true
     },
     {
       "clientId": "blueprint.api",
@@ -673,7 +693,8 @@
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "true",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -696,7 +717,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "alloy.admin",
@@ -717,7 +739,8 @@
         "require.pushed.authorization.requests": "false",
         "tls.client.certificate.bound.access.tokens": "false",
         "display.on.consent.screen": "false",
-        "token.response.type.bearer.lower-case": "false"
+        "token.response.type.bearer.lower-case": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -738,7 +761,11 @@
         "microprofile-jwt",
         "player"
       ],
-      "access": {}
+      "access": {},
+      "redirectUris": [],
+      "webOrigins": [],
+      "frontchannelLogout": true,
+      "standardFlowEnabled": false
     },
     {
       "clientId": "player.api",
@@ -753,7 +780,8 @@
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -770,7 +798,9 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "directAccessGrantsEnabled": false,
+      "frontchannelLogout": true
     },
     {
       "clientId": "cite.api",
@@ -788,7 +818,8 @@
         "oauth2.device.authorization.grant.enabled": "true",
         "display.on.consent.screen": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -806,7 +837,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "caster.api",
@@ -822,7 +854,8 @@
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -839,7 +872,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "cite.admin",
@@ -875,7 +909,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "moodle-client",
@@ -909,7 +944,8 @@
         "frontchannel.logout.session.required": "true",
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "service_account",
@@ -938,7 +974,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "crucible.provider",
@@ -950,7 +987,8 @@
         "oidc.ciba.grant.enabled": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -969,7 +1007,10 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "redirectUris": [],
+      "webOrigins": [],
+      "frontchannelLogout": true
     },
     {
       "clientId": "xview2.ui",
@@ -985,7 +1026,8 @@
         "oidc.ciba.grant.enabled": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "xview2",
@@ -1002,7 +1044,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "gallery.admin",
@@ -1038,7 +1081,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "gameboard.ui",
@@ -1081,7 +1125,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "player.vm.api",
@@ -1106,7 +1151,8 @@
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false",
         "token.response.type.bearer.lower-case": "false",
-        "use.refresh.tokens": "true"
+        "use.refresh.tokens": "true",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -1124,7 +1170,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "player.ui",
@@ -1169,7 +1216,9 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "directAccessGrantsEnabled": false,
+      "frontchannelLogout": true
     },
     {
       "clientId": "gallery.api",
@@ -1186,7 +1235,8 @@
         "oidc.ciba.grant.enabled": "false",
         "oauth2.device.authorization.grant.enabled": "true",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -1203,7 +1253,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "steamfitter.admin",
@@ -1242,7 +1293,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "steamfitter.ui",
@@ -1284,7 +1336,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "caster.admin",
@@ -1296,7 +1349,8 @@
         "oidc.ciba.grant.enabled": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -1315,7 +1369,10 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "redirectUris": [],
+      "webOrigins": [],
+      "frontchannelLogout": true
     },
     {
       "clientId": "xview2.api",
@@ -1328,7 +1385,8 @@
         "oidc.ciba.grant.enabled": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": ["xview2", "web-origins", "acr", "roles", "basic"],
       "optionalClientScopes": [
@@ -1339,7 +1397,8 @@
         "microprofile-jwt",
         "email"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "gameboard.api",
@@ -1375,7 +1434,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "player.vm.ui",
@@ -1423,7 +1483,9 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "directAccessGrantsEnabled": false,
+      "frontchannelLogout": true
     },
     {
       "clientId": "topomojo.api",
@@ -1446,7 +1508,8 @@
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -1463,7 +1526,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "player.vm.admin",
@@ -1475,7 +1539,8 @@
         "oidc.ciba.grant.enabled": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -1493,7 +1558,10 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "redirectUris": [],
+      "webOrigins": [],
+      "frontchannelLogout": true
     },
     {
       "clientId": "steamfitter.api",
@@ -1510,7 +1578,8 @@
         "oidc.ciba.grant.enabled": "false",
         "oauth2.device.authorization.grant.enabled": "true",
         "backchannel.logout.session.required": "true",
-        "backchannel.logout.revoke.offline.tokens": "false"
+        "backchannel.logout.revoke.offline.tokens": "false",
+        "post.logout.redirect.uris": "+"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -1531,7 +1600,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     },
     {
       "clientId": "caster.ui",
@@ -1565,7 +1635,8 @@
         "offline_access",
         "microprofile-jwt"
       ],
-      "access": {}
+      "access": {},
+      "frontchannelLogout": true
     }
   ],
   "clientScopes": [
