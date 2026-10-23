@@ -332,6 +332,66 @@ configure_site() {
   php /var/www/html/admin/cli/cfg.php --name=curlsecurityallowedport --set='';
 }
 
+# Optional site background from Launch:LandingBackgroundImage, the same image the Crucible UIs
+# show behind their main pages. The AppHost passes a URL, or mounts a local file (e.g. a
+# licensed image that can't be committed) and passes its container path; a file is stored as a
+# Boost Union additional resource. Appends to boost_union_scss, so it runs inside
+# configure_boost_dark_theme. Light mode shows the image as is; dark mode puts it on a fixed
+# layer under a near-black tint, and clears the solid local_boost_dark page backgrounds so the
+# layer shows. The login page keeps Boost Union's own login background.
+configure_site_background() {
+  [ -n "$LANDING_BACKGROUND_IMAGE" ] || return 0
+
+  background_url="$LANDING_BACKGROUND_IMAGE"
+  if [ -f "$LANDING_BACKGROUND_IMAGE" ]; then
+    background_url=$(php -r '
+      define("CLI_SCRIPT", true);
+      require "/var/www/html/config.php";
+      $context = context_system::instance();
+      $name = "background." . strtolower(pathinfo($argv[1], PATHINFO_EXTENSION));
+      $fs = get_file_storage();
+      $fs->delete_area_files($context->id, "theme_boost_union", "additionalresources", 0);
+      $fs->create_file_from_pathname(["contextid" => $context->id, "component" => "theme_boost_union",
+          "filearea" => "additionalresources", "itemid" => 0, "filepath" => "/", "filename" => $name], $argv[1]);
+      echo moodle_url::make_pluginfile_url($context->id, "theme_boost_union", "additionalresources", 0, "/", $name)
+          ->out_as_local_url(false);
+    ' "$LANDING_BACKGROUND_IMAGE") || return 1
+  fi
+  log "Using site background $background_url"
+
+  boost_union_scss="$boost_union_scss
+
+/* Site background (Launch:LandingBackgroundImage). */
+body {
+  background-image: url(\"$background_url\");
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+#page.drawers .main-inner {
+  opacity: 95%;
+}
+
+html[data-bs-theme=\"dark\"] body:not(.loginbackgroundimage) {
+  &::before {
+    content: \"\";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: #101215;
+    background-image: linear-gradient(rgba(7, 9, 12, 0.52), rgba(7, 9, 12, 0.44)), url(\"$background_url\");
+    background-size: cover;
+    background-position: center;
+  }
+
+  &,
+  #page-wrapper,
+  #page {
+    background: transparent !important;
+  }
+}"
+}
+
 configure_boost_dark_theme() {
   echo "Configuring Boost Union and Boost Dark with the CMU development palette"
 
@@ -524,6 +584,8 @@ configure_boost_dark_theme() {
     navbarcolor="coloreddark"
   fi
   log "Using theme_boost_union navbarcolor=$navbarcolor"
+
+  configure_site_background
 
   php /var/www/html/admin/cli/cfg.php --name=theme --set=boost_union
   php /var/www/html/admin/cli/cfg.php --component=theme_boost_union --name=brandcolor --set='#CC0000'

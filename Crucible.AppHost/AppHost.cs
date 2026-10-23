@@ -81,6 +81,40 @@ public static partial class BuilderExtensions
     }
 
     /// <summary>
+    /// Sets AppLandingBackgroundImage in a UI's settings file from Launch:LandingBackgroundImage.
+    /// A URL is passed through; a local file (e.g. a licensed image that can't be committed) is
+    /// copied into the UI's gitignored assets/local folder and served from there.
+    /// </summary>
+    private static void SetLandingBackgroundImage(LaunchOptions options, string assetsDir, string settingsPath)
+    {
+        var image = options.LandingBackgroundImage;
+        if (string.IsNullOrWhiteSpace(image))
+            return;
+
+        string url;
+        if (image.StartsWith("http://") || image.StartsWith("https://"))
+        {
+            url = image;
+        }
+        else if (File.Exists(image))
+        {
+            var fileName = $"landing-background{Path.GetExtension(image)}";
+            Directory.CreateDirectory($"{assetsDir}/local");
+            File.Copy(image, $"{assetsDir}/local/{fileName}", overwrite: true);
+            url = $"/assets/local/{fileName}";
+        }
+        else
+        {
+            Console.WriteLine($"Launch:LandingBackgroundImage not found: {image}");
+            return;
+        }
+
+        var settings = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(settingsPath))!;
+        settings["AppLandingBackgroundImage"] = url;
+        File.WriteAllText(settingsPath, settings.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    /// <summary>
     /// Adds an Angular UI with dev mode (ng serve) or production mode (build + serve)
     /// </summary>
     private static IResourceBuilder<ExecutableResource> AddAngularUI(
@@ -352,6 +386,7 @@ public static partial class BuilderExtensions
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        SetLandingBackgroundImage(options, $"{playerUiRoot}/src/assets", $"{playerUiRoot}/src/assets/config/settings.env.json");
 
         var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -492,6 +527,7 @@ public static partial class BuilderExtensions
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        SetLandingBackgroundImage(options, $"{casterUiRoot}/src/assets", $"{casterUiRoot}/src/assets/config/settings.env.json");
 
         var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -593,6 +629,7 @@ public static partial class BuilderExtensions
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        SetLandingBackgroundImage(options, $"{alloyUiRoot}/src/assets", $"{alloyUiRoot}/src/assets/config/settings.env.json");
 
         var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -804,6 +841,7 @@ public static partial class BuilderExtensions
         var steamfitterUiRoot = "/mnt/data/crucible/steamfitter/steamfitter.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        SetLandingBackgroundImage(options, $"{steamfitterUiRoot}/src/assets", $"{steamfitterUiRoot}/src/assets/config/settings.env.json");
 
         var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -858,6 +896,7 @@ public static partial class BuilderExtensions
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        SetLandingBackgroundImage(options, $"{citeUiRoot}/src/assets", $"{citeUiRoot}/src/assets/config/settings.env.json");
 
         var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -912,6 +951,7 @@ public static partial class BuilderExtensions
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        SetLandingBackgroundImage(options, $"{galleryUiRoot}/src/assets", $"{galleryUiRoot}/src/assets/config/settings.env.json");
 
         var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -966,6 +1006,7 @@ public static partial class BuilderExtensions
         var blueprintUiRoot = "/mnt/data/crucible/blueprint/blueprint.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
+        SetLandingBackgroundImage(options, $"{blueprintUiRoot}/src/assets", $"{blueprintUiRoot}/src/assets/config/settings.env.json");
 
         var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -1019,6 +1060,7 @@ public static partial class BuilderExtensions
         var gameboardUiRoot = "/mnt/data/crucible/gameboard/gameboard-ui/";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
+        SetLandingBackgroundImage(options, $"{gameboardUiRoot}/projects/gameboard-ui/src/assets", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json");
 
         var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options.UseAspireProxy, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: null, settingsConfigDir: null);
 
