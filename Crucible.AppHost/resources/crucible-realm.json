@@ -1934,6 +1934,7 @@
   },
   "users": [
     {
+      "id": "9b3b331c-10c1-448b-8114-21b2586d8e38",
       "username": "admin",
       "enabled": true,
       "emailVerified": true,
@@ -1953,6 +1954,7 @@
       "realmRoles": ["Administrator"]
     },
     {
+      "id": "9fd3c38e-58b0-4af1-80d1-1895af91f1f9",
       "username": "OGadmin",
       "enabled": true,
       "emailVerified": false,
@@ -1972,6 +1974,7 @@
       "realmRoles": ["Administrator"]
     },
     {
+      "id": "8037bdb5-1abd-45a7-aaa1-c8dce0da86d8",
       "username": "contentdev",
       "enabled": true,
       "emailVerified": false,
@@ -1993,6 +1996,7 @@
       "groups": ["/curriculum-developers"]
     },
     {
+      "id": "3d8332fa-2e35-4823-b83f-732eb9483690",
       "username": "crucible-admin",
       "enabled": true,
       "emailVerified": true,
@@ -2012,6 +2016,7 @@
       "realmRoles": ["Administrator"]
     },
     {
+      "id": "a0c8dc48-c501-4362-bef2-945cf1695bd0",
       "username": "demo-user",
       "enabled": true,
       "emailVerified": false,
@@ -2032,6 +2037,7 @@
       "groups": ["/White Cell", "/cyber-managers"]
     },
     {
+      "id": "987b237f-764e-460f-a80d-b761321d9e98",
       "username": "rangetech",
       "enabled": true,
       "emailVerified": false,
@@ -2052,6 +2058,7 @@
       "groups": ["/lab-builders"]
     },
     {
+      "id": "6b2541f3-7b60-4c09-ba0a-d421bfbabb46",
       "username": "readonly",
       "enabled": true,
       "emailVerified": false,
@@ -2079,6 +2086,7 @@
       }
     },
     {
+      "id": "f7401957-4717-43ea-95a0-e05393252b17",
       "username": "user1",
       "enabled": true,
       "emailVerified": false,
@@ -2099,6 +2107,7 @@
       "groups": ["/cyber-managers", "/lab-builders"]
     },
     {
+      "id": "c0ce45b2-5634-4f5e-9a6a-87a0738e814c",
       "username": "user2",
       "enabled": true,
       "emailVerified": false,
