@@ -280,14 +280,11 @@ public static partial class BuilderExtensions
             // The availability check below waits for Keycloak to answer instead.
             .WaitForStart(keycloak)
             .WithBindMount($"{builder.AppHostDirectory}/resources/crucible-realm.json", "/config/crucible-realm.json", isReadOnly: true)
-            .WithEnvironment(context =>
-            {
-                var keycloakEndpoint = keycloak.GetEndpoint("http");
-                var keycloakHost = keycloakEndpoint.Property(EndpointProperty.Host);
-                var keycloakPort = keycloakEndpoint.Property(EndpointProperty.Port);
-                context.EnvironmentVariables["KEYCLOAK_URL"] =
-                    ReferenceExpression.Create($"http://{keycloakHost}:{keycloakPort}");
-            })
+            // The full URL, scheme included: Aspire serves this endpoint over HTTPS when its dev
+            // certificate is configured. That certificate isn't in config-cli's Java trust store, and
+            // the connection stays on the container network, so certificate verification is off.
+            .WithEnvironment("KEYCLOAK_URL", keycloak.GetEndpoint("http").Property(EndpointProperty.Url))
+            .WithEnvironment("KEYCLOAK_SSLVERIFY", "false")
             // KC_BOOTSTRAP_ADMIN_PASSWORD in AddKeycloak; Aspire's default bootstrap username
             .WithEnvironment("KEYCLOAK_USER", "admin")
             .WithEnvironment("KEYCLOAK_PASSWORD", "admin")
