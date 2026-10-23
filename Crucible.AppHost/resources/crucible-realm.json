@@ -1930,7 +1930,8 @@
   ],
   "attributes": {
     "oauth2DeviceCodeLifespan": "600",
-    "oauth2DevicePollingInterval": "5"
+    "oauth2DevicePollingInterval": "5",
+    "userProfileEnabled": "true"
   },
   "users": [
     {
@@ -1941,9 +1942,6 @@
       "firstName": "Admin",
       "lastName": "User",
       "email": "admin@localhost",
-      "attributes": {
-        "terms_and_conditions": ["1697642726"]
-      },
       "credentials": [
         {
           "type": "password",
@@ -1961,9 +1959,6 @@
       "firstName": "OG",
       "lastName": "Admin",
       "email": "ogadmin@localhost",
-      "attributes": {
-        "terms_and_conditions": ["1730729259"]
-      },
       "credentials": [
         {
           "type": "password",
@@ -1982,8 +1977,7 @@
       "lastName": "Developer",
       "email": "contentdev@localhost",
       "attributes": {
-        "organization": ["Demo Org", "Second Org"],
-        "terms_and_conditions": ["1733933674"]
+        "organization": ["Demo Org", "Second Org"]
       },
       "credentials": [
         {
@@ -2003,9 +1997,6 @@
       "firstName": "Crucible",
       "lastName": "Admin",
       "email": "crucible-admin@localhost",
-      "attributes": {
-        "terms_and_conditions": ["1705939925"]
-      },
       "credentials": [
         {
           "type": "password",
@@ -2024,8 +2015,7 @@
       "lastName": "User",
       "email": "demo-user@localhost",
       "attributes": {
-        "organization": ["Demo Org"],
-        "terms_and_conditions": ["1742337017"]
+        "organization": ["Demo Org"]
       },
       "credentials": [
         {
@@ -2045,8 +2035,7 @@
       "lastName": "Admin",
       "email": "rangetech@localhost",
       "attributes": {
-        "organization": ["Demo Org Reserve"],
-        "terms_and_conditions": ["1733932342"]
+        "organization": ["Demo Org Reserve"]
       },
       "credentials": [
         {
@@ -2065,9 +2054,6 @@
       "firstName": "Read",
       "lastName": "Only",
       "email": "readonly@localhost",
-      "attributes": {
-        "terms_and_conditions": ["1733933101"]
-      },
       "credentials": [
         {
           "type": "password",
@@ -2094,8 +2080,7 @@
       "lastName": "User",
       "email": "user1@localhost",
       "attributes": {
-        "organization": ["Demo Org"],
-        "terms_and_conditions": ["1703175332"]
+        "organization": ["Demo Org"]
       },
       "credentials": [
         {
@@ -2114,8 +2099,7 @@
       "firstName": "user2",
       "email": "user2@localhost",
       "attributes": {
-        "organization": ["Demo Org"],
-        "terms_and_conditions": ["1710960650"]
+        "organization": ["Demo Org"]
       },
       "credentials": [
         {
@@ -2126,5 +2110,88 @@
       ],
       "groups": ["/ex-cyber-managers"]
     }
-  ]
+  ],
+  "userProfile": {
+    "attributes": [
+      {
+        "name": "username",
+        "displayName": "${username}",
+        "validations": {
+          "length": {
+            "min": 3,
+            "max": 255
+          },
+          "username-prohibited-characters": {},
+          "up-username-not-idn-homograph": {}
+        },
+        "permissions": {
+          "view": ["admin", "user"],
+          "edit": ["admin", "user"]
+        },
+        "multivalued": false
+      },
+      {
+        "name": "email",
+        "displayName": "${email}",
+        "validations": {
+          "email": {},
+          "length": {
+            "max": 255
+          }
+        },
+        "required": {
+          "roles": ["user"]
+        },
+        "permissions": {
+          "view": ["admin", "user"],
+          "edit": ["admin", "user"]
+        },
+        "multivalued": false
+      },
+      {
+        "name": "firstName",
+        "displayName": "${firstName}",
+        "validations": {
+          "length": {
+            "max": 255
+          },
+          "person-name-prohibited-characters": {}
+        },
+        "required": {
+          "roles": ["user"]
+        },
+        "permissions": {
+          "view": ["admin", "user"],
+          "edit": ["admin", "user"]
+        },
+        "multivalued": false
+      },
+      {
+        "name": "lastName",
+        "displayName": "${lastName}",
+        "validations": {
+          "length": {
+            "max": 255
+          },
+          "person-name-prohibited-characters": {}
+        },
+        "required": {
+          "roles": ["user"]
+        },
+        "permissions": {
+          "view": ["admin", "user"],
+          "edit": ["admin", "user"]
+        },
+        "multivalued": false
+      }
+    ],
+    "groups": [
+      {
+        "name": "user-metadata",
+        "displayHeader": "User metadata",
+        "displayDescription": "Attributes, which refer to user metadata"
+      }
+    ],
+    "unmanagedAttributePolicy": "ADMIN_EDIT"
+  }
 }

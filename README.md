@@ -117,6 +117,7 @@ The file holds only what Crucible adds or changes: its clients, client scopes, r
 
 - Don't paste in a full realm export. Copy only the entries you changed, and leave out `id` fields, except on seed users. A user's ID becomes the `sub` claim that the apps store users by, so seed users keep fixed IDs to stay the same user in every environment and in shared database dumps.
 - A client's `defaultClientScopes` replaces the client's whole list, so keep `basic` in it. Without `basic`, Keycloak 25 and later leave the `sub` claim out of that client's tokens.
+- User attributes such as `organization` work because the file's `userProfile` sets `unmanagedAttributePolicy` to `ADMIN_EDIT`: admins (and so this import) can set any attribute, and users can't see or change them in the account console. Without a user profile, Keycloak 24 and later drop attributes it doesn't know about. The rest of `userProfile` is a copy of Keycloak's default profile, because Keycloak replaces the whole profile rather than merging a partial one. After a Keycloak upgrade, refresh it: create a throwaway realm, copy its profile from **Realm settings → User profile → JSON editor** into `userProfile`, set `unmanagedAttributePolicy` back to `ADMIN_EDIT`, and delete the throwaway realm.
 
 #### Moving admin-console changes into the file
 
