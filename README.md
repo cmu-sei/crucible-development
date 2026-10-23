@@ -118,6 +118,24 @@ The file holds only what Crucible adds or changes: its clients, client scopes, r
 - Don't paste in a full realm export. Copy only the entries you changed, and leave out `id` fields, except on seed users. A user's ID becomes the `sub` claim that the apps store users by, so seed users keep fixed IDs to stay the same user in every environment and in shared database dumps.
 - A client's `defaultClientScopes` replaces the client's whole list, so keep `basic` in it. Without `basic`, Keycloak 25 and later leave the `sub` claim out of that client's tokens.
 
+#### Moving admin-console changes into the file
+
+1. In the Keycloak admin console, export what you changed: **Realm settings → Action → Partial export** for clients, groups and roles, or a single client's **Action → Export**.
+2. Strip the Keycloak defaults out of the export with keycloak-config-cli's normalizer. It writes the result to `out/` next to the export:
+
+   ```bash
+   cd /path/to/export-folder
+   docker run --rm --user "$(id -u)" -v "$PWD:/work" adorsys/keycloak-config-cli:6.5.1-26.5.5 \
+     --run.operation=NORMALIZE --normalization.output-format=JSON \
+     --normalization.fallback-version=26.0.5 \
+     --normalization.files.input-locations=/work/realm-export.json \
+     --normalization.files.output-directory=/work/out
+   ```
+
+3. Copy only the entries you changed from `out/` into `crucible-realm.json`, following the rules above.
+
+The normalizer's output still includes Keycloak's built-in clients (`account`, `realm-management` and so on); don't copy those. It ignores users and components, so seed-user changes are written by hand. It has no baseline for newer Keycloak versions, hence `fallback-version=26.0.5`, so it may keep a few settings whose defaults changed since then. Ignore its warnings about master-realm clients and roles.
+
 ### Persistent Caches
 
 To speed up container rebuilds, several caches are stored in named Docker volumes and persist across rebuilds:
