@@ -123,7 +123,7 @@ RUN echo '' >> /home/vscode/.zshrc && \
     echo '# GitHub MCP token from gh CLI' >> /home/vscode/.zshrc && \
     echo 'export GITHUB_PERSONAL_ACCESS_TOKEN=$(gh auth token 2>/dev/null)' >> /home/vscode/.zshrc
 
-# jira-cli reads JIRA_API_TOKEN. The token is written once inside the container, to a file on the
+# jira-cli reads JIRA_API_TOKEN. scripts/jira-login.sh writes the token once inside the container, to a file on the
 # crucible-dev-jira volume, so it survives rebuilds without coming from the host.
 RUN echo '' >> /home/vscode/.zshrc && \
     echo '# jira-cli API token from the persisted jira volume' >> /home/vscode/.zshrc && \

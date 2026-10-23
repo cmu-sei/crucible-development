@@ -375,15 +375,12 @@ The dev container includes [jira-cli](https://github.com/ankitpokhrel/jira-cli) 
 One-time setup inside the container:
 
 ```bash
-# Paste your Jira API token at the prompt (kept out of shell history); new shells export it as JIRA_API_TOKEN
-read -rs "token?Jira API token: " && printf '%s' "$token" > ~/.config/.jira/token && chmod 600 ~/.config/.jira/token && unset token
-export JIRA_API_TOKEN="$(cat ~/.config/.jira/token)"
-
-# Point jira-cli at your Jira server and project
-jira init
+scripts/jira-login.sh
 ```
 
-Then `jira me` confirms the login. To remove the stored config and token, run `docker volume rm crucible-dev-jira` from the host while the dev container is stopped.
+It prompts for your Jira API token without echoing it, saves it to the volume, and runs `jira init` to set your server and project. Any arguments go to `jira init`. Plain `jira init` won't work on its own: it never asks for the token, and the container has no keyring to store one in. Run it again to change the token or the server; pressing Enter at the prompt keeps the saved token.
+
+New shells export the token as `JIRA_API_TOKEN`. In the shell you ran the script from, run `exec zsh`; then `jira me` confirms the login. To remove the stored config and token, run `docker volume rm crucible-dev-jira` from the host while the dev container is stopped.
 
 
 
