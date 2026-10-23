@@ -1998,7 +1998,6 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "openid",
         "roles",
         "profile",
         "steamfitter",
@@ -2054,7 +2053,6 @@
         "web-origins",
         "blueprint",
         "acr",
-        "openid",
         "roles",
         "profile",
         "steamfitter",
@@ -2146,7 +2144,6 @@
         "web-origins",
         "blueprint",
         "acr",
-        "openid",
         "roles",
         "profile",
         "steamfitter",
@@ -2202,7 +2199,6 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "openid",
         "roles",
         "profile",
         "gallery",
@@ -2252,7 +2248,6 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "openid",
         "roles",
         "profile",
         "cite",
@@ -2306,7 +2301,6 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "openid",
         "roles",
         "profile",
         "cite",
@@ -2357,7 +2351,6 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "openid",
         "roles",
         "profile",
         "steamfitter",
@@ -2407,7 +2400,6 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "openid",
         "roles",
         "profile",
         "gallery",
@@ -2460,7 +2452,6 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "openid",
         "roles",
         "profile",
         "steamfitter",
@@ -2511,7 +2502,6 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "openid",
         "roles",
         "profile",
         "steamfitter",
@@ -2564,7 +2554,6 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "openid",
         "roles",
         "profile",
         "steamfitter",
@@ -2622,7 +2611,6 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
-        "openid",
         "roles",
         "profile",
         "steamfitter",
