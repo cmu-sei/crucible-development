@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM mcr.microsoft.com/devcontainers/dotnet:2.0.5-10.0-noble
+FROM mcr.microsoft.com/devcontainers/dotnet:2.3.2-10.0-noble
 
 ARG TARGETARCH
 ARG DEBIAN_FRONTEND=noninteractive
@@ -122,3 +122,9 @@ RUN set -eux; \
 RUN echo '' >> /home/vscode/.zshrc && \
     echo '# GitHub MCP token from gh CLI' >> /home/vscode/.zshrc && \
     echo 'export GITHUB_PERSONAL_ACCESS_TOKEN=$(gh auth token 2>/dev/null)' >> /home/vscode/.zshrc
+
+# jira-cli reads JIRA_API_TOKEN. scripts/jira-login.sh writes the token once inside the container, to a file on the
+# crucible-dev-jira volume, so it survives rebuilds without coming from the host.
+RUN echo '' >> /home/vscode/.zshrc && \
+    echo '# jira-cli API token from the persisted jira volume' >> /home/vscode/.zshrc && \
+    echo '[ -r ~/.config/.jira/token ] && export JIRA_API_TOKEN="$(cat ~/.config/.jira/token)"' >> /home/vscode/.zshrc

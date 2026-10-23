@@ -38,6 +38,11 @@
       "resolved": "ghcr.io/devcontainers-extra/features/go-task@sha256:4d1db153919976cadd3209ca05d655a761a01707767716994dad677b4538dc1b",
       "integrity": "sha256:4d1db153919976cadd3209ca05d655a761a01707767716994dad677b4538dc1b"
     },
+    "ghcr.io/devcontainers-extra/features/jira-cli:1": {
+      "version": "1.0.8",
+      "resolved": "ghcr.io/devcontainers-extra/features/jira-cli@sha256:afab0a4b392970921afdf7247e850a557465e2fceae10e09be3921e68ec29565",
+      "integrity": "sha256:afab0a4b392970921afdf7247e850a557465e2fceae10e09be3921e68ec29565"
+    },
     "ghcr.io/devcontainers-extra/features/markdownlint-cli2:1.0": {
       "version": "1.0.2",
       "resolved": "ghcr.io/devcontainers-extra/features/markdownlint-cli2@sha256:6e420b26373f1d9bbcd8930d792e5656d9e624495868e775967fe7c3e29de90b",

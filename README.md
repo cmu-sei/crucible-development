@@ -11,10 +11,12 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [Opening the Workspace](#opening-the-workspace)
   - [Launch Profiles](#launch-profiles)
   - [Default Credentials](#default-credentials)
+  - [Keycloak Realm](#keycloak-realm)
 - [Claude Code](#claude-code)
 - [Codex CLI](#codex-cli)
 - [Playwright Testing](#playwright-testing)
 - [GitHub CLI](#github-cli)
+- [Jira CLI](#jira-cli)
 - [Memory Optimization](#memory-optimization)
   - [Intelephense PHP Extension](#intelephense-php-extension)
   - [UI Development vs Production Mode](#ui-development-vs-production-mode)
@@ -79,7 +81,7 @@ You can confirm you're in the workspace when the VS Code title bar shows **"cruc
 
 ### Launch Profiles
 
-Several VS Code launch profiles are pre-configured for different development scenarios. To use them:
+Several VS Code launch profiles are pre-configured for different development scenarios. Each one starts the AppHost through the Aspire VS Code extension with the matching `.env/<profile>.env` file, attaching the debugger to the AppHost and the .NET services it launches. To use them:
 
 1. Click the **Run and Debug** icon in the left panel (or press `Ctrl+Shift+D`)
 2. Use the dropdown at the top to select a profile
@@ -90,7 +92,7 @@ Each profile runs a different subset of services depending on what you're workin
 - **Default** - Launches most services (resource-intensive)
 - **Player**, **Blueprint**, **Caster**, **Steamfitter**, etc. - Focused on a single application
 - **Exercise**, **TTX** - Multi-app profiles for specific workflows
-- **Moodle**, **Moodle-Xdebug** - Moodle development with optional PHP debugging
+- **Moodle**, **Moodle Debug** - Moodle development, with **Moodle Debug** also attaching the PHP Xdebug listener
 
 Pressing F5 without changing the dropdown launches the Default profile (or your previously selected profile). Be aware that the Default profile launches many applications and uses significant system resources.
 
@@ -100,6 +102,40 @@ The default admin user credentials are:
 
 - **Username:** `admin`
 - **Password:** `admin`
+
+### Keycloak Realm
+
+`Crucible.AppHost/resources/crucible-realm.json` is the shared definition of the `crucible` realm. On every launch the `keycloak-config` resource ([keycloak-config-cli](https://github.com/adorsys/keycloak-config-cli)) applies it to the running Keycloak. On a fresh database, Keycloak's own import first creates the realm and the seed users with their fixed IDs, which only that import can do; `keycloak-config` then fills in everything else. APIs that need the realm wait for it to finish.
+
+- **Unchanged file:** the import is skipped, so the launch stays fast and the live realm is left alone.
+- **Changed file:** everything the file defines is applied, overwriting manual edits to those same clients, users, roles and settings. Seeded users' passwords are reset to the file's values.
+- **Manual additions survive:** clients, users, roles and groups you add in the admin console are never deleted. Only things that were once in the file and were later removed from it are deleted.
+
+To change the shared realm, edit the file and commit it; every environment picks up the change on its next launch.
+
+The file holds only what Crucible adds or changes: its clients, client scopes, roles, groups, seed users and non-default realm settings. Keycloak's built-ins (authentication flows, the `account`/`admin-cli`/`realm-management` clients, default roles, keys) are left to Keycloak, so they stay current across Keycloak upgrades. When editing:
+
+- Don't paste in a full realm export. Copy only the entries you changed, and leave out `id` fields, except on seed users. A user's ID becomes the `sub` claim that the apps store users by, so seed users keep fixed IDs to stay the same user in every environment and in shared database dumps.
+- A client's `defaultClientScopes` replaces the client's whole list, so keep `basic` in it. Without `basic`, Keycloak 25 and later leave the `sub` claim out of that client's tokens.
+- User attributes such as `organization` work because the file's `userProfile` sets `unmanagedAttributePolicy` to `ADMIN_EDIT`: admins (and so this import) can set any attribute, and users can't see or change them in the account console. Without a user profile, Keycloak 24 and later drop attributes it doesn't know about. The rest of `userProfile` is a copy of Keycloak's default profile, because Keycloak replaces the whole profile rather than merging a partial one. After a Keycloak upgrade, refresh it: create a throwaway realm, copy its profile from **Realm settings → User profile → JSON editor** into `userProfile`, set `unmanagedAttributePolicy` back to `ADMIN_EDIT`, and delete the throwaway realm.
+
+#### Moving admin-console changes into the file
+
+1. In the Keycloak admin console, export what you changed: **Realm settings → Action → Partial export** for clients, groups and roles, or a single client's **Action → Export**.
+2. Strip the Keycloak defaults out of the export with keycloak-config-cli's normalizer. It writes the result to `out/` next to the export:
+
+   ```bash
+   cd /path/to/export-folder
+   docker run --rm --user "$(id -u)" -v "$PWD:/work" adorsys/keycloak-config-cli:6.5.1-26.5.5 \
+     --run.operation=NORMALIZE --normalization.output-format=JSON \
+     --normalization.fallback-version=26.0.5 \
+     --normalization.files.input-locations=/work/realm-export.json \
+     --normalization.files.output-directory=/work/out
+   ```
+
+3. Copy only the entries you changed from `out/` into `crucible-realm.json`, following the rules above.
+
+The normalizer's output still includes Keycloak's built-in clients (`account`, `realm-management` and so on); don't copy those. It ignores users and components, so seed-user changes are written by hand. It has no baseline for newer Keycloak versions, hence `fallback-version=26.0.5`. The baseline cuts both ways: it may keep a few settings whose defaults changed since then, and it drops values that match the baseline even where Keycloak now creates something different (it once dropped `post.logout.redirect.uris`, `directAccessGrantsEnabled` and `frontchannelLogout`). Compare a client's normalized output against the client in the admin console before relying on an omission. Ignore its warnings about master-realm clients and roles.
 
 ### Persistent Caches
 
@@ -355,6 +391,20 @@ To prevent accidental or unintended destructive actions, Claude Code has been co
 - `gh config clear-cache` — wipes cached auth data
 
 Claude will be blocked from running any of the above and will need to ask you to run them manually if they are genuinely required.
+
+## Jira CLI
+
+The dev container includes [jira-cli](https://github.com/ankitpokhrel/jira-cli) (`jira`). Its configuration and API token live in the `crucible-dev-jira` volume (`~/.config/.jira`), so they survive container rebuilds. The token is never read from the host.
+
+One-time setup inside the container:
+
+```bash
+scripts/jira-login.sh
+```
+
+It prompts for your Jira API token without echoing it, saves it to the volume, and runs `jira init` to set your server and project. Any arguments go to `jira init`. Plain `jira init` won't work on its own: it never asks for the token, and the container has no keyring to store one in. Run it again to change the token or the server; pressing Enter at the prompt keeps the saved token.
+
+New shells export the token as `JIRA_API_TOKEN`. In the shell you ran the script from, run `exec zsh`; then `jira me` confirms the login. To remove the stored config and token, run `docker volume rm crucible-dev-jira` from the host while the dev container is stopped.
 
 
 
