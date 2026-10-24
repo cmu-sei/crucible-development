@@ -1,5 +1,6 @@
 {
   "XApiEnabled": true,
+  "AppLandingBackgroundImage": "",
   "HeaderBarSettings": {
     "enabled": false,
     "banner_background_color": "#007a33ff",

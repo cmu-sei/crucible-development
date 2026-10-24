@@ -18,6 +18,7 @@ LogLaunchOptions(launchOptions);
 var postgres = builder.AddPostgres(launchOptions);
 var keycloak = builder.AddKeycloak(postgres);
 var commonUiDev = builder.AddCommonUIDev(launchOptions);
+builder.SetSharedLandingBackgroundImage(launchOptions);
 
 builder.AddPlayer(postgres, keycloak, launchOptions, commonUiDev);
 builder.AddCaster(postgres, keycloak, launchOptions, commonUiDev);
@@ -81,37 +82,86 @@ public static partial class BuilderExtensions
     }
 
     /// <summary>
-    /// Sets AppLandingBackgroundImage in a UI's settings file from Launch:LandingBackgroundImage.
-    /// A URL is passed through; a local file (e.g. a licensed image that can't be committed) is
-    /// copied into the UI's gitignored assets/local folder and served from there.
+    /// The URL a UI loads Launch:LandingBackgroundImage from: a URL is passed through, and a
+    /// local file (e.g. a licensed image that can't be committed) is served from each UI's
+    /// assets/local folder (see CopyLandingBackgroundImage).
     /// </summary>
-    private static void SetLandingBackgroundImage(LaunchOptions options, string assetsDir, string settingsPath)
+    private static string? LandingBackgroundImageUrl(LaunchOptions options)
     {
         var image = options.LandingBackgroundImage;
         if (string.IsNullOrWhiteSpace(image))
-            return;
+            return null;
 
-        string url;
         if (image.StartsWith("http://") || image.StartsWith("https://"))
-        {
-            url = image;
-        }
-        else if (File.Exists(image))
-        {
-            var fileName = $"landing-background{Path.GetExtension(image)}";
-            Directory.CreateDirectory($"{assetsDir}/local");
-            File.Copy(image, $"{assetsDir}/local/{fileName}", overwrite: true);
-            url = $"/assets/local/{fileName}";
-        }
-        else
-        {
-            Console.WriteLine($"Launch:LandingBackgroundImage not found: {image}");
-            return;
-        }
+            return image;
 
+        if (File.Exists(image))
+            return $"/assets/local/landing-background{Path.GetExtension(image)}";
+
+        Console.WriteLine($"Launch:LandingBackgroundImage not found: {image}");
+        return null;
+    }
+
+    /// <summary>
+    /// Copies a local Launch:LandingBackgroundImage file into a UI's assets/local folder. The
+    /// folder ignores itself, so the copy is never committed whatever branch the UI is on.
+    /// </summary>
+    private static void CopyLandingBackgroundImage(LaunchOptions options, string assetsDir)
+    {
+        var image = options.LandingBackgroundImage;
+        if (string.IsNullOrWhiteSpace(image) || !File.Exists(image))
+            return;
+
+        Directory.CreateDirectory($"{assetsDir}/local");
+        File.WriteAllText($"{assetsDir}/local/.gitignore", "*\n");
+        File.Copy(image, $"{assetsDir}/local/landing-background{Path.GetExtension(image)}", overwrite: true);
+    }
+
+    /// <summary>
+    /// Sets AppLandingBackgroundImage in a UI's settings file, for a UI that doesn't read
+    /// settings.shared.json (Gameboard).
+    /// </summary>
+    private static void SetLandingBackgroundImage(LaunchOptions options, string assetsDir, string settingsPath)
+    {
+        var url = LandingBackgroundImageUrl(options);
+        if (url == null)
+            return;
+
+        CopyLandingBackgroundImage(options, assetsDir);
         var settings = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(settingsPath))!;
         settings["AppLandingBackgroundImage"] = url;
         File.WriteAllText(settingsPath, settings.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    /// <summary>
+    /// The local settings.shared.json symlinked into the crucible-common UIs, created from the
+    /// template on first launch.
+    /// </summary>
+    private static string SharedUiSettingsPath(IDistributedApplicationBuilder builder)
+    {
+        var sharedLocal = $"{builder.AppHostDirectory}/resources/ui/settings.shared.json";
+        if (!File.Exists(sharedLocal))
+        {
+            File.Copy($"{builder.AppHostDirectory}/resources/ui/settings.shared.json.template", sharedLocal);
+        }
+        return sharedLocal;
+    }
+
+    /// <summary>
+    /// Sets AppLandingBackgroundImage in settings.shared.json from Launch:LandingBackgroundImage,
+    /// once for all the crucible-common UIs. With the option empty the file is left alone, so a
+    /// value set there by hand stays.
+    /// </summary>
+    public static void SetSharedLandingBackgroundImage(this IDistributedApplicationBuilder builder, LaunchOptions options)
+    {
+        var url = LandingBackgroundImageUrl(options);
+        if (url == null)
+            return;
+
+        var sharedLocal = SharedUiSettingsPath(builder);
+        var settings = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(sharedLocal))!;
+        settings["AppLandingBackgroundImage"] = url;
+        File.WriteAllText(sharedLocal, settings.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
     }
 
     /// <summary>
@@ -131,12 +181,7 @@ public static partial class BuilderExtensions
     {
         if (settingsConfigDir != null)
         {
-            var sharedTemplate = $"{builder.AppHostDirectory}/resources/ui/settings.shared.json.template";
-            var sharedLocal = $"{builder.AppHostDirectory}/resources/ui/settings.shared.json";
-            if (!File.Exists(sharedLocal))
-            {
-                File.Copy(sharedTemplate, sharedLocal);
-            }
+            var sharedLocal = SharedUiSettingsPath(builder);
 
             var sharedTarget = $"{appRoot}/{settingsConfigDir}/settings.shared.json";
             File.Delete(sharedTarget);
@@ -386,7 +431,7 @@ public static partial class BuilderExtensions
         var playerUiRoot = "/mnt/data/crucible/player/player.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
-        SetLandingBackgroundImage(options, $"{playerUiRoot}/src/assets", $"{playerUiRoot}/src/assets/config/settings.env.json");
+        CopyLandingBackgroundImage(options, $"{playerUiRoot}/src/assets");
 
         var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -527,7 +572,7 @@ public static partial class BuilderExtensions
         var casterUiRoot = "/mnt/data/crucible/caster/caster.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
-        SetLandingBackgroundImage(options, $"{casterUiRoot}/src/assets", $"{casterUiRoot}/src/assets/config/settings.env.json");
+        CopyLandingBackgroundImage(options, $"{casterUiRoot}/src/assets");
 
         var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -629,7 +674,7 @@ public static partial class BuilderExtensions
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
-        SetLandingBackgroundImage(options, $"{alloyUiRoot}/src/assets", $"{alloyUiRoot}/src/assets/config/settings.env.json");
+        CopyLandingBackgroundImage(options, $"{alloyUiRoot}/src/assets");
 
         var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -841,7 +886,7 @@ public static partial class BuilderExtensions
         var steamfitterUiRoot = "/mnt/data/crucible/steamfitter/steamfitter.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
-        SetLandingBackgroundImage(options, $"{steamfitterUiRoot}/src/assets", $"{steamfitterUiRoot}/src/assets/config/settings.env.json");
+        CopyLandingBackgroundImage(options, $"{steamfitterUiRoot}/src/assets");
 
         var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -896,7 +941,7 @@ public static partial class BuilderExtensions
         var citeUiRoot = "/mnt/data/crucible/cite/cite.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
-        SetLandingBackgroundImage(options, $"{citeUiRoot}/src/assets", $"{citeUiRoot}/src/assets/config/settings.env.json");
+        CopyLandingBackgroundImage(options, $"{citeUiRoot}/src/assets");
 
         var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -951,7 +996,7 @@ public static partial class BuilderExtensions
         var galleryUiRoot = "/mnt/data/crucible/gallery/gallery.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
-        SetLandingBackgroundImage(options, $"{galleryUiRoot}/src/assets", $"{galleryUiRoot}/src/assets/config/settings.env.json");
+        CopyLandingBackgroundImage(options, $"{galleryUiRoot}/src/assets");
 
         var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
@@ -1006,7 +1051,7 @@ public static partial class BuilderExtensions
         var blueprintUiRoot = "/mnt/data/crucible/blueprint/blueprint.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
-        SetLandingBackgroundImage(options, $"{blueprintUiRoot}/src/assets", $"{blueprintUiRoot}/src/assets/config/settings.env.json");
+        CopyLandingBackgroundImage(options, $"{blueprintUiRoot}/src/assets");
 
         var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
