@@ -5,7 +5,7 @@
       "source": "angular/skills",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "computedHash": "a8255744287e57048100b129723a32307eb04adf4ca13bf653c1f5f002441dbc"
+      "computedHash": "cef5f1739f4a7158f20230f7e5a03c9b4b150b77174f22938512dcc49e270b91"
     },
     "angular-new-app": {
       "source": "angular/skills",
@@ -53,7 +53,7 @@
       "source": "richlander/dotnet-inspect",
       "sourceType": "github",
       "skillPath": "skills/dotnet-inspect/SKILL.md",
-      "computedHash": "9ed4555a07db2d489b8e8a58c541bd5e75aa55ad735970a4b539b9872f79ff98"
+      "computedHash": "08a26e137afed3473cae35841c7b10808edcccd6ff2a13dfa91ae763e8f1915c"
     },
     "find-skills": {
       "source": "vercel-labs/skills",
@@ -65,7 +65,7 @@
       "source": "github/gh-stack",
       "sourceType": "github",
       "skillPath": "skills/gh-stack/SKILL.md",
-      "computedHash": "6a5289601eedbeedc2d79c2d8627277afb9b9a3fbd78b4da3399a46dd788ae0a"
+      "computedHash": "15d9ce292d8b90b097463c8c3232fdc61f93474add776235245326de532fef2e"
     },
     "new-terraform-provider": {
       "source": "hashicorp/agent-skills",
