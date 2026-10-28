@@ -42,14 +42,28 @@ if [ "$EXISTING_KEY" = "exists" ]; then
     # TopoMojo stores only the key's hash, so an existing key cannot be read back.
     if [ -f "$API_KEY_FILE" ]; then
         # We persisted the plaintext when creating it on a previous run; reuse it so
-        # Moodle keeps working and the key file stays valid across runs.
-        echo "API key already exists; reusing saved key from $API_KEY_FILE" >&2
-        cat "$API_KEY_FILE"
-        exit 0
+        # Moodle keeps working and the key file stays valid across runs. The file and
+        # the DB can drift apart (e.g. a new dev container with a copied home dir but
+        # the old Postgres volume), so only reuse the file if it matches the stored hash.
+        SAVED_KEY=$(cat "$API_KEY_FILE")
+        SAVED_HASH=$(echo -n "$SAVED_KEY" | sha256sum | awk '{print $1}')
+        STORED_HASH=$(docker exec -e PGPASSWORD=$DB_PASS crucible-postgres psql -U $DB_USER -d $DB_NAME -tAc "
+            SELECT ak.\"Hash\" FROM \"ApiKeys\" ak
+            JOIN \"Users\" u ON ak.\"UserId\" = u.\"Id\"
+            WHERE u.\"ServiceAccountClientId\" = 'moodle-service-account' AND ak.\"Name\" = 'Moodle Integration'
+            LIMIT 1;
+        ")
+        if [ "$SAVED_HASH" = "$STORED_HASH" ]; then
+            echo "API key already exists; reusing saved key from $API_KEY_FILE" >&2
+            echo "$SAVED_KEY"
+            exit 0
+        fi
+        echo "Saved key in $API_KEY_FILE doesn't match the DB; regenerating..." >&2
+    else
+        # The DB has a key but the local plaintext copy is gone, so it is unrecoverable.
+        echo "API key exists in DB but no local copy found; regenerating..." >&2
     fi
-    # The DB has a key but the local plaintext copy is gone, so it is unrecoverable.
     # Delete the orphaned key and fall through to regenerate a fresh, matching one.
-    echo "API key exists in DB but no local copy found; regenerating..." >&2
     docker exec -e PGPASSWORD=$DB_PASS crucible-postgres psql -U $DB_USER -d $DB_NAME -c "
         DELETE FROM \"ApiKeys\" ak
         USING \"Users\" u
