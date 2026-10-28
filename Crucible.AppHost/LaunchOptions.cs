@@ -36,5 +36,8 @@ public class LaunchOptions
     public bool UseAspireProxy { get; set; }
     public bool LinkCommonUI { get; set; }
 
+    // Landing page background for the UIs: a URL, or a local file path copied into each UI (never committed)
+    public string? LandingBackgroundImage { get; set; }
+
     public ApiConfigOptions ApiConfig { get; set; } = new();
 }

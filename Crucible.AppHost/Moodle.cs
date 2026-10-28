@@ -372,6 +372,24 @@ public static partial class BuilderExtensions
                 isReadOnly: true);
         }
 
+        // The site background behind the Crucible UIs (Launch:LandingBackgroundImage) is the
+        // Moodle site background too. post_configure.sh stores a local file as a Boost Union
+        // resource and passes a URL straight into the theme SCSS.
+        var background = options.LandingBackgroundImage;
+        if (!string.IsNullOrWhiteSpace(background))
+        {
+            if (background.StartsWith("http://") || background.StartsWith("https://"))
+            {
+                moodle.WithEnvironment("LANDING_BACKGROUND_IMAGE", background);
+            }
+            else if (File.Exists(background))
+            {
+                var containerPath = $"/usr/local/share/crucible/landing-background{Path.GetExtension(background)}";
+                moodle.WithBindMount(background, containerPath, isReadOnly: true)
+                    .WithEnvironment("LANDING_BACKGROUND_IMAGE", containerPath);
+            }
+        }
+
         // Dynamically bind mount all Moodle plugins from repos.json + repos.local.json
         var moodlePlugins = ReadMoodlePlugins(builder.AppHostDirectory, instance.WebRoot);
         foreach (var plugin in moodlePlugins)
