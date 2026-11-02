@@ -158,7 +158,22 @@
     // replaces the listening socket, and an auto-detected forward does not survive that.
     8081, // Moodle 5.0
     8082, // Moodle 5.2
-    8083 // Moodle 5.3
+    8083, // Moodle 5.3
+    // Aspire. Declared explicitly so the apps reach the browser however the AppHost is
+    // started (F5, the Tasks panel, or `aspire run` from a terminal); auto-detection only
+    // sees ports printed in a terminal VS Code is watching.
+    17088, // Aspire dashboard (https)
+    4725, 4724, // Blueprint UI, API
+    4721, 4720, // CITE UI, API
+    4723, 4722, // Gallery UI, API
+    4310, 4309, // Caster UI, API
+    4301, 4300, // Player UI, API
+    4303, 4302, // Player VM UI, API
+    4305, // Player VM console UI
+    4401, 4400, // Steamfitter UI, API
+    4403, 4402, // Alloy UI, API
+    4201, 4204, 5000, // TopoMojo work UI, launchpoint UI, API
+    4202, 5002 // Gameboard UI, API
   ],
   "customizations": {
     "vscode": {
