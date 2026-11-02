@@ -4216,6 +4216,10 @@ parse_args() {
                 KEYCLOAK_PASSWORD="$2"
                 shift 2
                 ;;
+            --dry-run)
+                DRY_RUN=true
+                shift
+                ;;
             --help)
                 show_usage
                 exit 0
