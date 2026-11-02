@@ -157,6 +157,7 @@ PROXMOX_NODE="${PROXMOX_NODE:-pve}"
 ALPINE_PROXMOX_ID="${ALPINE_PROXMOX_ID:-105}"
 TINYCORE_PROXMOX_ID="${TINYCORE_PROXMOX_ID:-106}"
 PUPPY_PROXMOX_ID="${PUPPY_PROXMOX_ID:-103}"
+DESKTOP_PROXMOX_ID="${DESKTOP_PROXMOX_ID:-104}"
 
 # Command-line arguments (set via parse_args or environment)
 PROXMOX_HOST="${PROXMOX_HOST:-}"
@@ -1372,6 +1373,175 @@ echo "✓ TinyCore template created"
 VMEOF
 
     log_success "TinyCore Linux template created (ID: $TINYCORE_PROXMOX_ID)"
+}
+
+# Debian 12 + XFCE desktop whose console can resize and share the clipboard.
+# TinyCore/Alpine/Puppy run on the std VGA adapter, which cannot pass a noVNC
+# resize request to the guest, and they have no clipboard agent. This template
+# uses virtio-gpu (QEMU forwards SetDesktopSize to it) and QEMU's VNC clipboard
+# (clipboard=vnc, served to the guest's spice-vdagent), plus the guest agent.
+# Proxmox accepts clipboard=vnc with std/cirrus/vmware/virtio/qxl adapters; it
+# replaces the SPICE clipboard and blocks live migration of the VM.
+#
+# The desktop is installed into the imported disk from the host (chroot), so the
+# build needs internet on the Proxmox host only, not on vmbr0's guests.
+create_desktop_template() {
+    log_step "Creating Debian desktop template (ID: $DESKTOP_PROXMOX_ID)..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create Debian 12 XFCE template (vga virtio,clipboard=vnc, agent 1, 2 GB, 2 cores)"
+        return 0
+    fi
+
+    if ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "qm status $DESKTOP_PROXMOX_ID >/dev/null 2>&1"; then
+        log_info "Desktop template VM $DESKTOP_PROXMOX_ID already exists, skipping"
+        return 0
+    fi
+
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" \
+        "TEMPLATE_ID='$DESKTOP_PROXMOX_ID' bash -s" << 'VMEOF' || return 1
+set -e
+
+DEBIAN_IMAGE="debian-12-generic-amd64.qcow2"
+DEBIAN_URL="https://cloud.debian.org/images/cloud/bookworm/latest/${DEBIAN_IMAGE}"
+PACKAGES="qemu-guest-agent spice-vdagent xserver-xorg-core xserver-xorg-input-libinput \
+x11-xserver-utils dbus-x11 lightdm lightdm-gtk-greeter xfce4 xfce4-terminal mousepad \
+adwaita-icon-theme fonts-dejavu-core"
+
+# The generic image, not genericcloud: the cloud kernel leaves out virtio_gpu.
+IMAGE_PATH="/var/lib/vz/template/iso/${DEBIAN_IMAGE}"
+if [ ! -f "$IMAGE_PATH" ]; then
+    echo "Downloading Debian 12 generic image..."
+    # Download beside the target so an interrupted run is not mistaken for the image.
+    wget -q --show-progress --progress=dot:giga -O "${IMAGE_PATH}.part" "$DEBIAN_URL" || { rm -f "${IMAGE_PATH}.part"; exit 1; }
+    mv "${IMAGE_PATH}.part" "$IMAGE_PATH"
+fi
+
+if qm status ${TEMPLATE_ID} >/dev/null 2>&1; then
+    qm stop ${TEMPLATE_ID} 2>/dev/null || true
+    qm destroy ${TEMPLATE_ID} --purge 1 2>/dev/null || true
+fi
+
+qm create ${TEMPLATE_ID} \
+  --name debian-desktop-template \
+  --memory 2048 \
+  --cores 2 \
+  --net0 virtio,bridge=vmbr0 \
+  --ostype l26
+
+qm importdisk ${TEMPLATE_ID} "$IMAGE_PATH" local-lvm
+qm set ${TEMPLATE_ID} --scsihw virtio-scsi-pci --scsi0 local-lvm:vm-${TEMPLATE_ID}-disk-0,discard=on
+qm resize ${TEMPLATE_ID} scsi0 8G
+
+# Open the disk on the host, grow the root partition (p1, last on the disk) into
+# the resize, and install the desktop in a chroot.
+DISK="$(pvesm path local-lvm:vm-${TEMPLATE_ID}-disk-0)"
+ROOT="$(mktemp -d)"
+LOOP="$(losetup -fP --show "$DISK")"
+cleanup() {
+    for m in dev/pts dev proc sys; do umount "$ROOT/$m" 2>/dev/null || true; done
+    umount "$ROOT" 2>/dev/null || true
+    losetup -d "$LOOP" 2>/dev/null || true
+    rmdir "$ROOT" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+sfdisk --relocate gpt-bak-std "$LOOP"
+echo ", +" | sfdisk --no-reread -N 1 "$LOOP"
+partx -u "$LOOP"
+e2fsck -fy "${LOOP}p1" || [ $? -le 1 ]
+resize2fs "${LOOP}p1"
+
+mount "${LOOP}p1" "$ROOT"
+for m in dev dev/pts proc sys; do mount --bind "/$m" "$ROOT/$m"; done
+mv "$ROOT/etc/resolv.conf" "$ROOT/etc/resolv.conf.crucible"
+cp -L /etc/resolv.conf "$ROOT/etc/resolv.conf"
+# Packages must not start services inside the chroot.
+printf '#!/bin/sh\nexit 101\n' > "$ROOT/usr/sbin/policy-rc.d"
+chmod 755 "$ROOT/usr/sbin/policy-rc.d"
+
+chroot "$ROOT" env DEBIAN_FRONTEND=noninteractive apt-get update
+chroot "$ROOT" env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $PACKAGES
+
+mkdir -p "$ROOT/etc/lightdm/lightdm.conf.d"
+cat > "$ROOT/etc/lightdm/lightdm.conf.d/50-crucible-autologin.conf" <<'CONF'
+[Seat:*]
+autologin-user=user
+autologin-user-timeout=0
+autologin-session=xfce
+CONF
+
+# virtio-gpu takes the console's new size as its preferred mode and raises a DRM
+# change uevent; X does not switch modes on its own, so the session applies it.
+cat > "$ROOT/usr/local/bin/crucible-display-follow" <<'CONF'
+#!/bin/sh
+xset s off -dpms 2>/dev/null
+apply() {
+    out=$(xrandr --query | awk '/ connected/ {print $1; exit}')
+    [ -n "$out" ] && xrandr --output "$out" --auto
+}
+apply
+udevadm monitor --udev --subsystem-match=drm | while read -r line; do
+    case "$line" in *change*) apply ;; esac
+done
+CONF
+chmod 755 "$ROOT/usr/local/bin/crucible-display-follow"
+cat > "$ROOT/etc/xdg/autostart/crucible-display-follow.desktop" <<'CONF'
+[Desktop Entry]
+Type=Application
+Name=Follow console size
+Exec=/usr/local/bin/crucible-display-follow
+NoDisplay=true
+CONF
+
+# Without a cloud-init drive nothing configures the NIC or SSH host keys, so
+# clones bring both up themselves: DHCP on any en* NIC, keys made on first boot.
+cat > "$ROOT/etc/systemd/network/80-crucible-dhcp.network" <<'CONF'
+[Match]
+Name=en*
+
+[Network]
+DHCP=yes
+CONF
+cat > "$ROOT/etc/systemd/system/crucible-ssh-hostkeys.service" <<'CONF'
+[Unit]
+Description=Generate missing SSH host keys
+Before=ssh.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ssh-keygen -A
+
+[Install]
+WantedBy=multi-user.target
+CONF
+
+chroot "$ROOT" useradd -m -s /bin/bash -G sudo,audio,video -c "Crucible User" user
+printf 'user:password\nroot:password\n' | chroot "$ROOT" chpasswd
+chroot "$ROOT" systemctl set-default graphical.target
+chroot "$ROOT" systemctl enable lightdm systemd-networkd crucible-ssh-hostkeys
+chroot "$ROOT" systemctl disable systemd-networkd-wait-online || true
+
+chroot "$ROOT" apt-get clean
+rm -f "$ROOT/usr/sbin/policy-rc.d" "$ROOT/etc/resolv.conf"
+mv "$ROOT/etc/resolv.conf.crucible" "$ROOT/etc/resolv.conf"
+# Each clone gets its own machine-id (from its SMBIOS UUID) and SSH host keys.
+rm -f "$ROOT"/etc/ssh/ssh_host_* "$ROOT/var/lib/dbus/machine-id"
+truncate -s 0 "$ROOT/etc/machine-id"
+cleanup
+trap - EXIT
+
+qm set ${TEMPLATE_ID} --boot order=scsi0
+qm set ${TEMPLATE_ID} --vga virtio,clipboard=vnc
+# Boot messages go to the serial port too (qm terminal); the display stays virtio.
+qm set ${TEMPLATE_ID} --serial0 socket
+qm set ${TEMPLATE_ID} --agent enabled=1
+qm template ${TEMPLATE_ID}
+
+echo "✓ Desktop template created"
+VMEOF
+
+    log_success "Debian desktop template created (ID: $DESKTOP_PROXMOX_ID)"
 }
 
 create_puppy_vm() {
@@ -3614,7 +3784,7 @@ cleanup_proxmox_vms() {
     fi
 
     # Base VMs/templates the setup script itself creates, by ID.
-    local crucible_ids="103 105 106 9001 9002 9003 ${PUPPY_PROXMOX_ID} ${ALPINE_PROXMOX_ID} ${TINYCORE_PROXMOX_ID}"
+    local crucible_ids="103 104 105 106 9001 9002 9003 ${PUPPY_PROXMOX_ID} ${ALPINE_PROXMOX_ID} ${TINYCORE_PROXMOX_ID} ${DESKTOP_PROXMOX_ID}"
 
     if [ "$scope" = "all" ]; then
         log_step "Stopping and removing ALL non-template VMs..."
@@ -3692,6 +3862,7 @@ phase2_vm_templates() {
     create_alpine_template || log_warning "Alpine template creation failed"
     create_tinycore_template || log_warning "TinyCore template creation failed"
     create_puppy_vm || log_warning "Puppy VM creation failed"
+    create_desktop_template || log_warning "Desktop template creation failed"
     publish_stock_isos || log_warning "Stock ISO publishing failed"
 
     log_success "VM templates created"
@@ -4042,6 +4213,42 @@ VMEOF
     log_success "Alpine template rebuilt"
 }
 
+mode_rebuild_desktop() {
+    print_header "Crucible Proxmox Desktop Template Rebuild"
+
+    load_config || true
+
+    if [ -z "$PROXMOX_HOST" ]; then
+        log_error "PROXMOX_HOST not set. Cannot rebuild desktop template."
+        exit 1
+    fi
+
+    log_warning "This will delete and recreate Proxmox template VM $DESKTOP_PROXMOX_ID only"
+    read -p "Continue? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Desktop template rebuild cancelled"
+        exit 0
+    fi
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would rebuild desktop template VM $DESKTOP_PROXMOX_ID"
+        return 0
+    fi
+
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << VMEOF
+set -e
+if qm status $DESKTOP_PROXMOX_ID >/dev/null 2>&1; then
+    qm stop $DESKTOP_PROXMOX_ID --skiplock 1 2>/dev/null || true
+    qm destroy $DESKTOP_PROXMOX_ID --purge 1
+fi
+VMEOF
+
+    create_desktop_template
+
+    log_success "Desktop template rebuilt"
+}
+
 mode_status() {
     print_header "Crucible Proxmox Environment Status"
 
@@ -4169,6 +4376,7 @@ Commands:
   clean-vms - Remove API resources + only Crucible/TopoMojo-managed Proxmox VMs
   cleanall  - Remove ALL resources including every non-template Proxmox VM
   rebuild-alpine - Recreate only the Alpine Proxmox template VM
+  rebuild-desktop - Recreate only the Debian XFCE desktop template VM (console resize + VNC clipboard)
   status    - Show current environment state
   fix       - Repair broken state
   help      - Show this help message
@@ -4288,6 +4496,9 @@ main() {
             ;;
         rebuild-alpine)
             mode_rebuild_alpine
+            ;;
+        rebuild-desktop)
+            mode_rebuild_desktop
             ;;
         status)
             mode_status
