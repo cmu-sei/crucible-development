@@ -3036,8 +3036,8 @@ create_caster_project1() {
 # keeps demonstrating what it does: two SDN vnets in the crucible zone, the
 # router template on vmbr0 + both vnets, the desktop template on dmz and
 # TinyCore on corp. The router hands out 10.10.1.x on dmz and 10.10.2.x on
-# corp and routes between them. Needs the crucible SDN zone, which the setup
-# script does not create.
+# corp and routes between them. Needs the crucible SDN zone, which phase 1
+# creates (setup_proxmox_sdn_zone).
 caster_routed_topology_main_tf() {
     # The templates are the ones this script builds, whatever IDs it was given.
     sed -e "s/__ROUTER_ID__/$ROUTER_PROXMOX_ID/" -e "s/__DESKTOP_ID__/$DESKTOP_PROXMOX_ID/" \
@@ -4274,6 +4274,43 @@ CLEANTEMPLATES
 # PHASE ORCHESTRATION
 # ============================================================
 
+# The SDN zone the Caster demo topologies create their networks (vnets) in. A zone is
+# shared range infrastructure, like a vSphere distributed switch: each deployment adds
+# and removes its own vnets in it, but nothing creates the zone itself. The Terraform
+# names it literally ("crucible"), so this name must match.
+readonly PROXMOX_SDN_ZONE="crucible"
+
+setup_proxmox_sdn_zone() {
+    log_step "Setting up SDN zone '$PROXMOX_SDN_ZONE' for exercise networks..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create SDN zone '$PROXMOX_SDN_ZONE' (simple, pve IPAM) if missing"
+        return 0
+    fi
+
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << SDNEOF
+set -e
+
+# SDN writes its networks to /etc/network/interfaces.d/sdn, which only takes effect
+# when the main interfaces file sources that directory (the default since PVE 8).
+if ! grep -qE '^\s*source\s+/etc/network/interfaces\.d/' /etc/network/interfaces; then
+    echo "source /etc/network/interfaces.d/*" >> /etc/network/interfaces
+    echo "✓ /etc/network/interfaces now sources interfaces.d"
+fi
+
+if pvesh get /cluster/sdn/zones/$PROXMOX_SDN_ZONE >/dev/null 2>&1; then
+    echo "✓ SDN zone $PROXMOX_SDN_ZONE already exists"
+else
+    pvesh create /cluster/sdn/zones --zone $PROXMOX_SDN_ZONE --type simple --ipam pve
+    # Pending SDN changes do nothing until applied cluster-wide
+    pvesh set /cluster/sdn
+    echo "✓ Created and applied SDN zone $PROXMOX_SDN_ZONE"
+fi
+SDNEOF
+
+    log_success "SDN zone '$PROXMOX_SDN_ZONE' ready"
+}
+
 phase1_proxmox_infrastructure() {
 
     print_section "Phase 1/9: Proxmox Infrastructure Setup"
@@ -4283,6 +4320,7 @@ phase1_proxmox_infrastructure() {
     setup_proxmox_nginx || return 1
     setup_proxmox_token || return 1
     setup_proxmox_nfs || return 1
+    setup_proxmox_sdn_zone || return 1
     setup_proxmox_oidc || log_warning "OIDC configuration skipped (see warnings above)"
     configure_proxmox_api_profile || return 1
 
