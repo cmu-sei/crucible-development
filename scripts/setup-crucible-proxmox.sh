@@ -2717,7 +2717,7 @@ create_caster_project() {
     local main_tf_id="$4"
     local variables_tf_id="$5"
     local tfvars_id="$6"
-    local directory_name="${7:-Basic Topology}"
+    local directory_name="${7:-Basic_Topology}"
     # main.tf to write instead of the two-VM Basic Topology one
     local main_tf_content="${8:-}"
 
@@ -3277,7 +3277,7 @@ create_caster_project1_routed() {
         "${RESOURCE_IDS[caster_project1_routed_main_tf]}" \
         "${RESOURCE_IDS[caster_project1_routed_variables_tf]}" \
         "${RESOURCE_IDS[caster_project1_routed_tfvars]}" \
-        "Routed Topology" \
+        "Routed_Topology" \
         "$(caster_routed_topology_main_tf)"
 }
 
