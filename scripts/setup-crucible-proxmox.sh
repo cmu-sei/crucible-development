@@ -1375,6 +1375,113 @@ VMEOF
     log_success "TinyCore Linux template created (ID: $TINYCORE_PROXMOX_ID)"
 }
 
+# Remote-side helpers for templates built from the Debian 12 generic cloud image:
+# the image is imported to local-lvm and software is installed into it from the
+# host in a chroot, so a build needs internet on the Proxmox host only, not on
+# vmbr0's guests (the dev host has no DHCP or NAT there). Printed ahead of each
+# template's own heredoc, which calls them on the Proxmox host.
+debian_template_lib() {
+    cat << 'LIBEOF'
+set -e
+# The ssh client's locale need not exist on the host or in the image.
+export LC_ALL=C
+
+# The generic image, not genericcloud: the cloud kernel leaves out virtio_gpu.
+DEBIAN_IMAGE="debian-12-generic-amd64.qcow2"
+DEBIAN_URL="https://cloud.debian.org/images/cloud/bookworm/latest/${DEBIAN_IMAGE}"
+IMAGE_PATH="/var/lib/vz/template/iso/${DEBIAN_IMAGE}"
+
+fetch_debian_image() {
+    if [ ! -f "$IMAGE_PATH" ]; then
+        echo "Downloading Debian 12 generic image..."
+        # Download beside the target so an interrupted run is not mistaken for the image.
+        wget -q --show-progress --progress=dot:giga -O "${IMAGE_PATH}.part" "$DEBIAN_URL" || { rm -f "${IMAGE_PATH}.part"; exit 1; }
+        mv "${IMAGE_PATH}.part" "$IMAGE_PATH"
+    fi
+}
+
+destroy_vm_if_present() {
+    if qm status "$1" >/dev/null 2>&1; then
+        qm stop "$1" 2>/dev/null || true
+        qm destroy "$1" --purge 1 2>/dev/null || true
+    fi
+}
+
+# import_debian_disk VMID [SIZE]: the image as scsi0, grown to SIZE if given.
+import_debian_disk() {
+    qm importdisk "$1" "$IMAGE_PATH" local-lvm
+    qm set "$1" --scsihw virtio-scsi-pci --scsi0 "local-lvm:vm-$1-disk-0,discard=on"
+    if [ -n "$2" ]; then
+        qm resize "$1" scsi0 "$2"
+    fi
+}
+
+close_disk_chroot() {
+    for m in dev/pts dev proc sys; do umount "$ROOT/$m" 2>/dev/null || true; done
+    umount "$ROOT" 2>/dev/null || true
+    losetup -d "$LOOP" 2>/dev/null || true
+    rmdir "$ROOT" 2>/dev/null || true
+    trap - EXIT
+}
+
+# open_disk_chroot VMID: mounts scsi0's root at $ROOT, grown into any resize
+# (p1 is last on the disk), with the host's DNS and no service starts.
+open_disk_chroot() {
+    local disk
+    disk="$(pvesm path "local-lvm:vm-$1-disk-0")"
+    ROOT="$(mktemp -d)"
+    LOOP="$(losetup -fP --show "$disk")"
+    trap close_disk_chroot EXIT
+
+    sfdisk --relocate gpt-bak-std "$LOOP"
+    echo ", +" | sfdisk --no-reread -N 1 "$LOOP"
+    partx -u "$LOOP"
+    e2fsck -fy "${LOOP}p1" || [ $? -le 1 ]
+    resize2fs "${LOOP}p1"
+
+    mount "${LOOP}p1" "$ROOT"
+    for m in dev dev/pts proc sys; do mount --bind "/$m" "$ROOT/$m"; done
+    mv "$ROOT/etc/resolv.conf" "$ROOT/etc/resolv.conf.crucible"
+    cp -L /etc/resolv.conf "$ROOT/etc/resolv.conf"
+    # Packages must not start services inside the chroot.
+    printf '#!/bin/sh\nexit 101\n' > "$ROOT/usr/sbin/policy-rc.d"
+    chmod 755 "$ROOT/usr/sbin/policy-rc.d"
+}
+
+chroot_apt_install() {
+    chroot "$ROOT" env DEBIAN_FRONTEND=noninteractive apt-get update
+    chroot "$ROOT" env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"
+}
+
+# Logins root/password, SSH host keys made on first boot (without a cloud-init
+# drive nothing else makes them), and each clone its own machine-id (from its
+# SMBIOS UUID). Then the chroot is closed.
+finish_disk_chroot() {
+    cat > "$ROOT/etc/systemd/system/crucible-ssh-hostkeys.service" <<'CONF'
+[Unit]
+Description=Generate missing SSH host keys
+Before=ssh.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ssh-keygen -A
+
+[Install]
+WantedBy=multi-user.target
+CONF
+    chroot "$ROOT" systemctl enable crucible-ssh-hostkeys
+    printf 'root:password\n' | chroot "$ROOT" chpasswd
+
+    chroot "$ROOT" apt-get clean
+    rm -f "$ROOT/usr/sbin/policy-rc.d" "$ROOT/etc/resolv.conf"
+    mv "$ROOT/etc/resolv.conf.crucible" "$ROOT/etc/resolv.conf"
+    rm -f "$ROOT"/etc/ssh/ssh_host_* "$ROOT/var/lib/dbus/machine-id"
+    truncate -s 0 "$ROOT/etc/machine-id"
+    close_disk_chroot
+}
+LIBEOF
+}
+
 # Debian 12 + XFCE desktop whose console can resize and share the clipboard.
 # TinyCore/Alpine/Puppy run on the std VGA adapter, which cannot pass a noVNC
 # resize request to the guest, and they have no clipboard agent. This template
@@ -1382,9 +1489,6 @@ VMEOF
 # (clipboard=vnc, served to the guest's spice-vdagent), plus the guest agent.
 # Proxmox accepts clipboard=vnc with std/cirrus/vmware/virtio/qxl adapters; it
 # replaces the SPICE clipboard and blocks live migration of the VM.
-#
-# The desktop is installed into the imported disk from the host (chroot), so the
-# build needs internet on the Proxmox host only, not on vmbr0's guests.
 create_desktop_template() {
     log_step "Creating Debian desktop template (ID: $DESKTOP_PROXMOX_ID)..."
 
@@ -1398,29 +1502,11 @@ create_desktop_template() {
         return 0
     fi
 
-    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" \
-        "TEMPLATE_ID='$DESKTOP_PROXMOX_ID' bash -s" << 'VMEOF' || return 1
-set -e
+    { debian_template_lib; cat << 'VMEOF'; } | ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" \
+        "TEMPLATE_ID='$DESKTOP_PROXMOX_ID' bash -s" || return 1
 
-DEBIAN_IMAGE="debian-12-generic-amd64.qcow2"
-DEBIAN_URL="https://cloud.debian.org/images/cloud/bookworm/latest/${DEBIAN_IMAGE}"
-PACKAGES="qemu-guest-agent spice-vdagent xserver-xorg-core xserver-xorg-input-libinput \
-x11-xserver-utils dbus-x11 lightdm lightdm-gtk-greeter xfce4 xfce4-terminal mousepad \
-adwaita-icon-theme fonts-dejavu-core"
-
-# The generic image, not genericcloud: the cloud kernel leaves out virtio_gpu.
-IMAGE_PATH="/var/lib/vz/template/iso/${DEBIAN_IMAGE}"
-if [ ! -f "$IMAGE_PATH" ]; then
-    echo "Downloading Debian 12 generic image..."
-    # Download beside the target so an interrupted run is not mistaken for the image.
-    wget -q --show-progress --progress=dot:giga -O "${IMAGE_PATH}.part" "$DEBIAN_URL" || { rm -f "${IMAGE_PATH}.part"; exit 1; }
-    mv "${IMAGE_PATH}.part" "$IMAGE_PATH"
-fi
-
-if qm status ${TEMPLATE_ID} >/dev/null 2>&1; then
-    qm stop ${TEMPLATE_ID} 2>/dev/null || true
-    qm destroy ${TEMPLATE_ID} --purge 1 2>/dev/null || true
-fi
+fetch_debian_image
+destroy_vm_if_present ${TEMPLATE_ID}
 
 qm create ${TEMPLATE_ID} \
   --name debian-desktop-template \
@@ -1428,40 +1514,12 @@ qm create ${TEMPLATE_ID} \
   --cores 2 \
   --net0 virtio,bridge=vmbr0 \
   --ostype l26
+import_debian_disk ${TEMPLATE_ID} 8G
 
-qm importdisk ${TEMPLATE_ID} "$IMAGE_PATH" local-lvm
-qm set ${TEMPLATE_ID} --scsihw virtio-scsi-pci --scsi0 local-lvm:vm-${TEMPLATE_ID}-disk-0,discard=on
-qm resize ${TEMPLATE_ID} scsi0 8G
-
-# Open the disk on the host, grow the root partition (p1, last on the disk) into
-# the resize, and install the desktop in a chroot.
-DISK="$(pvesm path local-lvm:vm-${TEMPLATE_ID}-disk-0)"
-ROOT="$(mktemp -d)"
-LOOP="$(losetup -fP --show "$DISK")"
-cleanup() {
-    for m in dev/pts dev proc sys; do umount "$ROOT/$m" 2>/dev/null || true; done
-    umount "$ROOT" 2>/dev/null || true
-    losetup -d "$LOOP" 2>/dev/null || true
-    rmdir "$ROOT" 2>/dev/null || true
-}
-trap cleanup EXIT
-
-sfdisk --relocate gpt-bak-std "$LOOP"
-echo ", +" | sfdisk --no-reread -N 1 "$LOOP"
-partx -u "$LOOP"
-e2fsck -fy "${LOOP}p1" || [ $? -le 1 ]
-resize2fs "${LOOP}p1"
-
-mount "${LOOP}p1" "$ROOT"
-for m in dev dev/pts proc sys; do mount --bind "/$m" "$ROOT/$m"; done
-mv "$ROOT/etc/resolv.conf" "$ROOT/etc/resolv.conf.crucible"
-cp -L /etc/resolv.conf "$ROOT/etc/resolv.conf"
-# Packages must not start services inside the chroot.
-printf '#!/bin/sh\nexit 101\n' > "$ROOT/usr/sbin/policy-rc.d"
-chmod 755 "$ROOT/usr/sbin/policy-rc.d"
-
-chroot "$ROOT" env DEBIAN_FRONTEND=noninteractive apt-get update
-chroot "$ROOT" env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $PACKAGES
+open_disk_chroot ${TEMPLATE_ID}
+chroot_apt_install qemu-guest-agent spice-vdagent xserver-xorg-core xserver-xorg-input-libinput \
+    x11-xserver-utils dbus-x11 lightdm lightdm-gtk-greeter xfce4 xfce4-terminal mousepad \
+    adwaita-icon-theme fonts-dejavu-core
 
 mkdir -p "$ROOT/etc/lightdm/lightdm.conf.d"
 cat > "$ROOT/etc/lightdm/lightdm.conf.d/50-crucible-autologin.conf" <<'CONF'
@@ -1494,8 +1552,7 @@ Exec=/usr/local/bin/crucible-display-follow
 NoDisplay=true
 CONF
 
-# Without a cloud-init drive nothing configures the NIC or SSH host keys, so
-# clones bring both up themselves: DHCP on any en* NIC, keys made on first boot.
+# Without a cloud-init drive nothing configures the NIC, so DHCP on any en* NIC.
 cat > "$ROOT/etc/systemd/network/80-crucible-dhcp.network" <<'CONF'
 [Match]
 Name=en*
@@ -1503,33 +1560,13 @@ Name=en*
 [Network]
 DHCP=yes
 CONF
-cat > "$ROOT/etc/systemd/system/crucible-ssh-hostkeys.service" <<'CONF'
-[Unit]
-Description=Generate missing SSH host keys
-Before=ssh.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/ssh-keygen -A
-
-[Install]
-WantedBy=multi-user.target
-CONF
 
 chroot "$ROOT" useradd -m -s /bin/bash -G sudo,audio,video -c "Crucible User" user
-printf 'user:password\nroot:password\n' | chroot "$ROOT" chpasswd
+printf 'user:password\n' | chroot "$ROOT" chpasswd
 chroot "$ROOT" systemctl set-default graphical.target
-chroot "$ROOT" systemctl enable lightdm systemd-networkd crucible-ssh-hostkeys
+chroot "$ROOT" systemctl enable lightdm systemd-networkd
 chroot "$ROOT" systemctl disable systemd-networkd-wait-online || true
-
-chroot "$ROOT" apt-get clean
-rm -f "$ROOT/usr/sbin/policy-rc.d" "$ROOT/etc/resolv.conf"
-mv "$ROOT/etc/resolv.conf.crucible" "$ROOT/etc/resolv.conf"
-# Each clone gets its own machine-id (from its SMBIOS UUID) and SSH host keys.
-rm -f "$ROOT"/etc/ssh/ssh_host_* "$ROOT/var/lib/dbus/machine-id"
-truncate -s 0 "$ROOT/etc/machine-id"
-cleanup
-trap - EXIT
+finish_disk_chroot
 
 qm set ${TEMPLATE_ID} --boot order=scsi0
 qm set ${TEMPLATE_ID} --vga virtio,clipboard=vnc
@@ -4213,40 +4250,50 @@ VMEOF
     log_success "Alpine template rebuilt"
 }
 
-mode_rebuild_desktop() {
-    print_header "Crucible Proxmox Desktop Template Rebuild"
+# rebuild_template_vm LABEL VMID CREATE_FUNCTION: delete one template VM and run
+# its create function again, leaving everything else alone.
+rebuild_template_vm() {
+    local label="$1"
+    local vmid="$2"
+    local create_fn="$3"
+
+    print_header "Crucible Proxmox ${label^} Template Rebuild"
 
     load_config || true
 
     if [ -z "$PROXMOX_HOST" ]; then
-        log_error "PROXMOX_HOST not set. Cannot rebuild desktop template."
+        log_error "PROXMOX_HOST not set. Cannot rebuild $label template."
         exit 1
     fi
 
-    log_warning "This will delete and recreate Proxmox template VM $DESKTOP_PROXMOX_ID only"
+    log_warning "This will delete and recreate Proxmox template VM $vmid only"
     read -p "Continue? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        log_info "Desktop template rebuild cancelled"
+        log_info "${label^} template rebuild cancelled"
         exit 0
     fi
 
     if [ "$DRY_RUN" = "true" ]; then
-        log_info "[DRY RUN] Would rebuild desktop template VM $DESKTOP_PROXMOX_ID"
+        log_info "[DRY RUN] Would rebuild $label template VM $vmid"
         return 0
     fi
 
     ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << VMEOF
 set -e
-if qm status $DESKTOP_PROXMOX_ID >/dev/null 2>&1; then
-    qm stop $DESKTOP_PROXMOX_ID --skiplock 1 2>/dev/null || true
-    qm destroy $DESKTOP_PROXMOX_ID --purge 1
+if qm status $vmid >/dev/null 2>&1; then
+    qm stop $vmid --skiplock 1 2>/dev/null || true
+    qm destroy $vmid --purge 1
 fi
 VMEOF
 
-    create_desktop_template
+    "$create_fn"
 
-    log_success "Desktop template rebuilt"
+    log_success "${label^} template rebuilt"
+}
+
+mode_rebuild_desktop() {
+    rebuild_template_vm "desktop" "$DESKTOP_PROXMOX_ID" create_desktop_template
 }
 
 mode_status() {
