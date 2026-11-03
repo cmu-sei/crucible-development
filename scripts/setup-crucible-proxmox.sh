@@ -108,6 +108,10 @@ declare -A RESOURCE_IDS=(
     [caster_project1_main_tf]="f9b489fe-5bf6-4baa-8840-5e900e5b90d5"
     [caster_project1_variables_tf]="a43bc816-be98-410e-bd53-def3522f5bb5"
     [caster_project1_tfvars]="9a52310f-56e5-4ac5-b856-ceddbb653ff4"
+    [caster_project1_routed_dir]="c30908cf-9d92-4085-8725-63a5f62f22d6"
+    [caster_project1_routed_main_tf]="9aebc213-e9a0-4539-a74d-9f39064a2fcc"
+    [caster_project1_routed_variables_tf]="724f8d35-cd4c-4117-a323-cd9b22c2573c"
+    [caster_project1_routed_tfvars]="563adf72-c701-4fe7-ae6c-8eb20b77ea34"
 
     [caster_project2]="7fa5b814-d57b-494f-96e8-51c34471c2c1"
     [caster_project2_dir]="704808b2-b864-4997-b4c6-2d25220c5445"
@@ -2698,6 +2702,9 @@ create_caster_project() {
     local main_tf_id="$4"
     local variables_tf_id="$5"
     local tfvars_id="$6"
+    local directory_name="${7:-Basic Topology}"
+    # main.tf to write instead of the two-VM Basic Topology one
+    local main_tf_content="${8:-}"
 
     log_step "Creating Caster project: $project_name"
 
@@ -2767,7 +2774,7 @@ create_caster_project() {
     if [ "$skip_dir_creation" != "true" ]; then
         log_info "Creating directory with projectId: $project_id"
 
-        local directory_payload="{\"id\": \"$directory_id\", \"projectId\": \"$project_id\", \"name\": \"Basic Topology\", \"terraformVersion\": \"1.5.0\"}"
+        local directory_payload="{\"id\": \"$directory_id\", \"projectId\": \"$project_id\", \"name\": \"$directory_name\", \"terraformVersion\": \"1.5.0\"}"
         local directory_response=$(curl -k -s -X POST "$CASTER_API_URL/directories" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
@@ -2786,7 +2793,8 @@ create_caster_project() {
     log_info "Creating/updating Terraform files in directory..."
 
     # Create main.tf
-    local main_tf_content='terraform {
+    if [ -z "$main_tf_content" ]; then
+    main_tf_content='terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
@@ -2885,6 +2893,7 @@ resource "crucible_player_virtual_machine" "puppy" {
     node = "pve"
   }
 }'
+    fi
 
     upsert_caster_file "$token" "$main_tf_id" "$directory_id" "main.tf" "$main_tf_content"
 
@@ -3021,6 +3030,234 @@ create_caster_project1() {
         "${RESOURCE_IDS[caster_project1_main_tf]}" \
         "${RESOURCE_IDS[caster_project1_variables_tf]}" \
         "${RESOURCE_IDS[caster_project1_tfvars]}"
+}
+
+# Routed topology for "Proxmox Test", in a directory of its own so Basic Topology
+# keeps demonstrating what it does: two SDN vnets in the crucible zone, the
+# router template on vmbr0 + both vnets, the desktop template on dmz and
+# TinyCore on corp. The router hands out 10.10.1.x on dmz and 10.10.2.x on
+# corp and routes between them. Needs the crucible SDN zone, which the setup
+# script does not create.
+caster_routed_topology_main_tf() {
+    # The templates are the ones this script builds, whatever IDs it was given.
+    sed -e "s/__ROUTER_ID__/$ROUTER_PROXMOX_ID/" -e "s/__DESKTOP_ID__/$DESKTOP_PROXMOX_ID/" \
+        -e "s/__TINYCORE_ID__/$TINYCORE_PROXMOX_ID/" <<'TF'
+terraform {
+  required_providers {
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "0.106.0"
+    }
+    crucible = {
+      source  = "cmu-sei/crucible"
+      version = "~> 2.5"
+    }
+  }
+}
+
+provider "proxmox" {
+  endpoint  = var.proxmox_endpoint
+  api_token = var.proxmox_api_token
+  insecure  = var.proxmox_insecure
+}
+
+provider "crucible" {
+  username       = var.crucible_username
+  password       = var.crucible_password
+  auth_url       = var.crucible_auth_url
+  token_url      = var.crucible_token_url
+  client_id      = var.crucible_client_id
+  client_secret  = var.crucible_client_secret
+  client_scopes  = ["player", "player-vm"]
+  vm_api_url     = var.vm_api_url
+  player_api_url = var.player_api_url
+  caster_api_url = var.caster_api_url
+}
+
+locals {
+  generated_name_suffix = substr(replace(coalesce(var.view_id, var.username), "/[^A-Za-z0-9-]/", "-"), 0, 32)
+
+  player_vm_team_ids = [
+    for team_id in [var.admin, var.admin_user] : team_id
+    if team_id != null && team_id != ""
+  ]
+
+  # Router LAN order is the addressing: the Nth segment is the router's netN,
+  # so 10.10.N.0/24. Always append.
+  segments = ["dmz", "corp"]
+
+  # Vnet IDs are at most 8 characters; derive stable ones per deployment.
+  vnet_ids = {
+    for segment in local.segments : segment => "v${substr(sha1("${local.generated_name_suffix}/${segment}"), 0, 7)}"
+  }
+}
+
+# Applies the vnets' removal on destroy; every vnet depends on it.
+resource "proxmox_sdn_applier" "finalizer" {
+  on_create = false
+}
+
+resource "proxmox_sdn_vnet" "segment" {
+  for_each = toset(local.segments)
+
+  id    = local.vnet_ids[each.key]
+  zone  = "crucible"
+  alias = "routed-${each.key}"
+
+  depends_on = [proxmox_sdn_applier.finalizer]
+}
+
+# Makes the vnets exist on the node before any VM attaches to them.
+resource "proxmox_sdn_applier" "apply" {
+  on_destroy = false
+
+  lifecycle {
+    replace_triggered_by = [proxmox_sdn_vnet.segment]
+  }
+
+  depends_on = [proxmox_sdn_vnet.segment]
+}
+
+resource "proxmox_virtual_environment_vm" "router" {
+  name      = "router-routed-${local.generated_name_suffix}"
+  node_name = "pve"
+
+  clone {
+    vm_id = __ROUTER_ID__
+  }
+
+  cpu {
+    cores = 1
+  }
+
+  memory {
+    dedicated = 256
+  }
+
+  agent {
+    enabled = true
+  }
+
+  # net0: WAN. net1..n: the segments in order (10.10.1.x, 10.10.2.x, ...).
+  network_device {
+    bridge = "vmbr0"
+  }
+
+  dynamic "network_device" {
+    for_each = local.segments
+
+    content {
+      bridge = proxmox_sdn_vnet.segment[network_device.value].id
+    }
+  }
+
+  depends_on = [proxmox_sdn_applier.apply]
+}
+
+resource "proxmox_virtual_environment_vm" "desktop" {
+  name      = "desktop-routed-${local.generated_name_suffix}"
+  node_name = "pve"
+
+  clone {
+    vm_id = __DESKTOP_ID__
+  }
+
+  cpu {
+    cores = 2
+  }
+
+  memory {
+    dedicated = 1024
+  }
+
+  agent {
+    enabled = true
+  }
+
+  vga {
+    type      = "virtio"
+    clipboard = "vnc"
+  }
+
+  network_device {
+    bridge = proxmox_sdn_vnet.segment["dmz"].id
+  }
+
+  depends_on = [proxmox_sdn_applier.apply]
+}
+
+resource "proxmox_virtual_environment_vm" "tinycore" {
+  name      = "tinycore-routed-${local.generated_name_suffix}"
+  node_name = "pve"
+
+  clone {
+    vm_id = __TINYCORE_ID__
+  }
+
+  cpu {
+    cores = 1
+  }
+
+  memory {
+    dedicated = 512
+  }
+
+  network_device {
+    bridge = proxmox_sdn_vnet.segment["corp"].id
+  }
+
+  depends_on = [proxmox_sdn_applier.apply]
+}
+
+# Register VMs in Player VM API
+resource "crucible_player_virtual_machine" "router" {
+  name       = proxmox_virtual_environment_vm.router.name
+  team_ids   = local.player_vm_team_ids
+  user_id    = var.user_id
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.router.vm_id
+    node = "pve"
+  }
+}
+
+resource "crucible_player_virtual_machine" "desktop" {
+  name       = proxmox_virtual_environment_vm.desktop.name
+  team_ids   = local.player_vm_team_ids
+  user_id    = var.user_id
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.desktop.vm_id
+    node = "pve"
+  }
+}
+
+resource "crucible_player_virtual_machine" "tinycore" {
+  name       = proxmox_virtual_environment_vm.tinycore.name
+  team_ids   = local.player_vm_team_ids
+  user_id    = var.user_id
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.tinycore.vm_id
+    node = "pve"
+  }
+}
+TF
+}
+
+create_caster_project1_routed() {
+    create_caster_project \
+        "Proxmox Test" \
+        "${RESOURCE_IDS[caster_project1]}" \
+        "${RESOURCE_IDS[caster_project1_routed_dir]}" \
+        "${RESOURCE_IDS[caster_project1_routed_main_tf]}" \
+        "${RESOURCE_IDS[caster_project1_routed_variables_tf]}" \
+        "${RESOURCE_IDS[caster_project1_routed_tfvars]}" \
+        "Routed Topology" \
+        "$(caster_routed_topology_main_tf)"
 }
 
 create_caster_project2() {
@@ -4108,6 +4345,14 @@ phase5_caster_projects() {
 
     create_caster_project1 || log_warning "Caster project 1 creation failed"
     create_caster_project2 || log_warning "Caster project 2 creation failed"
+
+    # The routed layout clones the router and desktop templates too; without them
+    # only it is left out.
+    if proxmox_vm_exists "$ROUTER_PROXMOX_ID" && proxmox_vm_exists "$DESKTOP_PROXMOX_ID"; then
+        create_caster_project1_routed || log_warning "Caster project 1 Routed Topology creation failed"
+    else
+        log_warning "Router ($ROUTER_PROXMOX_ID) or desktop ($DESKTOP_PROXMOX_ID) template not found; not adding Routed Topology to \"Proxmox Test\""
+    fi
 
     log_success "Caster projects created"
 }
