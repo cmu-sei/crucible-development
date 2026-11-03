@@ -19,9 +19,9 @@
       "integrity": "sha256:2e179158adc25ee01ba3f6261708f436e1769aec012517713491305a01aec2d9"
     },
     "ghcr.io/cmu-sei/devcontainer-features/herdr:1.1": {
-      "version": "1.1.0",
-      "resolved": "ghcr.io/cmu-sei/devcontainer-features/herdr@sha256:6a3ac81126383f26b92533b437ea11bb443bae67f1db95dc8fccebc513c688a3",
-      "integrity": "sha256:6a3ac81126383f26b92533b437ea11bb443bae67f1db95dc8fccebc513c688a3"
+      "version": "1.1.1",
+      "resolved": "ghcr.io/cmu-sei/devcontainer-features/herdr@sha256:afda731fffdc03a637d740ca0a7f35919cc7e1b23a1b00022d07326717d7a250",
+      "integrity": "sha256:afda731fffdc03a637d740ca0a7f35919cc7e1b23a1b00022d07326717d7a250"
     },
     "ghcr.io/cmu-sei/devcontainer-features/playwright:1.0": {
       "version": "1.0.0",
