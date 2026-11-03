@@ -2254,6 +2254,11 @@ VMEOF
 create_stock_templates_once() {
     local token="$1"
 
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create the TopoMojo stock templates if missing"
+        return 0
+    fi
+
     # Check if stock templates already exist
     local all_templates=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/templates?filter=stock" \
         -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
@@ -2378,6 +2383,11 @@ create_topomojo_templates() {
     local template_type="${3:-tinycore}"  # Default to tinycore if not specified
 
     log_step "Creating TopoMojo templates for workspace ($template_type)..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would replace the $template_type templates in TopoMojo workspace $workspace_id"
+        return 0
+    fi
 
     # Remove ALL existing templates of the type we're about to create (idempotent)
     log_info "Checking for existing templates to ensure idempotency..."
@@ -2626,6 +2636,11 @@ upsert_caster_file() {
     local file_name="$4"
     local file_content="$5"
 
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create or update Caster file: $file_name"
+        return 0
+    fi
+
     local actual_file_id=""
     local existing_files=$(curl -k -s -X GET "$CASTER_API_URL/directories/$directory_id/files" \
         -H "Authorization: Bearer $token" 2>/dev/null)
@@ -2769,6 +2784,12 @@ create_caster_project() {
     # At this point, project_id is set (either from existing or newly created)
     # Get fresh token to ensure we have project permissions
     token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[caster]}")
+
+    if [ "$DRY_RUN" = "true" ]; then
+        [ "$skip_dir_creation" != "true" ] && log_info "[DRY RUN] Would create Caster directory: $directory_name"
+        log_info "[DRY RUN] Would write main.tf, variables.tf and terraform.tfvars in $directory_name"
+        return 0
+    fi
 
     # Create directory if needed
     if [ "$skip_dir_creation" != "true" ]; then
@@ -3280,6 +3301,11 @@ add_team_application_instance() {
     local display_order="$3"
     local token="$4"
 
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would add application $application_id to team $team_id"
+        return 0
+    fi
+
     local response=$(curl -k -s -w "\n%{http_code}" -X POST \
         "$PLAYER_API_URL/teams/$team_id/application-instances" \
         -H "Authorization: Bearer $token" \
@@ -3470,6 +3496,11 @@ register_player_vm() {
     local admin_team_id="$4"
     local token="$5"
 
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would register Player VM: $vm_name (Proxmox $proxmox_id)"
+        return 0
+    fi
+
     local response=$(curl -k -s -w "\n%{http_code}" -X POST "$VM_API_URL/vms" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
@@ -3596,6 +3627,12 @@ create_alloy_event_with_caster() {
         fi
     done <<< "$matching_events"
 
+    if [ "$DRY_RUN" = "true" ]; then
+        [ -n "$(echo $ids_to_delete)" ] && log_info "[DRY RUN] Would delete Alloy events with the wrong directory: $(echo $ids_to_delete)"
+        [ "$has_correct" = "true" ] && log_info "[DRY RUN] Alloy event (with Caster) already exists" || log_info "[DRY RUN] Would create Alloy event (with Caster)"
+        return 0
+    fi
+
     # If we have the correct one, we're done
     if [ "$has_correct" = "true" ]; then
         # Delete any duplicates with wrong directory
@@ -3617,11 +3654,6 @@ create_alloy_event_with_caster() {
                 -H "Authorization: Bearer $token" > /dev/null 2>&1
         fi
     done
-
-    if [ "$DRY_RUN" = "true" ]; then
-        log_info "[DRY RUN] Would create Alloy event (with Caster)"
-        return 0
-    fi
 
     # Token already fetched above
     # Try with id first (if API supports it), otherwise API will generate one
@@ -4136,6 +4168,11 @@ cleanup_alloy_resources() {
 
 cleanup_topomojo_resources() {
     log_step "Cleaning TopoMojo resources..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would delete the TopoMojo test resources"
+        return 0
+    fi
 
     local token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[topomojo]}")
     if [ -z "$token" ]; then
