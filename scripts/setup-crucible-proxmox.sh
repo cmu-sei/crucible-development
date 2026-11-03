@@ -158,6 +158,7 @@ ALPINE_PROXMOX_ID="${ALPINE_PROXMOX_ID:-105}"
 TINYCORE_PROXMOX_ID="${TINYCORE_PROXMOX_ID:-106}"
 PUPPY_PROXMOX_ID="${PUPPY_PROXMOX_ID:-103}"
 DESKTOP_PROXMOX_ID="${DESKTOP_PROXMOX_ID:-104}"
+ROUTER_PROXMOX_ID="${ROUTER_PROXMOX_ID:-102}"
 
 # Command-line arguments (set via parse_args or environment)
 PROXMOX_HOST="${PROXMOX_HOST:-}"
@@ -1579,6 +1580,165 @@ echo "✓ Desktop template created"
 VMEOF
 
     log_success "Debian desktop template created (ID: $DESKTOP_PROXMOX_ID)"
+}
+
+# Debian 12 router for routed exercise topologies, with nothing to configure per
+# deploy. It follows the proxmox-router-gateway module's adapter contract:
+#
+#   net0          WAN, renamed "wan". DHCP client only, so it stays unaddressed
+#                 where nothing offers a lease (vmbr0 on the dev host). Everything
+#                 leaving through it is masqueraded.
+#   net1..net31   LAN N, renamed "lanN", address 10.10.N.1/24, DHCP server for
+#                 10.10.N.100-199 with 10.10.N.1 as gateway and DNS.
+#
+# At boot, crucible-router-setup names the NICs from their Proxmox slot (net0-5
+# sit at PCI 00:12-17, net6-31 behind the pci.1 bridge at 01:01-1a) and writes
+# their networkd units, so one template serves any number of inside networks
+# and a NIC keeps its subnet even when lower-numbered ones are missing. nftables
+# forwards between the LANs and from them to the WAN; the WAN side only gets
+# replies. dnsmasq forwards DNS to whatever the WAN lease supplied.
+create_router_template() {
+    log_step "Creating Debian router template (ID: $ROUTER_PROXMOX_ID)..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create Debian 12 router template (net0 WAN, netN = 10.10.N.1/24 + DHCP, 256 MB, 1 core)"
+        return 0
+    fi
+
+    if ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "qm status $ROUTER_PROXMOX_ID >/dev/null 2>&1"; then
+        log_info "Router template VM $ROUTER_PROXMOX_ID already exists, skipping"
+        return 0
+    fi
+
+    { debian_template_lib; cat << 'VMEOF'; } | ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" \
+        "TEMPLATE_ID='$ROUTER_PROXMOX_ID' bash -s" || return 1
+
+fetch_debian_image
+destroy_vm_if_present ${TEMPLATE_ID}
+
+qm create ${TEMPLATE_ID} \
+  --name debian-router-template \
+  --memory 256 \
+  --cores 1 \
+  --net0 virtio,bridge=vmbr0 \
+  --ostype l26
+import_debian_disk ${TEMPLATE_ID} 3G
+
+open_disk_chroot ${TEMPLATE_ID}
+chroot_apt_install qemu-guest-agent nftables dnsmasq
+
+cat > "$ROOT/usr/local/sbin/crucible-router-setup" <<'CONF'
+#!/bin/sh
+# Name each NIC for its Proxmox slot and write its networkd unit (see the
+# template's notes in setup-crucible-proxmox.sh).
+set -e
+mkdir -p /run/systemd/network
+rm -f /run/systemd/network/05-crucible-*.network
+for path in /sys/class/net/*; do
+    nic=${path##*/}
+    [ -e "$path/device" ] || continue
+    device=$(readlink -f "$path/device")
+    # virtio-net hangs a virtioN device off the PCI function; the slot is its parent.
+    case "${device##*/}" in virtio*) device=${device%/*} ;; esac
+    slot=${device##*/}   # 0000:BB:SS.F
+    bus=$(echo "$slot" | cut -d: -f2)
+    dev=$(printf '%d' "0x$(echo "$slot" | cut -d: -f3 | cut -d. -f1)")
+    case "$bus" in
+        00) index=$((dev - 18)) ;;
+        01) index=$((dev + 5)) ;;
+        *) index=-1 ;;
+    esac
+    if [ "$index" -lt 0 ] || [ "$index" -gt 31 ]; then
+        echo "crucible-router: $nic at $slot is not a Proxmox netN slot, left alone"
+        continue
+    fi
+    if [ "$index" -eq 0 ]; then name=wan; else name=lan$index; fi
+    if [ "$nic" != "$name" ]; then
+        ip link set dev "$nic" down
+        ip link set dev "$nic" name "$name"
+    fi
+    if [ "$name" = wan ]; then
+        printf '[Match]\nName=wan\n\n[Network]\nDHCP=ipv4\nIPForward=ipv4\n' \
+            > /run/systemd/network/05-crucible-wan.network
+    else
+        printf '[Match]\nName=%s\n\n[Network]\nAddress=10.10.%d.1/24\nIPForward=ipv4\nConfigureWithoutCarrier=yes\n' \
+            "$name" "$index" > "/run/systemd/network/05-crucible-$name.network"
+    fi
+    echo "crucible-router: $nic ($slot) is $name"
+done
+CONF
+chmod 755 "$ROOT/usr/local/sbin/crucible-router-setup"
+
+cat > "$ROOT/etc/systemd/system/crucible-router-setup.service" <<'CONF'
+[Unit]
+Description=Name router NICs by Proxmox slot and address them
+DefaultDependencies=no
+After=systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+Before=systemd-networkd.service nftables.service dnsmasq.service network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/crucible-router-setup
+
+[Install]
+WantedBy=multi-user.target
+CONF
+
+cat > "$ROOT/etc/sysctl.d/90-crucible-router.conf" <<'CONF'
+net.ipv4.ip_forward = 1
+CONF
+
+cat > "$ROOT/etc/nftables.conf" <<'CONF'
+#!/usr/sbin/nft -f
+flush ruleset
+
+table inet crucible_filter {
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+        ct state established,related accept
+        iifname "lan*" oifname "lan*" accept
+        iifname "lan*" oifname "wan" accept
+    }
+}
+
+table ip crucible_nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        oifname "wan" masquerade
+    }
+}
+CONF
+
+# One range per possible LAN; dnsmasq serves the one matching the asking NIC's
+# subnet, with that NIC's address as router and DNS server.
+{
+    echo "# Generated by setup-crucible-proxmox.sh: DHCP and DNS on lan1..lan31."
+    echo "interface=lan*"
+    echo "bind-dynamic"
+    echo "dhcp-authoritative"
+    echo "resolv-file=/run/systemd/resolve/resolv.conf"
+    for n in $(seq 1 31); do
+        echo "dhcp-range=10.10.$n.100,10.10.$n.199,255.255.255.0,12h"
+    done
+} > "$ROOT/etc/dnsmasq.d/crucible-router.conf"
+
+chroot "$ROOT" systemctl enable crucible-router-setup systemd-networkd nftables dnsmasq
+chroot "$ROOT" systemctl disable systemd-networkd-wait-online || true
+echo crucible-router > "$ROOT/etc/hostname"
+finish_disk_chroot
+
+qm set ${TEMPLATE_ID} --boot order=scsi0
+qm set ${TEMPLATE_ID} --serial0 socket
+qm set ${TEMPLATE_ID} --agent enabled=1
+qm template ${TEMPLATE_ID}
+
+echo "✓ Router template created"
+VMEOF
+
+    log_success "Debian router template created (ID: $ROUTER_PROXMOX_ID)"
 }
 
 create_puppy_vm() {
@@ -3821,7 +3981,7 @@ cleanup_proxmox_vms() {
     fi
 
     # Base VMs/templates the setup script itself creates, by ID.
-    local crucible_ids="103 104 105 106 9001 9002 9003 ${PUPPY_PROXMOX_ID} ${ALPINE_PROXMOX_ID} ${TINYCORE_PROXMOX_ID} ${DESKTOP_PROXMOX_ID}"
+    local crucible_ids="102 103 104 105 106 9001 9002 9003 ${PUPPY_PROXMOX_ID} ${ALPINE_PROXMOX_ID} ${TINYCORE_PROXMOX_ID} ${DESKTOP_PROXMOX_ID} ${ROUTER_PROXMOX_ID}"
 
     if [ "$scope" = "all" ]; then
         log_step "Stopping and removing ALL non-template VMs..."
@@ -3900,6 +4060,7 @@ phase2_vm_templates() {
     create_tinycore_template || log_warning "TinyCore template creation failed"
     create_puppy_vm || log_warning "Puppy VM creation failed"
     create_desktop_template || log_warning "Desktop template creation failed"
+    create_router_template || log_warning "Router template creation failed"
     publish_stock_isos || log_warning "Stock ISO publishing failed"
 
     log_success "VM templates created"
@@ -4296,6 +4457,10 @@ mode_rebuild_desktop() {
     rebuild_template_vm "desktop" "$DESKTOP_PROXMOX_ID" create_desktop_template
 }
 
+mode_rebuild_router() {
+    rebuild_template_vm "router" "$ROUTER_PROXMOX_ID" create_router_template
+}
+
 mode_status() {
     print_header "Crucible Proxmox Environment Status"
 
@@ -4424,6 +4589,7 @@ Commands:
   cleanall  - Remove ALL resources including every non-template Proxmox VM
   rebuild-alpine - Recreate only the Alpine Proxmox template VM
   rebuild-desktop - Recreate only the Debian XFCE desktop template VM (console resize + VNC clipboard)
+  rebuild-router - Recreate only the Debian router template VM (net0 WAN, netN = 10.10.N.1/24 with DHCP)
   status    - Show current environment state
   fix       - Repair broken state
   help      - Show this help message
@@ -4546,6 +4712,9 @@ main() {
             ;;
         rebuild-desktop)
             mode_rebuild_desktop
+            ;;
+        rebuild-router)
+            mode_rebuild_router
             ;;
         status)
             mode_status
