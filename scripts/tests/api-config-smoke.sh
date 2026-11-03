@@ -51,7 +51,7 @@ printf 'export PROXMOX_HOST=%q\nexport PROXMOX_API_TOKEN=%q\n' pve.test "$token"
 printf '\n8006\n\nfast-vms\nisos\n' |
     PROXMOX_CONFIG_FILE="$saved" guided proxmox --profile lab > "$log" 2>&1
 for entry in 'topomojo:Pod__AccessToken' 'player-vm-api:Proxmox__Token' \
-    'caster-api:Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN'; do
+    'caster-api:CASTER_SECRET_PROXMOX_VE_API_TOKEN'; do
     equal "$(conf_value "$config/local/lab/${entry%%:*}.conf" "${entry#*:}")" "$token" 'Credential changed'
     equal "$(stat -c %a "$config/local/lab/${entry%%:*}.conf")" 600 'Config is not private'
 done

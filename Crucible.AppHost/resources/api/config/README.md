@@ -158,10 +158,11 @@ In `local/hybrid/player-vm-api.conf`, keep the Proxmox settings, replace
 `Vsphere__Hosts__0__Enabled=false` with the `Vsphere__...` entries from
 `local/vsphere/player-vm-api.conf`, including `Vsphere__Hosts__0__Enabled=true`.
 
-In `local/hybrid/caster-api.conf`, add the
-`Terraform__EnvironmentVariables__Direct__VSPHERE_...` entries from
-`local/vsphere/caster-api.conf`. Keep the Proxmox entries.
-Replace matching keys rather than appending duplicates.
+In `local/hybrid/caster-api.conf`, keep the Proxmox entries and add the
+`CASTER_SECRET_VSPHERE_...` lines and the `SeedData__EnvironmentSets__0__...` lines from
+`local/vsphere/caster-api.conf`, renumbering the copied seed lines from
+`SeedData__EnvironmentSets__0__` to `SeedData__EnvironmentSets__1__`, so Caster seeds
+both a "Proxmox" and a "vSphere" Environment Set.
 For VMC, apply the upload adjustments above to the hybrid Player VM file.
 
 The generated `local/hybrid/topomojo.conf` still uses Proxmox only. To use vSphere
@@ -205,10 +206,32 @@ automatically and there is no fallback to a different profile.
 Unspecified keys still come from existing app configuration. A profile does not
 replace a whole section or array. Proxmox-only Player VM templates disable vSphere
 host index `0`; explicitly disable any other locally configured indices as well.
-Caster templates blank the other provider's configured direct variables, but do not
-prevent Terraform projects from supplying their own credentials/configuration.
+Caster templates give no provider variables to every run; see Caster and Environment
+Sets below. They do not prevent Terraform projects from supplying their own
+credentials/configuration.
 Templates use development certificate defaults; review those for your environment.
 Keep dynamic database/endpoints and existing authentication settings out of these profiles.
+
+## Caster and Environment Sets
+
+Caster's profile does not hand hypervisor credentials to every Terraform run. It sets them
+as API secrets (`CASTER_SECRET_PROXMOX_VE_API_TOKEN`, `CASTER_SECRET_VSPHERE_USER`,
+`CASTER_SECRET_VSPHERE_PASSWORD`, which match Caster's `Terraform:Secrets:Patterns`) and
+seeds an Environment Set ("Proxmox" or "vSphere") through `SeedData__EnvironmentSets__...`
+that maps them, with the non-secret connection settings, to the provider's variables.
+
+- Assign the set to the projects that should deploy to the hypervisor under
+  **Administration > Environment Sets** in Caster. Seeded sets are not assigned to any
+  project, and a project without the set has no provider variables.
+- The set is created only if no set has its name. Later edits to the seed lines (a new host
+  after regenerating the profile) do not change an existing set: delete it in Caster and
+  restart Aspire to seed it again. Secret values are read at each run, so a changed token
+  or password needs only a restart.
+- Profiles generated before Environment Sets used
+  `Terraform__EnvironmentVariables__Direct__...` lines, which still work but give the
+  credentials to every project. Regenerate the profile (a backup is kept) to switch.
+
+See `docs/EnvironmentSets.md` in caster.api for the rules and the security model.
 
 ## Proxmox provisioning
 
