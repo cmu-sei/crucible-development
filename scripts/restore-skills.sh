@@ -11,11 +11,19 @@
 # upstream's latest and rewrites the hashes. Those rewritten hashes are
 # discarded so the file doesn't show as modified on every container start.
 #
+# poststart.sh runs this in the background (log: /tmp/restore-skills.log).
 # Failures (offline, proxy) only warn; they never block container start.
 
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
+
+# One install at a time (e.g. the container restarts while one is running).
+exec 9>/tmp/restore-skills.lock
+if ! flock -n 9; then
+  echo "Another skill install is already running; skipping."
+  exit 0
+fi
 
 # Keep any skills-lock.json edit in progress (e.g. after `npx skills add`).
 lock_was_clean=false
