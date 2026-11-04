@@ -4,6 +4,8 @@
 
 scripts/sync-repos.sh --pull
 
+scripts/restore-skills.sh
+
 # Welcome message
 cat <<'EOF'
 
