@@ -2,7 +2,7 @@
 # Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
 # Use the official MISP Docker image
-FROM ghcr.io/misp/misp-docker/misp-core:v2.5.32
+FROM ghcr.io/misp/misp-docker/misp-core:v2.5.51
 
 # Copy custom CA certificates
 COPY certs/ /usr/local/share/ca-certificates/custom/

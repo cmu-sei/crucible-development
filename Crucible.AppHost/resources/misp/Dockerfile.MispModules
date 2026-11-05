@@ -1,7 +1,7 @@
 # Copyright 2026 Carnegie Mellon University. All Rights Reserved.
 # Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
-FROM ghcr.io/misp/misp-docker/misp-modules:v3.0.5
+FROM ghcr.io/misp/misp-docker/misp-modules:v3.1.3
 
 USER root
 
