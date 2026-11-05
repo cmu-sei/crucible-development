@@ -33,8 +33,8 @@ echo "Installing tools..."
 
 # Install the gh-stack CLI extension and configure git for non-interactive use,
 # per https://docs.github.com/en/pull-requests/get-started/stacked-prs-quickstart
-# (the gh-stack Claude/Codex skill itself is managed via .agents/skills + skills-lock.json,
-# kept current by .github/workflows/update-skills.yml)
+# (the gh-stack Claude/Codex skill itself is listed in skills-lock.json and
+# installed on container start by scripts/restore-skills.sh)
 (gh extension install github/gh-stack) &
 GH_STACK_PID=$!
 

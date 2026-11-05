@@ -116,3 +116,7 @@ proxmox-ve_*.iso
 # Personal working notes
 TODO/
 node_modules
+
+# AI agent skills: installed on container start from skills-lock.json
+# (scripts/restore-skills.sh). The .claude/skills symlinks are committed.
+.agents/skills/
