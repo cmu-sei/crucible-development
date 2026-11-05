@@ -108,6 +108,10 @@ declare -A RESOURCE_IDS=(
     [caster_project1_main_tf]="f9b489fe-5bf6-4baa-8840-5e900e5b90d5"
     [caster_project1_variables_tf]="a43bc816-be98-410e-bd53-def3522f5bb5"
     [caster_project1_tfvars]="9a52310f-56e5-4ac5-b856-ceddbb653ff4"
+    [caster_project1_routed_dir]="c30908cf-9d92-4085-8725-63a5f62f22d6"
+    [caster_project1_routed_main_tf]="9aebc213-e9a0-4539-a74d-9f39064a2fcc"
+    [caster_project1_routed_variables_tf]="724f8d35-cd4c-4117-a323-cd9b22c2573c"
+    [caster_project1_routed_tfvars]="563adf72-c701-4fe7-ae6c-8eb20b77ea34"
 
     [caster_project2]="7fa5b814-d57b-494f-96e8-51c34471c2c1"
     [caster_project2_dir]="704808b2-b864-4997-b4c6-2d25220c5445"
@@ -157,6 +161,8 @@ PROXMOX_NODE="${PROXMOX_NODE:-pve}"
 ALPINE_PROXMOX_ID="${ALPINE_PROXMOX_ID:-105}"
 TINYCORE_PROXMOX_ID="${TINYCORE_PROXMOX_ID:-106}"
 PUPPY_PROXMOX_ID="${PUPPY_PROXMOX_ID:-103}"
+DESKTOP_PROXMOX_ID="${DESKTOP_PROXMOX_ID:-104}"
+ROUTER_PROXMOX_ID="${ROUTER_PROXMOX_ID:-102}"
 
 # Command-line arguments (set via parse_args or environment)
 PROXMOX_HOST="${PROXMOX_HOST:-}"
@@ -1374,6 +1380,371 @@ VMEOF
     log_success "TinyCore Linux template created (ID: $TINYCORE_PROXMOX_ID)"
 }
 
+# Remote-side helpers for templates built from the Debian 12 generic cloud image:
+# the image is imported to local-lvm and software is installed into it from the
+# host in a chroot, so a build needs internet on the Proxmox host only, not on
+# vmbr0's guests (the dev host has no DHCP or NAT there). Printed ahead of each
+# template's own heredoc, which calls them on the Proxmox host.
+debian_template_lib() {
+    cat << 'LIBEOF'
+set -e
+# The ssh client's locale need not exist on the host or in the image.
+export LC_ALL=C
+
+# The generic image, not genericcloud: the cloud kernel leaves out virtio_gpu.
+DEBIAN_IMAGE="debian-12-generic-amd64.qcow2"
+DEBIAN_URL="https://cloud.debian.org/images/cloud/bookworm/latest/${DEBIAN_IMAGE}"
+IMAGE_PATH="/var/lib/vz/template/iso/${DEBIAN_IMAGE}"
+
+fetch_debian_image() {
+    if [ ! -f "$IMAGE_PATH" ]; then
+        echo "Downloading Debian 12 generic image..."
+        # Download beside the target so an interrupted run is not mistaken for the image.
+        wget -q --show-progress --progress=dot:giga -O "${IMAGE_PATH}.part" "$DEBIAN_URL" || { rm -f "${IMAGE_PATH}.part"; exit 1; }
+        mv "${IMAGE_PATH}.part" "$IMAGE_PATH"
+    fi
+}
+
+destroy_vm_if_present() {
+    if qm status "$1" >/dev/null 2>&1; then
+        qm stop "$1" 2>/dev/null || true
+        qm destroy "$1" --purge 1 2>/dev/null || true
+    fi
+}
+
+# import_debian_disk VMID [SIZE]: the image as scsi0, grown to SIZE if given.
+import_debian_disk() {
+    qm importdisk "$1" "$IMAGE_PATH" local-lvm
+    qm set "$1" --scsihw virtio-scsi-pci --scsi0 "local-lvm:vm-$1-disk-0,discard=on"
+    if [ -n "$2" ]; then
+        qm resize "$1" scsi0 "$2"
+    fi
+}
+
+close_disk_chroot() {
+    for m in dev/pts dev proc sys; do umount "$ROOT/$m" 2>/dev/null || true; done
+    umount "$ROOT" 2>/dev/null || true
+    losetup -d "$LOOP" 2>/dev/null || true
+    rmdir "$ROOT" 2>/dev/null || true
+    trap - EXIT
+}
+
+# open_disk_chroot VMID: mounts scsi0's root at $ROOT, grown into any resize
+# (p1 is last on the disk), with the host's DNS and no service starts.
+open_disk_chroot() {
+    local disk
+    disk="$(pvesm path "local-lvm:vm-$1-disk-0")"
+    ROOT="$(mktemp -d)"
+    LOOP="$(losetup -fP --show "$disk")"
+    trap close_disk_chroot EXIT
+
+    sfdisk --relocate gpt-bak-std "$LOOP"
+    echo ", +" | sfdisk --no-reread -N 1 "$LOOP"
+    partx -u "$LOOP"
+    e2fsck -fy "${LOOP}p1" || [ $? -le 1 ]
+    resize2fs "${LOOP}p1"
+
+    mount "${LOOP}p1" "$ROOT"
+    for m in dev dev/pts proc sys; do mount --bind "/$m" "$ROOT/$m"; done
+    mv "$ROOT/etc/resolv.conf" "$ROOT/etc/resolv.conf.crucible"
+    cp -L /etc/resolv.conf "$ROOT/etc/resolv.conf"
+    # Packages must not start services inside the chroot.
+    printf '#!/bin/sh\nexit 101\n' > "$ROOT/usr/sbin/policy-rc.d"
+    chmod 755 "$ROOT/usr/sbin/policy-rc.d"
+}
+
+chroot_apt_install() {
+    chroot "$ROOT" env DEBIAN_FRONTEND=noninteractive apt-get update
+    chroot "$ROOT" env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "$@"
+}
+
+# Logins root/password, SSH host keys made on first boot (without a cloud-init
+# drive nothing else makes them), and each clone its own machine-id (from its
+# SMBIOS UUID). Then the chroot is closed.
+finish_disk_chroot() {
+    cat > "$ROOT/etc/systemd/system/crucible-ssh-hostkeys.service" <<'CONF'
+[Unit]
+Description=Generate missing SSH host keys
+Before=ssh.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ssh-keygen -A
+
+[Install]
+WantedBy=multi-user.target
+CONF
+    chroot "$ROOT" systemctl enable crucible-ssh-hostkeys
+    printf 'root:password\n' | chroot "$ROOT" chpasswd
+
+    chroot "$ROOT" apt-get clean
+    rm -f "$ROOT/usr/sbin/policy-rc.d" "$ROOT/etc/resolv.conf"
+    mv "$ROOT/etc/resolv.conf.crucible" "$ROOT/etc/resolv.conf"
+    rm -f "$ROOT"/etc/ssh/ssh_host_* "$ROOT/var/lib/dbus/machine-id"
+    truncate -s 0 "$ROOT/etc/machine-id"
+    close_disk_chroot
+}
+LIBEOF
+}
+
+# Debian 12 + XFCE desktop whose console can resize and share the clipboard.
+# TinyCore/Alpine/Puppy run on the std VGA adapter, which cannot pass a noVNC
+# resize request to the guest, and they have no clipboard agent. This template
+# uses virtio-gpu (QEMU forwards SetDesktopSize to it) and QEMU's VNC clipboard
+# (clipboard=vnc, served to the guest's spice-vdagent), plus the guest agent.
+# Proxmox accepts clipboard=vnc with std/cirrus/vmware/virtio/qxl adapters; it
+# replaces the SPICE clipboard and blocks live migration of the VM.
+create_desktop_template() {
+    log_step "Creating Debian desktop template (ID: $DESKTOP_PROXMOX_ID)..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create Debian 12 XFCE template (vga virtio,clipboard=vnc, agent 1, 2 GB, 2 cores)"
+        return 0
+    fi
+
+    if ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "qm status $DESKTOP_PROXMOX_ID >/dev/null 2>&1"; then
+        log_info "Desktop template VM $DESKTOP_PROXMOX_ID already exists, skipping"
+        return 0
+    fi
+
+    { debian_template_lib; cat << 'VMEOF'; } | ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" \
+        "TEMPLATE_ID='$DESKTOP_PROXMOX_ID' bash -s" || return 1
+
+fetch_debian_image
+destroy_vm_if_present ${TEMPLATE_ID}
+
+qm create ${TEMPLATE_ID} \
+  --name debian-desktop-template \
+  --memory 2048 \
+  --cores 2 \
+  --net0 virtio,bridge=vmbr0 \
+  --ostype l26
+import_debian_disk ${TEMPLATE_ID} 8G
+
+open_disk_chroot ${TEMPLATE_ID}
+chroot_apt_install qemu-guest-agent spice-vdagent xserver-xorg-core xserver-xorg-input-libinput \
+    x11-xserver-utils dbus-x11 lightdm lightdm-gtk-greeter xfce4 xfce4-terminal mousepad \
+    adwaita-icon-theme fonts-dejavu-core
+
+mkdir -p "$ROOT/etc/lightdm/lightdm.conf.d"
+cat > "$ROOT/etc/lightdm/lightdm.conf.d/50-crucible-autologin.conf" <<'CONF'
+[Seat:*]
+autologin-user=user
+autologin-user-timeout=0
+autologin-session=xfce
+CONF
+
+# virtio-gpu takes the console's new size as its preferred mode and raises a DRM
+# change uevent; X does not switch modes on its own, so the session applies it.
+cat > "$ROOT/usr/local/bin/crucible-display-follow" <<'CONF'
+#!/bin/sh
+xset s off -dpms 2>/dev/null
+apply() {
+    out=$(xrandr --query | awk '/ connected/ {print $1; exit}')
+    [ -n "$out" ] && xrandr --output "$out" --auto
+}
+apply
+udevadm monitor --udev --subsystem-match=drm | while read -r line; do
+    case "$line" in *change*) apply ;; esac
+done
+CONF
+chmod 755 "$ROOT/usr/local/bin/crucible-display-follow"
+cat > "$ROOT/etc/xdg/autostart/crucible-display-follow.desktop" <<'CONF'
+[Desktop Entry]
+Type=Application
+Name=Follow console size
+Exec=/usr/local/bin/crucible-display-follow
+NoDisplay=true
+CONF
+
+# Without a cloud-init drive nothing configures the NIC, so DHCP on any en* NIC.
+cat > "$ROOT/etc/systemd/network/80-crucible-dhcp.network" <<'CONF'
+[Match]
+Name=en*
+
+[Network]
+DHCP=yes
+CONF
+
+chroot "$ROOT" useradd -m -s /bin/bash -G sudo,audio,video -c "Crucible User" user
+printf 'user:password\n' | chroot "$ROOT" chpasswd
+chroot "$ROOT" systemctl set-default graphical.target
+chroot "$ROOT" systemctl enable lightdm systemd-networkd
+chroot "$ROOT" systemctl disable systemd-networkd-wait-online || true
+finish_disk_chroot
+
+qm set ${TEMPLATE_ID} --boot order=scsi0
+qm set ${TEMPLATE_ID} --vga virtio,clipboard=vnc
+# Boot messages go to the serial port too (qm terminal); the display stays virtio.
+qm set ${TEMPLATE_ID} --serial0 socket
+qm set ${TEMPLATE_ID} --agent enabled=1
+qm template ${TEMPLATE_ID}
+
+echo "✓ Desktop template created"
+VMEOF
+
+    log_success "Debian desktop template created (ID: $DESKTOP_PROXMOX_ID)"
+}
+
+# Debian 12 router for routed exercise topologies, with nothing to configure per
+# deploy. It follows the proxmox-router-gateway module's adapter contract:
+#
+#   net0          WAN, renamed "wan". DHCP client only, so it stays unaddressed
+#                 where nothing offers a lease (vmbr0 on the dev host). Everything
+#                 leaving through it is masqueraded.
+#   net1..net31   LAN N, renamed "lanN", address 10.10.N.1/24, DHCP server for
+#                 10.10.N.100-199 with 10.10.N.1 as gateway and DNS.
+#
+# At boot, crucible-router-setup names the NICs from their Proxmox slot (net0-5
+# sit at PCI 00:12-17, net6-31 behind the pci.1 bridge at 01:01-1a) and writes
+# their networkd units, so one template serves any number of inside networks
+# and a NIC keeps its subnet even when lower-numbered ones are missing. nftables
+# forwards between the LANs and from them to the WAN; the WAN side only gets
+# replies. dnsmasq forwards DNS to whatever the WAN lease supplied.
+create_router_template() {
+    log_step "Creating Debian router template (ID: $ROUTER_PROXMOX_ID)..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create Debian 12 router template (net0 WAN, netN = 10.10.N.1/24 + DHCP, 256 MB, 1 core)"
+        return 0
+    fi
+
+    if ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" "qm status $ROUTER_PROXMOX_ID >/dev/null 2>&1"; then
+        log_info "Router template VM $ROUTER_PROXMOX_ID already exists, skipping"
+        return 0
+    fi
+
+    { debian_template_lib; cat << 'VMEOF'; } | ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" \
+        "TEMPLATE_ID='$ROUTER_PROXMOX_ID' bash -s" || return 1
+
+fetch_debian_image
+destroy_vm_if_present ${TEMPLATE_ID}
+
+qm create ${TEMPLATE_ID} \
+  --name debian-router-template \
+  --memory 256 \
+  --cores 1 \
+  --net0 virtio,bridge=vmbr0 \
+  --ostype l26
+import_debian_disk ${TEMPLATE_ID} 3G
+
+open_disk_chroot ${TEMPLATE_ID}
+chroot_apt_install qemu-guest-agent nftables dnsmasq
+
+cat > "$ROOT/usr/local/sbin/crucible-router-setup" <<'CONF'
+#!/bin/sh
+# Name each NIC for its Proxmox slot and write its networkd unit (see the
+# template's notes in setup-crucible-proxmox.sh).
+set -e
+mkdir -p /run/systemd/network
+rm -f /run/systemd/network/05-crucible-*.network
+for path in /sys/class/net/*; do
+    nic=${path##*/}
+    [ -e "$path/device" ] || continue
+    device=$(readlink -f "$path/device")
+    # virtio-net hangs a virtioN device off the PCI function; the slot is its parent.
+    case "${device##*/}" in virtio*) device=${device%/*} ;; esac
+    slot=${device##*/}   # 0000:BB:SS.F
+    bus=$(echo "$slot" | cut -d: -f2)
+    dev=$(printf '%d' "0x$(echo "$slot" | cut -d: -f3 | cut -d. -f1)")
+    case "$bus" in
+        00) index=$((dev - 18)) ;;
+        01) index=$((dev + 5)) ;;
+        *) index=-1 ;;
+    esac
+    if [ "$index" -lt 0 ] || [ "$index" -gt 31 ]; then
+        echo "crucible-router: $nic at $slot is not a Proxmox netN slot, left alone"
+        continue
+    fi
+    if [ "$index" -eq 0 ]; then name=wan; else name=lan$index; fi
+    if [ "$nic" != "$name" ]; then
+        ip link set dev "$nic" down
+        ip link set dev "$nic" name "$name"
+    fi
+    if [ "$name" = wan ]; then
+        printf '[Match]\nName=wan\n\n[Network]\nDHCP=ipv4\nIPForward=ipv4\n' \
+            > /run/systemd/network/05-crucible-wan.network
+    else
+        printf '[Match]\nName=%s\n\n[Network]\nAddress=10.10.%d.1/24\nIPForward=ipv4\nConfigureWithoutCarrier=yes\n' \
+            "$name" "$index" > "/run/systemd/network/05-crucible-$name.network"
+    fi
+    echo "crucible-router: $nic ($slot) is $name"
+done
+CONF
+chmod 755 "$ROOT/usr/local/sbin/crucible-router-setup"
+
+cat > "$ROOT/etc/systemd/system/crucible-router-setup.service" <<'CONF'
+[Unit]
+Description=Name router NICs by Proxmox slot and address them
+DefaultDependencies=no
+After=systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+Before=systemd-networkd.service nftables.service dnsmasq.service network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/crucible-router-setup
+
+[Install]
+WantedBy=multi-user.target
+CONF
+
+cat > "$ROOT/etc/sysctl.d/90-crucible-router.conf" <<'CONF'
+net.ipv4.ip_forward = 1
+CONF
+
+cat > "$ROOT/etc/nftables.conf" <<'CONF'
+#!/usr/sbin/nft -f
+flush ruleset
+
+table inet crucible_filter {
+    chain forward {
+        type filter hook forward priority filter; policy drop;
+        ct state established,related accept
+        iifname "lan*" oifname "lan*" accept
+        iifname "lan*" oifname "wan" accept
+    }
+}
+
+table ip crucible_nat {
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        oifname "wan" masquerade
+    }
+}
+CONF
+
+# One range per possible LAN; dnsmasq serves the one matching the asking NIC's
+# subnet, with that NIC's address as router and DNS server.
+{
+    echo "# Generated by setup-crucible-proxmox.sh: DHCP and DNS on lan1..lan31."
+    echo "interface=lan*"
+    echo "bind-dynamic"
+    echo "dhcp-authoritative"
+    echo "resolv-file=/run/systemd/resolve/resolv.conf"
+    for n in $(seq 1 31); do
+        echo "dhcp-range=10.10.$n.100,10.10.$n.199,255.255.255.0,12h"
+    done
+} > "$ROOT/etc/dnsmasq.d/crucible-router.conf"
+
+chroot "$ROOT" systemctl enable crucible-router-setup systemd-networkd nftables dnsmasq
+chroot "$ROOT" systemctl disable systemd-networkd-wait-online || true
+echo crucible-router > "$ROOT/etc/hostname"
+finish_disk_chroot
+
+qm set ${TEMPLATE_ID} --boot order=scsi0
+qm set ${TEMPLATE_ID} --serial0 socket
+qm set ${TEMPLATE_ID} --agent enabled=1
+qm template ${TEMPLATE_ID}
+
+echo "✓ Router template created"
+VMEOF
+
+    log_success "Debian router template created (ID: $ROUTER_PROXMOX_ID)"
+}
+
 create_puppy_vm() {
     log_step "Creating Puppy Linux VM (ID: $PUPPY_PROXMOX_ID)..."
 
@@ -1883,6 +2254,11 @@ VMEOF
 create_stock_templates_once() {
     local token="$1"
 
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create the TopoMojo stock templates if missing"
+        return 0
+    fi
+
     # Check if stock templates already exist
     local all_templates=$(curl -k -s -X GET "$TOPOMOJO_API_URL/api/templates?filter=stock" \
         -H "Authorization: Bearer $token" 2>/dev/null || echo "[]")
@@ -2007,6 +2383,11 @@ create_topomojo_templates() {
     local template_type="${3:-tinycore}"  # Default to tinycore if not specified
 
     log_step "Creating TopoMojo templates for workspace ($template_type)..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would replace the $template_type templates in TopoMojo workspace $workspace_id"
+        return 0
+    fi
 
     # Remove ALL existing templates of the type we're about to create (idempotent)
     log_info "Checking for existing templates to ensure idempotency..."
@@ -2255,6 +2636,11 @@ upsert_caster_file() {
     local file_name="$4"
     local file_content="$5"
 
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create or update Caster file: $file_name"
+        return 0
+    fi
+
     local actual_file_id=""
     local existing_files=$(curl -k -s -X GET "$CASTER_API_URL/directories/$directory_id/files" \
         -H "Authorization: Bearer $token" 2>/dev/null)
@@ -2331,6 +2717,9 @@ create_caster_project() {
     local main_tf_id="$4"
     local variables_tf_id="$5"
     local tfvars_id="$6"
+    local directory_name="${7:-Basic_Topology}"
+    # main.tf to write instead of the two-VM Basic Topology one
+    local main_tf_content="${8:-}"
 
     log_step "Creating Caster project: $project_name"
 
@@ -2396,11 +2785,17 @@ create_caster_project() {
     # Get fresh token to ensure we have project permissions
     token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[caster]}")
 
+    if [ "$DRY_RUN" = "true" ]; then
+        [ "$skip_dir_creation" != "true" ] && log_info "[DRY RUN] Would create Caster directory: $directory_name"
+        log_info "[DRY RUN] Would write main.tf, variables.tf and terraform.tfvars in $directory_name"
+        return 0
+    fi
+
     # Create directory if needed
     if [ "$skip_dir_creation" != "true" ]; then
         log_info "Creating directory with projectId: $project_id"
 
-        local directory_payload="{\"id\": \"$directory_id\", \"projectId\": \"$project_id\", \"name\": \"Basic Topology\", \"terraformVersion\": \"1.5.0\"}"
+        local directory_payload="{\"id\": \"$directory_id\", \"projectId\": \"$project_id\", \"name\": \"$directory_name\", \"terraformVersion\": \"1.5.0\"}"
         local directory_response=$(curl -k -s -X POST "$CASTER_API_URL/directories" \
             -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
@@ -2419,7 +2814,8 @@ create_caster_project() {
     log_info "Creating/updating Terraform files in directory..."
 
     # Create main.tf
-    local main_tf_content='terraform {
+    if [ -z "$main_tf_content" ]; then
+    main_tf_content='terraform {
   required_providers {
     proxmox = {
       source  = "bpg/proxmox"
@@ -2518,6 +2914,7 @@ resource "crucible_player_virtual_machine" "puppy" {
     node = "pve"
   }
 }'
+    fi
 
     upsert_caster_file "$token" "$main_tf_id" "$directory_id" "main.tf" "$main_tf_content"
 
@@ -2656,6 +3053,234 @@ create_caster_project1() {
         "${RESOURCE_IDS[caster_project1_tfvars]}"
 }
 
+# Routed topology for "Proxmox Test", in a directory of its own so Basic Topology
+# keeps demonstrating what it does: two SDN vnets in the crucible zone, the
+# router template on vmbr0 + both vnets, the desktop template on dmz and
+# TinyCore on corp. The router hands out 10.10.1.x on dmz and 10.10.2.x on
+# corp and routes between them. Needs the crucible SDN zone, which phase 1
+# creates (setup_proxmox_sdn_zone).
+caster_routed_topology_main_tf() {
+    # The templates are the ones this script builds, whatever IDs it was given.
+    sed -e "s/__ROUTER_ID__/$ROUTER_PROXMOX_ID/" -e "s/__DESKTOP_ID__/$DESKTOP_PROXMOX_ID/" \
+        -e "s/__TINYCORE_ID__/$TINYCORE_PROXMOX_ID/" <<'TF'
+terraform {
+  required_providers {
+    proxmox = {
+      source  = "bpg/proxmox"
+      version = "0.106.0"
+    }
+    crucible = {
+      source  = "cmu-sei/crucible"
+      version = "~> 2.5"
+    }
+  }
+}
+
+provider "proxmox" {
+  endpoint  = var.proxmox_endpoint
+  api_token = var.proxmox_api_token
+  insecure  = var.proxmox_insecure
+}
+
+provider "crucible" {
+  username       = var.crucible_username
+  password       = var.crucible_password
+  auth_url       = var.crucible_auth_url
+  token_url      = var.crucible_token_url
+  client_id      = var.crucible_client_id
+  client_secret  = var.crucible_client_secret
+  client_scopes  = ["player", "player-vm"]
+  vm_api_url     = var.vm_api_url
+  player_api_url = var.player_api_url
+  caster_api_url = var.caster_api_url
+}
+
+locals {
+  generated_name_suffix = substr(replace(coalesce(var.view_id, var.username), "/[^A-Za-z0-9-]/", "-"), 0, 32)
+
+  player_vm_team_ids = [
+    for team_id in [var.admin, var.admin_user] : team_id
+    if team_id != null && team_id != ""
+  ]
+
+  # Router LAN order is the addressing: the Nth segment is the router's netN,
+  # so 10.10.N.0/24. Always append.
+  segments = ["dmz", "corp"]
+
+  # Vnet IDs are at most 8 characters; derive stable ones per deployment.
+  vnet_ids = {
+    for segment in local.segments : segment => "v${substr(sha1("${local.generated_name_suffix}/${segment}"), 0, 7)}"
+  }
+}
+
+# Applies the vnets' removal on destroy; every vnet depends on it.
+resource "proxmox_sdn_applier" "finalizer" {
+  on_create = false
+}
+
+resource "proxmox_sdn_vnet" "segment" {
+  for_each = toset(local.segments)
+
+  id    = local.vnet_ids[each.key]
+  zone  = "crucible"
+  alias = "routed-${each.key}"
+
+  depends_on = [proxmox_sdn_applier.finalizer]
+}
+
+# Makes the vnets exist on the node before any VM attaches to them.
+resource "proxmox_sdn_applier" "apply" {
+  on_destroy = false
+
+  lifecycle {
+    replace_triggered_by = [proxmox_sdn_vnet.segment]
+  }
+
+  depends_on = [proxmox_sdn_vnet.segment]
+}
+
+resource "proxmox_virtual_environment_vm" "router" {
+  name      = "router-routed-${local.generated_name_suffix}"
+  node_name = "pve"
+
+  clone {
+    vm_id = __ROUTER_ID__
+  }
+
+  cpu {
+    cores = 1
+  }
+
+  memory {
+    dedicated = 256
+  }
+
+  agent {
+    enabled = true
+  }
+
+  # net0: WAN. net1..n: the segments in order (10.10.1.x, 10.10.2.x, ...).
+  network_device {
+    bridge = "vmbr0"
+  }
+
+  dynamic "network_device" {
+    for_each = local.segments
+
+    content {
+      bridge = proxmox_sdn_vnet.segment[network_device.value].id
+    }
+  }
+
+  depends_on = [proxmox_sdn_applier.apply]
+}
+
+resource "proxmox_virtual_environment_vm" "desktop" {
+  name      = "desktop-routed-${local.generated_name_suffix}"
+  node_name = "pve"
+
+  clone {
+    vm_id = __DESKTOP_ID__
+  }
+
+  cpu {
+    cores = 2
+  }
+
+  memory {
+    dedicated = 1024
+  }
+
+  agent {
+    enabled = true
+  }
+
+  vga {
+    type      = "virtio"
+    clipboard = "vnc"
+  }
+
+  network_device {
+    bridge = proxmox_sdn_vnet.segment["dmz"].id
+  }
+
+  depends_on = [proxmox_sdn_applier.apply]
+}
+
+resource "proxmox_virtual_environment_vm" "tinycore" {
+  name      = "tinycore-routed-${local.generated_name_suffix}"
+  node_name = "pve"
+
+  clone {
+    vm_id = __TINYCORE_ID__
+  }
+
+  cpu {
+    cores = 1
+  }
+
+  memory {
+    dedicated = 512
+  }
+
+  network_device {
+    bridge = proxmox_sdn_vnet.segment["corp"].id
+  }
+
+  depends_on = [proxmox_sdn_applier.apply]
+}
+
+# Register VMs in Player VM API
+resource "crucible_player_virtual_machine" "router" {
+  name       = proxmox_virtual_environment_vm.router.name
+  team_ids   = local.player_vm_team_ids
+  user_id    = var.user_id
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.router.vm_id
+    node = "pve"
+  }
+}
+
+resource "crucible_player_virtual_machine" "desktop" {
+  name       = proxmox_virtual_environment_vm.desktop.name
+  team_ids   = local.player_vm_team_ids
+  user_id    = var.user_id
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.desktop.vm_id
+    node = "pve"
+  }
+}
+
+resource "crucible_player_virtual_machine" "tinycore" {
+  name       = proxmox_virtual_environment_vm.tinycore.name
+  team_ids   = local.player_vm_team_ids
+  user_id    = var.user_id
+  embeddable = true
+
+  proxmox_vm_info {
+    id   = proxmox_virtual_environment_vm.tinycore.vm_id
+    node = "pve"
+  }
+}
+TF
+}
+
+create_caster_project1_routed() {
+    create_caster_project \
+        "Proxmox Test" \
+        "${RESOURCE_IDS[caster_project1]}" \
+        "${RESOURCE_IDS[caster_project1_routed_dir]}" \
+        "${RESOURCE_IDS[caster_project1_routed_main_tf]}" \
+        "${RESOURCE_IDS[caster_project1_routed_variables_tf]}" \
+        "${RESOURCE_IDS[caster_project1_routed_tfvars]}" \
+        "Routed_Topology" \
+        "$(caster_routed_topology_main_tf)"
+}
+
 create_caster_project2() {
     create_caster_project \
         "Proxmox Test with Alloy" \
@@ -2675,6 +3300,11 @@ add_team_application_instance() {
     local application_id="$2"
     local display_order="$3"
     local token="$4"
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would add application $application_id to team $team_id"
+        return 0
+    fi
 
     local response=$(curl -k -s -w "\n%{http_code}" -X POST \
         "$PLAYER_API_URL/teams/$team_id/application-instances" \
@@ -2866,6 +3496,11 @@ register_player_vm() {
     local admin_team_id="$4"
     local token="$5"
 
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would register Player VM: $vm_name (Proxmox $proxmox_id)"
+        return 0
+    fi
+
     local response=$(curl -k -s -w "\n%{http_code}" -X POST "$VM_API_URL/vms" \
         -H "Authorization: Bearer $token" \
         -H "Content-Type: application/json" \
@@ -2992,6 +3627,12 @@ create_alloy_event_with_caster() {
         fi
     done <<< "$matching_events"
 
+    if [ "$DRY_RUN" = "true" ]; then
+        [ -n "$(echo $ids_to_delete)" ] && log_info "[DRY RUN] Would delete Alloy events with the wrong directory: $(echo $ids_to_delete)"
+        [ "$has_correct" = "true" ] && log_info "[DRY RUN] Alloy event (with Caster) already exists" || log_info "[DRY RUN] Would create Alloy event (with Caster)"
+        return 0
+    fi
+
     # If we have the correct one, we're done
     if [ "$has_correct" = "true" ]; then
         # Delete any duplicates with wrong directory
@@ -3013,11 +3654,6 @@ create_alloy_event_with_caster() {
                 -H "Authorization: Bearer $token" > /dev/null 2>&1
         fi
     done
-
-    if [ "$DRY_RUN" = "true" ]; then
-        log_info "[DRY RUN] Would create Alloy event (with Caster)"
-        return 0
-    fi
 
     # Token already fetched above
     # Try with id first (if API supports it), otherwise API will generate one
@@ -3533,6 +4169,11 @@ cleanup_alloy_resources() {
 cleanup_topomojo_resources() {
     log_step "Cleaning TopoMojo resources..."
 
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would delete the TopoMojo test resources"
+        return 0
+    fi
+
     local token=$(get_keycloak_token "${KEYCLOAK_CLIENTS[topomojo]}")
     if [ -z "$token" ]; then
         log_error "Failed to get TopoMojo token"
@@ -3614,7 +4255,7 @@ cleanup_proxmox_vms() {
     fi
 
     # Base VMs/templates the setup script itself creates, by ID.
-    local crucible_ids="103 105 106 9001 9002 9003 ${PUPPY_PROXMOX_ID} ${ALPINE_PROXMOX_ID} ${TINYCORE_PROXMOX_ID}"
+    local crucible_ids="102 103 104 105 106 9001 9002 9003 ${PUPPY_PROXMOX_ID} ${ALPINE_PROXMOX_ID} ${TINYCORE_PROXMOX_ID} ${DESKTOP_PROXMOX_ID} ${ROUTER_PROXMOX_ID}"
 
     if [ "$scope" = "all" ]; then
         log_step "Stopping and removing ALL non-template VMs..."
@@ -3670,6 +4311,43 @@ CLEANTEMPLATES
 # PHASE ORCHESTRATION
 # ============================================================
 
+# The SDN zone the Caster demo topologies create their networks (vnets) in. A zone is
+# shared range infrastructure, like a vSphere distributed switch: each deployment adds
+# and removes its own vnets in it, but nothing creates the zone itself. The Terraform
+# names it literally ("crucible"), so this name must match.
+readonly PROXMOX_SDN_ZONE="crucible"
+
+setup_proxmox_sdn_zone() {
+    log_step "Setting up SDN zone '$PROXMOX_SDN_ZONE' for exercise networks..."
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would create SDN zone '$PROXMOX_SDN_ZONE' (simple, pve IPAM) if missing"
+        return 0
+    fi
+
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << SDNEOF
+set -e
+
+# SDN writes its networks to /etc/network/interfaces.d/sdn, which only takes effect
+# when the main interfaces file sources that directory (the default since PVE 8).
+if ! grep -qE '^\s*source\s+/etc/network/interfaces\.d/' /etc/network/interfaces; then
+    echo "source /etc/network/interfaces.d/*" >> /etc/network/interfaces
+    echo "✓ /etc/network/interfaces now sources interfaces.d"
+fi
+
+if pvesh get /cluster/sdn/zones/$PROXMOX_SDN_ZONE >/dev/null 2>&1; then
+    echo "✓ SDN zone $PROXMOX_SDN_ZONE already exists"
+else
+    pvesh create /cluster/sdn/zones --zone $PROXMOX_SDN_ZONE --type simple --ipam pve
+    # Pending SDN changes do nothing until applied cluster-wide
+    pvesh set /cluster/sdn
+    echo "✓ Created and applied SDN zone $PROXMOX_SDN_ZONE"
+fi
+SDNEOF
+
+    log_success "SDN zone '$PROXMOX_SDN_ZONE' ready"
+}
+
 phase1_proxmox_infrastructure() {
 
     print_section "Phase 1/9: Proxmox Infrastructure Setup"
@@ -3679,6 +4357,7 @@ phase1_proxmox_infrastructure() {
     setup_proxmox_nginx || return 1
     setup_proxmox_token || return 1
     setup_proxmox_nfs || return 1
+    setup_proxmox_sdn_zone || return 1
     setup_proxmox_oidc || log_warning "OIDC configuration skipped (see warnings above)"
     configure_proxmox_api_profile || return 1
 
@@ -3692,6 +4371,8 @@ phase2_vm_templates() {
     create_alpine_template || log_warning "Alpine template creation failed"
     create_tinycore_template || log_warning "TinyCore template creation failed"
     create_puppy_vm || log_warning "Puppy VM creation failed"
+    create_desktop_template || log_warning "Desktop template creation failed"
+    create_router_template || log_warning "Router template creation failed"
     publish_stock_isos || log_warning "Stock ISO publishing failed"
 
     log_success "VM templates created"
@@ -3739,6 +4420,14 @@ phase5_caster_projects() {
 
     create_caster_project1 || log_warning "Caster project 1 creation failed"
     create_caster_project2 || log_warning "Caster project 2 creation failed"
+
+    # The routed layout clones the router and desktop templates too; without them
+    # only it is left out.
+    if proxmox_vm_exists "$ROUTER_PROXMOX_ID" && proxmox_vm_exists "$DESKTOP_PROXMOX_ID"; then
+        create_caster_project1_routed || log_warning "Caster project 1 Routed Topology creation failed"
+    else
+        log_warning "Router ($ROUTER_PROXMOX_ID) or desktop ($DESKTOP_PROXMOX_ID) template not found; not adding Routed Topology to \"Proxmox Test\""
+    fi
 
     log_success "Caster projects created"
 }
@@ -4042,6 +4731,56 @@ VMEOF
     log_success "Alpine template rebuilt"
 }
 
+# rebuild_template_vm LABEL VMID CREATE_FUNCTION: delete one template VM and run
+# its create function again, leaving everything else alone.
+rebuild_template_vm() {
+    local label="$1"
+    local vmid="$2"
+    local create_fn="$3"
+
+    print_header "Crucible Proxmox ${label^} Template Rebuild"
+
+    load_config || true
+
+    if [ -z "$PROXMOX_HOST" ]; then
+        log_error "PROXMOX_HOST not set. Cannot rebuild $label template."
+        exit 1
+    fi
+
+    log_warning "This will delete and recreate Proxmox template VM $vmid only"
+    read -p "Continue? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "${label^} template rebuild cancelled"
+        exit 0
+    fi
+
+    if [ "$DRY_RUN" = "true" ]; then
+        log_info "[DRY RUN] Would rebuild $label template VM $vmid"
+        return 0
+    fi
+
+    ssh -i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no "$PROXMOX_USER@$PROXMOX_HOST" bash << VMEOF
+set -e
+if qm status $vmid >/dev/null 2>&1; then
+    qm stop $vmid --skiplock 1 2>/dev/null || true
+    qm destroy $vmid --purge 1
+fi
+VMEOF
+
+    "$create_fn"
+
+    log_success "${label^} template rebuilt"
+}
+
+mode_rebuild_desktop() {
+    rebuild_template_vm "desktop" "$DESKTOP_PROXMOX_ID" create_desktop_template
+}
+
+mode_rebuild_router() {
+    rebuild_template_vm "router" "$ROUTER_PROXMOX_ID" create_router_template
+}
+
 mode_status() {
     print_header "Crucible Proxmox Environment Status"
 
@@ -4169,6 +4908,8 @@ Commands:
   clean-vms - Remove API resources + only Crucible/TopoMojo-managed Proxmox VMs
   cleanall  - Remove ALL resources including every non-template Proxmox VM
   rebuild-alpine - Recreate only the Alpine Proxmox template VM
+  rebuild-desktop - Recreate only the Debian XFCE desktop template VM (console resize + VNC clipboard)
+  rebuild-router - Recreate only the Debian router template VM (net0 WAN, netN = 10.10.N.1/24 with DHCP)
   status    - Show current environment state
   fix       - Repair broken state
   help      - Show this help message
@@ -4215,6 +4956,10 @@ parse_args() {
             --keycloak-password)
                 KEYCLOAK_PASSWORD="$2"
                 shift 2
+                ;;
+            --dry-run)
+                DRY_RUN=true
+                shift
                 ;;
             --help)
                 show_usage
@@ -4284,6 +5029,12 @@ main() {
             ;;
         rebuild-alpine)
             mode_rebuild_alpine
+            ;;
+        rebuild-desktop)
+            mode_rebuild_desktop
+            ;;
+        rebuild-router)
+            mode_rebuild_router
             ;;
         status)
             mode_status
