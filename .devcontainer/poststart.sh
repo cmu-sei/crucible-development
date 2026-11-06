@@ -4,6 +4,10 @@
 
 scripts/sync-repos.sh --pull
 
+# Detached so the ~40s install doesn't hold up the rest of container start.
+setsid nohup scripts/restore-skills.sh > /tmp/restore-skills.log 2>&1 < /dev/null &
+echo "Installing AI agent skills in the background (log: /tmp/restore-skills.log)"
+
 # Welcome message
 cat <<'EOF'
 

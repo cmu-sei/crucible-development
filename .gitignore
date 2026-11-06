@@ -116,3 +116,11 @@ proxmox-ve_*.iso
 # Personal working notes
 TODO/
 node_modules
+
+# AI agent skills. Upstream skills are installed on container start from
+# skills-lock.json (scripts/restore-skills.sh) and are not tracked; skills
+# authored in this repo are tracked via the exceptions below. The .claude/skills
+# symlinks are committed either way.
+.agents/skills/*
+!.agents/skills/crucible-add-service/
+!.agents/skills/nuget-restore-hang/

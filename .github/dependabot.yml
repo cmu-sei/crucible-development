@@ -4,6 +4,10 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    # Wait before taking new releases: hijacked versions are usually caught and
+    # pulled within days.
+    cooldown:
+      default-days: 5
     groups:
       github-actions:
         patterns:
@@ -37,3 +41,42 @@ updates:
       # semver, so update-types filters don't match (see PRs #96, #99). Ignore
       # the dependency entirely; track major bumps of this action manually.
       - dependency-name: "cmu-sei/Crucible-Github-Actions"
+
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 5
+    groups:
+      devcontainers:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directories:
+      - "/.devcontainer"
+      - "/Crucible.AppHost/resources/*"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 5
+    groups:
+      docker:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "nuget"
+    # Point at the in-repo projects rather than "/": Crucible.slnx also lists
+    # projects under /mnt/data/crucible, which don't exist on Dependabot's runner.
+    directories:
+      - "/Crucible.AppHost"
+      - "/tests/*"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 5
+    groups:
+      nuget:
+        patterns:
+          - "*"
