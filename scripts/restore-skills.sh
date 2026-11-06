@@ -3,8 +3,10 @@
 # Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
 # Installs the latest version of every AI agent skill listed in skills-lock.json
-# into .agents/skills (gitignored). The committed .claude/skills symlinks point
-# there.
+# into .agents/skills. The committed .claude/skills symlinks point there.
+# Skills authored in this repo also live in .agents/skills (tracked via
+# .gitignore exceptions) so every agent that reads that directory sees them;
+# keep their names distinct from anything in skills-lock.json.
 #
 # skills-lock.json is a list of skills, not a version pin: it records each
 # skill's source and a content hash but no commit, so the install always pulls
