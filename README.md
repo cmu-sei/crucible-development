@@ -214,7 +214,7 @@ The dev container installs the [Codex CLI](https://developers.openai.com/codex) 
 
 Repo-managed Codex defaults live in `.devcontainer/codex/config.toml` and are mounted read-only at `/etc/codex/config.toml` inside the container. Because this is a bind mount, updates to the repo config are picked up after `git pull` and container restart.
 
-Repo-level agent instructions live in `AGENTS.md`. `CLAUDE.md` is kept as a symlink to `AGENTS.md` so Codex CLI and Claude Code use the same repository guidance.
+Repo-level agent instructions live in `AGENTS.md`, which both Codex CLI and Claude Code (2.1.277 or later) read natively; there is no `CLAUDE.md`. Claude Code-specific configuration (shared settings, skill symlinks, the `update-docs` command) stays in `.claude/`, which is the only project directory Claude Code reads for those.
 
 Personal Codex overrides belong in `/home/vscode/.codex/config.toml`. This file is not checked in and is stored in the `crucible-dev-codex` Docker volume, along with Codex sessions, history, and auth. Do not edit `/etc/codex/config.toml` inside the container; it is repo-managed.
 
