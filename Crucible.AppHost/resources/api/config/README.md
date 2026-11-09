@@ -159,10 +159,12 @@ In `local/hybrid/player-vm-api.conf`, keep the Proxmox settings, replace
 `local/vsphere/player-vm-api.conf`, including `Vsphere__Hosts__0__Enabled=true`.
 
 In `local/hybrid/caster-api.conf`, keep the Proxmox entries and add the
-`CASTER_SECRET_VSPHERE_...` lines and the `SeedData__EnvironmentSets__0__...` lines from
-`local/vsphere/caster-api.conf`, renumbering the copied seed lines from
-`SeedData__EnvironmentSets__0__` to `SeedData__EnvironmentSets__1__`, so Caster seeds
-both a "Proxmox" and a "vSphere" Environment Set.
+`CASTER_SECRET_VSPHERE_...`, `SeedData__EnvironmentSets__0__...` and
+`Infrastructure__Connections__0__...` lines from `local/vsphere/caster-api.conf`,
+renumbering the copied lines from `SeedData__EnvironmentSets__0__` to
+`SeedData__EnvironmentSets__1__` and from `Infrastructure__Connections__0__` to
+`Infrastructure__Connections__1__`, so Caster seeds both a "Proxmox" and a "vSphere"
+Environment Set and lists both hypervisors' inventory.
 For VMC, apply the upload adjustments above to the hybrid Player VM file.
 
 The generated `local/hybrid/topomojo.conf` still uses Proxmox only. To use vSphere
@@ -232,6 +234,17 @@ that maps them, with the non-secret connection settings, to the provider's varia
   credentials to every project. Regenerate the profile (a backup is kept) to switch.
 
 See `docs/EnvironmentSets.md` in caster.api for the rules and the security model.
+
+## Caster inventory
+
+Caster's profile also configures an inventory connection (`Infrastructure__Connections__0__...`),
+which lists the hypervisor's VM templates, ISOs, networks, storage and hosts in each project's
+Infrastructure panel and on **Administration > Hypervisors**. Viewing it needs the
+`ViewInfrastructure` permission. The connection reuses the profile's credentials but is never
+passed to Terraform runs. The ISO list reads `<iso-storage>` on Proxmox and TopoMojo's
+`[<datastore>] topomojo` folder on vSphere, and the vSphere connection reads only the datacenter
+named first in the pool path. Profiles generated before the inventory have no connection: add the lines from
+the template, or regenerate. See `docs/Inventory.md` in caster.api for the other settings.
 
 ## Proxmox provisioning
 

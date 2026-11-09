@@ -18,3 +18,13 @@ SeedData__EnvironmentSets__0__Entries__1__Value=true
 SeedData__EnvironmentSets__0__Entries__2__TargetName=PROXMOX_VE_API_TOKEN
 SeedData__EnvironmentSets__0__Entries__2__ValueSource=Secret
 SeedData__EnvironmentSets__0__Entries__2__SecretName=CASTER_SECRET_PROXMOX_VE_API_TOKEN
+#
+# Inventory: lists this Proxmox's templates, ISOs, networks, storage and nodes in Caster's
+# Infrastructure panel. Caster never passes Infrastructure__ settings to Terraform runs.
+Infrastructure__Connections__0__Name=proxmox
+Infrastructure__Connections__0__Provider=proxmox
+Infrastructure__Connections__0__Url=https://<proxmox-host>:<proxmox-port>
+Infrastructure__Connections__0__ApiToken=<user@realm!token-id=token-secret>
+Infrastructure__Connections__0__InsecureSkipVerify=true
+Infrastructure__Connections__0__IsoLocations__0=<iso-storage>
+Infrastructure__Connections__0__Inventory__Enabled=true

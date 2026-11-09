@@ -30,3 +30,16 @@ SeedData__EnvironmentSets__0__Entries__6__TargetName=VSPHERE_RESOURCE_POOL
 SeedData__EnvironmentSets__0__Entries__6__Value=<resource-pool>
 SeedData__EnvironmentSets__0__Entries__7__TargetName=VSPHERE_DATASTORE
 SeedData__EnvironmentSets__0__Entries__7__Value=<datastore>
+#
+# Inventory: lists this vCenter's templates, ISOs, networks, datastores and hosts in Caster's
+# Infrastructure panel. Caster never passes Infrastructure__ settings to Terraform runs.
+# The ISO location is the folder TopoMojo keeps its ISOs in.
+Infrastructure__Connections__0__Name=vsphere
+Infrastructure__Connections__0__Provider=vsphere
+Infrastructure__Connections__0__Url=https://<vcenter-host>
+Infrastructure__Connections__0__Username=<username>
+Infrastructure__Connections__0__Password=<password>
+Infrastructure__Connections__0__InsecureSkipVerify=true
+Infrastructure__Connections__0__IsoLocations__0=[<datastore>] topomojo
+Infrastructure__Connections__0__Datacenters__0=<datacenter>
+Infrastructure__Connections__0__Inventory__Enabled=true
