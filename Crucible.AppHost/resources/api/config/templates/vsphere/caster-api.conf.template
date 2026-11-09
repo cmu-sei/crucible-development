@@ -2,34 +2,43 @@
 # Literal KEY=value: no shell quoting, expansion or inline comments.
 # Certificate validation is disabled here for local development only.
 #
-# The credentials are API secrets (they match Terraform:Secrets:Patterns, ^CASTER_SECRET_):
-# they reach only the projects the seeded "vSphere" Environment Set is assigned to.
-# Assign it in Caster under Administration > Environment Sets.
-CASTER_SECRET_VSPHERE_USER=<username>
-CASTER_SECRET_VSPHERE_PASSWORD=<password>
-#
 # Created at startup if no set is named "vSphere"; an existing set is never changed.
+# The connection entries read the "vsphere" connection below when each run starts; the
+# cluster, resource pool and datastore aren't connection settings, so they stay plain.
+# Assign the set in Caster under Administration > Environment Sets.
 # After editing these lines, delete the set in Caster and restart to seed it again.
 SeedData__EnvironmentSets__0__Name=vSphere
 SeedData__EnvironmentSets__0__Description=vSphere provider credentials from the crucible-development API profile
 SeedData__EnvironmentSets__0__Entries__0__TargetName=VSPHERE_SERVER
-SeedData__EnvironmentSets__0__Entries__0__Value=<vcenter-host>
+SeedData__EnvironmentSets__0__Entries__0__ValueSource=Connection
+SeedData__EnvironmentSets__0__Entries__0__ConnectionName=vsphere
+SeedData__EnvironmentSets__0__Entries__0__ConnectionField=Host
 SeedData__EnvironmentSets__0__Entries__1__TargetName=VSPHERE_USER
-SeedData__EnvironmentSets__0__Entries__1__ValueSource=Secret
-SeedData__EnvironmentSets__0__Entries__1__SecretName=CASTER_SECRET_VSPHERE_USER
+SeedData__EnvironmentSets__0__Entries__1__ValueSource=Connection
+SeedData__EnvironmentSets__0__Entries__1__ConnectionName=vsphere
+SeedData__EnvironmentSets__0__Entries__1__ConnectionField=Username
 SeedData__EnvironmentSets__0__Entries__2__TargetName=VSPHERE_PASSWORD
-SeedData__EnvironmentSets__0__Entries__2__ValueSource=Secret
-SeedData__EnvironmentSets__0__Entries__2__SecretName=CASTER_SECRET_VSPHERE_PASSWORD
+SeedData__EnvironmentSets__0__Entries__2__ValueSource=Connection
+SeedData__EnvironmentSets__0__Entries__2__ConnectionName=vsphere
+SeedData__EnvironmentSets__0__Entries__2__ConnectionField=Password
 SeedData__EnvironmentSets__0__Entries__3__TargetName=VSPHERE_ALLOW_UNVERIFIED_SSL
-SeedData__EnvironmentSets__0__Entries__3__Value=true
+SeedData__EnvironmentSets__0__Entries__3__ValueSource=Connection
+SeedData__EnvironmentSets__0__Entries__3__ConnectionName=vsphere
+SeedData__EnvironmentSets__0__Entries__3__ConnectionField=Insecure
 SeedData__EnvironmentSets__0__Entries__4__TargetName=VSPHERE_DATACENTER
-SeedData__EnvironmentSets__0__Entries__4__Value=<datacenter>
+SeedData__EnvironmentSets__0__Entries__4__ValueSource=Connection
+SeedData__EnvironmentSets__0__Entries__4__ConnectionName=vsphere
+SeedData__EnvironmentSets__0__Entries__4__ConnectionField=Datacenter
 SeedData__EnvironmentSets__0__Entries__5__TargetName=VSPHERE_CLUSTER
 SeedData__EnvironmentSets__0__Entries__5__Value=<cluster>
 SeedData__EnvironmentSets__0__Entries__6__TargetName=VSPHERE_RESOURCE_POOL
 SeedData__EnvironmentSets__0__Entries__6__Value=<resource-pool>
 SeedData__EnvironmentSets__0__Entries__7__TargetName=VSPHERE_DATASTORE
 SeedData__EnvironmentSets__0__Entries__7__Value=<datastore>
+#
+# Remove after reseeding: the "vSphere" set seeded before connection entries reads these secrets.
+CASTER_SECRET_VSPHERE_USER=<username>
+CASTER_SECRET_VSPHERE_PASSWORD=<password>
 #
 # Inventory: lists this vCenter's templates, ISOs, networks, datastores and hosts in Caster's
 # Infrastructure panel. Caster never passes Infrastructure__ settings to Terraform runs.

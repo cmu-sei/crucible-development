@@ -216,22 +216,31 @@ Keep dynamic database/endpoints and existing authentication settings out of thes
 
 ## Caster and Environment Sets
 
-Caster's profile does not hand hypervisor credentials to every Terraform run. It sets them
-as API secrets (`CASTER_SECRET_PROXMOX_VE_API_TOKEN`, `CASTER_SECRET_VSPHERE_USER`,
-`CASTER_SECRET_VSPHERE_PASSWORD`, which match Caster's `Terraform:Secrets:Patterns`) and
-seeds an Environment Set ("Proxmox" or "vSphere") through `SeedData__EnvironmentSets__...`
-that maps them, with the non-secret connection settings, to the provider's variables.
+Caster's profile does not hand hypervisor credentials to every Terraform run. It configures one
+infrastructure connection (`Infrastructure__Connections__0__...`, named `proxmox` or `vsphere`)
+and seeds an Environment Set ("Proxmox" or "vSphere") through `SeedData__EnvironmentSets__...`
+whose entries read that connection's settings (its endpoint, insecure flag and credential) into
+the provider's variables when each run starts. The vSphere set's cluster, resource pool and
+datastore are plain values, as they aren't connection settings.
 
-- Assign the set to the projects that should deploy to the hypervisor under
-  **Administration > Environment Sets** in Caster. Seeded sets are not assigned to any
-  project, and a project without the set has no provider variables.
-- The set is created only if no set has its name. Later edits to the seed lines (a new host
-  after regenerating the profile) do not change an existing set: delete it in Caster and
-  restart Aspire to seed it again. Secret values are read at each run, so a changed token
-  or password needs only a restart.
-- Profiles generated before Environment Sets used
-  `Terraform__EnvironmentVariables__Direct__...` lines, which still work but give the
-  credentials to every project. Regenerate the profile (a backup is kept) to switch.
+- Assign the set to the projects that should deploy to the hypervisor, under **Administration >
+  Environment Sets** or the project's **Infrastructure** dialog. Seeded sets are not assigned to
+  any project, and a project without the set has no provider variables.
+- The set is created only if no set has its name. Later edits to the seed lines do not change an
+  existing set: delete it in Caster and restart Aspire to seed it again. The connection's settings
+  are read at each run, so a changed token or password needs only a restart.
+- **Upgrading a profile from before connection entries.** Its seeded set still reads the
+  `CASTER_SECRET_...` variables. Regenerate the profile (a backup is kept), delete the seeded set
+  in Caster, restart Aspire so it is seeded again, and assign it again. The templates keep the
+  `CASTER_SECRET_...` lines, marked "remove after reseeding", for one round, so a set seeded
+  earlier keeps working until then.
+- Profiles generated before Environment Sets used `Terraform__EnvironmentVariables__Direct__...`
+  lines, which still work but give the credentials to every project. Regenerate the profile to
+  switch.
+- **A Caster database that ran the Environment Sets branch before it was rebased onto the
+  inventory** has permission numbers that now mean something else (21 became
+  `ViewInfrastructure`). Reset that database. It was never released, so only development
+  databases are affected.
 
 See `docs/EnvironmentSets.md` in caster.api for the rules and the security model.
 
