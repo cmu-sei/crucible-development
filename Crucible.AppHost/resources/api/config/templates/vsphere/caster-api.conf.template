@@ -41,7 +41,7 @@ CASTER_SECRET_VSPHERE_USER=<username>
 CASTER_SECRET_VSPHERE_PASSWORD=<password>
 #
 # Inventory: lists this vCenter's templates, ISOs, networks, datastores and hosts in Caster's
-# Infrastructure panel. Caster never passes Infrastructure__ settings to Terraform runs.
+# Inventory panel. Caster never passes Infrastructure__ settings to Terraform runs.
 # The ISO location is the folder TopoMojo keeps its ISOs in.
 Infrastructure__Connections__0__Name=vsphere
 Infrastructure__Connections__0__Provider=vsphere
