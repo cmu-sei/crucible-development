@@ -223,9 +223,10 @@ whose entries read that connection's settings (its endpoint, insecure flag and c
 the provider's variables when each run starts. The vSphere set's cluster, resource pool and
 datastore are plain values, as they aren't connection settings.
 
-- Assign the set to the projects that should deploy to the hypervisor, under **Administration >
-  Environment Sets** or the project's **Infrastructure** dialog. Seeded sets are not assigned to
-  any project, and a project without the set has no provider variables.
+- Assign the set to the projects (or project groups) that should deploy to the hypervisor, with
+  **Assign** under **Administration > Environment Sets**, or in a project's **Environment**
+  dialog. Seeded sets are not assigned to any project, and a project without the set has no
+  provider variables.
 - The set is created only if no set has its name. Later edits to the seed lines do not change an
   existing set: delete it in Caster and restart Aspire to seed it again. The connection's settings
   are read at each run, so a changed token or password needs only a restart.
@@ -248,12 +249,13 @@ See `docs/EnvironmentSets.md` in caster.api for the rules and the security model
 
 Caster's profile also configures an inventory connection (`Infrastructure__Connections__0__...`),
 which lists the hypervisor's VM templates, ISOs, networks, storage and hosts on
-**Administration > Connections** (`ViewInfrastructure`) and in the Inventory panel
-of each project it is assigned to. Assign it there, or in a project's Environment dialog. The connection reuses the profile's credentials but is never
-passed to Terraform runs. The ISO list reads `<iso-storage>` on Proxmox and TopoMojo's
+**Administration > Connections** (`ViewInfrastructure`) and in the **Inventory** panel of each
+project it is assigned to. Assign it with **Assign** on that page, or in a project's
+**Environment** dialog. The connection reuses the profile's credentials but is never passed to
+Terraform runs. The ISO list reads `<iso-storage>` on Proxmox and TopoMojo's
 `[<datastore>] topomojo` folder on vSphere, and the vSphere connection reads only the datacenter
-named first in the pool path. Profiles generated before the inventory have no connection: add the lines from
-the template, or regenerate. See `docs/Inventory.md` in caster.api for the other settings.
+named first in the pool path. Profiles generated before the inventory have no connection: add
+the lines from the template, or regenerate. See `docs/Inventory.md` in caster.api for the other settings.
 
 ## Proxmox provisioning
 
