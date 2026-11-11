@@ -21,9 +21,6 @@ SeedData__EnvironmentSets__0__Entries__2__ValueSource=Connection
 SeedData__EnvironmentSets__0__Entries__2__ConnectionName=proxmox
 SeedData__EnvironmentSets__0__Entries__2__ConnectionField=ApiToken
 #
-# Remove after reseeding: the "Proxmox" set seeded before connection entries reads this secret.
-CASTER_SECRET_PROXMOX_VE_API_TOKEN=<user@realm!token-id=token-secret>
-#
 # Inventory: lists this Proxmox's templates, ISOs, networks, storage and nodes in Caster's
 # Inventory panel. Caster never passes Infrastructure__ settings to Terraform runs.
 Infrastructure__Connections__0__Name=proxmox

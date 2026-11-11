@@ -159,8 +159,7 @@ In `local/hybrid/player-vm-api.conf`, keep the Proxmox settings, replace
 `local/vsphere/player-vm-api.conf`, including `Vsphere__Hosts__0__Enabled=true`.
 
 In `local/hybrid/caster-api.conf`, keep the Proxmox entries and add the
-`CASTER_SECRET_VSPHERE_...`, `SeedData__EnvironmentSets__0__...` and
-`Infrastructure__Connections__0__...` lines from `local/vsphere/caster-api.conf`,
+`SeedData__EnvironmentSets__0__...` and `Infrastructure__Connections__0__...` lines from `local/vsphere/caster-api.conf`,
 renumbering the copied lines from `SeedData__EnvironmentSets__0__` to
 `SeedData__EnvironmentSets__1__` and from `Infrastructure__Connections__0__` to
 `Infrastructure__Connections__1__`, so Caster seeds both a "Proxmox" and a "vSphere"
@@ -230,18 +229,9 @@ datastore are plain values, as they aren't connection settings.
 - The set is created only if no set has its name. Later edits to the seed lines do not change an
   existing set: delete it in Caster and restart Aspire to seed it again. The connection's settings
   are read at each run, so a changed token or password needs only a restart.
-- **Upgrading a profile from before connection entries.** Its seeded set still reads the
-  `CASTER_SECRET_...` variables. Regenerate the profile (a backup is kept), delete the seeded set
-  in Caster, restart Aspire so it is seeded again, and assign it again. The templates keep the
-  `CASTER_SECRET_...` lines, marked "remove after reseeding", for one round, so a set seeded
-  earlier keeps working until then.
 - Profiles generated before Environment Sets used `Terraform__EnvironmentVariables__Direct__...`
   lines, which still work but give the credentials to every project. Regenerate the profile to
   switch.
-- **A Caster database that ran the Environment Sets branch before it was rebased onto the
-  inventory** has permission numbers that now mean something else (21 became
-  `ViewInfrastructure`). Reset that database. It was never released, so only development
-  databases are affected.
 
 See `docs/EnvironmentSets.md` in caster.api for the rules and the security model.
 

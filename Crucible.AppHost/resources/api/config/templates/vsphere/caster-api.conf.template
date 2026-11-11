@@ -36,10 +36,6 @@ SeedData__EnvironmentSets__0__Entries__6__Value=<resource-pool>
 SeedData__EnvironmentSets__0__Entries__7__TargetName=VSPHERE_DATASTORE
 SeedData__EnvironmentSets__0__Entries__7__Value=<datastore>
 #
-# Remove after reseeding: the "vSphere" set seeded before connection entries reads these secrets.
-CASTER_SECRET_VSPHERE_USER=<username>
-CASTER_SECRET_VSPHERE_PASSWORD=<password>
-#
 # Inventory: lists this vCenter's templates, ISOs, networks, datastores and hosts in Caster's
 # Inventory panel. Caster never passes Infrastructure__ settings to Terraform runs.
 # The ISO location is the folder TopoMojo keeps its ISOs in.
