@@ -248,7 +248,7 @@ See `docs/EnvironmentSets.md` in caster.api for the rules and the security model
 
 Caster's profile also configures an inventory connection (`Infrastructure__Connections__0__...`),
 which lists the hypervisor's VM templates, ISOs, networks, storage and hosts on
-**Administration > Infrastructure Connections** (`ViewInfrastructure`) and in the Inventory panel
+**Administration > Connections** (`ViewInfrastructure`) and in the Inventory panel
 of each project it is assigned to. Assign it there, or in a project's Environment dialog. The connection reuses the profile's credentials but is never
 passed to Terraform runs. The ISO list reads `<iso-storage>` on Proxmox and TopoMojo's
 `[<datastore>] topomojo` folder on vSphere, and the vSphere connection reads only the datacenter
