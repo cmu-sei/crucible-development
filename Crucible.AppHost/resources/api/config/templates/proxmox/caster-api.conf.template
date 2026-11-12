@@ -1,6 +1,32 @@
 # Copy with configure-hypervisors.sh init, then replace <placeholders>.
 # Literal KEY=value: no shell quoting, expansion or inline comments.
 # Certificate validation is disabled here for local development only.
-Terraform__EnvironmentVariables__Direct__PROXMOX_VE_ENDPOINT=https://<proxmox-host>:<proxmox-port>
-Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN=<user@realm!token-id=token-secret>
-Terraform__EnvironmentVariables__Direct__PROXMOX_VE_INSECURE=true
+#
+# Created at startup if no set is named "Proxmox"; an existing set is never changed.
+# The entries read the "proxmox" connection below when each run starts, so the token is
+# configured once. Assign the set in Caster under Administration > Environment Sets.
+# After editing these lines, delete the set in Caster and restart to seed it again.
+SeedData__EnvironmentSets__0__Name=Proxmox
+SeedData__EnvironmentSets__0__Description=Proxmox provider credentials from the crucible-development API profile
+SeedData__EnvironmentSets__0__Entries__0__TargetName=PROXMOX_VE_ENDPOINT
+SeedData__EnvironmentSets__0__Entries__0__ValueSource=Connection
+SeedData__EnvironmentSets__0__Entries__0__ConnectionName=proxmox
+SeedData__EnvironmentSets__0__Entries__0__ConnectionField=Url
+SeedData__EnvironmentSets__0__Entries__1__TargetName=PROXMOX_VE_INSECURE
+SeedData__EnvironmentSets__0__Entries__1__ValueSource=Connection
+SeedData__EnvironmentSets__0__Entries__1__ConnectionName=proxmox
+SeedData__EnvironmentSets__0__Entries__1__ConnectionField=Insecure
+SeedData__EnvironmentSets__0__Entries__2__TargetName=PROXMOX_VE_API_TOKEN
+SeedData__EnvironmentSets__0__Entries__2__ValueSource=Connection
+SeedData__EnvironmentSets__0__Entries__2__ConnectionName=proxmox
+SeedData__EnvironmentSets__0__Entries__2__ConnectionField=ApiToken
+#
+# Inventory: lists this Proxmox's templates, ISOs, networks, storage and nodes in Caster's
+# Inventory panel. Caster never passes Infrastructure__ settings to Terraform runs.
+Infrastructure__Connections__0__Name=proxmox
+Infrastructure__Connections__0__Provider=proxmox
+Infrastructure__Connections__0__Url=https://<proxmox-host>:<proxmox-port>
+Infrastructure__Connections__0__ApiToken=<user@realm!token-id=token-secret>
+Infrastructure__Connections__0__InsecureSkipVerify=true
+Infrastructure__Connections__0__IsoLocations__0=<iso-storage>
+Infrastructure__Connections__0__Inventory__Enabled=true

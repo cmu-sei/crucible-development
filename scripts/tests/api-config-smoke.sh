@@ -51,11 +51,13 @@ printf 'export PROXMOX_HOST=%q\nexport PROXMOX_API_TOKEN=%q\n' pve.test "$token"
 printf '\n8006\n\nfast-vms\nisos\n' |
     PROXMOX_CONFIG_FILE="$saved" guided proxmox --profile lab > "$log" 2>&1
 for entry in 'topomojo:Pod__AccessToken' 'player-vm-api:Proxmox__Token' \
-    'caster-api:Terraform__EnvironmentVariables__Direct__PROXMOX_VE_API_TOKEN'; do
+    'caster-api:Infrastructure__Connections__0__ApiToken'; do
     equal "$(conf_value "$config/local/lab/${entry%%:*}.conf" "${entry#*:}")" "$token" 'Credential changed'
     equal "$(stat -c %a "$config/local/lab/${entry%%:*}.conf")" 600 'Config is not private'
 done
 equal "$(conf_value "$config/local/lab/topomojo.conf" Pod__Url)" https://pve.test:8006 'Host/port mismatch'
+equal "$(conf_value "$config/local/lab/caster-api.conf" Infrastructure__Connections__0__Url)" https://pve.test:8006 'Caster inventory url mismatch'
+equal "$(conf_value "$config/local/lab/caster-api.conf" Infrastructure__Connections__0__IsoLocations__0)" isos 'Caster ISO location mismatch'
 equal "$(stat -c %a "$config/local/lab")" 700 'Profile directory is not private'
 if grep -Fq -- "$token" "$log" "$app/appsettings.Development.json"; then fail 'Credential was exposed'; fi
 [[ ! -e SHOULD_NOT_EXIST ]] || fail 'Credential was executed'
@@ -67,6 +69,8 @@ printf 'PASS: literal credentials and private output\n'
 # 2. Keep, cancel, and EOF during regeneration cannot overwrite local edits.
 fixture
 setup_vsphere
+equal "$(conf_value "$config/local/lab/caster-api.conf" Infrastructure__Connections__0__Datacenters__0)" DC 'Caster datacenter mismatch'
+equal "$(conf_value "$config/local/lab/caster-api.conf" Infrastructure__Connections__0__Password)" fake-password 'Caster inventory password mismatch'
 printf 'Custom__Setting=keep\n' >> "$config/local/lab/topomojo.conf"
 cp "$config/local/lab/topomojo.conf" "$case_root/original"
 cp "$app/appsettings.Development.json" "$case_root/settings"
