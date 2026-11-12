@@ -616,7 +616,22 @@ public static partial class BuilderExtensions
             "./seed-gitea.sh"
         ])
         .WaitFor(gitea)
-        .WithParentRelationship(gitea);
+        .WithParentRelationship(gitea)
+        .WithEnvironment(async context =>
+        {
+            // Aspire names the container gitea-<suffix>, so the script can't docker exec
+            // by resource name; pass the running container's id instead. It changes
+            // whenever gitea restarts, so it's read each time the seed starts.
+            // "container.id" is Aspire's KnownProperties.Container.Id, which is internal.
+            static string? ContainerId(ResourceEvent e) =>
+                e.Snapshot.Properties.FirstOrDefault(p => p.Name == "container.id")?.Value as string;
+
+            var notifications = context.ExecutionContext.Services.GetRequiredService<ResourceNotificationService>();
+            var giteaEvent = await notifications.WaitForResourceAsync(gitea.Resource.Name,
+                e => !string.IsNullOrEmpty(ContainerId(e)), context.CancellationToken);
+
+            context.EnvironmentVariables["GITEA_CONTAINER"] = ContainerId(giteaEvent)!;
+        });
 
         casterApi
             .WithEnvironment("Terraform__ModuleSources__0__Name", "crucible-modules")
