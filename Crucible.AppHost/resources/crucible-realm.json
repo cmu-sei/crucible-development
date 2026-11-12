@@ -999,7 +999,8 @@
         "player-vm",
         "email",
         "player",
-        "basic"
+        "basic",
+        "caster"
       ],
       "optionalClientScopes": [
         "address",
