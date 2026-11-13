@@ -83,7 +83,9 @@ public static partial class BuilderExtensions
         return null;
     }
 
-    // Choose hosting separately from whether the application is enabled for startup.
+    /// <summary>
+    /// Chooses hosting separately from whether the application is enabled for startup.
+    /// </summary>
     private static UiMode ResolveUiMode(UiMode? mode, LaunchOptions options)
     {
         return mode ?? options.DefaultUiMode;
@@ -702,7 +704,10 @@ public static partial class BuilderExtensions
             : launchpointMode;
         var launchpointIncluded = IsEnabled(launchpointMode) || options.AddAllApplications;
         var topoUiMode = ResolveUiMode(topoMojoMode, options);
-        var effectiveLaunchpointMode = ResolveUiMode(launchpointMode, options);
+        // An unselected Launchpoint starts with a selected TopoMojo, so keep it static rather than
+        // applying DefaultUiMode; DefaultUiMode only covers it when TopoMojo is also left stopped.
+        var effectiveLaunchpointMode = launchpointMode
+            ?? (IsEnabled(topoMojoMode) ? UiMode.Prod : options.DefaultUiMode);
 
         if (!options.AddAllApplications && !IsEnabled(topoMojoMode))
             return;

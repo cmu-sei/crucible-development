@@ -500,8 +500,10 @@ hosting in your local `Crucible.AppHost/appsettings.Development.json`:
 ```
 
 `AddAllApplications` registers unselected apps and leaves them stopped.
-`DefaultUiMode` chooses dev or prod hosting for those registered UIs, including
-TopoMojo Launchpoint. It is an enum setting: use `dev` for Angular dev servers
+`DefaultUiMode` chooses dev or prod hosting for those registered UIs. TopoMojo
+Launchpoint follows it only when TopoMojo is also unselected; with TopoMojo
+selected, an unselected Launchpoint starts with it and uses static hosting.
+It is an enum setting: use `dev` for Angular dev servers
 with hot reload, or `prod` for static hosting (the default). Restart the AppHost
 after changing it. Explicit app flags and `Dev`/`Prod`
 selections take precedence over this fallback and retain their normal automatic
