@@ -126,13 +126,20 @@ a PR body, a diff or a check you ran. Drop anything you can't back.
 2. Confirm CI is green for `$H`. Ignore check runs named `Dependabot`: they are Dependabot's own
    update jobs. If `$H` has no build or test runs of its own (a Dependabot merge often doesn't),
    read the checks of the PR that produced it: `gh pr checks <N>`.
-3. Publish against the exact SHA:
+3. End the notes file with a blank line and the helm skip marker, `<!-- helm-charts: skip -->`.
+   The release's Update Helm Chart run then opens no bot PR, because step 7 charts every release
+   in one PR. GitHub doesn't render HTML comments, so readers never see it. The action only reads
+   the notes when the release is published, so the marker must be there before publishing.
+4. Publish against the exact SHA:
    `gh release create <version> -R cmu-sei/<repo> --target $H --title <version> --notes-file <file> --latest`.
    With `--dry-run`, stop at the drafted notes file instead.
-4. About 20 seconds later, `gh run list -R cmu-sei/<repo> -e release -L 2` should show
-   **Build and Publish Image** and **Update Helm Chart**. Note their links for the report.
-5. Re-read the published notes once, looking for claims you assumed rather than checked. Fix them
-   with `gh release edit <version> --notes-file <file>`, and tell the user what changed.
+5. About 20 seconds later, `gh run list -R cmu-sei/<repo> -e release -L 2` should show
+   **Build and Publish Image** and **Update Helm Chart**. Note their links for the report. With
+   the marker, Update Helm Chart succeeds with the notice "Helm chart update skipped" and opens no
+   PR. If it opens one anyway, that repo's action predates the marker: step 7 replaces that PR.
+6. Re-read the published notes once, looking for claims you assumed rather than checked. Fix them
+   with `gh release edit <version> --notes-file <file>` (the file still ends with the marker), and
+   tell the user what changed.
 
 Never run a repository's `client.yml` (it publishes a NuGet client package) without asking. If an
 API gains endpoints or fields, the notes may say the client package isn't republished. Two facts
@@ -147,13 +154,14 @@ yet", offer to update that note at the end.
 ### 7. Consolidate the helm-charts PRs
 
 After the last release, read `references/helm-charts.md` and follow it. In short: wait for every
-release's **Update Helm Chart** run, and find the bot PRs (`<app_name> to <version>`). Then build
-one PR from `origin/main` with every chart and subchart bump and every added or removed setting at
-the app's real default, plus README rows for those settings. The bot sets every new key to
-`false`, `""` or `0`. Also fix any zero values that already-merged bot PRs put on `main`, and say
-whether they break deployments. Commit, then run the repo's own check scripts (they only see
-committed changes), open the PR, and close the bot PRs it replaces. The user can't approve a PR
-this session opened, so ask who should review it.
+release's **Update Helm Chart** run. With the skip marker there are no bot PRs; look for any
+anyway (`<app_name> to <version>`), because a repo whose action predates the marker still opens
+one. Then build one PR from `origin/main` with every chart and subchart bump and every added or
+removed setting at the app's real default, plus README rows for those settings. Also fix any
+zero values that already-merged bot PRs put on `main` (older versions of the action write
+`false`, `""` or `0`), and say whether they break deployments. Commit, then run the repo's own
+check scripts (they only see committed changes), open the PR, and close any bot PRs it replaces.
+The user can't approve a PR this session opened, so ask who should review it.
 
 With `--dry-run`, list the chart changes the PR would make instead.
 
@@ -167,16 +175,13 @@ End with:
 - the helm-charts PR link, the bot PRs it closed, published chart versions that carry wrong values
   and whether they need an upgrade, who was asked to review, and anything still running.
 
-## Shell pitfalls (zsh)
+## Tooling pitfalls
 
-The Bash tool runs zsh here:
-- A variable holding a list doesn't split into words. `for n in $nums` runs once with the whole
-  string. Write the list out, or use an array.
-- `$var:x` is a zsh modifier: `"$B:charts/x"` breaks. Write `"${B}:charts/x"`.
-- In bash scripts, an apostrophe inside `"${var:-…}"` opens a quote. Keep apostrophes out of
-  default values.
+- An apostrophe inside `"${var:-…}"` opens a quote in bash. Keep apostrophes out of default
+  values.
 - Release bodies contain control characters that make plain `jq` fail. Use `gh … --jq` instead.
-  The dev container's `python3` has no `json` module.
+  The dev container's `python3` has no `pip`, so run Python test suites in a `python:3.x`
+  container.
 - `git push` over HTTPS has no stored credentials. Push with
   `git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push …`. Don't change
   git config.

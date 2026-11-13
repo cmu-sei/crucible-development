@@ -1,7 +1,9 @@
 # Consolidating the helm-charts PRs
 
-Each published release runs the repository's `.github/workflows/update-helm-chart.yml`, which opens
-a PR on `cmu-sei/helm-charts`:
+Each published release runs the repository's `.github/workflows/update-helm-chart.yml`, which calls
+the shared `cmu-sei/Crucible-Github-Actions/actions/update-helm-chart@update-helm-chart-v3`
+action. Unless the release notes contain its skip marker (`<!-- helm-charts: skip -->`, which
+this skill adds to every release), the action opens a PR on `cmu-sei/helm-charts`:
 
 - **Title** `<app_name> to <version>`, for example "Player VM API to 3.13.0". `app_name` is in
   the repo's workflow file, beside `chart_file`, `parent_chart_file`, `settings_file` and
@@ -11,15 +13,19 @@ a PR on `cmu-sei/helm-charts`:
   `version`, and adds settings keys that are new in the app to the subchart's and the parent's
   `values.yaml`.
 
-**The bot gives every new key a type zero value: `false`, `""` or `0`, never the app's default.**
-It doesn't apply a changed default or remove a deleted key. For example, Vm.Api 3.13.0's Proxmox
-settings came through as `0` instead of 30, 8 and 2000. So the bot PRs are only a record of which
-charts to bump. This phase rebuilds their content correctly in one PR.
+**Don't trust the values the bot writes.** Versions of the action before the skip marker give
+every new key a type zero value (`false`, `""` or `0`), never the app's default. For example,
+Vm.Api 3.13.0's Proxmox settings came through as `0` instead of 30, 8 and 2000. Versions with the
+marker also write `appsettings.json` defaults for `dotnet-appsettings` keys, but `.conf` and
+Angular keys still get blanks. No version applies a changed default. So this phase works every
+value out itself, and treats any bot PR only as a record of which charts it bumped.
 
-## 1. Collect the bot PRs
+## 1. Check the bot runs, and collect any bot PRs
 
 For each release from this run, wait until its **Update Helm Chart** run has finished
-(`gh run list -R cmu-sei/<repo> -e release`). Then find the PR:
+(`gh run list -R cmu-sei/<repo> -e release`). With the marker, the run succeeds with the notice
+"Helm chart update skipped" and opens nothing. Look for a PR either way, because a repo whose
+action predates the marker still opens one:
 
 ```bash
 gh pr list -R cmu-sei/helm-charts --state all --search "\"<app_name> to <version>\" in:title" \
@@ -29,7 +35,8 @@ gh pr list -R cmu-sei/helm-charts --state all --search "\"<app_name> to <version
 - **Open:** it gets replaced and closed.
 - **Already merged** (the user may merge them as they appear): its version bumps are already on
   `main`, so don't repeat them. Its zero-value settings still need fixing in the consolidated PR.
-- **None after the workflow succeeded:** say so in the report, and still make the chart changes.
+- **None:** expected when the marker was honored. Make the chart changes as usual. If the run
+  failed instead, say so in the report.
 
 Also look for **open hand-written PRs** that touch the same charts:
 `gh pr list -R cmu-sei/helm-charts --state open --json number,title,isDraft,headRefName,files`.
@@ -120,9 +127,10 @@ and open the PR. Its body:
 Wait for the PR's checks (`gh pr checks <N>`): Chart Version Check, Helm Lint and Template,
 Parent/Child Values Sync and README Reminder.
 
-## 4. Close the bot PRs
+## 4. Close any bot PRs
 
-Only after the consolidated PR is open and its checks pass, close each open bot PR it replaces:
+Usually there are none. Only after the consolidated PR is open and its checks pass, close each
+open bot PR it replaces:
 
 ```bash
 gh pr close <bot-pr> -R cmu-sei/helm-charts --delete-branch \

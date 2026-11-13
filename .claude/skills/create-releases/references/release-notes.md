@@ -28,7 +28,13 @@ Copy the layout of the repository's previous release. Most current releases use 
   * One sub-bullet per detail a reader needs, taken from the PR body.
 
 **Full Changelog**: https://github.com/cmu-sei/<Repo>/compare/<old>...<new>
+
+<!-- helm-charts: skip -->
 ```
+
+The last line is the helm skip marker. It stops the release's Update Helm Chart run from opening
+a bot PR, because this skill charts the whole batch in one PR. Keep it as the last line, after a
+blank line, and keep it when editing published notes.
 
 - **Authors:** write `by @login in <url>` only if the previous release did. Dependabot is
   `@dependabot[bot]`.
