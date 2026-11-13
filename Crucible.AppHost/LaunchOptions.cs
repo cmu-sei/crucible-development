@@ -34,7 +34,7 @@ public class LaunchOptions
     public string XdebugMode { get; set; } = "off";
     public bool AddAllApplications { get; set; }
     // Hosting mode for registered UIs whose application mode is off.
-    public string DefaultUiMode { get; set; } = "prod";
+    public UiMode DefaultUiMode { get; set; } = UiMode.Prod;
     public bool UseAspireProxy { get; set; }
     public bool LinkCommonUI { get; set; }
 

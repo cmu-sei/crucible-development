@@ -13,9 +13,6 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 LaunchOptions launchOptions = builder.Configuration.GetSection("Launch").Get<LaunchOptions>() ?? new();
 
-if (launchOptions.DefaultUiMode is not ("dev" or "prod"))
-    throw new InvalidOperationException("Launch:DefaultUiMode must be \"dev\" or \"prod\".");
-
 LogLaunchOptions(launchOptions);
 
 var postgres = builder.AddPostgres(launchOptions);
@@ -86,9 +83,14 @@ public static partial class BuilderExtensions
     }
 
     // Choose hosting separately from whether the application is enabled for startup.
-    private static string ResolveUiMode(string mode, LaunchOptions options)
+    private static UiMode ResolveUiMode(string mode, LaunchOptions options)
     {
-        return IsEnabled(mode) ? mode : options.DefaultUiMode;
+        return mode switch
+        {
+            "dev" => UiMode.Dev,
+            "prod" => UiMode.Prod,
+            _ => options.DefaultUiMode
+        };
     }
 
     /// <summary>
@@ -200,7 +202,7 @@ public static partial class BuilderExtensions
 
         IResourceBuilder<ExecutableResource> ui;
 
-        if (ResolveUiMode(mode, options) == "dev")
+        if (ResolveUiMode(mode, options) == UiMode.Dev)
         {
             ui = builder.AddJavaScriptApp(name, appRoot, "start");
 
@@ -765,14 +767,14 @@ public static partial class BuilderExtensions
         IResourceBuilder<ExecutableResource> topoUi;
         IResourceBuilder<ExecutableResource>? topoLaunchpointUi = null;
 
-        if (topoUiMode == "dev")
+        if (topoUiMode == UiMode.Dev)
         {
             topoUi = builder.AddJavaScriptApp("topomojo-ui", topoUiRoot, "start")
                 .WithArgs("--", "topomojo-work", "--configuration", "development", "--port", topoWorkUiPort.ToString())
                 .WithHttpEndpoint(port: topoWorkUiPort, isProxied: false)
                 .WithHttpHealthCheck();
 
-            if (launchpointIncluded && effectiveLaunchpointMode == "dev")
+            if (launchpointIncluded && effectiveLaunchpointMode == UiMode.Dev)
             {
                 topoLaunchpointUi = builder.AddJavaScriptApp("topomojo-launchpoint", topoUiRoot, "start")
                     .WithNpm(install: false)
@@ -806,7 +808,7 @@ public static partial class BuilderExtensions
                 "npm run build -- topomojo-work --configuration development"
             };
 
-            if (launchpointIncluded && effectiveLaunchpointMode != "dev")
+            if (launchpointIncluded && effectiveLaunchpointMode != UiMode.Dev)
             {
                 builds.Add("npm run build -- topomojo-launchpoint --configuration development");
             }
@@ -819,7 +821,7 @@ public static partial class BuilderExtensions
                 .WithHttpEndpoint(port: topoWorkUiPort, isProxied: false)
                 .WithHttpHealthCheck();
 
-            if (launchpointIncluded && effectiveLaunchpointMode == "dev")
+            if (launchpointIncluded && effectiveLaunchpointMode == UiMode.Dev)
             {
                 topoLaunchpointUi = builder.AddJavaScriptApp("topomojo-launchpoint", topoUiRoot, "start")
                     .WithNpm(install: false)

@@ -93,7 +93,7 @@ Each profile runs a different subset of services depending on what you're workin
 - **Player**, **Blueprint**, **Caster**, **Steamfitter**, etc. - Focused on a single application
 - **Exercise**, **TTX** - Multi-app profiles for specific workflows
 - **Moodle**, **Moodle Debug** - Moodle development, with **Moodle Debug** also attaching the PHP Xdebug listener
-- **All Apps (Stopped, Dev)** - Registers all applications, keeping unselected apps stopped and configuring Angular UIs for hot reload. Postgres, Keycloak, and realm configuration start automatically.
+- **All Apps (Stopped)** - Registers all applications and leaves unselected apps stopped. Choose Angular dev or static hosting with `DefaultUiMode`.
 
 Pressing F5 without changing the dropdown launches the Default profile (or your previously selected profile). Be aware that the Default profile launches many applications and uses significant system resources.
 
@@ -487,25 +487,29 @@ Launch__Cite=true         # Supporting dev app
 
 **Manual startup with dev mode:**
 
-The **All Apps (Stopped, Dev)** profile uses [.env/all-stopped-dev.env](.env/all-stopped-dev.env)
-with only two settings; no individual app flags are needed:
+The **All Apps (Stopped)** profile uses [.env/all-stopped.env](.env/all-stopped.env)
+to register all applications. No individual app flags are needed. Choose Angular
+hosting in your local `Crucible.AppHost/appsettings.Development.json`:
 
-```bash
-Launch__AddAllApplications=true
-Launch__DefaultUiMode=dev
+```json
+{
+  "Launch": {
+    "DefaultUiMode": "dev"
+  }
+}
 ```
 
 `AddAllApplications` registers unselected apps and leaves them stopped.
 `DefaultUiMode` chooses dev or prod hosting for those registered UIs, including
-TopoMojo Launchpoint. It defaults to `prod`. Explicit app flags and `Dev`/`Prod`
+TopoMojo Launchpoint. It is an enum setting: use `dev` for Angular dev servers
+with hot reload, or `prod` for static hosting (the default). Restart the AppHost
+after changing it. Explicit app flags and `Dev`/`Prod`
 selections take precedence over this fallback and retain their normal automatic
 startup behavior. Postgres, Keycloak, and realm configuration start automatically.
 
 Start apps as needed in the Aspire dashboard. Angular npm installers run
 automatically, and the UIs wait for installation to complete when manually
 started. Helpers such as Minikube for Caster still require manual startup.
-The existing **All Apps (Stopped)** profile continues to use static hosting for
-UIs whose mode is off.
 
 **Memory Savings:**
 
