@@ -13,6 +13,9 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 LaunchOptions launchOptions = builder.Configuration.GetSection("Launch").Get<LaunchOptions>() ?? new();
 
+if (launchOptions.DefaultUiMode is not ("dev" or "prod"))
+    throw new InvalidOperationException("Launch:DefaultUiMode must be \"dev\" or \"prod\".");
+
 LogLaunchOptions(launchOptions);
 
 var postgres = builder.AddPostgres(launchOptions);
@@ -47,6 +50,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Moodle52: {launchOptions.Moodle52}, Moodle53: {launchOptions.Moodle53}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
     Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, TopoMojo Launchpoint: {launchOptions.TopoMojoLaunchpoint}, Gameboard: {launchOptions.Gameboard}");
     Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, Gitea: {launchOptions.Gitea}, AddAllApplications: {launchOptions.AddAllApplications}");
+    Console.WriteLine($"  DefaultUiMode: {launchOptions.DefaultUiMode}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
     Console.WriteLine($"  Dev: [{string.Join(", ", launchOptions.Dev)}]");
 }
@@ -79,6 +83,12 @@ public static partial class BuilderExtensions
             return "prod";
 
         return "off";
+    }
+
+    // Choose hosting separately from whether the application is enabled for startup.
+    private static string ResolveUiMode(string mode, LaunchOptions options)
+    {
+        return IsEnabled(mode) ? mode : options.DefaultUiMode;
     }
 
     /// <summary>
@@ -173,7 +183,7 @@ public static partial class BuilderExtensions
         string appRoot,
         int port,
         string mode,
-        bool useAspireProxy,
+        LaunchOptions options,
         string distPath = "dist",
         string buildArgs = "",
         IResourceBuilder<ExecutableResource>? commonUiSetup = null,
@@ -190,11 +200,11 @@ public static partial class BuilderExtensions
 
         IResourceBuilder<ExecutableResource> ui;
 
-        if (mode == "dev")
+        if (ResolveUiMode(mode, options) == "dev")
         {
             ui = builder.AddJavaScriptApp(name, appRoot, "start");
 
-            if (useAspireProxy)
+            if (options.UseAspireProxy)
             {
                 ui = ui
                     .WithHttpEndpoint(port: port, isProxied: true)
@@ -433,7 +443,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{playerUiRoot}/src/assets");
 
-        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(playerMode))
         {
@@ -491,13 +501,13 @@ public static partial class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(playerMode))
         {
@@ -574,7 +584,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{casterUiRoot}/src/assets");
 
-        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(casterMode))
         {
@@ -676,7 +686,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{alloyUiRoot}/src/assets");
 
-        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(alloyMode))
         {
@@ -693,7 +703,8 @@ public static partial class BuilderExtensions
             ? configuredTopoMojoMode
             : launchpointMode;
         var launchpointIncluded = IsEnabled(launchpointMode) || options.AddAllApplications;
-        var effectiveLaunchpointMode = IsEnabled(launchpointMode) ? launchpointMode : "prod";
+        var topoUiMode = ResolveUiMode(topoMojoMode, options);
+        var effectiveLaunchpointMode = ResolveUiMode(launchpointMode, options);
 
         if (!options.AddAllApplications && !IsEnabled(topoMojoMode))
             return;
@@ -754,7 +765,7 @@ public static partial class BuilderExtensions
         IResourceBuilder<ExecutableResource> topoUi;
         IResourceBuilder<ExecutableResource>? topoLaunchpointUi = null;
 
-        if (topoMojoMode == "dev")
+        if (topoUiMode == "dev")
         {
             topoUi = builder.AddJavaScriptApp("topomojo-ui", topoUiRoot, "start")
                 .WithArgs("--", "topomojo-work", "--configuration", "development", "--port", topoWorkUiPort.ToString())
@@ -888,7 +899,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{steamfitterUiRoot}/src/assets");
 
-        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(steamfitterMode))
         {
@@ -943,7 +954,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{citeUiRoot}/src/assets");
 
-        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(citeMode))
         {
@@ -998,7 +1009,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{galleryUiRoot}/src/assets");
 
-        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(galleryMode))
         {
@@ -1053,7 +1064,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{blueprintUiRoot}/src/assets");
 
-        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options.UseAspireProxy, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(blueprintMode))
         {
@@ -1107,7 +1118,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
         SetLandingBackgroundImage(options, $"{gameboardUiRoot}/projects/gameboard-ui/src/assets", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json");
 
-        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options.UseAspireProxy, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: null, settingsConfigDir: null);
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: null, settingsConfigDir: null);
 
         if (!IsEnabled(gameboardMode))
         {

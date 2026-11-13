@@ -327,6 +327,20 @@
         "group": "a"
       }
     },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "All Apps (Stopped, Dev)",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/all-stopped-dev.env"
+        }
+      },
+      "presentation": {
+        "group": "a"
+      }
+    },
 
     // PHP
     {
