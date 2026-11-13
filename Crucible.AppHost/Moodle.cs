@@ -23,7 +23,7 @@ public static partial class BuilderExtensions
         string DbName,
         string CoreMountRoot,
         string WebRoot,
-        string Mode,
+        UiMode? Mode,
         bool IncludeWithAll,
         string MarketplacePlugins);
 

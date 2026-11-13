@@ -55,42 +55,38 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
 public static partial class BuilderExtensions
 {
     /// <summary>
-    /// Checks if a mode is enabled (not "off")
+    /// Checks whether an application has an explicit dev or prod selection.
     /// </summary>
-    private static bool IsEnabled(string mode)
+    private static bool IsEnabled(UiMode? mode)
     {
-        return mode != "off";
+        return mode.HasValue;
     }
 
     /// <summary>
     /// Resolves the mode for an app based on boolean flag and Prod/Dev arrays
     /// </summary>
-    private static string ResolveMode(bool flag, string appName, LaunchOptions options)
+    /// <returns>The selected mode, or null when the application is unselected.</returns>
+    private static UiMode? ResolveMode(bool flag, string appName, LaunchOptions options)
     {
         // Boolean flag takes precedence (true = dev mode)
         if (flag)
-            return "dev";
+            return UiMode.Dev;
 
         // Check if app is in Dev array
         if (options.Dev != null && options.Dev.Contains(appName, StringComparer.OrdinalIgnoreCase))
-            return "dev";
+            return UiMode.Dev;
 
         // Check if app is in Prod array
         if (options.Prod != null && options.Prod.Contains(appName, StringComparer.OrdinalIgnoreCase))
-            return "prod";
+            return UiMode.Prod;
 
-        return "off";
+        return null;
     }
 
     // Choose hosting separately from whether the application is enabled for startup.
-    private static UiMode ResolveUiMode(string mode, LaunchOptions options)
+    private static UiMode ResolveUiMode(UiMode? mode, LaunchOptions options)
     {
-        return mode switch
-        {
-            "dev" => UiMode.Dev,
-            "prod" => UiMode.Prod,
-            _ => options.DefaultUiMode
-        };
+        return mode ?? options.DefaultUiMode;
     }
 
     /// <summary>
@@ -184,7 +180,7 @@ public static partial class BuilderExtensions
         string name,
         string appRoot,
         int port,
-        string mode,
+        UiMode? mode,
         LaunchOptions options,
         string distPath = "dist",
         string buildArgs = "",
@@ -456,7 +452,7 @@ public static partial class BuilderExtensions
         builder.AddPlayerVm(postgres, keycloak, options, playerMode, lrsqlMode, commonUiSetup);
     }
 
-    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, string playerMode, string lrsqlMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
+    private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, UiMode? playerMode, UiMode? lrsqlMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm")
             .WithDevSettings();
@@ -599,7 +595,7 @@ public static partial class BuilderExtensions
     /// <summary>
     /// Adds a dev Gitea as Caster's module source. Off unless Gitea is enabled.
     /// </summary>
-    private static void AddGitea(this IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> casterApi, string casterMode, LaunchOptions options)
+    private static void AddGitea(this IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> casterApi, UiMode? casterMode, LaunchOptions options)
     {
         var giteaMode = ResolveMode(options.Gitea, "Gitea", options);
 
