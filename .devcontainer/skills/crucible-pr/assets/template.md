@@ -41,6 +41,7 @@ Use these sections in this order, in your own words:
 
 - **Always present:** Summary, User-facing changes, Risk & review and Technical details. User-facing changes can say "None."; Summary and Technical details always have content.
 - Visible sections come first, for release-note readers and operators. The collapsed sections come last, for reviewers.
+- If the user asks for an extra section, such as a walkthrough video with a link they provide, put it after the visible sections and before the collapsed ones.
 - Paste the `record.sh summary` output as it is, at the very end. Its collapsed header shows the tier and review status; the risk label shows the tier in PR lists.
 - **Every other section is left out when it would be empty:** Breaking Changes (as defined below; never write "Breaking Changes: None"), API changes and Related.
 

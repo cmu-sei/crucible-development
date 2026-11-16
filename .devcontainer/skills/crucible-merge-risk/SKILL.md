@@ -1,6 +1,6 @@
 ---
 name: crucible-merge-risk
-description: Score the merge risk of a change or PR as low, medium or high with Crucible's rubric, and explain the gaps behind the score. Use when the user asks how risky a PR or change is, how much review it needs, or how much attention a PR deserves, for their own work or a teammate's PR in any Crucible repo.
+description: Score the merge risk of a change or PR as low, medium or high with Crucible's rubric, and explain the gaps behind the score. Use when the user asks how risky a PR or change is, how much review it needs, or how much attention a PR deserves, for their own work or a teammate's PR in any Crucible repo. Not for general risk questions about upgrades, plans or designs that aren't a specific change.
 ---
 
 # Crucible merge risk

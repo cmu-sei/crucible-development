@@ -69,4 +69,4 @@ Use PR numbers, not branch names: given a branch, `gh stack link` creates an unr
 
 ## Keep it current
 
-When later commits change what the description says, rewrite it and update it with `gh pr edit <number> --repo <owner/name> --body-file <file>`. Update the title too if the outcome changed. New commits aren't reviewed yet, so add ", later commits not reviewed" after the commit in the Risk & review header.
+When later commits change what the description says, rewrite the template's sections and keep any section a person added, such as a walkthrough video or screenshots. Update it with `gh pr edit <number> --repo <owner/name> --body-file <file>`. Update the title too if the outcome changed. New commits aren't reviewed yet, so add ", later commits not reviewed" after the commit in the Risk & review header.
