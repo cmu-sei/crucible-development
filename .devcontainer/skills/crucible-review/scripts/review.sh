@@ -12,7 +12,9 @@
 set -euo pipefail
 
 SKILL_DIR=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
-SCHEMA="$SKILL_DIR/assets/review.schema.json"
+# Each lens can have its own output schema (assets/<lens>.schema.json); the rest use review.schema.json.
+schema_for() { local f="$SKILL_DIR/assets/$1.schema.json"; [[ -f $f ]] || f="$SKILL_DIR/assets/review.schema.json"; echo "$f"; }
+SCHEMA=""
 CLAUDE_TOOLS=(Read Grep Glob "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" "Bash(git status:*)" "Bash(git merge-base:*)")
 
 die() { echo "review.sh: $*" >&2; exit 2; }
@@ -47,7 +49,8 @@ invoke() {
     *) die "unknown cli '$cli'" ;;
   esac
   local status=complete
-  if [[ $rc -ne 0 ]] || ! jq -e '(.findings | type == "array") and (.summary | type == "string")' "$out/findings.json" >/dev/null 2>&1; then
+  # Complete = exit 0 and an object with every top-level key the schema requires.
+  if [[ $rc -ne 0 ]] || ! jq -e --slurpfile s "$SCHEMA" '. as $o | type == "object" and all($s[0].required[]; . as $k | $o | has($k))' "$out/findings.json" >/dev/null 2>&1; then
     status=incomplete
   fi
   echo "$sid $status $rc"
@@ -61,6 +64,7 @@ case $cmd in
     lens_file="$SKILL_DIR/references/lenses/$lens.md"
     [[ -f $lens_file ]] || die "no lens '$lens'"
     [[ -f $task ]] || die "no task file '$task'"
+    SCHEMA=$(schema_for "$lens")
     if [[ $profile == *:*:* ]]; then
       IFS=: read -r cli model effort <<<"$profile"
       [[ $cli == codex || $cli == claude ]] || die "no adapter for CLI '$cli'"
@@ -88,7 +92,7 @@ case $cmd in
     mkdir -p "$out"
 
     {
-      cat "$lens_file"
+      sed "s|{{MERGE_RISK_SKILL}}|$SKILL_DIR/../crucible-merge-risk/SKILL.md|g" "$lens_file"
       printf '\n## The change\n\nRepository: `%s`\n\nReview %s. Read the surrounding code as needed.\n' "$repo" "$scope"
       printf '\n## The task\n\n'; cat "$task"
       printf '\n\n## Rules\n\n- Don'\''t modify files, commit, push, or open a browser.\n- Return your result as JSON matching the provided schema.\n'
@@ -109,7 +113,8 @@ case $cmd in
     [[ $# -eq 2 ]] || die "usage: review.sh resume <run-dir> <prompt-file>"
     run=$(cd "$1" && pwd) prompt=$2
     [[ -f $run/meta.json ]] || die "no meta.json in $run"
-    read -r cli model effort repo sid < <(jq -r '"\(.cli) \(.model) \(.effort) \(.repo) \(.session_id)"' "$run/meta.json")
+    read -r cli model effort repo sid lens < <(jq -r '"\(.cli) \(.model) \(.effort) \(.repo) \(.session_id) \(.lens)"' "$run/meta.json")
+    SCHEMA=$(schema_for "$lens")
     n=1; while [[ -d $run/recheck-$n ]]; do n=$((n + 1)); done
     out="$run/recheck-$n"; mkdir -p "$out"; cp "$prompt" "$out/prompt.md"
     started=$(now)
