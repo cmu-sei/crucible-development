@@ -53,8 +53,12 @@ blank line, and keep it when editing published notes.
   notes. Leave out anything you assumed: what an older client does with a new response, which
   release an old PR shipped in, whether a dependency is bundled. If it matters, check it; if you
   can't, leave it out.
-- **Dev-only dependencies:** say a package "isn't in the published image" only when the package-lock
-  entry has `"dev": true`.
+- **Not in the image:** say a package "isn't in the published image" only when the research
+  showed it: the package-lock entry has `"dev": true`, or the app never imports the package and no
+  runtime package depends on it.
+- **Security advisories:** name each one a bump fixes by ID and severity, from the package's own
+  advisories (see the research step), and give the count those add up to. GitHub's global
+  database can miss a recent one.
 - **Numbers and names exactly:** migration names, setting keys with their section
   (`Proxmox:GuestAgentTimeoutMilliseconds`), defaults, permission names and enum values, routes,
   status codes, and UI labels in **bold** as the UI shows them.

@@ -16,7 +16,10 @@
 # Projects: alloy blueprint caster cite gallery player vm console steamfitter topomojo
 #
 # Output: APIs first, then UIs, each in project order, so releasing in output order puts an
-# API before the UI that needs it.
+# API before the UI that needs it. Each GitHub call is tried 3 times. A repository the survey
+# still can't read shows "status: ERROR" with the command to rerun it.
+#
+# Exit status: 0; 2 for a bad target; 3 when any GitHub call failed after its retries.
 
 set -uo pipefail
 
@@ -86,6 +89,24 @@ for p in "${PROJECTS[@]}"; do [[ -n ${UI[$p]:-} && -n ${want[${UI[$p]}]:-} ]] &&
 
 if $resolve_only; then printf '%s\n' "${repos[@]}"; exit 0; fi
 
+# gh api with retries: GitHub drops connections now and then, and a failed call must not pass
+# for an empty answer (an empty SHA once turned into a bogus "commits//check-runs" request).
+ghr() {
+  local out attempt
+  for attempt in 1 2 3; do
+    if out=$(gh api "$@" 2>/dev/null); then printf '%s' "$out"; return 0; fi
+    [[ $attempt -lt 3 ]] && sleep $((attempt * 2))
+  done
+  return 1
+}
+
+errors=0
+fail() { # fail <what>: report a repo the survey couldn't read, and move on
+  echo "status: ERROR - $1 failed after 3 tries. Rerun: survey.sh $(tr '[:upper:]' '[:lower:]' <<<"$r")"
+  echo
+  errors=$((errors + 1))
+}
+
 for r in "${repos[@]}"; do
   echo "=== $ORG/$r"
   clone="$CRUCIBLE_ROOT/${CLONE[$r]}"
@@ -93,26 +114,39 @@ for r in "${repos[@]}"; do
 
   # Latest application release: skip drafts, prereleases and client-package tags
   # (e.g. Steamfitter.Api.Client.3.11.0), which GitHub may mark as "latest".
-  rel=$(gh api "repos/$ORG/$r/releases?per_page=40" --jq \
+  if ! rel=$(ghr "repos/$ORG/$r/releases?per_page=40" --jq \
     '[.[] | select(.draft|not) | select(.prerelease|not) | select(.tag_name|test("Client")|not)][0]
-     | select(. != null) | "\(.tag_name) \(.published_at[0:10])"')
+     | select(. != null) | "\(.tag_name) \(.published_at[0:10])"'); then
+    fail "reading releases"; continue
+  fi
   if [[ -z $rel ]]; then echo "last release: NONE"; echo; continue; fi
   tag=${rel%% *}
   echo "last release: $rel"
 
-  head=$(gh api "repos/$ORG/$r/commits/main" --jq .sha)
+  if ! head=$(ghr "repos/$ORG/$r/commits/main" --jq .sha) || [[ -z $head ]]; then
+    fail "reading main's SHA"; continue
+  fi
   echo "main: $head"
 
-  gh api "repos/$ORG/$r/compare/$tag...main" --jq '
+  if ! cmp=$(ghr "repos/$ORG/$r/compare/$tag...main" --jq '
     "ahead: \(.ahead_by)  behind: \(.behind_by)  files: \(.files|length)\(if (.files|length) >= 300 then " (TRUNCATED at 300: use the local clone for the file list)" else "" end)",
-    (.commits[] | "  \(.sha[0:7]) \(.commit.author.date[0:10]) \(.commit.message|split("\n")[0])")'
+    (.commits[] | "  \(.sha[0:7]) \(.commit.author.date[0:10]) \(.commit.message|split("\n")[0])")'); then
+    fail "comparing $tag with main"; continue
+  fi
+  echo "$cmp"
 
   # CI on main HEAD. "Dependabot" runs are Dependabot's own update jobs, not CI; a failure
   # there doesn't block a release. A HEAD made by a Dependabot merge often has no CI runs
   # of its own, so the merged PR's checks are the ones to read.
-  ci=$(gh api "repos/$ORG/$r/commits/$head/check-runs?per_page=100" --jq \
-    '[.check_runs[] | select(.name != "Dependabot") | "\(.name)=\(.conclusion // .status)"] | unique | join(", ")')
+  if ! ci=$(ghr "repos/$ORG/$r/commits/$head/check-runs?per_page=100" --jq \
+    '[.check_runs[] | select(.name != "Dependabot") | "\(.name)=\(.conclusion // .status)"] | unique | join(", ")'); then
+    ci="ERROR (reading check runs failed after 3 tries; check them before publishing)"
+    errors=$((errors + 1))
+  fi
   [[ -n $ci ]] || ci="(no CI runs on HEAD: read the checks of the PR that was merged)"
   echo "ci on HEAD: $ci"
   echo
 done
+
+echo "--- surveyed ${#repos[@]} repositories, errors: $errors"
+[[ $errors -eq 0 ]] || exit 3

@@ -25,8 +25,9 @@ With no target, ask which to release. An unknown target is an error; say which n
 
 **What this skill may do without asking:** publish the GitHub releases for the repositories the
 user named, open the helm-charts PR, and close the bot PRs it replaces. **Always ask first** before:
-releasing a repository whose changes need an unreleased change elsewhere (see step 3), publishing
-a NuGet client package, changing a chart value that alters what an existing deployment does,
+releasing a repository whose changes need an unreleased change elsewhere (see step 3),
+releasing one whose changes don't change what it ships (also step 3), publishing a NuGet client
+package, changing a chart value that alters what an existing deployment does,
 folding a hand-written chart PR into the consolidated one, and approving, merging or
 admin-merging any PR. An approval is posted under the user's GitHub account, and GitHub won't
 let that account approve a PR it opened, which includes the consolidated chart PR.
@@ -37,7 +38,9 @@ This skill's `scripts/` directory (`.claude/skills/create-releases/scripts/` in 
 
 - `survey.sh [--resolve-only] <targets...>`: resolves targets to repositories (APIs first, then UIs),
   and for each prints the latest application release, `main`'s SHA, the commits since, the
-  changed-file count and CI on `main` HEAD. Read-only.
+  changed-file count and CI on `main` HEAD. Read-only. It tries each GitHub call three times,
+  because GitHub drops connections now and then. A repository it still can't read shows
+  `status: ERROR` with the command to rerun, and the script exits with 3.
 - `settings-diff.mjs diff <kind> <old> <new>` / `keys <kind> <file>`: settings added, removed and
   changed between two versions of an app's settings file, as the flat keys the charts use, with
   defaults. Handles `appsettings.json` with comments, TopoMojo's `.conf` and UI `settings.json`.
@@ -50,7 +53,8 @@ Local clones live under `/mnt/data/crucible/` (`alloy/alloy.api`, `player/vm.ui`
 ### 1. Survey
 
 Run `survey.sh $ARGUMENTS`. Skip a repository with `ahead: 0`. Warn if `behind` isn't 0 (the tag
-isn't on `main`). Show the user a short table: repository, last release, commits since, and
+isn't on `main`). Rerun any repository that shows `status: ERROR` before deciding anything about
+it: an error isn't "unchanged". Show the user a short table: repository, last release, commits since, and
 whether CI on `main` is green. Then continue; this table isn't a question.
 
 `main` moves during a long run, often with Dependabot merges. The survey is a starting point: every
@@ -77,13 +81,22 @@ For each repository with commits, collect what the notes need. Write files to a 
   `git fetch origin --tags` in the local clone, then use `git diff --name-status <tag> origin/main`
   for migrations, settings and routes.
 - **New routes:** search the diff of controllers for `[Http…("…")]` and `[Route(…)]`.
-- **UI dependencies:** a bumped npm package is development-only only if the package-lock entry
-  `node_modules/<name>` has `"dev": true`. Only then may the notes say it isn't in the published
-  image. A UI image is `nginx` serving the build, so the Node version only builds it.
+- **UI dependencies:** the notes may say a bumped npm package isn't in the published image only
+  when you've shown it. Either its package-lock entry `node_modules/<name>` has `"dev": true`, or
+  the app never imports it (`git grep` for the package name under `src/` finds nothing) and no
+  runtime package in the lock file depends on it. Say which check backs the claim. A UI image is
+  `nginx` serving the build, so the Node version only builds it.
+- **Security fixes:** when a bump fixes advisories, take them from the package's own advisories,
+  not only GitHub's global database (`gh api /advisories`), which can lag days behind. The
+  Dependabot PR body names them. Confirm each one covers the old version and is fixed by the new
+  one with `gh api repos/<owner>/<repo>/security-advisories/<GHSA-id> --jq
+  '[.severity, .vulnerabilities[].vulnerable_version_range, .vulnerabilities[].patched_versions]'`,
+  where `<owner>/<repo>` is the package's source repository. Name every one that does, with its
+  severity, so the count is right.
 - **Generated clients:** if only `src/app/generated/**` changed, search the app code for the new
   methods before claiming any user-facing effect.
 
-### 3. Order the releases and check dependencies
+### 3. Order the releases, check dependencies, and check each is worth making
 
 Release in `survey.sh` order: APIs before UIs. Then look for cross-repository needs: PR bodies
 that say "Needs", "Depends on", "Merge after", "Requires" or "Stacked on" with a `cmu-sei/<repo>#N`
@@ -99,6 +112,14 @@ reference. For each one:
    Recommend releasing the dependency first, and offer to release only this one, or to stop.
    Releasing a UI before the API it needs also has the helm bot point the chart at a UI whose API
    isn't released yet.
+
+**Is each release worth making?** If nothing since the last release changes what the repository
+ships (only development-only or unimported dependency bumps, CI, tests or docs), say so and
+**ask** whether to release it now or leave the changes for its next release. A release costs
+operators a chart bump and an image rebuild for no change in behavior, so recommend waiting,
+unless something outside the image needs it, such as a security scanner that flags the old
+version in the repository. With `--dry-run`, put the question and your recommendation in the
+report, and still draft the notes so the user has them either way.
 
 ### 4. Choose the version
 
