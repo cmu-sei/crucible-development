@@ -24,8 +24,11 @@ OVERRIDE_HINT = (
     "If the user wants to open it without the review, give them the exact command to run "
     "in their own terminal, where this gate doesn't apply."
 )
-SEPARATORS = {"&&", "||", ";", "|", "&", "\n"}
-AGENT_TRAILER = re.compile(r"^co-authored-by:.*(claude|anthropic|codex|openai|copilot)", re.I | re.M)
+SEPARATORS = {"&&", "||", ";", "|", "&", "\n", "(", ")"}
+# Words that can come before the real command: shell keywords and command wrappers.
+PREFIXES = {"if", "then", "else", "elif", "do", "while", "until", "!", "{", "}", "time", "exec",
+            "command", "builtin", "nohup", "nice", "sudo", "xargs"}
+SHELLS = {"bash", "sh", "zsh", "dash"}
 REQUIRED_SECTIONS = {
     "Summary": re.compile(r"^##\s*Summary\b", re.M | re.I),
     "User-facing changes": re.compile(r"^##\s*User[- ]facing changes\b", re.M | re.I),
@@ -66,7 +69,7 @@ def strip_heredocs(command: str) -> str:
 def segments(command: str):
     """Split a shell command into simple commands, tracking `cd` so we know each one's directory."""
     command = command.replace("\\\n", " ")  # line continuations
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|\n")
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|\n()")
     lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
     current = []
@@ -81,13 +84,38 @@ def segments(command: str):
         yield current
 
 
-def gh_args(words):
-    """Return gh's arguments if this simple command runs gh (after env assignments), else None."""
+def command_words(words):
+    """The words of the real command, after env assignments, shell keywords and wrappers."""
     i = 0
-    while i < len(words) and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[i]):
-        i += 1
-    if i < len(words) and os.path.basename(words[i]) == "gh":
-        return words[i + 1:]
+    while i < len(words):
+        w = words[i]
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w) or w in PREFIXES or w.startswith("-") and i > 0 and words[i - 1] in ("env", "timeout", "nice", "sudo", "xargs"):
+            i += 1
+        elif w == "env":
+            i += 1
+        elif w == "timeout":
+            i += 1
+            while i < len(words) and words[i].startswith("-"):
+                i += 1
+            i += 1  # the duration
+        else:
+            break
+    return words[i:]
+
+
+def shell_script(words):
+    """The script of `bash -c '...'` (or sh/zsh, including -lc), else None."""
+    if words and os.path.basename(words[0]) in SHELLS:
+        for j, w in enumerate(words[1:], 1):
+            if w.startswith("-") and "c" in w[1:] and j + 1 < len(words):
+                return words[j + 1]
+    return None
+
+
+def gh_args(words):
+    """Return gh's arguments if this simple command runs gh, else None."""
+    if words and os.path.basename(words[0]) == "gh":
+        return words[1:]
     return None
 
 
@@ -158,10 +186,14 @@ def check_pr_create(args, cwd):
     if absent:
         deny(f"the body is missing: {', '.join(absent)}. Follow the crucible-pr template.")
 
-    merge_base = record["final"]["merge_base"]
-    messages = git(cwd, "log", "--format=%B", f"{merge_base}..{head_sha}")
-    if AGENT_TRAILER.search(messages):
-        deny("a commit on this branch has an agent Co-Authored-By trailer. Ask the user how to remove it.")
+    # gh opens the PR from the pushed branch, which must be the commit that was reviewed.
+    try:
+        remote = subprocess.run(["git", "ls-remote", f"https://github.com/{repo}.git", f"refs/heads/{head}"],
+                                capture_output=True, text=True, timeout=30).stdout.split()
+    except subprocess.TimeoutExpired:
+        remote = []
+    if remote and remote[0] != head_sha:
+        deny(f"the pushed {head} is at {remote[0][:7]}, not the reviewed HEAD {head_sha[:7]}. Push it first.")
 
 
 def check_stack(args):
@@ -177,31 +209,42 @@ def check_stack(args):
                  "Open that layer with the crucible-pr skill first, then link it by PR number.")
 
 
+def check_command(command, cwd, depth=0):
+    for words in segments(command):
+        words = command_words(words)
+        if not words:
+            continue
+        if words[0] == "cd" and len(words) > 1:
+            cwd = str(Path(cwd, os.path.expanduser(words[1])).resolve())
+            continue
+        script = shell_script(words)
+        if script is not None and depth < 3:
+            check_command(strip_heredocs(script), cwd, depth + 1)
+            continue
+        args = gh_args(words)
+        if args is None:
+            continue
+        # Skip gh's own global flags (-R/--repo before the subcommand).
+        rest = list(args)
+        global_repo = None
+        while rest and rest[0].startswith("-"):
+            flag = rest.pop(0)
+            if flag in ("-R", "--repo") and rest:
+                global_repo = rest.pop(0)
+        if rest[:2] in (["pr", "create"], ["pr", "new"]):
+            sub_args = rest[2:] + (["--repo", global_repo] if global_repo else [])
+            check_pr_create(sub_args, cwd)
+        elif rest[:1] == ["stack"]:
+            check_stack(rest[1:])
+
+
 def main():
     event = json.load(sys.stdin)
     command = (event.get("tool_input") or {}).get("command") or ""
     cwd = event.get("cwd") or os.getcwd()
     command = strip_heredocs(command)
     try:
-        for words in segments(command):
-            if words[0] == "cd" and len(words) > 1:
-                cwd = str(Path(cwd, os.path.expanduser(words[1])).resolve())
-                continue
-            args = gh_args(words)
-            if args is None:
-                continue
-            # Skip gh's own global flags (-R/--repo before the subcommand).
-            rest = list(args)
-            global_repo = None
-            while rest and rest[0].startswith("-"):
-                flag = rest.pop(0)
-                if flag in ("-R", "--repo") and rest:
-                    global_repo = rest.pop(0)
-            if rest[:2] in (["pr", "create"], ["pr", "new"]):
-                sub_args = rest[2:] + (["--repo", global_repo] if global_repo else [])
-                check_pr_create(sub_args, cwd)
-            elif rest[:1] == ["stack"]:
-                check_stack(rest[1:])
+        check_command(command, cwd)
     except SystemExit:
         raise
     except ValueError as err:

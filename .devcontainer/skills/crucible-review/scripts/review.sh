@@ -49,8 +49,12 @@ invoke() {
     *) die "unknown cli '$cli'" ;;
   esac
   local status=complete
-  # Complete = exit 0 and an object with every top-level key the schema requires.
-  if [[ $rc -ne 0 ]] || ! jq -e --slurpfile s "$SCHEMA" '. as $o | type == "object" and all($s[0].required[]; . as $k | $o | has($k))' "$out/findings.json" >/dev/null 2>&1; then
+  # Complete = exit 0 and output with the shape the pass needs (keys present and the right types).
+  if [[ $rc -ne 0 ]] || ! jq -e --slurpfile s "$SCHEMA" '. as $o | type == "object"
+        and all($s[0].required[]; . as $k | $o | has($k))
+        and (if has("findings") then (.findings | type == "array") and all(.findings[]; type == "object" and (.id | type == "string")) else true end)
+        and (if has("tier") then (.tier | IN("low", "medium", "high")) and (.categories | type == "object") else true end)' \
+        "$out/findings.json" >/dev/null 2>&1; then
     status=incomplete
   fi
   echo "$sid $status $rc"
@@ -66,7 +70,7 @@ case $cmd in
     [[ -f $task ]] || die "no task file '$task'"
     SCHEMA=$(schema_for "$lens")
     if [[ $profile == *:*:* ]]; then
-      IFS=: read -r cli model effort <<<"$profile"
+      cli=${profile%%:*} effort=${profile##*:} model=${profile#*:} model=${model%:*}
       [[ $cli == codex || $cli == claude ]] || die "no adapter for CLI '$cli'"
       profile="$cli-$model-$effort"
     else
@@ -76,6 +80,7 @@ case $cmd in
 
     if [[ $range == uncommitted ]]; then
       scope="the uncommitted changes in the working tree: \`git diff HEAD\` plus any untracked files (\`git status --porcelain\`)"
+      head_sha=$(git -C "$repo" rev-parse HEAD)
     else
       base=${range%%..*} head=${range##*..}
       mb=$(git -C "$repo" merge-base "$base" "$head") || die "can't find a merge base for $range"
@@ -101,7 +106,7 @@ case $cmd in
     started=$(now)
     read -r sid status rc < <(invoke "$cli" "$model" "$effort" "$repo" "$out/prompt.md" "$out")
     jq -n --arg profile "$profile" --arg cli "$cli" --arg model "$model" --arg effort "$effort" --arg lens "$lens" \
-      --arg repo "$repo" --arg range "$range" --arg head "$(git -C "$repo" rev-parse HEAD)" --arg sid "$sid" --arg status "$status" --argjson rc "$rc" \
+      --arg repo "$repo" --arg range "$range" --arg head "$head_sha" --arg sid "$sid" --arg status "$status" --argjson rc "$rc" \
       --arg started "$started" --arg finished "$(now)" \
       '{profile:$profile, cli:$cli, model:$model, effort:$effort, lens:$lens, repo:$repo, range:$range, head:$head,
         session_id:$sid, status:$status, exit_code:$rc, started:$started, finished:$finished}' >"$out/meta.json"
@@ -116,10 +121,13 @@ case $cmd in
     read -r cli model effort repo sid lens < <(jq -r '"\(.cli) \(.model) \(.effort) \(.repo) \(.session_id) \(.lens)"' "$run/meta.json")
     SCHEMA=$(schema_for "$lens")
     n=1; while [[ -d $run/recheck-$n ]]; do n=$((n + 1)); done
-    out="$run/recheck-$n"; mkdir -p "$out"; cp "$prompt" "$out/prompt.md"
+    out="$run/recheck-$n"; mkdir -p "$out"
+    head=$(git -C "$repo" rev-parse HEAD)
+    { cat "$prompt"
+      jq -r --arg h "$head" 'if (.range | contains("..")) then "\n\nThe change is now `git diff \(.range | split("..")[0])..\($h)`." else "" end' "$run/meta.json"
+    } >"$out/prompt.md"
     started=$(now)
     read -r _ status rc < <(invoke "$cli" "$model" "$effort" "$repo" "$out/prompt.md" "$out" "$sid")
-    head=$(git -C "$repo" rev-parse HEAD)
     jq --arg status "$status" --argjson rc "$rc" --arg started "$started" --arg finished "$(now)" --arg head "$head" \
       '. + {status:$status, exit_code:$rc, started:$started, finished:$finished, head:$head}
          | if (.range | contains("..")) then .range = ((.range | split("..")[0]) + ".." + $head) else . end' \

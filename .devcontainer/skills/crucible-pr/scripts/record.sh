@@ -46,6 +46,9 @@ case $cmd in
     need; pass=$1; run=$(cd "$2" && pwd)
     [[ $pass =~ ^(simplify|risk|review|recheck)$ ]] || die "unknown pass '$pass'"
     jq -e '.status == "complete"' "$run/meta.json" >/dev/null || die "run $run is incomplete; an incomplete review can't be recorded"
+    want=$pass; [[ $pass == recheck ]] && want=review
+    lens=$(jq -r .lens "$run/meta.json")
+    [[ $lens == "$want" ]] || die "a $pass pass needs a run with the $want lens; this run used $lens"
     upd --arg pass "$pass" --arg d "$run" --slurpfile m "$run/meta.json" --slurpfile o "$run/findings.json" '
       def rank: {"low": 1, "medium": 2, "high": 3}[.];
       .runs += [{pass: $pass, run_dir: $d} + ($m[0] | {profile, cli, model, effort, lens, session_id, range, head})]
@@ -97,7 +100,9 @@ case $cmd in
              | if . == null or .head == $h then empty
                else "the \($p) reviewer has not seen HEAD; resume it to re-check the fixes" end) end),
           ($r.findings[] | select(.disposition == null) | "finding \(.id) from \(.pass) (\(.run_dir | split("/") | last)) has no disposition"),
-          (if any($r.tests[]; .commit == $h) then empty else "no automated test run recorded at HEAD" end)
+          ([$r.tests[] | select(.commit == $h)] as $t
+           | if ($t | length) == 0 then "no automated test run recorded at HEAD"
+             else ($t | group_by(.command)[] | last | select(.result != "pass") | "the latest run of \(.command) at HEAD failed") end)
         ] | .[]' "$rec")
     if [[ -n $problems ]]; then echo "$problems" >&2; exit 1; fi
     echo "record complete: tier $(jq -r .tier "$rec")"

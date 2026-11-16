@@ -10,5 +10,5 @@ matcher = "^Bash$"
 
 [[hooks.PreToolUse.hooks]]
 type = "command"
-command = '''bash -c 'in=$(cat); printf "%s" "$in" | grep -qE "gh[[:space:]]([^\"]*[[:space:]])?(pr[[:space:]]+(create|new)|stack[[:space:]]+(submit|link))" || exit 0; printf "%s" "$in" | python3 "$HOME/.agents/skills/crucible-pr/scripts/check-pr.py" || exit 2''''
+command = '''bash -c 'in=$(cat); printf "%s" "$in" | grep -qE "gh.*(pr[[:space:]]+(create|new)|stack[[:space:]]+(submit|link))" || exit 0; printf "%s" "$in" | python3 "$HOME/.agents/skills/crucible-pr/scripts/check-pr.py" || exit 2''''
 timeout = 60
