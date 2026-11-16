@@ -21,27 +21,28 @@ Use these sections in this order, in your own words:
 
 - <changed request or response, and what callers see>
 
-<Risk & review section: the output of record.sh summary, which ends with the crucible-pr marker comment>
+## Related
+
+- <links to related public PRs or issues>
 
 <details>
 <summary>Technical details</summary>
 
 - <detail>
 
+**Testing**
+
+- <how the change was tested>
+
 </details>
 
-## Testing
-
-- <how the change was tested, when it isn't obvious from the tests in the diff>
-
-## Related
-
-- <links to related public PRs or issues>
+<Risk & review section: the output of record.sh summary, which ends with the crucible-pr marker comment>
 ```
 
 - **Always present:** Summary, User-facing changes, Risk & review and Technical details. User-facing changes can say "None."; Summary and Technical details always have content.
-- Paste the `record.sh summary` output as it is. Its collapsed header shows the tier and review status; the risk label shows the tier in PR lists.
-- **Every other section is left out when it would be empty:** Breaking Changes (as defined below; never write "Breaking Changes: None"), API changes, Testing and Related.
+- Visible sections come first, for release-note readers and operators. The collapsed sections come last, for reviewers.
+- Paste the `record.sh summary` output as it is, at the very end. Its collapsed header shows the tier and review status; the risk label shows the tier in PR lists.
+- **Every other section is left out when it would be empty:** Breaking Changes (as defined below; never write "Breaking Changes: None"), API changes and Related.
 
 ## What counts as a breaking change
 
@@ -71,4 +72,4 @@ For each real breaking change, say exactly what to do, for example "Set the new 
   - No tool names.
 - **User-facing changes:** one bullet per change someone using the UI or running Crucible would notice. New settings go here, with their names and defaults. A change that API callers would notice goes under API changes instead.
 - **API changes:** one bullet per contract change: the endpoint, what changed, and what a caller now sees. Internal method signatures that aren't part of the HTTP API go in Technical details.
-- **Technical details:** what a reviewer needs and the diff doesn't make obvious: design decisions, anything worth a close look, tests added, whether there's a migration. Check claims against the code before stating them, and don't restate the diff file by file.
+- **Technical details:** what a reviewer needs and the diff doesn't make obvious: design decisions, anything worth a close look, tests added, whether there's a migration. End with how the change was tested. Check claims against the code before stating them, and don't restate the diff file by file.
