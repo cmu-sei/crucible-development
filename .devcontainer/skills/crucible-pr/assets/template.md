@@ -9,6 +9,8 @@ Use these sections in this order, in your own words:
 
 - <what the operator or user must do when deploying, and why>
 
+<risk line from record.sh summary>
+
 ## Summary
 
 <2–5 sentences: the problem and what this PR does about it>
@@ -20,6 +22,8 @@ Use these sections in this order, in your own words:
 ## API changes
 
 - <changed request or response, and what callers see>
+
+<Risk & review section from record.sh summary, which ends with the crucible-pr marker comment>
 
 <details>
 <summary>Technical details</summary>
@@ -37,7 +41,8 @@ Use these sections in this order, in your own words:
 - <links to related public PRs or issues>
 ```
 
-- **Always present:** Summary, User-facing changes and Technical details. User-facing changes can say "None."; the other two always have content.
+- **Always present:** the risk line, Summary, User-facing changes, Risk & review and Technical details. User-facing changes can say "None."; Summary and Technical details always have content.
+- The risk line sits at the top, after any Breaking Changes, so a reviewer can judge the effort needed right away. Paste the two `record.sh summary` pieces as they are.
 - **Every other section is left out when it would be empty:** Breaking Changes (as defined below; never write "Breaking Changes: None"), API changes, Testing and Related.
 
 ## What counts as a breaking change
