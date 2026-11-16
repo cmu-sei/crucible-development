@@ -1,6 +1,6 @@
 ---
 name: create-releases
-description: Use when the user invokes `/create-releases <targets...>` or asks to release Crucible applications. Targets are `all`, a project (`alloy`, `blueprint`, `caster`, `cite`, `gallery`, `player`, `vm`, `console`, `steamfitter`, `topomojo`) for its API and UI, or one repository (`alloy.api`, `blueprint.ui`, ...). For each repository with commits since its last release it picks the version, writes release notes in the repo's own format, and publishes a GitHub release from main. It then replaces the release bot's helm-charts PRs with one PR that carries every chart change at the correct defaults.
+description: Use when the user invokes `/create-releases` or asks to release, tag or publish new versions of Crucible APIs or UIs, or to update helm-charts after a release.
 argument-hint: "[--dry-run] <all | project | project.api | project.ui>..."
 ---
 
@@ -19,18 +19,20 @@ since its last release, followed by one helm-charts PR that carries every chart 
 | `console` | `Console.Ui` (there is no Console API) |
 | `topomojo` | `TopoMojo` (the API) and `topomojo-ui` |
 | `<project>.api`, `<project>.ui` | that one repository, e.g. `cite.ui`, `topomojo.api` |
-| `--dry-run` | survey, choose versions and draft notes, but publish nothing and open no PRs |
+| `--dry-run` | survey, choose versions, draft notes and plan the chart changes, then stop at the plan in step 6: publish nothing and open no PRs |
 
 With no target, ask which to release. An unknown target is an error; say which names are valid.
 
-**What this skill may do without asking:** publish the GitHub releases for the repositories the
-user named, open the helm-charts PR, and close the bot PRs it replaces. **Always ask first** before:
-releasing a repository whose changes need an unreleased change elsewhere (see step 3),
-releasing one whose changes don't change what it ships (also step 3), publishing a NuGet client
-package, changing a chart value that alters what an existing deployment does,
-folding a hand-written chart PR into the consolidated one, and approving, merging or
-admin-merging any PR. An approval is posted under the user's GitHub account, and GitHub won't
-let that account approve a PR it opened, which includes the consolidated chart PR.
+**Nothing is published until the user confirms the plan** (step 6): one table of every release,
+its version and its notes. Once they confirm, the skill may publish those releases, open the
+helm-charts PR, and close any bot PRs it replaces without asking again. **Always ask first**
+before: releasing a repository whose changes need an unreleased change elsewhere (see step 3),
+releasing one whose changes don't change what it ships (also step 3), publishing a release whose
+CI isn't green (step 7), publishing a NuGet client package, changing a chart value that alters
+what an existing deployment does, folding a hand-written chart PR into the consolidated one, and
+approving, merging or admin-merging any PR. An approval is posted under the user's GitHub
+account, and GitHub won't let that account approve a PR it opened, which includes the
+consolidated chart PR.
 
 ## Helpers
 
@@ -52,7 +54,7 @@ Local clones live under `/mnt/data/crucible/` (`alloy/alloy.api`, `player/vm.ui`
 
 ### 1. Survey
 
-Run `survey.sh $ARGUMENTS`. Skip a repository with `ahead: 0`. Warn if `behind` isn't 0 (the tag
+Run `survey.sh $ARGUMENTS` (it ignores `--dry-run`). Skip a repository with `ahead: 0`. Warn if `behind` isn't 0 (the tag
 isn't on `main`). Rerun any repository that shows `status: ERROR` before deciding anything about
 it: an error isn't "unchanged". Show the user a short table: repository, last release, commits since, and
 whether CI on `main` is green. Then continue; this table isn't a question.
@@ -110,16 +112,16 @@ reference. For each one:
 3. If no release has it and that repository is in this batch, release it first.
 4. If no release has it and that repository isn't in this batch, **ask** with AskUserQuestion.
    Recommend releasing the dependency first, and offer to release only this one, or to stop.
-   Releasing a UI before the API it needs also has the helm bot point the chart at a UI whose API
-   isn't released yet.
+   Releasing a UI before the API it needs also points the chart at a UI whose API isn't released
+   yet.
 
 **Is each release worth making?** If nothing since the last release changes what the repository
 ships (only development-only or unimported dependency bumps, CI, tests or docs), say so and
 **ask** whether to release it now or leave the changes for its next release. A release costs
 operators a chart bump and an image rebuild for no change in behavior, so recommend waiting,
 unless something outside the image needs it, such as a security scanner that flags the old
-version in the repository. With `--dry-run`, put the question and your recommendation in the
-report, and still draft the notes so the user has them either way.
+version in the repository. Still draft the notes, so the user has them either way. You can ask
+this and the dependency questions separately, or fold them into the step 6 confirmation.
 
 ### 4. Choose the version
 
@@ -140,26 +142,56 @@ Check the tag is free: `gh api repos/cmu-sei/<repo>/git/refs/tags/<version>` mus
 Read `references/release-notes.md` and follow it. Every statement in the notes must be backed by
 a PR body, a diff or a check you ran. Drop anything you can't back.
 
-### 6. Publish
+### 6. Confirm the plan
+
+Publishing makes public releases and images, and `all` can mean 19 of them, so nothing is
+published until the user has seen the whole batch and agreed. When every notes file is drafted,
+show one table:
+
+| Repository | Last release → new version | Notes file | What's in it |
+|---|---|---|---|
+| CITE.Ui | 1.13.0 → 1.13.1 (patch) | `/tmp/releases/CITE.Ui/notes-1.13.1.md` | node-forge bump; no image change, so waiting is recommended |
+
+Use "What's in it" for what the user must know before deciding: breaking changes, migrations,
+dependencies on other releases, CI that isn't green yet, or a release that changes nothing it
+ships. Add a line for the helm-charts PR that step 8 will open (which charts, and any setting whose
+default needs a decision). Then ask once with AskUserQuestion: publish all of them, publish some
+(the user names which), or stop. Publish only what the user confirms, and leave the notes files in
+place for anything they hold back.
+
+With `--dry-run`, show the table, list the chart changes step 8 would make, and stop there.
+
+### 7. Publish
+
+For each confirmed repository, in survey order:
 
 1. Read `main` again: `H=$(gh api repos/cmu-sei/<repo>/commits/main --jq .sha)`. If it moved
-   since you researched it, research the new commits and update the notes and version first.
-2. Confirm CI is green for `$H`. Ignore check runs named `Dependabot`: they are Dependabot's own
-   update jobs. If `$H` has no build or test runs of its own (a Dependabot merge often doesn't),
-   read the checks of the PR that produced it: `gh pr checks <N>`.
+   since you researched it, research the new commits and update the notes and version. If that
+   changes the version or what the notes say, show the change and confirm that repository again.
+2. Check CI for `$H`. Ignore check runs named `Dependabot`: they are Dependabot's own update jobs.
+   If `$H` has no build or test runs of its own (a Dependabot merge often doesn't), read the
+   checks of the PR that produced it: `gh pr checks <N>`.
+   - **Green** (every check `success`, `skipped` or `neutral`): go on.
+   - **Still running:** wait for it, with `gh pr checks <N> --watch` or `gh run watch <run-id> -R
+     cmu-sei/<repo> --exit-status`, and use the result. A release built from an unfinished CI run
+     could ship a broken image.
+   - **Red** (`failure`, `cancelled`, `timed_out` or `action_required`): don't publish that
+     repository. Tell the user which check failed, with its link, and ask whether to skip it, wait
+     for a fix (a fix moves `main`, so restart at item 1), or publish anyway. Recommend skipping,
+     and never publish over a red check without that answer. Other repositories go ahead, except
+     any whose release depends on this one (step 3), which wait with it.
 3. End the notes file with a blank line and the helm skip marker, `<!-- helm-chart-pr: false -->`
    (honored by the update-helm-chart action from v3.3.0, cmu-sei/Crucible-Github-Actions#49).
-   The release's Update Helm Chart run then opens no bot PR, because step 7 charts every release
+   The release's Update Helm Chart run then opens no bot PR, because step 8 charts every release
    in one PR. GitHub doesn't render HTML comments, so readers never see it. The action only reads
    the notes when the release is published, so the marker must be there before publishing.
 4. Publish against the exact SHA:
    `gh release create <version> -R cmu-sei/<repo> --target $H --title <version> --notes-file <file> --latest`.
-   With `--dry-run`, stop at the drafted notes file instead.
 5. About 20 seconds later, `gh run list -R cmu-sei/<repo> -e release -L 2` should show
    **Build and Publish Image** and **Update Helm Chart**. Note their links for the report. With
    the marker, Update Helm Chart succeeds with the notice "Helm chart PR skipped" and opens no
    PR. If it opens one anyway, the published notes lack the marker or have it mistyped: say so,
-   and step 7 replaces that PR.
+   and handle it with the fallback in `references/helm-charts.md`.
 6. Re-read the published notes once, looking for claims you assumed rather than checked. Fix them
    with `gh release edit <version> --notes-file <file>` (the file still ends with the marker), and
    tell the user what changed.
@@ -174,28 +206,28 @@ rather than search.
 When a new release satisfies an earlier release's note that said a dependency "isn't released
 yet", offer to update that note at the end.
 
-### 7. Consolidate the helm-charts PRs
+### 8. Open the helm-charts PR
 
-After the last release, read `references/helm-charts.md` and follow it. In short: wait for every
-release's **Update Helm Chart** run. With the skip marker there are no bot PRs; look for any
-anyway (`<app_name> to <version>`), because a release whose notes lack the marker still opens
-one. Then build one PR from `origin/main` with every chart and subchart bump and every added or
-removed setting at the app's real default, plus README rows for those settings. Also fix any
-zero values that already-merged bot PRs put on `main` (the action writes `false`, `""` or `0`
-for every new key), and say whether they break deployments. Commit, then run the repo's own
-check scripts (they only see committed changes), open the PR, and close any bot PRs it replaces.
-The user can't approve a PR this session opened, so ask who should review it.
+After the last release, read `references/helm-charts.md` and follow it. In short: build one PR
+from `origin/main` with every chart and subchart bump, and every added or removed setting at the
+app's real default, plus README rows for those settings. Commit, then run the repo's own check
+scripts (they only see committed changes), and open the PR. The user can't approve a PR this
+session opened, so ask who should review it.
 
-With `--dry-run`, list the chart changes the PR would make instead.
+Because every release carries the skip marker, the release bot normally opens nothing. The
+reference's **Fallback** section covers the exceptions: a release whose notes lacked the marker,
+so the bot opened a PR, and zero values that earlier bot PRs already put on `main`.
 
-### 8. Report
+With `--dry-run`, step 6 lists the chart changes this PR would make instead.
+
+### 9. Report
 
 End with:
 - a table of each repository with its new version and release link, plus any repository skipped
   as unchanged;
 - what needs a decision or follow-up: unmerged companion PRs, client packages not republished,
   earlier notes to update, chart values whose default changed;
-- the helm-charts PR link, the bot PRs it closed, published chart versions that carry wrong values
+- the helm-charts PR link, any bot PRs it replaced, published chart versions that carry wrong values
   and whether they need an upgrade, who was asked to review, and anything still running.
 
 ## Tooling pitfalls
