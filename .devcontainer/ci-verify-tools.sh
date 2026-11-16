@@ -53,6 +53,7 @@ check dotnet-ef  dotnet ef --version
 check ng         ng --version
 check phpcs      phpcs --version
 check phpcbf     phpcbf --version
+check pyyaml     python3 -c 'import yaml; print(yaml.__version__)'
 
 if [ "$fail" -ne 0 ]; then
   echo
