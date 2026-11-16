@@ -48,7 +48,7 @@ case $cmd in
     jq -e '.status == "complete"' "$run/meta.json" >/dev/null || die "run $run is incomplete; an incomplete review can't be recorded"
     upd --arg pass "$pass" --arg d "$run" --slurpfile m "$run/meta.json" --slurpfile o "$run/findings.json" '
       def rank: {"low": 1, "medium": 2, "high": 3}[.];
-      .runs += [{pass: $pass, run_dir: $d} + ($m[0] | {profile, cli, model, effort, lens, session_id, range})]
+      .runs += [{pass: $pass, run_dir: $d} + ($m[0] | {profile, cli, model, effort, lens, session_id, range, head})]
       | if $pass == "risk" then
           .risk = $o[0]
           | .tier = (if .tier == null or ($o[0].tier | rank) > (.tier | rank) then $o[0].tier else .tier end)
@@ -90,6 +90,12 @@ case $cmd in
           (if $r.tier == null then "no risk score" else empty end),
           ($required[] as $p | if any($r.runs[]; .pass == "review" and .profile == $p) then empty
                                else "missing the \($p) review the \($r.tier) tier requires" end),
+          (if ([$r.runs[] | select(.pass == "risk")] | last | .head) == $h then empty
+           else "the latest risk score does not cover HEAD; resume the scorer" end),
+          (if $r.tier == "low" then empty else
+            ($required[] as $p | [$r.runs[] | select((.pass == "review" or .pass == "recheck") and .profile == $p)] | last
+             | if . == null or .head == $h then empty
+               else "the \($p) reviewer has not seen HEAD; resume it to re-check the fixes" end) end),
           ($r.findings[] | select(.disposition == null) | "finding \(.id) from \(.pass) (\(.run_dir | split("/") | last)) has no disposition"),
           (if any($r.tests[]; .commit == $h) then empty else "no automated test run recorded at HEAD" end)
         ] | .[]' "$rec")
@@ -107,7 +113,9 @@ case $cmd in
       . as $r
       | ([$r.findings[] | select(.pass == "review" or .pass == "recheck")]) as $rf
       | ([$r.runs[] | select(.pass == "review") | .profile] | unique | join(" + ")) as $who
-      | "**Merge risk: \($r.tier | cap) \($r.tier | mark)** · Reviewed by \($who) at `\($short)` · "
+      | ([$r.runs[] | select(.pass == "review" or .pass == "recheck")] | last | .head // "") as $seen
+      | "**Merge risk: \($r.tier | cap) \($r.tier | mark)** · Reviewed by \($who) at `\($seen[0:7])`"
+        + (if $seen != $h then "; later commits not re-reviewed" else "" end) + " · "
         + "\([$rf[] | select(.disposition == "fixed")] | length) review findings fixed, "
         + "\([$rf[] | select(.disposition == "declined")] | length) declined",
         "",

@@ -89,7 +89,7 @@ case $cmd in
       [[ $gp = /* ]] || gp="$repo/$gp"
       out="$gp/$(date -u +%Y%m%dT%H%M%SZ)-$profile-$lens"
     fi
-    mkdir -p "$out"
+    mkdir -p "$out"; out=$(cd "$out" && pwd)
 
     {
       sed "s|{{MERGE_RISK_SKILL}}|$SKILL_DIR/../crucible-merge-risk/SKILL.md|g" "$lens_file"
@@ -101,9 +101,9 @@ case $cmd in
     started=$(now)
     read -r sid status rc < <(invoke "$cli" "$model" "$effort" "$repo" "$out/prompt.md" "$out")
     jq -n --arg profile "$profile" --arg cli "$cli" --arg model "$model" --arg effort "$effort" --arg lens "$lens" \
-      --arg repo "$repo" --arg range "$range" --arg sid "$sid" --arg status "$status" --argjson rc "$rc" \
+      --arg repo "$repo" --arg range "$range" --arg head "$(git -C "$repo" rev-parse HEAD)" --arg sid "$sid" --arg status "$status" --argjson rc "$rc" \
       --arg started "$started" --arg finished "$(now)" \
-      '{profile:$profile, cli:$cli, model:$model, effort:$effort, lens:$lens, repo:$repo, range:$range,
+      '{profile:$profile, cli:$cli, model:$model, effort:$effort, lens:$lens, repo:$repo, range:$range, head:$head,
         session_id:$sid, status:$status, exit_code:$rc, started:$started, finished:$finished}' >"$out/meta.json"
     echo "$out"
     [[ $status == complete ]] || { echo "review.sh: incomplete review, see $out/stderr.log" >&2; exit 1; }
@@ -119,8 +119,11 @@ case $cmd in
     out="$run/recheck-$n"; mkdir -p "$out"; cp "$prompt" "$out/prompt.md"
     started=$(now)
     read -r _ status rc < <(invoke "$cli" "$model" "$effort" "$repo" "$out/prompt.md" "$out" "$sid")
-    jq --arg status "$status" --argjson rc "$rc" --arg started "$started" --arg finished "$(now)" \
-      '. + {status:$status, exit_code:$rc, started:$started, finished:$finished}' "$run/meta.json" >"$out/meta.json"
+    head=$(git -C "$repo" rev-parse HEAD)
+    jq --arg status "$status" --argjson rc "$rc" --arg started "$started" --arg finished "$(now)" --arg head "$head" \
+      '. + {status:$status, exit_code:$rc, started:$started, finished:$finished, head:$head}
+         | if (.range | contains("..")) then .range = ((.range | split("..")[0]) + ".." + $head) else . end' \
+      "$run/meta.json" >"$out/meta.json"
     echo "$out"
     [[ $status == complete ]] || { echo "review.sh: incomplete re-check, see $out/stderr.log" >&2; exit 1; }
     ;;
