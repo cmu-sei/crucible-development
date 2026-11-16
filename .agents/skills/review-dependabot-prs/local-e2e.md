@@ -3,7 +3,8 @@
 Merge the approved PRs together in the repo's clone, rebuild what Aspire serves from it, run
 the e2e suites once on the combined result, and merge on GitHub only if they pass. The clone
 under `/mnt/data/crucible/` is the user's working copy, so `scripts/local-merge.sh` refuses a
-dirty clone and puts the original checkout back.
+dirty clone and puts the original checkout back. `scripts/` means this skill's scripts folder
+(full path in SKILL.md), not crucible-development's `scripts/`.
 
 `bash scripts/app-map.sh OWNER/REPO` prints the clone (`clone=`), its resources
 (`resource=<name> kind=<kind> dist=<distPath>`) and the e2e suites that cover it (`suites=`).
@@ -17,10 +18,12 @@ dirty clone and puts the original checkout back.
 1. **Choose the PR set:** the plan's `merge` PRs for this repo, right after `plan.sh check <plan>`
    (handle stale PRs as [applying.md](applying.md) says). The batch is per repo: a plan that
    covers several repos gets one local run per repo.
-2. **Merge locally:** `bash scripts/local-merge.sh start OWNER/REPO --clone <clone> N [N ...]`.
-   It merges each PR head into a new `dependabot-e2e/<timestamp>` branch off
-   `origin/<default>`, resolves conflicts that are only in `package-lock.json` with npm, and
-   skips any PR with another conflict. Note the skipped PRs: they aren't validated by this run.
+2. **Merge locally:** `bash scripts/local-merge.sh start OWNER/REPO --clone <clone> --plan <plan> N [N ...]`.
+   It merges each PR, at the head commit its `merge` line records, into a new
+   `dependabot-e2e/<timestamp>` branch off `origin/<default>`. It skips a PR that isn't a `merge`
+   line or whose head has moved since review (handle that as applying.md says). It resolves
+   conflicts that are only in `package-lock.json` with npm, and skips any PR with another
+   conflict. Note the skipped PRs: they aren't validated by this run.
    If the summary says a PR merged "with npm-resolved lockfile", that PR conflicts with an earlier
    one on GitHub. Restore, defer it in the plan, and start again without it, so the suites test
    exactly what will land.
@@ -51,8 +54,8 @@ dirty clone and puts the original checkout back.
    2. Check the baseline: `restore`, then `local-merge.sh start OWNER/REPO --clone <clone>`
       with no PRs (checks out `origin/<default>` alone), rebuild, and run the failing specs.
       If they fail there too, the PRs aren't the cause: report that.
-   3. Only then bisect: `restore`, `start` with half of the PR set, rebuild, run just the
-      failing specs, and repeat on the failing half.
+   3. Only then bisect: `restore`, `start` with `--plan <plan>` and half of the PR set,
+      rebuild, run just the failing specs, and repeat on the failing half.
    4. Report the culprit PR(s), then restore and rebuild.
 7. **Don't run the full e2e suite once per PR** unless the user asked for that.
 

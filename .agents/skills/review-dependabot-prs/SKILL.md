@@ -10,8 +10,10 @@ against how this repo uses the package. A major bump is fine when none of its br
 affect the repo. A patch is not fine when its notes say it breaks something the repo relies on.
 Green CI supports the decision but doesn't replace reading the notes.
 
-In this file, `scripts/*.sh` means this skill's own scripts (run them with `bash`, from
-crucible-development). Other paths are relative to the repo under review. The scripts print
+`scripts/` in these files means this skill's scripts folder,
+`/workspaces/crucible-development/.agents/skills/review-dependabot-prs/scripts/`: type that full
+path in commands, because crucible-development's own `scripts/` (with `repos.json`) is a different
+folder. Run them with `bash`. Other paths are relative to the repo under review. The scripts print
 `ERROR` when a GitHub call fails, and GitHub refuses connections in bursts, especially when many
 calls run at once. An `ERROR` means unknown, never none: rerun it. Run the scripts one at a time.
 

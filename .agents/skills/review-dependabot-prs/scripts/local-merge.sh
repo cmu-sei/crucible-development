@@ -8,13 +8,15 @@
 # GitHub it only fetches and reads (`gh repo view`, `gh pr view`; no `gh api`).
 #
 # Usage:
-#   local-merge.sh start OWNER/REPO --clone PATH [PR ...]
+#   local-merge.sh start OWNER/REPO --clone PATH [--plan PLAN PR ...]
 #       Refuses if the clone has uncommitted or untracked (non-ignored) files, or a
 #       previous run's state file. Records the current checkout, creates
 #       dependabot-e2e/<UTC timestamp> from origin/<default branch>, and merges each PR
-#       head in order (--no-ff). A conflict only in npm package-lock.json files is
-#       resolved with `npm install --package-lock-only`; any other conflict skips
-#       the PR. Ends with merged/skipped PRs and the diff stat against the base.
+#       in order (--no-ff) at the head commit its `merge` line in PLAN records (the
+#       reviewed one). --plan is required when PRs are given. A PR that isn't a `merge`
+#       line in PLAN, or whose head on GitHub has moved from that commit, is skipped.
+#       A conflict only in npm package-lock.json files is resolved with
+#       `npm install --package-lock-only`; any other conflict skips the PR. Ends with merged/skipped PRs and the diff stat against the base.
 #       With no PRs it just checks out origin/<default branch> (a baseline run).
 #   local-merge.sh status --clone PATH
 #   local-merge.sh restore --clone PATH
@@ -66,12 +68,14 @@ in_progress_op() {
 }
 
 parse_clone_args() {
-  clone=
+  clone= plan=
   rest=()
   while (($#)); do
     case "$1" in
       --clone) clone=${2:-}; shift 2 || usage ;;
       --clone=*) clone=${1#--clone=}; shift ;;
+      --plan) plan=${2:-}; shift 2 || usage ;;
+      --plan=*) plan=${1#--plan=}; shift ;;
       -h|--help) usage ;;
       *) rest+=("$1"); shift ;;
     esac
@@ -85,6 +89,12 @@ cmd_start() {
   [[ "$repo" == */* ]] || usage
   local n
   for n in "$@"; do [[ "$n" =~ ^[0-9]+$ ]] || die "not a PR number: $n"; done
+  # The reviewed head of each of the repo's merge lines ("N SHA"): only those commits are merged.
+  local planned=""
+  if (($#)); then
+    [[ -n "$plan" ]] || die "--plan PLAN is required when PRs are given (only the plan's reviewed heads are merged)"
+    planned=$(bash "$here/plan.sh" heads "$plan" "$repo") || die "could not read the merge lines of $plan"
+  fi
   resolve_clone
 
   [[ -e "$state" ]] && die "a previous run's state file exists ($state). Run: local-merge.sh status --clone $clone, then restore."
@@ -129,6 +139,7 @@ cmd_start() {
     echo "branch=$branch"
     echo "started=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     echo "requested=$*"
+    echo "plan=$plan"
   } >"$state" || die "could not write $state"
 
   g checkout -q -b "$branch" "$base_sha" || { rm -f "$state"; die "could not create $branch"; }
@@ -156,7 +167,14 @@ cmd_start() {
       skipped+=("#$n: fetch of pull/$n/head failed"); echo "skipped=$n fetch failed" >>"$state"; continue
     fi
     local sha; sha=$(g rev-parse FETCH_HEAD)
-    [[ "$sha" == "$head_oid" ]] || echo "  note: fetched head $sha differs from the PR's reported head $head_oid (PR updated meanwhile?)"
+    local want; want=$(awk -v n="$n" '$1 == n { print $2; exit }' <<<"$planned")
+    if [[ -z "$want" ]]; then
+      skipped+=("#$n: not a merge line in $plan"); echo "skipped=$n not a merge line in the plan" >>"$state"; echo "  not a merge line in the plan"; continue
+    fi
+    if [[ "$sha" != "$want" || "$head_oid" != "$want" ]]; then
+      skipped+=("#$n: head moved since review (${want:0:7} -> ${sha:0:7}); refresh or re-review it (applying.md)")
+      echo "skipped=$n head moved since review" >>"$state"; echo "  head moved since review: ${want:0:7} -> ${sha:0:7}"; continue
+    fi
 
     local msg="Merge #$n: $title"$'\n\n'"Local e2e validation merge of $sha; not for pushing."
     local out

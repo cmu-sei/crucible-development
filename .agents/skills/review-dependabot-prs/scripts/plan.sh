@@ -39,6 +39,11 @@
 #                                        stale, and deferred PRs. Exit 1 if any merge PR didn't
 #                                        merge. If the plan says `e2e local`, it stops and prints
 #                                        the validation steps instead (exit 3).
+#   heads PLAN OWNER/REPO                print "N SHA" for each of the repo's `merge` lines, in plan
+#                                        order (local-merge.sh start --plan uses it).
+# check, apply and heads exit 2 on a plan they can't read or that is malformed: no
+# ```dependabot-plan block, not exactly one `version 1` and one `e2e none|local` line, no verdict
+# lines, or a line that isn't a valid verdict line.
 # Uses only gh pr/gh repo (no `gh api`).
 
 set -uo pipefail
@@ -58,16 +63,26 @@ block_raw() {
 # field (verdict, OWNER/REPO, number, SHA) can contain one.
 block() { block_raw "$1" | sed 's/#.*//' | awk 'NF'; }
 
-# Refuse a malformed plan rather than silently ignoring a line (e.g. a misspelled verdict).
+# Refuse a malformed plan rather than silently ignoring a line (e.g. a misspelled verdict, a
+# missing block, or an e2e mode that isn't spelled exactly). Runs in the main shell, so its exit
+# ends the script (block_raw's own exit only ends the pipeline's subshell).
 validate() {
   local bad
+  [[ -f "$1" && -r "$1" ]] || { echo "cannot read plan $1" >&2; exit 2; }
   bad=$(block "$1" | awk '
-    $1 ~ /^(version|created|e2e)$/ { next }
+    $1 == "version" { versions++; if (!(NF == 2 && $2 == "1")) print "bad line (want: version 1): " $0; next }
+    $1 == "e2e" { e2es++; if (!(NF == 2 && $2 ~ /^(none|local)$/)) print "bad line (want: e2e none or e2e local): " $0; next }
+    $1 == "created" { next }
     $1 ~ /^(merge|defer|skip|upgrade)$/ && NF == 4 && $2 ~ /^[^\/]+\/[^\/]+$/ && $3 ~ /^[0-9]+$/ && $4 ~ /^[0-9a-f]{40}$/ {
       key = tolower($2) " " $3
       if (key in seen) { print "listed twice (" seen[key] ", " $1 "): " $2 " " $3 }
-      seen[key] = $1; next }
-    { print "bad line: " $0 }')
+      seen[key] = $1; verdicts++; next }
+    { print "bad line: " $0 }
+    END {
+      if (versions != 1) print "want exactly one \"version 1\" line, found " versions + 0 " (is the dependabot-plan fence exact and unindented?)"
+      if (e2es != 1) print "want exactly one \"e2e none\" or \"e2e local\" line, found " e2es + 0
+      if (verdicts == 0) print "no merge, defer, skip or upgrade lines"
+    }')
   if [[ -n "$bad" ]]; then printf 'plan %s:\n%s\n' "$1" "$(sed 's/^/  /' <<<"$bad")" >&2; exit 2; fi
 }
 
@@ -124,12 +139,13 @@ case $cmd in
 
   check)
     plan=${1:?usage: plan.sh check PLAN}
+    (($# == 1)) || { echo "usage: plan.sh check PLAN" >&2; exit 2; }
     validate "$plan"
     stale=0
     while read -r status repo n sha head; do
       case $status in
         current) echo "ok      $repo #$n at ${sha:0:7}" ;;
-        moved) echo "STALE   $repo #$n moved ${sha:0:7} -> ${head:0:7}: re-review it before merging"; stale=1 ;;
+        moved) echo "STALE   $repo #$n moved ${sha:0:7} -> ${head:0:7}: if inventory.sh shows the same dependency changes (only rebased), replace its line with plan.sh lines merge output; otherwise remove it and re-review"; stale=1 ;;
         merged) echo "done    $repo #$n already merged" ;;
         closed) echo "STALE   $repo #$n was closed (Dependabot may have superseded it): re-review"; stale=1 ;;
         *) echo "STALE   $repo #$n could not be read"; stale=1 ;;
@@ -152,14 +168,23 @@ case $cmd in
     ;;
 
   apply)
-    plan=${1:?usage: plan.sh apply PLAN [--dry-run]}; shift
-    dry=(); [[ "${1:-}" == --dry-run ]] && dry=(--dry-run)
+    # Any unrecognized argument is refused, so a misspelled --dry-run never becomes a real apply.
+    plan="" dry=()
+    while (($#)); do
+      case $1 in
+        --dry-run) dry=(--dry-run); shift ;;
+        -*) echo "unknown option: $1 (usage: plan.sh apply PLAN [--dry-run])" >&2; exit 2 ;;
+        *) [[ -z "$plan" ]] || { echo "usage: plan.sh apply PLAN [--dry-run]" >&2; exit 2; }; plan=$1; shift ;;
+      esac
+    done
+    [[ -n "$plan" ]] || { echo "usage: plan.sh apply PLAN [--dry-run]" >&2; exit 2; }
     validate "$plan"
     e2e=$(block "$plan" | awk '$1 == "e2e" { print $2; exit }')
-    if [[ "${e2e:-none}" == local ]]; then
+    if [[ "$e2e" == local ]]; then
       echo "This plan requires local e2e validation before merging (e2e local)."
       echo "1. bash $here/plan.sh check $plan   (stop and re-review anything stale)"
-      echo "2. Follow $(dirname "$here")/local-e2e.md with the plan's merge PRs (not defer lines), per repo, in plan order."
+      echo "2. Follow $(dirname "$here")/local-e2e.md with the plan's merge PRs (not defer lines), per repo, in plan order:"
+      echo "   local-merge.sh start OWNER/REPO --clone <clone> --plan $plan N ... merges only the reviewed heads."
       echo "3. Merge with merge-when-green.sh --expect-heads <the clone's dependabot-e2e.state>."
       exit 3
     fi
@@ -227,6 +252,13 @@ case $cmd in
       echo "  \`plan.sh lines merge OWNER/REPO N\` output and re-run apply."
     fi
     exit $failed
+    ;;
+
+  heads)
+    plan=${1:-} repo=${2:-}
+    [[ -n "$plan" && -n "$repo" && $# -eq 2 ]] || { echo "usage: plan.sh heads PLAN OWNER/REPO" >&2; exit 2; }
+    validate "$plan"
+    block "$plan" | awk -v r="$(tr '[:upper:]' '[:lower:]' <<<"$repo")" '$1 == "merge" && tolower($2) == r { print $3, $4 }'
     ;;
 
   *) usage ;;

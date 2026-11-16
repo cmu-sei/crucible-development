@@ -3,6 +3,7 @@
 How a plan's PRs get merged, for a plan written in this session or a saved one from
 `.dependabot-plans/`. When asked to apply a saved plan, don't redo the review: the plan is the
 review. Applying merges on GitHub, so the user's request to apply it is the go-ahead.
+`scripts/` means this skill's scripts folder, given in full in the plan's "How to apply".
 
 **A moved head: refresh or re-review.** Rebasing a PR (by you, or by Dependabot after another
 merge) moves its head without changing its dependency changes. Confirm that with
