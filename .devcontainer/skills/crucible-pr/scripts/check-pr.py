@@ -24,7 +24,7 @@ OVERRIDE_HINT = (
     "If the user wants to open it without the review, give them the exact command to run "
     "in their own terminal, where this gate doesn't apply."
 )
-SEPARATORS = {"&&", "||", ";", "|", "&"}
+SEPARATORS = {"&&", "||", ";", "|", "&", "\n"}
 AGENT_TRAILER = re.compile(r"^co-authored-by:.*(claude|anthropic|codex|openai|copilot)", re.I | re.M)
 REQUIRED_SECTIONS = {
     "Summary": re.compile(r"^##\s*Summary\b", re.M | re.I),
@@ -43,9 +43,31 @@ def deny(reason: str) -> None:
     sys.exit(0)
 
 
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+# A gh PR or stack command at a command position (not just mentioned inside text).
+GH_COMMAND = re.compile(
+    r"(^|[;&|(`]|\$\()\s*([A-Za-z_][A-Za-z0-9_]*=\S*\s+)*(\S*/)?gh(\s+-{1,2}\S+(\s+[^-\s]\S*)?)*"
+    r"\s+(pr\s+(create|new)|stack\s+(submit|link))\b", re.M)
+
+
+def strip_heredocs(command: str) -> str:
+    """Drop heredoc bodies: they're file content, not commands."""
+    lines, out, ends = command.split("\n"), [], []
+    for line in lines:
+        if ends:
+            if line.strip() == ends[0]:
+                ends.pop(0)
+            continue
+        out.append(line)
+        ends.extend(m.group(2) for m in HEREDOC.finditer(line))
+    return "\n".join(out)
+
+
 def segments(command: str):
     """Split a shell command into simple commands, tracking `cd` so we know each one's directory."""
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|")
+    command = command.replace("\\\n", " ")  # line continuations
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|\n")
+    lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
     current = []
     for tok in lexer:
@@ -167,6 +189,7 @@ def main():
     event = json.load(sys.stdin)
     command = (event.get("tool_input") or {}).get("command") or ""
     cwd = event.get("cwd") or os.getcwd()
+    command = strip_heredocs(command)
     try:
         for words in segments(command):
             if words[0] == "cd" and len(words) > 1:
@@ -190,7 +213,9 @@ def main():
     except SystemExit:
         raise
     except ValueError as err:
-        deny(f"couldn't parse the command ({err}). Run gh pr create as a plain command.")
+        # Unparsable (e.g. an unbalanced quote in text). Only a real gh command needs a decision.
+        if GH_COMMAND.search(command):
+            deny(f"couldn't parse the command ({err}). Run gh pr create as a plain command.")
     except Exception as err:  # fail closed
         deny(f"the gate failed ({type(err).__name__}: {err}). {OVERRIDE_HINT}")
 
