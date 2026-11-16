@@ -7,7 +7,7 @@ description: Open a pull request for Crucible work, after an independent simplif
 
 Opens a PR that has been independently reviewed, with a description that reads like release notes. Operators read these descriptions to learn what they must do when deploying, teammates to learn what changed, and reviewers to decide how much attention the PR needs and where to look.
 
-The review steps use the crucible-review skill's `scripts/review.sh` and `reviewers.json` (installed next to this skill). `scripts/record.sh` keeps the review record that the PR gate checks before it lets the PR open.
+The review steps use `scripts/review.sh` and `reviewers.json` from the crucible-review skill, in its own folder next to this one (`../crucible-review/`). `scripts/record.sh` keeps the review record that the PR gate checks before it lets the PR open.
 
 ## Before reviewing
 
