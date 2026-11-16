@@ -1,6 +1,6 @@
 ---
 name: crucible-review
-description: Get an independent code review from another model, run through its own CLI. Use whenever the user asks for a review, a second opinion, a cross-check, a simplification pass, or a re-check after fixes, or asks for another model or agent (by name or not) to look at something, for a PR number (including teammates' PRs), a branch, or uncommitted changes, in any Crucible repo. Not for opening PRs or posting GitHub review comments.
+description: Get an independent code review from a different model, run through its own CLI. Use when the user wants the review done by someone other than you (a second opinion, an independent or cross-model review, a review by another named model or agent, or a re-check by the reviewer that ran before) for a PR number (including teammates' PRs), a branch, or uncommitted changes in any Crucible repo. Also used by the crucible-pr skill's review steps. Don't use it for a plain request to review or look over a change; do that review yourself. Not for opening PRs or posting GitHub review comments.
 ---
 
 # Crucible review
