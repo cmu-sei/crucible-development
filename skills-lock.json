@@ -103,6 +103,12 @@
       "skillPath": "plugins/terraform/skills/provider-test-patterns/SKILL.md",
       "computedHash": "1f3440fa61b8a7f4e4b1efe82e74fa5094b833734de06bc2ada71ed6c6b43a78"
     },
+    "skill-creator": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/skill-creator/SKILL.md",
+      "computedHash": "2d7f889e6ae93c6c27d699856942c336b5b8644537496987d5571043d059b1dc"
+    },
     "terraform-style-guide": {
       "source": "hashicorp/agent-skills",
       "sourceType": "github",
