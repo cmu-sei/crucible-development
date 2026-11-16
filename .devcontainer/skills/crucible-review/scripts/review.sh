@@ -4,7 +4,8 @@
 #   review.sh run <profile> <lens> <repo> <base>..<head>|uncommitted <task-file> [out-dir]
 #   review.sh resume <run-dir> <prompt-file>
 #
-# <profile> is a key in reviewers.json, <lens> a file in references/lenses (without .md).
+# <profile> is a key in reviewers.json, or an inline <cli>:<model>:<effort> (e.g. codex:us.openai.gpt-6-astra:medium).
+# <lens> is a file in references/lenses (without .md).
 # Prints the run directory on success. Exits non-zero when the review is incomplete
 # (CLI failed, or no valid structured output): an incomplete review is never a clean one.
 # Sessions are kept on disk (no --ephemeral / --no-session-persistence) so usage tools see their cost.
@@ -60,8 +61,14 @@ case $cmd in
     lens_file="$SKILL_DIR/references/lenses/$lens.md"
     [[ -f $lens_file ]] || die "no lens '$lens'"
     [[ -f $task ]] || die "no task file '$task'"
-    read -r cli model effort < <(jq -r --arg p "$profile" '.profiles[$p] | select(.) | "\(.cli) \(.model) \(.effort)"' "$SKILL_DIR/reviewers.json")
-    [[ -n ${cli:-} ]] || die "no profile '$profile' in reviewers.json"
+    if [[ $profile == *:*:* ]]; then
+      IFS=: read -r cli model effort <<<"$profile"
+      [[ $cli == codex || $cli == claude ]] || die "no adapter for CLI '$cli'"
+      profile="$cli-$model-$effort"
+    else
+      read -r cli model effort < <(jq -r --arg p "$profile" '.profiles[$p] | select(.) | "\(.cli) \(.model) \(.effort)"' "$SKILL_DIR/reviewers.json") || true
+      [[ -n ${cli:-} ]] || die "no profile '$profile' in reviewers.json"
+    fi
 
     if [[ $range == uncommitted ]]; then
       scope="the uncommitted changes in the working tree: \`git diff HEAD\` plus any untracked files (\`git status --porcelain\`)"

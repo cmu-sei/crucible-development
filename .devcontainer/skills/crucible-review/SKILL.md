@@ -23,7 +23,7 @@ Runs a review by a separate model in its own session, so the review isn't anchor
 
 ## Pick the reviewer and lens
 
-- **Reviewer:** [reviewers.json](reviewers.json) maps each profile to a CLI, model and effort. Use the profile the user names. Otherwise use the `ad-hoc` entry for the CLI you're running in, which picks another vendor's model.
+- **Reviewer:** [reviewers.json](reviewers.json) maps each profile to a CLI, model and effort. Use the profile the user names. Otherwise use the `ad-hoc` entry for the CLI you're running in, which picks another vendor's model. For a model or effort with no profile, pass `<cli>:<model>:<effort>` instead of a profile name. It needs the full model ID: if the user gives only a name, ask for the ID or confirm a guess based on the existing profiles. A CLI with no adapter in `review.sh` isn't supported.
 - **Lens:**
   - `review`, the default: correctness, tests, security, alignment with the task
   - `simplify`, when the user asks for a simplification pass
