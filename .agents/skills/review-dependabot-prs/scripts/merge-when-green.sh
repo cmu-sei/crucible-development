@@ -34,7 +34,7 @@
 # Exit:  0 if every PR merged (or would merge), 1 if any was skipped, 2 for usage errors.
 # Env:   CHECK_TIMEOUT_MIN (default 30) - per-PR wait for required checks
 #        CHECK_POLL_SEC    (default 30) - seconds between required-check queries
-#        APPROVE_BODY      (default "Reviewed: low-risk dependency bump, CI green.")
+#        APPROVE_BODY      (default "Reviewed: release notes checked against this repo; CI green.")
 #        MWG_RESULTS       if set, append one line per PR to this file:
 #                          `merged|would-merge|behind|skipped OWNER/REPO N [reason]` (plan.sh apply)
 
@@ -57,7 +57,7 @@ for n in "$@"; do [[ "$n" =~ ^[0-9]+$ ]] || { echo "not a PR number: $n" >&2; ex
 
 timeout_min=${CHECK_TIMEOUT_MIN:-30}
 poll_sec=${CHECK_POLL_SEC:-30}
-approve_body=${APPROVE_BODY:-"Reviewed: low-risk dependency bump, CI green."}
+approve_body=${APPROVE_BODY:-"Reviewed: release notes checked against this repo; CI green."}
 results=${MWG_RESULTS:-}
 
 here=$(cd "$(dirname "$0")" && pwd)

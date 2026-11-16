@@ -6,6 +6,25 @@ in the `release-notes.sh` header). Paths are relative to the repo under review.
 To support a new ecosystem, add a section with the same parts: **Release notes**, **Coupled
 packages**, **Check against the repo**, **How to verify**.
 
+## All ecosystems
+
+- **Read every failing check**, required or not: `gh run view <run> --log-failed`. A failure the
+  PR causes is a skip even when the check isn't required. A failure that also happens on the
+  base branch, or on PRs that don't touch the same packages, isn't the PR's: say so in the plan
+  and judge the PR on the rest.
+- **Cover what CI never runs.** Building, testing or generating locally is part of a review, with
+  or without e2e. The ecosystem sections below name the usual gaps: lint, generated swagger and
+  clients, config-gated features, manually run workflows.
+- **Read PR files without changing the clone's checkout:**
+  `git -C <clone> fetch origin pull/N/head && git -C <clone> worktree add --detach /tmp/<repo>-pr-N FETCH_HEAD`.
+  Remove the worktree when you're done.
+- **Find conflicts between PRs you'd merge.** Two PRs can conflict even when both show
+  MERGEABLE, lockfile-only conflicts included. Fetch the heads and run
+  `git -C <clone> merge-tree --write-tree <head-A> <head-B>` for each pair of PRs that touch the
+  same manifest or lockfile. For each conflict, merge the PR that changes more dependencies (a
+  grouped PR before a single bump) and defer the other until it's rebased. Conflicts that only
+  appear after several merges show up at apply time, as merges that fail.
+
 ## npm (Angular UIs, Crucible.Common.Ui, API client packages)
 
 **Release notes.** `release-notes.sh` finds the source repo from the PR body or `npm view`, and

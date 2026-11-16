@@ -14,12 +14,16 @@ dirty clone and puts the original checkout back.
    lists (and the apps its suites need) healthy. List the resources with the Aspire MCP tools or
    `aspire describe`. If the AppHost isn't running, start it as AGENTS.md describes. If an app
    isn't enabled in the launch configuration, ask the user rather than changing it.
-1. **Choose the PR set:** the plan's `merge` PRs for this repo, after `plan.sh check <plan>` (leave
-   out anything stale).
+1. **Choose the PR set:** the plan's `merge` PRs for this repo, right after `plan.sh check <plan>`
+   (handle stale PRs as [applying.md](applying.md) says). The batch is per repo: a plan that
+   covers several repos gets one local run per repo.
 2. **Merge locally:** `bash scripts/local-merge.sh start OWNER/REPO --clone <clone> N [N ...]`.
    It merges each PR head into a new `dependabot-e2e/<timestamp>` branch off
    `origin/<default>`, resolves conflicts that are only in `package-lock.json` with npm, and
    skips any PR with another conflict. Note the skipped PRs: they aren't validated by this run.
+   If the summary says a PR merged "with npm-resolved lockfile", that PR conflicts with an earlier
+   one on GitHub. Restore, defer it in the plan, and start again without it, so the suites test
+   exactly what will land.
 3. **Rebuild each affected resource**, by the `kind=` app-map.sh prints:
    - `dotnet-project`: `aspire resource <name> rebuild`.
    - `angular-ui`, `js-app|executable`, `executable` (UIs, in dev or production mode): `npm ci`
@@ -28,8 +32,8 @@ dirty clone and puts the original checkout back.
      lockfile, and production mode rebuilds only when `dist` is missing or `src/` is newer.
    - `container` (bind-mounted sources, e.g. Moodle plugins): `aspire resource <name> restart`.
 
-   Then `aspire wait <name>` until each is healthy. For anything beyond these commands, see
-   the [aspire-orchestration skill](../aspire-orchestration/SKILL.md).
+   Then `aspire wait <name>` until each is healthy. **REQUIRED SUB-SKILL:** use
+   aspire-orchestration for anything beyond these commands (starting, file locks, ports).
 4. **Run the e2e suites:** in `/mnt/data/crucible/crucible-tests`, `./run-tests.sh <suite>` for
    each suite app-map.sh lists (options and logs: that repo's `README.md`). If it lists
    `suites=none`, tell the user that no e2e suite covers the repo.
