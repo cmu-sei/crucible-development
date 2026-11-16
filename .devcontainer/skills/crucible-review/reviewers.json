@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "sol-medium": { "cli": "codex", "model": "us.openai.gpt-6.1-sol", "effort": "medium" },
+    "sol-high": { "cli": "codex", "model": "us.openai.gpt-6.1-sol", "effort": "high" },
+    "opus-medium": { "cli": "claude", "model": "us.anthropic.claude-opus-5-5", "effort": "medium" },
+    "opus-high": { "cli": "claude", "model": "us.anthropic.claude-opus-5-5", "effort": "high" }
+  },
+  "tiers": {
+    "simplify": { "claude": ["sol-medium"], "codex": ["opus-medium"] },
+    "risk": { "claude": ["sol-medium"], "codex": ["opus-medium"] },
+    "low": { "claude": ["sol-medium"], "codex": ["opus-medium"] },
+    "medium": { "claude": ["sol-high"], "codex": ["opus-high"] },
+    "high": { "claude": ["sol-high", "opus-high"], "codex": ["opus-high", "sol-high"] },
+    "ad-hoc": { "claude": ["sol-high"], "codex": ["opus-high"] }
+  }
+}

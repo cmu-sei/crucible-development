@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings", "summary"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One or two sentences on the change and the overall verdict."
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "severity", "category", "file", "line", "summary", "failure_scenario", "suggestion"],
+        "properties": {
+          "id": { "type": "string", "description": "Short stable identifier, e.g. F1." },
+          "severity": { "type": "string", "enum": ["blocker", "major", "minor", "nit"] },
+          "category": {
+            "type": "string",
+            "enum": ["approach", "correctness", "security", "tests", "simplification", "docs"]
+          },
+          "file": { "type": ["string", "null"], "description": "Repo-relative path, or null for a change-wide finding." },
+          "line": { "type": ["integer", "null"] },
+          "summary": { "type": "string" },
+          "failure_scenario": {
+            "type": "string",
+            "description": "Concrete inputs or state and what goes wrong. For simplification findings, what the extra complexity costs."
+          },
+          "suggestion": { "type": "string" }
+        }
+      }
+    }
+  }
+}
