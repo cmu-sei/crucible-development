@@ -26,7 +26,7 @@ Run each step with `review.sh run <profile> <lens> <repo> <base>..<head> <task-f
 2. **Risk** (tier `risk`, lens `risk`). Add the tests that ran at the tip, and their results, to the task file. The scorer's tier picks the reviewers.
 3. **Review** (the scored tier: `low`, `medium` or `high`; lens `review`). When there are two reviewers, run them in parallel.
 4. **Fix.** Check each finding against the code before changing anything. Then fix it, committing the fix, or decline it with a technical reason. Record each one with `record.sh dispose <run-dir> <id> fixed <commit>` or `declined "<reason>"`. A reasoned decline is final.
-5. **Re-check.** At medium and high risk, resume each reviewer with `review.sh resume <run-dir> <prompt-file>`. The prompt lists the dispositions and fix commits, and asks the reviewer to confirm each fix and flag anything new. Record the re-check with pass `recheck`, and handle its findings the same way. After 3 rounds, stop and ask the user whether to keep going, decline what's left with reasons, or open the PR themselves.
+5. **Re-check.** At medium and high risk, resume each reviewer with `review.sh resume <run-dir> <prompt-file>`. The prompt lists the dispositions and fix commits, and asks the reviewer to confirm each fix and flag anything new. Tell it that declined findings, with their reasons, are settled, so it doesn't raise them again. Record the re-check with pass `recheck`, and handle its findings the same way. After 3 rounds, stop and ask the user whether to keep going, decline what's left with reasons, or open the PR themselves.
 6. **Final check.**
    - Run the relevant tests at the final HEAD unless they already ran at this commit, and record each run with `record.sh tests`.
    - If the code changed since the scorer ran, resume it with the test results and the fix commits, and record it as pass `risk`. The latest score is the one shown in the PR.
@@ -37,7 +37,7 @@ Run each step with `review.sh run <profile> <lens> <repo> <base>..<head> <task-f
 
 Write from what you know from doing the work: why it was needed, what the user asked for, the decisions made, and approaches that were ruled out. Use the diff against the base to confirm what the code ends up as.
 
-Follow [assets/template.md](assets/template.md) for the sections, what counts as a breaking change or an API change, and the writing rules. `record.sh summary` prints the risk line and the Risk & review section; place them where the template shows.
+Follow [assets/template.md](assets/template.md) for the sections, what counts as a breaking change or an API change, and the writing rules. `record.sh summary line` and `record.sh summary details` print the risk line and the Risk & review section; place them where the template shows.
 
 These repos are public. Don't reference internal or private material.
 
