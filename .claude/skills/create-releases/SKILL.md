@@ -147,7 +147,8 @@ a PR body, a diff or a check you ran. Drop anything you can't back.
 2. Confirm CI is green for `$H`. Ignore check runs named `Dependabot`: they are Dependabot's own
    update jobs. If `$H` has no build or test runs of its own (a Dependabot merge often doesn't),
    read the checks of the PR that produced it: `gh pr checks <N>`.
-3. End the notes file with a blank line and the helm skip marker, `<!-- helm-charts: skip -->`.
+3. End the notes file with a blank line and the helm skip marker, `<!-- helm-chart-pr: false -->`
+   (honored by the update-helm-chart action from v3.3.0, cmu-sei/Crucible-Github-Actions#49).
    The release's Update Helm Chart run then opens no bot PR, because step 7 charts every release
    in one PR. GitHub doesn't render HTML comments, so readers never see it. The action only reads
    the notes when the release is published, so the marker must be there before publishing.
@@ -156,8 +157,9 @@ a PR body, a diff or a check you ran. Drop anything you can't back.
    With `--dry-run`, stop at the drafted notes file instead.
 5. About 20 seconds later, `gh run list -R cmu-sei/<repo> -e release -L 2` should show
    **Build and Publish Image** and **Update Helm Chart**. Note their links for the report. With
-   the marker, Update Helm Chart succeeds with the notice "Helm chart update skipped" and opens no
-   PR. If it opens one anyway, that repo's action predates the marker: step 7 replaces that PR.
+   the marker, Update Helm Chart succeeds with the notice "Helm chart PR skipped" and opens no
+   PR. If it opens one anyway, the published notes lack the marker or have it mistyped: say so,
+   and step 7 replaces that PR.
 6. Re-read the published notes once, looking for claims you assumed rather than checked. Fix them
    with `gh release edit <version> --notes-file <file>` (the file still ends with the marker), and
    tell the user what changed.
@@ -176,11 +178,11 @@ yet", offer to update that note at the end.
 
 After the last release, read `references/helm-charts.md` and follow it. In short: wait for every
 release's **Update Helm Chart** run. With the skip marker there are no bot PRs; look for any
-anyway (`<app_name> to <version>`), because a repo whose action predates the marker still opens
+anyway (`<app_name> to <version>`), because a release whose notes lack the marker still opens
 one. Then build one PR from `origin/main` with every chart and subchart bump and every added or
 removed setting at the app's real default, plus README rows for those settings. Also fix any
-zero values that already-merged bot PRs put on `main` (older versions of the action write
-`false`, `""` or `0`), and say whether they break deployments. Commit, then run the repo's own
+zero values that already-merged bot PRs put on `main` (the action writes `false`, `""` or `0`
+for every new key), and say whether they break deployments. Commit, then run the repo's own
 check scripts (they only see committed changes), open the PR, and close any bot PRs it replaces.
 The user can't approve a PR this session opened, so ask who should review it.
 

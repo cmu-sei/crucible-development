@@ -29,7 +29,7 @@ Copy the layout of the repository's previous release. Most current releases use 
 
 **Full Changelog**: https://github.com/cmu-sei/<Repo>/compare/<old>...<new>
 
-<!-- helm-charts: skip -->
+<!-- helm-chart-pr: false -->
 ```
 
 The last line is the helm skip marker. It stops the release's Update Helm Chart run from opening
