@@ -26,8 +26,9 @@ OVERRIDE_HINT = (
 )
 SEPARATORS = {"&&", "||", ";", "|", "&", "\n", "(", ")"}
 # Words that can come before the real command: shell keywords and command wrappers.
-PREFIXES = {"if", "then", "else", "elif", "do", "while", "until", "!", "{", "}", "time", "exec",
-            "command", "builtin", "nohup", "nice", "sudo", "xargs"}
+KEYWORDS = {"if", "then", "else", "elif", "do", "while", "until", "!", "{", "}", "time"}
+# Commands that run another command; their options can take values, so look past them for gh or a shell.
+WRAPPERS = {"env", "timeout", "nice", "sudo", "xargs", "nohup", "exec", "command", "builtin", "stdbuf", "ionice"}
 SHELLS = {"bash", "sh", "zsh", "dash"}
 REQUIRED_SECTIONS = {
     "Summary": re.compile(r"^##\s*Summary\b", re.M | re.I),
@@ -87,29 +88,46 @@ def segments(command: str):
 def command_words(words):
     """The words of the real command, after env assignments, shell keywords and wrappers."""
     i = 0
-    while i < len(words):
-        w = words[i]
-        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w) or w in PREFIXES or w.startswith("-") and i > 0 and words[i - 1] in ("env", "timeout", "nice", "sudo", "xargs"):
-            i += 1
-        elif w == "env":
-            i += 1
-        elif w == "timeout":
-            i += 1
-            while i < len(words) and words[i].startswith("-"):
-                i += 1
-            i += 1  # the duration
-        else:
-            break
-    return words[i:]
+    while i < len(words) and (re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[i]) or words[i] in KEYWORDS):
+        i += 1
+    words = words[i:]
+    if words and os.path.basename(words[0]) in WRAPPERS:
+        for j, w in enumerate(words[1:], 1):
+            if os.path.basename(w) == "gh" or os.path.basename(w) in SHELLS:
+                return words[j:]
+        return []
+    return words
 
 
 def shell_script(words):
-    """The script of `bash -c '...'` (or sh/zsh, including -lc), else None."""
+    """The script of `bash -c '...'` (or sh/zsh/dash, including clusters like -lc), else None."""
     if words and os.path.basename(words[0]) in SHELLS:
         for j, w in enumerate(words[1:], 1):
-            if w.startswith("-") and "c" in w[1:] and j + 1 < len(words):
+            if re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", w) and j + 1 < len(words):
                 return words[j + 1]
     return None
+
+
+def substitutions(word):
+    """Bodies of $(...) and `...` command substitutions in a word, including inside quotes."""
+    bodies, i = [], 0
+    while i < len(word):
+        if word.startswith("$(", i):
+            depth, j = 1, i + 2
+            while j < len(word) and depth:
+                depth += {"(": 1, ")": -1}.get(word[j], 0)
+                j += 1
+            bodies.append(word[i + 2:j - 1])
+            i = j
+        elif word[i] == "`":
+            j = word.find("`", i + 1)
+            if j == -1:
+                break
+            bodies.append(word[i + 1:j])
+            i = j + 1
+        else:
+            i += 1
+    return bodies
 
 
 def gh_args(words):
@@ -187,12 +205,20 @@ def check_pr_create(args, cwd):
         deny(f"the body is missing: {', '.join(absent)}. Follow the crucible-pr template.")
 
     # gh opens the PR from the pushed branch, which must be the commit that was reviewed.
+    # For a fork head (owner:branch), the branch lives in the owner's copy of the repo.
+    owner, _, _ = opts["--head"].rpartition(":")
+    source = f"{owner}/{repo.split('/', 1)[1]}" if owner else repo
     try:
-        remote = subprocess.run(["git", "ls-remote", f"https://github.com/{repo}.git", f"refs/heads/{head}"],
-                                capture_output=True, text=True, timeout=30).stdout.split()
+        lookup = subprocess.run(["git", "ls-remote", f"https://github.com/{source}.git", f"refs/heads/{head}"],
+                                capture_output=True, text=True, timeout=30)
     except subprocess.TimeoutExpired:
-        remote = []
-    if remote and remote[0] != head_sha:
+        deny(f"couldn't check the pushed {head} on {source} (timed out). Retry once it's reachable.")
+    if lookup.returncode != 0:
+        deny(f"couldn't check the pushed {head} on {source}: {lookup.stderr.strip()[:200]}")
+    remote = lookup.stdout.split()
+    if not remote:
+        deny(f"{head} isn't pushed to {source}. Push the reviewed commit first.")
+    if remote[0] != head_sha:
         deny(f"the pushed {head} is at {remote[0][:7]}, not the reviewed HEAD {head_sha[:7]}. Push it first.")
 
 
@@ -210,7 +236,14 @@ def check_stack(args):
 
 
 def check_command(command, cwd, depth=0):
+    # Unquoted backticks split across words, so take their bodies from the raw command.
+    if depth < 3:
+        for body in re.findall(r"`([^`]*)`", command):
+            check_command(body, cwd, depth + 1)
     for words in segments(command):
+        if depth < 3:
+            for body in (b for w in words for b in substitutions(w)):
+                check_command(body, cwd, depth + 1)
         words = command_words(words)
         if not words:
             continue

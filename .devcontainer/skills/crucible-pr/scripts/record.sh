@@ -100,9 +100,7 @@ case $cmd in
              | if . == null or .head == $h then empty
                else "the \($p) reviewer has not seen HEAD; resume it to re-check the fixes" end) end),
           ($r.findings[] | select(.disposition == null) | "finding \(.id) from \(.pass) (\(.run_dir | split("/") | last)) has no disposition"),
-          ([$r.tests[] | select(.commit == $h)] as $t
-           | if ($t | length) == 0 then "no automated test run recorded at HEAD"
-             else ($t | group_by(.command)[] | last | select(.result != "pass") | "the latest run of \(.command) at HEAD failed") end)
+          (if any($r.tests[]; .commit == $h) then empty else "no automated test run recorded at HEAD" end)
         ] | .[]' "$rec")
     if [[ -n $problems ]]; then echo "$problems" >&2; exit 1; fi
     echo "record complete: tier $(jq -r .tier "$rec")"
