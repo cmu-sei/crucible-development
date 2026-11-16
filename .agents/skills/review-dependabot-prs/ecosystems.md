@@ -24,6 +24,12 @@ packages**, **Check against the repo**, **How to verify**.
   same manifest or lockfile. For each conflict, merge the PR that changes more dependencies (a
   grouped PR before a single bump) and defer the other until it's rebased. Conflicts that only
   appear after several merges show up at apply time, as merges that fail.
+- **A PR with an "Add missing document markings" commit** was pushed to by the shared header
+  action (`cmu-sei/Crucible-Github-Actions` `actions/header`), which adds license headers to files
+  that lack them. Dependabot then treats the PR as edited by someone else and refuses
+  `@dependabot rebase`. Review the diff without that commit. To rebase it, comment
+  `@dependabot recreate`, which drops the markings commit (the header check adds it again if the
+  file is still unmarked on the base).
 
 ## npm (Angular UIs, Crucible.Common.Ui, API client packages)
 
@@ -51,12 +57,16 @@ Angular group PR can move `@angular/core` but leave another `@angular/*` package
   `npm view <pkg>@<new> peerDependencies` against the repo yourself.
 - eslint-family bumps (`eslint`, `@angular-eslint/*`, `@typescript-eslint/*`, plugins): CI doesn't
   run lint in these repos, so run `npm run lint` (or `ng lint`) on the PR head. eslint 10 drops
-  `.eslintrc*` configs. If lint already fails on the base branch, it can't judge the PR: decide
-  from the notes and peers, and say that lint couldn't be used.
+  `.eslintrc*` configs. If lint already reports errors on the base branch, compare base and PR
+  head: the error count and the set of rules reported. No new rules and no more errors passes.
+  If lint can't run at all on the base (e.g. its config fails to load), decide from the notes and
+  peers, and say that lint couldn't be used.
 
-**How to verify.** For Angular apps, CI's build-and-test. Each `*.Api` repo's `*.Api.Client` npm
-package is built only by its `workflow_dispatch` `client.yml`, so no PR check exercises bumps
-there. Local check: in a worktree of the PR head, `npm ci`, then `npm test -- --watch=false`. The
+**How to verify.** For Angular apps, CI's build-and-test, where its `test-command` runs specs
+(some UIs only build: repo-notes.md). In each API repo, the `*.Api.Client` folder's
+`package.json` only pins the `nswag` client generator. The client is a C# NuGet package built only
+by the `workflow_dispatch` `client.yml`, so no PR check exercises an `nswag` bump: generate the
+client on the PR head as `client.yml` does. Local check: in a worktree of the PR head, `npm ci`, then `npm test -- --watch=false`. The
 `test` builder in `angular.json` decides Karma or Vitest; Karma needs `CHROME_BIN` pointed at a
 Playwright Chromium under `~/.cache/ms-playwright`.
 
@@ -107,6 +117,13 @@ the folder whose manifest you mean to test.
   WebApplicationFactory picks it up). Then run it again with a malformed value: tests failing in
   its validation prove the setting took effect. Its transitive dependencies still move for every
   deployment.
+- Coverage packages (`coverlet.*`): the shared `dotnet-test.yaml` workflow deliberately doesn't
+  collect coverage, so PR checks never exercise them. Run `dotnet test` with coverage collection
+  on the PR head. A repo's manual `coverage.yml`, where it has one, is the only workflow that
+  uses them.
+- `Corsinvest.ProxmoxVE.Api` (TopoMojo, Vm.Api) lists breaking changes in patch releases. Read the
+  notes for every patch in the range and grep the hypervisor code for what they remove; CI has no
+  Proxmox to exercise it.
 - Swashbuckle bumps, even minors, can change the generated OpenAPI document. The UIs generate
   their TypeScript clients from it, so a change no PR check sees can break a UI. Generate the
   document on base and PR head (`dotnet swagger tofile`, as `client.yml` does) and diff them.
@@ -133,7 +150,8 @@ the folder whose manifest you mean to test.
 - A diff line `old mode 100755 / new mode 100644`: Dependabot can drop the executable bit on the
   file it edits. That's harmless for a Dockerfile but breaks a script.
 
-**How to verify.** CI builds the image but usually doesn't run it. For nginx, test the config:
+**How to verify.** CI builds the image but usually doesn't run it (crucible-development's CI
+doesn't build its AppHost resource Dockerfiles at all: repo-notes.md). For nginx, test the config:
 `docker run --rm -v "$PWD/<conf>:/etc/nginx/conf.d/default.conf:ro" nginx:<new-tag>@<digest> nginx -t`
 
 ## github-actions
