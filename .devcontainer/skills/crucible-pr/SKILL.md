@@ -29,7 +29,7 @@ Run each step with `review.sh run <profile> <lens> <repo> <base>..<head> <task-f
 5. **Re-check.** At medium and high risk, resume each reviewer with `review.sh resume <run-dir> <prompt-file>`. The prompt lists the dispositions and fix commits, and asks the reviewer to confirm each fix and flag anything new. Tell it that declined findings, with their reasons, are settled, so it doesn't raise them again. Record the re-check with pass `recheck`, and handle its findings the same way. After 3 rounds, stop and ask the user whether to keep going, decline what's left with reasons, or open the PR themselves.
 6. **Final check.**
    - Run the relevant tests at the final HEAD unless they already ran at this commit, and record each run with `record.sh tests`.
-   - If the code changed since the scorer ran, resume it with the test results and the fix commits, and record it as pass `risk`. The latest score is the one shown in the PR.
+   - If the code or the test evidence changed since the scorer ran, resume it with the new test results and any fix commits, and record it as pass `risk`. The latest score is the one shown in the PR.
    - If the tier went up, run the new tier's additional reviewers and handle their findings the same way.
 7. `record.sh finalize`, then `record.sh check`. Fix whatever it lists.
 
@@ -37,7 +37,7 @@ Run each step with `review.sh run <profile> <lens> <repo> <base>..<head> <task-f
 
 Write from what you know from doing the work: why it was needed, what the user asked for, the decisions made, and approaches that were ruled out. Use the diff against the base to confirm what the code ends up as.
 
-Follow [assets/template.md](assets/template.md) for the sections, what counts as a breaking change or an API change, and the writing rules. `record.sh summary line` and `record.sh summary details` print the risk line and the Risk & review section; place them where the template shows.
+Follow [assets/template.md](assets/template.md) for the sections, what counts as a breaking change or an API change, and the writing rules. `record.sh summary` prints the Risk & review section; place it where the template shows. The risk label carries the tier everywhere else, so there's no separate risk line.
 
 These repos are public. Don't reference internal or private material.
 
@@ -69,4 +69,4 @@ Use PR numbers, not branch names: given a branch, `gh stack link` creates an unr
 
 ## Keep it current
 
-When later commits change what the description says, rewrite it and update it with `gh pr edit <number> --repo <owner/name> --body-file <file>`. Update the title too if the outcome changed. New commits aren't reviewed yet, so change the risk line's "Reviewed by … at `<sha>`" to add "; later commits not reviewed".
+When later commits change what the description says, rewrite it and update it with `gh pr edit <number> --repo <owner/name> --body-file <file>`. Update the title too if the outcome changed. New commits aren't reviewed yet, so add ", later commits not reviewed" after the commit in the Risk & review header.

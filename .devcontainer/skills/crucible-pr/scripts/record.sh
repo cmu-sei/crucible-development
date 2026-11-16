@@ -8,7 +8,7 @@
 #   record.sh tests "<command>" pass|fail         record an automated test run at HEAD
 #   record.sh finalize                            pin the record to the current HEAD and merge base
 #   record.sh check                               exit non-zero, listing problems, unless the record is complete
-#   record.sh summary [line|details]              print the PR body's risk line, Risk & review section, or both
+#   record.sh summary                             print the PR body's Risk & review section
 #   record.sh path                                print the record's path
 #
 # The record lives in the repo's git dir, so it's never committed and works in linked worktrees.
@@ -104,45 +104,45 @@ case $cmd in
     ;;
 
   summary)
-    # summary [line|details]: the risk line, the Risk & review section, or both (default).
-    need; part=${1:-all}
-    [[ $part =~ ^(all|line|details)$ ]] || die "usage: record.sh summary [line|details]"
-    jq -r --arg part "$part" --arg h "$(git rev-parse HEAD)" '
+    # The Risk & review section for the PR body. Its collapsed header carries the tier and review status.
+    need
+    jq -r --arg h "$(git rev-parse HEAD)" '
       def mark: {"low": "✅", "medium": "👀", "high": "⚠️", "n/a": ""}[.] // "";
       def cap: (.[0:1] | ascii_upcase) + .[1:];
       def name: {"alignment": "Alignment", "impact": "Impact", "verification": "Verification",
                  "rollback_cost": "Rollback cost", "error_detection": "Error detection"}[.];
       def count($n; $word): "\($n) \($word)\(if $n == 1 then "" else "s" end)";
       . as $r
-      # The line shows the latest score. The record keeps the highest tier only to decide which reviews are required.
+      # Show the latest score. The record keeps the highest tier only to decide which reviews are required.
       | ($r.risk.tier // $r.tier) as $tier
       | ([$r.findings[] | select(.pass == "review" or .pass == "recheck")]) as $rf
+      | ([$rf[] | select(.disposition == "fixed")] | length) as $fixed
+      | ([$rf[] | select(.disposition == "declined")] | length) as $declined
       | ([$r.runs[] | select(.pass == "review") | .profile] | unique | join(" + ")) as $who
       | ([$r.runs[] | select(.pass == "review" or .pass == "recheck")] | last | .head // "") as $seen
-      | ("**Merge risk: \($tier | cap) \($tier | mark)** · Reviewed by \($who) at `\($seen[0:7])`"
-          + (if $seen != $h then "; later commits not re-reviewed" else "" end) + " · "
-          + count([$rf[] | select(.disposition == "fixed")] | length; "review finding") + " fixed, "
-          + "\([$rf[] | select(.disposition == "declined")] | length) declined") as $line
-      | ([ "<details>",
-           "<summary>Risk & review</summary>",
-           ($r.risk.categories | to_entries[]
-             | "", "**\(.key | name):** \(.value.rating) \(.value.rating | mark)", (.value.gaps[] | "- \(.)")),
-           (if ($r.risk.minimums_applied | length) > 0 then "", "Minimum tier: \($r.risk.minimums_applied | join("; "))" else empty end),
-           "",
-           "| Pass | Reviewer | Findings | Outcome |",
-           "| --- | --- | --- | --- |",
-           ($r.runs[] | select(.pass != "risk") | . as $run
-             | [$r.findings[] | select(.run_dir == $run.run_dir)] as $f
-             | "| \($run.pass | cap) | \($run.profile) | \($f | length) | "
-               + (if ($f | length) == 0 then "none" else
-                   ([$f | group_by(.disposition)[] | "\(length) \(.[0].disposition)"] | join(", ")) end) + " |"),
-           (if any($r.findings[]; .disposition == "declined") then
-             "", "**Declined:**", ($r.findings[] | select(.disposition == "declined") | "- *\(.summary)*: \(.reason)")
-            else empty end),
-           "</details>",
-           "",
-           "<!-- crucible-pr: head=\($h) -->" ] | join("\n")) as $details
-      | if $part == "line" then $line elif $part == "details" then $details else $line, "", $details end' "$rec"
+      | "<details>",
+        "<summary>Risk & review: \($tier | cap) \($tier | mark) · reviewed by \($who) at \($seen[0:7])"
+          + (if $seen != $h then ", later commits not re-reviewed" else "" end) + " · "
+          + (if ($rf | length) == 0 then "no findings"
+             else count($fixed; "finding") + " fixed, \($declined) declined" end)
+          + "</summary>",
+        ($r.risk.categories | to_entries[]
+          | "", "**\(.key | name):** \(.value.rating) \(.value.rating | mark)", (.value.gaps[] | "- \(.)")),
+        (if ($r.risk.minimums_applied | length) > 0 then "", "Minimum tier: \($r.risk.minimums_applied | join("; "))" else empty end),
+        "",
+        "| Pass | Reviewer | Findings | Outcome |",
+        "| --- | --- | --- | --- |",
+        ($r.runs[] | select(.pass != "risk") | . as $run
+          | [$r.findings[] | select(.run_dir == $run.run_dir)] as $f
+          | "| \($run.pass | cap) | \($run.profile) | \($f | length) | "
+            + (if ($f | length) == 0 then "none" else
+                ([$f | group_by(.disposition)[] | "\(length) \(.[0].disposition)"] | join(", ")) end) + " |"),
+        (if any($r.findings[]; .disposition == "declined") then
+          "", "**Declined:**", ($r.findings[] | select(.disposition == "declined") | "- *\(.summary)*: \(.reason)")
+         else empty end),
+        "</details>",
+        "",
+        "<!-- crucible-pr: head=\($h) -->"' "$rec"
     ;;
 
   path) echo "$rec" ;;

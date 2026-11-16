@@ -29,8 +29,7 @@ AGENT_TRAILER = re.compile(r"^co-authored-by:.*(claude|anthropic|codex|openai|co
 REQUIRED_SECTIONS = {
     "Summary": re.compile(r"^##\s*Summary\b", re.M | re.I),
     "User-facing changes": re.compile(r"^##\s*User[- ]facing changes\b", re.M | re.I),
-    "the risk line": re.compile(r"^\*\*Merge risk: ", re.M),
-    "Risk & review": re.compile(r"<summary>\s*Risk & review\s*</summary>", re.I),
+    "Risk & review": re.compile(r"<summary>\s*Risk & review\b", re.I),
     "Technical details": re.compile(r"<summary>\s*Technical details\s*</summary>", re.I),
 }
 
@@ -140,7 +139,7 @@ def check_pr_create(args, cwd):
     head_sha = git(cwd, "rev-parse", "HEAD")
     marker = re.search(r"<!-- crucible-pr: head=([0-9a-f]{40}) -->", body)
     if not marker or marker.group(1) != head_sha:
-        deny("the body's crucible-pr marker doesn't match HEAD. Regenerate it with record.sh summary details.")
+        deny("the body's crucible-pr marker doesn't match HEAD. Regenerate it with record.sh summary.")
     absent = [name for name, pattern in REQUIRED_SECTIONS.items() if not pattern.search(body)]
     if absent:
         deny(f"the body is missing: {', '.join(absent)}. Follow the crucible-pr template.")
