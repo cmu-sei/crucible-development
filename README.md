@@ -14,6 +14,7 @@ Development Environment for [Crucible](https://github.com/cmu-sei/crucible) - a 
   - [Keycloak Realm](#keycloak-realm)
 - [Claude Code](#claude-code)
 - [Codex CLI](#codex-cli)
+- [Agent PRs and Reviews](#agent-prs-and-reviews)
 - [Playwright Testing](#playwright-testing)
 - [GitHub CLI](#github-cli)
 - [Jira CLI](#jira-cli)
@@ -232,6 +233,14 @@ region = "us-east-2"
 AWS authentication uses the same `/home/vscode/.aws` mount described in [Claude Code](#claude-code), `AWS_BEARER_TOKEN_BEDROCK`, or the standard AWS SDK credential chain. Codex updates automatically on container start via `codex update`.
 
 Once the container is running with valid Bedrock credentials, run `codex` in the terminal to start Codex CLI.
+
+## Agent PRs and Reviews
+
+When you ask Claude Code or Codex to open a PR, it has the change reviewed by another model first, then opens the PR with a release-notes description and a `risk:low`, `risk:medium` or `risk:high` label. You can also ask an agent for a review on its own, of a branch, your uncommitted changes, or anyone's PR.
+
+Agents can't open a PR that skipped the review. To open one anyway, run `gh pr create` yourself in a terminal.
+
+The details live in the skills in [`.devcontainer/skills`](.devcontainer/skills): `crucible-pr`, `crucible-review` and `crucible-merge-risk`.
 
 ## Playwright Testing
 
