@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run or resume one independent reviewer (Codex or Claude CLI) and save its structured findings.
+# Run or resume one independent reviewer (a profile from reviewers.json) and save its structured findings.
 #
 #   review.sh run <profile> <lens> <repo> <base>..<head>|uncommitted <task-file> [out-dir]
 #   review.sh resume <run-dir> <prompt-file>

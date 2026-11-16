@@ -1,6 +1,6 @@
 ---
 name: crucible-review
-description: Get an independent code review from another model (Sol through the Codex CLI, or Opus through the Claude CLI). Use whenever the user asks for a review, a second opinion, a cross-check, a simplification pass, or a re-check after fixes, or to "have Sol/Opus/Codex/Claude look at" something, for a PR number (including teammates' PRs), a branch, or uncommitted changes, in any Crucible repo. Not for opening PRs or posting GitHub review comments.
+description: Get an independent code review from another model, run through its own CLI. Use whenever the user asks for a review, a second opinion, a cross-check, a simplification pass, or a re-check after fixes, or asks for another model or agent (by name or not) to look at something, for a PR number (including teammates' PRs), a branch, or uncommitted changes, in any Crucible repo. Not for opening PRs or posting GitHub review comments.
 ---
 
 # Crucible review
@@ -23,7 +23,7 @@ Runs a review by a separate model in its own session, so the review isn't anchor
 
 ## Pick the reviewer and lens
 
-- **Reviewer:** use what the user names (Sol or Opus, medium or high). Otherwise use the `ad-hoc` entry in [reviewers.json](reviewers.json) for the CLI you're running in. It picks the other vendor at high effort. Profiles map to model IDs there.
+- **Reviewer:** [reviewers.json](reviewers.json) maps each profile to a CLI, model and effort. Use the profile the user names. Otherwise use the `ad-hoc` entry for the CLI you're running in, which picks another vendor's model.
 - **Lens:**
   - `review`, the default: correctness, tests, security, alignment with the task
   - `simplify`, when the user asks for a simplification pass
