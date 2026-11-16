@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'in=$(cat); printf \"%s\" \"$in\" | grep -qE \"gh[[:space:]]([^\\\"]*[[:space:]])?(pr[[:space:]]+(create|new)|stack[[:space:]]+(submit|link))\" || exit 0; printf \"%s\" \"$in\" | python3 \"$HOME/.agents/skills/crucible-pr/scripts/check-pr.py\" || exit 2'",
+            "onFailure": "block",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
