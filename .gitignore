@@ -124,3 +124,7 @@ node_modules
 .agents/skills/*
 !.agents/skills/crucible-add-service/
 !.agents/skills/nuget-restore-hang/
+!.agents/skills/review-dependabot-prs/
+
+# Plans written by the review-dependabot-prs skill (dry runs); local working files.
+.dependabot-plans/
