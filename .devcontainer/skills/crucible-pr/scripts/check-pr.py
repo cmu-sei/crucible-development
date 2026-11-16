@@ -91,29 +91,24 @@ def gh_args(words):
     return None
 
 
-def options(args, names):
-    """Values of the given options in an argument list, handling --opt=value and short forms."""
+ALIASES = {"-R": "--repo", "-B": "--base", "-H": "--head", "-F": "--body-file", "-t": "--title", "-b": "--body"}
+VALUE_OPTIONS = set(ALIASES) | set(ALIASES.values())
+
+
+def options(args):
+    """Values of gh pr create's value options, handling --opt=value and short forms."""
     found = {}
-    flags = set()
     i = 0
     while i < len(args):
-        a = args[i]
-        key, _, val = a.partition("=")
-        if key in names:
-            if names[key] == "flag":
-                flags.add(names_canonical(names, key))
-            elif val:
-                found[names_canonical(names, key)] = val
+        key, _, val = args[i].partition("=")
+        if key in VALUE_OPTIONS:
+            if val:
+                found[ALIASES.get(key, key)] = val
             elif i + 1 < len(args):
-                found[names_canonical(names, key)] = args[i + 1]
+                found[ALIASES.get(key, key)] = args[i + 1]
                 i += 1
         i += 1
-    return found, flags
-
-
-def names_canonical(names, key):
-    return {"-R": "--repo", "-B": "--base", "-H": "--head", "-F": "--body-file", "-d": "--draft",
-            "-t": "--title", "-b": "--body"}.get(key, key)
+    return found
 
 
 def git(cwd, *args):
@@ -121,10 +116,7 @@ def git(cwd, *args):
 
 
 def check_pr_create(args, cwd):
-    names = {"--repo": "value", "-R": "value", "--base": "value", "-B": "value", "--head": "value",
-             "-H": "value", "--body-file": "value", "-F": "value", "--draft": "flag", "-d": "flag",
-             "--body": "value", "-b": "value", "--fill": "flag", "-f": "flag", "--web": "flag", "-w": "flag"}
-    opts, flags = options(args, names)
+    opts = options(args)
     missing = [f for f in ("--repo", "--base", "--head", "--body-file") if f not in opts]
     if missing:
         deny(f"gh pr create needs {', '.join(missing)}. {SKILL_HINT}")
