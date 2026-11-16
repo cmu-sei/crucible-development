@@ -49,7 +49,9 @@ RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     php-curl \
     php-zip \
     php-mbstring \
-    libnss3-tools
+    libnss3-tools \
+    # PyYAML, which the skill-creator skill's scripts import to parse SKILL.md frontmatter
+    python3-yaml
 
 # Install Composer, used to install the Moodle coding standard in postcreate.sh
 # The release phar can be checksum-pinned; getcomposer.org/installer cannot. It is architecture
