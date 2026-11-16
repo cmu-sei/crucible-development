@@ -5,7 +5,7 @@ description: Open a pull request for Crucible work, after an independent simplif
 
 # Crucible PR
 
-Opens a draft PR that has been independently reviewed, with a description that reads like release notes. Operators read these descriptions to learn what they must do when deploying, teammates to learn what changed, and reviewers to decide how much attention the PR needs and where to look.
+Opens a PR that has been independently reviewed, with a description that reads like release notes. Operators read these descriptions to learn what they must do when deploying, teammates to learn what changed, and reviewers to decide how much attention the PR needs and where to look.
 
 The review steps use the crucible-review skill's `scripts/review.sh` and `reviewers.json` (installed next to this skill). `scripts/record.sh` keeps the review record that the PR gate checks before it lets the PR open.
 
@@ -43,7 +43,7 @@ These repos are public. Don't reference internal or private material.
 
 ## Open it
 
-Push the branch if needed (never force-push unless the user says to), write the body to a temporary file outside the repo, and open it with every target explicit:
+Push the branch if needed (never force-push unless the user says to), write the body to a temporary file outside the repo, and open it with every target explicit. Open it as a draft unless the user says otherwise:
 
 ```bash
 gh pr create --draft --repo <owner/name> --base <base> --head <head> \

@@ -3,6 +3,7 @@
 
 Reads the hook's JSON on stdin. For `gh pr create`/`gh pr new`, `gh stack submit` and
 `gh stack link`, prints a deny decision unless the PR went through the crucible-pr skill.
+Draft or ready is the user's choice, so it isn't checked.
 Anything else gets no output, so the normal permission flow applies.
 
 The hook command in the devcontainer config only calls this for commands that look like
@@ -104,8 +105,6 @@ def check_pr_create(args, cwd):
              "--body": "value", "-b": "value", "--fill": "flag", "-f": "flag", "--web": "flag", "-w": "flag"}
     opts, flags = options(args, names)
     missing = [f for f in ("--repo", "--base", "--head", "--body-file") if f not in opts]
-    if "--draft" not in flags:
-        missing.insert(0, "--draft")
     if missing:
         deny(f"gh pr create needs {', '.join(missing)}. {SKILL_HINT}")
 
