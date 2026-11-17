@@ -1,0 +1,14 @@
+# Managed by the Crucible devcontainer. The crucible-pr gate: agent PRs must go through the crucible-pr skill.
+# requirements.toml can't be disabled from user config, and [features] hooks = true forces hooks on.
+# Codex has no block-on-failure option, so the wrapper turns any failure of the check into a deny.
+
+[features]
+hooks = true
+
+[[hooks.PreToolUse]]
+matcher = "^Bash$"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = '''bash -c 'in=$(cat); printf "%s" "$in" | grep -qE "gh.*(pr[[:space:]]+(create|new)|stack[[:space:]]+(submit|link))" || exit 0; printf "%s" "$in" | python3 "$HOME/.agents/skills/crucible-pr/scripts/check-pr.py" || exit 2''''
+timeout = 60
