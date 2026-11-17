@@ -32,10 +32,12 @@ WRAPPERS = {
     "env": {"-u", "--unset", "-C", "--chdir"},
     "timeout": {"-s", "--signal", "-k", "--kill-after"},
     "nice": {"-n", "--adjustment"},
-    "sudo": {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-T", "-U"},
-    "ionice": {"-c", "-n", "-p", "-P", "-u"},
-    "stdbuf": {"-i", "-o", "-e"},
-    "xargs": {"-a", "-d", "-E", "-I", "-L", "-n", "-P", "-s", "--arg-file", "--delimiter", "--max-args", "--max-procs"},
+    "sudo": {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-T", "-U", "--user", "--group", "--close-from",
+             "--chdir", "--host", "--prompt", "--role", "--type", "--command-timeout", "--other-user"},
+    "ionice": {"-c", "-n", "-p", "-P", "-u", "--class", "--classdata", "--pid", "--pgid", "--uid"},
+    "stdbuf": {"-i", "-o", "-e", "--input", "--output", "--error"},
+    "xargs": {"-a", "-d", "-E", "-I", "-L", "-l", "-n", "-P", "-s", "--arg-file", "--delimiter", "--eof",
+              "--replace", "--max-lines", "--max-args", "--max-procs", "--max-chars", "--process-slot-var"},
     "nohup": set(), "exec": {"-a"}, "command": set(), "builtin": set(),
 }
 SHELLS = {"bash", "sh", "zsh", "dash"}
@@ -63,17 +65,24 @@ GH_COMMAND = re.compile(
     r"\s+(pr\s+(create|new)|stack\s+(submit|link))\b", re.M)
 
 
-def strip_heredocs(command: str) -> str:
-    """Drop heredoc bodies: they're file content, not commands."""
-    lines, out, ends = command.split("\n"), [], []
-    for line in lines:
+def split_heredocs(command: str):
+    """The command without heredoc bodies, and the bodies bash expands (unquoted delimiter)."""
+    out, expanded, ends = [], [], []
+    for line in command.split("\n"):
         if ends:
-            if line.strip() == ends[0]:
+            delimiter, quoted = ends[0]
+            if line.strip() == delimiter:
                 ends.pop(0)
+            elif not quoted:
+                expanded.append(line)
             continue
         out.append(line)
-        ends.extend(m.group(2) for m in HEREDOC.finditer(line))
-    return "\n".join(out)
+        ends.extend((m.group(2), bool(m.group(1))) for m in HEREDOC.finditer(line))
+    return "\n".join(out), "\n".join(expanded)
+
+
+def strip_heredocs(command: str) -> str:
+    return split_heredocs(command)[0]
 
 
 def segments(command: str):
@@ -108,8 +117,13 @@ def command_words(words):
         w = words[i]
         if name == "env" and (w in ("-S", "--split-string") or w.startswith(("-S", "--split-string="))):
             # env -S runs its argument as a command line, like sh -c.
-            value = w.split("=", 1)[1] if w.startswith("--split-string=") else (w[2:] or (words[i + 1] if i + 1 < len(words) else ""))
-            return ["sh", "-c", value]
+            if w.startswith("--split-string="):
+                value, rest = w.split("=", 1)[1], words[i + 1:]
+            elif w in ("-S", "--split-string"):
+                value, rest = (words[i + 1] if i + 1 < len(words) else ""), words[i + 2:]
+            else:
+                value, rest = w[2:], words[i + 1:]
+            return ["sh", "-c", " ".join([value, shlex.join(rest)]).strip()]
         if w == "--":
             i += 1
             break
@@ -133,12 +147,19 @@ def shell_script(words):
     return None
 
 
-def substitutions(command):
-    """Bodies of $(...) and `...` command substitutions the shell would run: not inside single quotes."""
+def substitutions(command, quotes=True):
+    """Bodies of $(...) and `...` command substitutions the shell would run: not inside single quotes or
+    comments. With quotes=False (a heredoc body), quote characters are literal text."""
     bodies, i, quote = [], 0, None
     while i < len(command):
         c = command[i]
-        if quote == "'":
+        if not quotes and c in "'\"":
+            pass
+        elif quotes and quote is None and c == "#" and (i == 0 or command[i - 1] in " \t\n;&|("):
+            j = command.find("\n", i)
+            i = len(command) if j == -1 else j
+            continue
+        elif quote == "'":
             if c == "'":
                 quote = None
         elif c == "\\":
@@ -271,8 +292,9 @@ def check_stack(args):
 
 
 def check_command(command, cwd, depth=0):
+    command, expanded = split_heredocs(command)
     if depth < 3:
-        for body in substitutions(command):
+        for body in substitutions(command) + substitutions(expanded, quotes=False):
             check_command(body, cwd, depth + 1)
     for words in segments(command):
         words = command_words(words)
@@ -283,7 +305,7 @@ def check_command(command, cwd, depth=0):
             continue
         script = shell_script(words)
         if script is not None and depth < 3:
-            check_command(strip_heredocs(script), cwd, depth + 1)
+            check_command(script, cwd, depth + 1)
             continue
         args = gh_args(words)
         if args is None:
@@ -306,14 +328,13 @@ def main():
     event = json.load(sys.stdin)
     command = (event.get("tool_input") or {}).get("command") or ""
     cwd = event.get("cwd") or os.getcwd()
-    command = strip_heredocs(command)
     try:
         check_command(command, cwd)
     except SystemExit:
         raise
     except ValueError as err:
         # Unparsable (e.g. an unbalanced quote in text). Only a real gh command needs a decision.
-        if GH_COMMAND.search(command):
+        if GH_COMMAND.search(strip_heredocs(command)):
             deny(f"couldn't parse the command ({err}). Run gh pr create as a plain command.")
     except Exception as err:  # fail closed
         deny(f"the gate failed ({type(err).__name__}: {err}). {OVERRIDE_HINT}")
