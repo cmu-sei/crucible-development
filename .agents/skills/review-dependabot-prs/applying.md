@@ -7,10 +7,11 @@ review. Applying merges on GitHub, so the user's request to apply it is the go-a
 
 **A moved head: refresh or re-review.** Rebasing a PR (by you, or by Dependabot after another
 merge) moves its head without changing its dependency changes. Confirm that with
-`bash scripts/inventory.sh OWNER/REPO N`, then replace its line in the same plan with fresh
-`plan.sh lines` output. Never edit a SHA by hand. A PR whose dependency changes did change (new
-versions, other packages) is stale: delete its line from this plan and report it as needing a
-new review. Applying doesn't do that review; it's a new run of the skill.
+`bash scripts/inventory.sh OWNER/REPO N`, then replace its line in the same plan with
+`plan.sh lines VERDICT OWNER/REPO N@SHA` output, SHA being the `head:` that inventory printed.
+Never edit a SHA by hand. A PR whose dependency changes did change (new versions, other
+packages) is stale: delete its line from this plan and report it as needing a new review.
+Applying doesn't do that review; it's a new run of the skill.
 
 ## Steps
 

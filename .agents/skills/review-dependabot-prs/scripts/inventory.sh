@@ -3,8 +3,9 @@
 # Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
 # Summarizes open Dependabot PRs in a GitHub repo for review: the repo's Dependabot auto-merge
-# workflow state, each PR's merge state, review state, required and other checks, files, each
-# dependency's version change (with semver delta and dependency type), the non-lockfile diff
+# workflow state, each PR's head commit (the one being reviewed: give it to plan.sh lines as
+# N@SHA), merge state, review state, required and other checks, files, each dependency's version
+# change (with semver delta and dependency type), the non-lockfile diff
 # lines (the manifest change that the PR title can hide), and PRs whose changes are identical
 # to another's. Read-only; uses only `gh pr`/`gh repo`/`gh workflow` (no `gh api`). For release
 # notes per dependency, run release-notes.sh on a PR.
@@ -85,7 +86,7 @@ fi
 # Files whose diffs are machine-generated; everything else is shown line by line.
 lockfiles='(^|/)(package-lock\.json|npm-shrinkwrap\.json|yarn\.lock|pnpm-lock\.yaml|packages\.lock\.json|go\.sum|composer\.lock|Chart\.lock|poetry\.lock|Cargo\.lock|Gemfile\.lock|\.?devcontainer-lock\.json)$'
 max_manifest_lines=60
-fields=number,title,createdAt,mergeable,mergeStateStatus,reviewDecision,files,statusCheckRollup,body,commits
+fields=number,title,headRefOid,createdAt,mergeable,mergeStateStatus,reviewDecision,files,statusCheckRollup,body,commits
 
 checks_tmp=$tmp/checks
 : >"$checks_tmp"
@@ -117,6 +118,15 @@ for n in "${prs[@]}"; do
   # The diff: for the manifest lines, to fill versions the PR text truncates, and to spot duplicates.
   diff_ok=true
   ghr pr diff "$n" -R "$repo" >"$tmp/$n.diff" || diff_ok=false
+  # The head this inventory shows: its line in the plan must name this commit. A head that moved
+  # between the PR read and the diff read means the two can disagree, so neither is trusted.
+  pr_head=$(jq -r .headRefOid <<<"$json")
+  head_note=""
+  if ! now=$(ghr pr view "$n" -R "$repo" --json headRefOid -q .headRefOid) || ! [[ "$now" =~ ^[0-9a-f]{40}$ ]]; then
+    head_note="  << ERROR: could not re-read the head after the diff; re-run"; errors=$((errors + 1))
+  elif [[ "$now" != "$pr_head" ]]; then
+    head_note="  << ERROR: head moved to $now while this PR was read; re-run"; errors=$((errors + 1))
+  fi
   if $diff_ok; then
     deps=$(deps_json "$tmp/$n.diff" <<<"$json") || deps=""
   else
@@ -126,7 +136,7 @@ for n in "${prs[@]}"; do
   jq -e 'type == "array"' >/dev/null 2>&1 <<<"$deps" || { deps_ok=false; deps='[]'; errors=$((errors + 1)); }
 
   jq -r --argjson required "$required" --argjson req_ok "$req_ok" --argjson deps "$deps" --argjson deps_ok "$deps_ok" \
-    --arg mnote "$mergeable_note" "$JQ_DELTA$JQ_PLATFORM"'
+    --arg mnote "$mergeable_note" --arg hnote "$head_note" "$JQ_DELTA$JQ_PLATFORM"'
     def bucket: (if ((.conclusion // "") != "") then .conclusion else (.state // .status // "") end) as $s
       | if $s == "SUCCESS" then "pass"
         elif ($s == "SKIPPED" or $s == "NEUTRAL") then "skip"
@@ -135,6 +145,7 @@ for n in "${prs[@]}"; do
     def checkname: if .context then .context else ([.workflowName, .name] | map(select(. != null and . != "")) | join(" / ")) end;
     ([.statusCheckRollup[]? | {name: checkname, b: bucket}]) as $checks
     | "#\(.number) \(.title)",
+      "  head: \(.headRefOid)\($hnote)",
       "  opened \(.createdAt[0:10]); mergeable: \(.mergeable)\($mnote); merge state: \(.mergeStateStatus); review: \(.reviewDecision // "none")",
       "  required checks: " + (if ($req_ok | not) then "ERROR (could not query)"
                                 elif ($required | length) == 0 then "none reported (none configured, or the PR predates them)"

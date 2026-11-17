@@ -31,18 +31,19 @@ E2e validation for apply: <none | local (suites: ...)>.
 
 ## Plan data
 
-Generated with `plan.sh lines`. Don't edit the SHAs by hand: they are the commits that were
-reviewed, and apply refuses any PR whose head has moved since. To update a line after a rebase,
-regenerate it with `plan.sh lines` (see `applying.md`).
+Generated with `plan.sh lines`, given each PR as `N@SHA` with the `head:` that `inventory.sh`
+printed for the review. Don't edit the SHAs by hand: they are the commits that were reviewed;
+`lines` refuses a PR that has moved off its SHA, and apply refuses any PR whose head has moved
+since. To update a line after a rebase, regenerate it with `plan.sh lines` (see `applying.md`).
 
 ```dependabot-plan
 version 1
 created <UTC timestamp>
 e2e <none|local>
-<output of: plan.sh lines merge OWNER/REPO N ...>   (in merge order: grouped PRs first)
-<output of: plan.sh lines defer OWNER/REPO N --reason "..." >
-<output of: plan.sh lines skip OWNER/REPO N ...>
-<output of: plan.sh lines upgrade OWNER/REPO N ...>
+<output of: plan.sh lines merge OWNER/REPO N@SHA ...>   (in merge order: grouped PRs first)
+<output of: plan.sh lines defer OWNER/REPO N@SHA --reason "..." >
+<output of: plan.sh lines skip OWNER/REPO N@SHA ...>
+<output of: plan.sh lines upgrade OWNER/REPO N@SHA ...>
 ```
 
 ## How to apply
@@ -57,7 +58,8 @@ full procedure is `applying.md` next to them, in the skill folder: read it first
    merges only the PRs still at their reviewed commit, in plan order. If e2e is `local`: follow
    `local-e2e.md` in the skill folder instead.
 4. A deferred PR waiting on a merge: after that merge lands, rebase it (or wait for Dependabot),
-   confirm its changes with `inventory.sh`, replace its line with `plan.sh lines merge` output,
+   confirm its changes with `inventory.sh`, replace its line with
+   `plan.sh lines merge OWNER/REPO N@<the head inventory.sh printed>` output,
    and run steps 1 and 3 again.
 5. Re-inventory with `inventory.sh`: new PRs, and skipped ones that changed, need a new review.
 6. Report what merged, what was stale or deferred, and base-branch CI on the last merge commit.

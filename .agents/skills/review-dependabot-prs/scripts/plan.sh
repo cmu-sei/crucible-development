@@ -24,10 +24,13 @@
 # PR that others conflict with before them.
 #
 # Subcommands:
-#   lines VERDICT OWNER/REPO N [N ...] [--reason TEXT]
-#                                        print block lines with each PR's current head SHA
-#                                        (VERDICT: merge, defer, skip or upgrade; --reason adds
-#                                        `# TEXT`, e.g. for defer). Exit 1 if a PR can't be read.
+#   lines VERDICT OWNER/REPO N@SHA [N@SHA ...] [--reason TEXT]
+#                                        print block lines for the PRs at the heads that were
+#                                        reviewed (SHA: the full `head:` that inventory.sh printed
+#                                        for PR N). VERDICT: merge, defer, skip or upgrade; --reason
+#                                        adds `# TEXT`, e.g. for defer. A PR that isn't open at that
+#                                        SHA gets no line (its head moved after the review); exit 1
+#                                        if any PR got no line.
 #   check PLAN                            is each `merge` PR still open at the reviewed SHA?
 #                                        Exit 1 if any is stale. defer lines are reported as current
 #                                        or changed; skip and upgrade lines only when they changed.
@@ -115,22 +118,34 @@ deferred() {
 cmd=${1:-}; shift || true
 case $cmd in
   lines)
-    verdict=${1:?usage: plan.sh lines merge|defer|skip|upgrade OWNER/REPO N [N ...] [--reason TEXT]}; repo=${2:?OWNER/REPO}; shift 2
+    verdict=${1:?usage: plan.sh lines merge|defer|skip|upgrade OWNER/REPO N@SHA [N@SHA ...] [--reason TEXT]}; repo=${2:?OWNER/REPO}; shift 2
     [[ "$verdict" =~ ^(merge|defer|skip|upgrade)$ ]] || { echo "verdict must be merge, defer, skip or upgrade" >&2; exit 2; }
     [[ "$repo" =~ ^[^/[:space:]]+/[^/[:space:]]+$ ]] || { echo "not OWNER/REPO: $repo" >&2; exit 2; }
     reason="" prs=()
     while (($#)); do
       case $1 in
         --reason) reason=$(tr '\n' ' ' <<<"${2:?--reason needs text}" | sed 's/  */ /g; s/^ //; s/ $//'); shift 2 ;;
-        *) [[ "$1" =~ ^[0-9]+$ ]] || { echo "not a PR number: $1" >&2; exit 2; }; prs+=("$1"); shift ;;
+        # The reviewed head is required: the head at the time of writing may not be the one reviewed.
+        *) [[ "$1" =~ ^[0-9]+@[0-9a-f]{40}$ ]] || { echo "not N@SHA (PR number @ the full head inventory.sh printed): $1" >&2; exit 2; }
+           prs+=("$1"); shift ;;
       esac
     done
     ((${#prs[@]})) || { echo "no PR numbers given" >&2; exit 2; }
     [[ "$verdict" == defer && -z "$reason" ]] && echo "note: give defer lines a reason (--reason TEXT, or edit in '# reason')" >&2
     rc=0
-    for n in "${prs[@]}"; do
-      if ! sha=$(ghr pr view "$n" -R "$repo" --json headRefOid -q .headRefOid) || ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+    for pr in "${prs[@]}"; do
+      n=${pr%@*} sha=${pr#*@}
+      if ! info=$(ghr pr view "$n" -R "$repo" --json state,headRefOid -q '"\(.state) \(.headRefOid)"') ||
+        ! [[ "$info" =~ ^(OPEN|CLOSED|MERGED)\ [0-9a-f]{40}$ ]]; then
         echo "# could not read $repo #$n"; echo "could not read $repo #$n" >&2; rc=1; continue
+      fi
+      read -r state head <<<"$info"
+      if [[ "$state" != OPEN ]]; then
+        echo "# $repo #$n is $state"; echo "$repo #$n is $state: no line written (a plan lists only open PRs)" >&2; rc=1; continue
+      elif [[ "$head" != "$sha" ]]; then
+        echo "# $repo #$n moved since review"
+        echo "$repo #$n moved since review (${sha:0:7} -> ${head:0:7}): no line written. Run inventory.sh $repo $n: if its dependency changes are the reviewed ones (only rebased), use its new head; otherwise re-review it" >&2
+        rc=1; continue
       fi
       printf '%-7s %s %s %s%s\n' "$verdict" "$repo" "$n" "$sha" "${reason:+  # $reason}"
     done
@@ -145,7 +160,7 @@ case $cmd in
     while read -r status repo n sha head; do
       case $status in
         current) echo "ok      $repo #$n at ${sha:0:7}" ;;
-        moved) echo "STALE   $repo #$n moved ${sha:0:7} -> ${head:0:7}: if inventory.sh shows the same dependency changes (only rebased), replace its line with plan.sh lines merge output; otherwise remove it and re-review"; stale=1 ;;
+        moved) echo "STALE   $repo #$n moved ${sha:0:7} -> ${head:0:7}: if inventory.sh shows the same dependency changes (only rebased), replace its line with plan.sh lines merge $repo $n@<its new head> output; otherwise remove it and re-review"; stale=1 ;;
         merged) echo "done    $repo #$n already merged" ;;
         closed) echo "STALE   $repo #$n was closed (Dependabot may have superseded it): re-review"; stale=1 ;;
         *) echo "STALE   $repo #$n could not be read"; stale=1 ;;
@@ -230,8 +245,8 @@ case $cmd in
         echo "  $repo #$n:"
         echo "    gh pr update-branch $n -R $repo --rebase"
         echo "    # wait for its required checks: gh pr checks $n -R $repo --required --watch"
-        echo "    bash $here/inventory.sh $repo $n   # confirm its dependency changes are the reviewed ones"
-        echo "    bash $here/plan.sh lines merge $repo $n   # replace its merge line in $plan"
+        echo "    bash $here/inventory.sh $repo $n   # confirm its dependency changes are the reviewed ones; note its head"
+        echo "    bash $here/plan.sh lines merge $repo $n@<that head>   # replace its merge line in $plan"
         echo "    bash $here/plan.sh apply $plan"
       done < <(grep '^behind ' "$tmp/results")
     fi
@@ -249,7 +264,7 @@ case $cmd in
       echo "  For each: rebase it (comment '@dependabot rebase' for a conflict, or"
       echo "  gh pr update-branch N -R OWNER/REPO --rebase for checks that never ran), wait for its checks,"
       echo "  confirm its changes with inventory.sh, then change its line to"
-      echo "  \`plan.sh lines merge OWNER/REPO N\` output and re-run apply."
+      echo "  \`plan.sh lines merge OWNER/REPO N@<the head inventory.sh printed>\` output and re-run apply."
     fi
     exit $failed
     ;;

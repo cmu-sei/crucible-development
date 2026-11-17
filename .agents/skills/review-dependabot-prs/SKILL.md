@@ -88,10 +88,12 @@ platforms are reviewed like any other bump.
 5. **Write the plan:** copy [plan-template.md](plan-template.md) to
    `.dependabot-plans/<YYYY-MM-DD>-<repos>.md` in crucible-development (gitignored) and fill it
    with the verdicts and their evidence. Generate its data with
-   `bash scripts/plan.sh lines merge|defer|skip|upgrade OWNER/REPO N ...`, which records each
-   PR's reviewed head commit. List `merge` lines in merge order: a grouped PR before the PRs it
-   overlaps. Set `e2e` from question 2. The plan must stand alone: an agent with only that file
-   can apply it.
+   `bash scripts/plan.sh lines merge|defer|skip|upgrade OWNER/REPO N@SHA ...`, where SHA is the
+   `head:` that step 1's inventory printed for PR N: the commit you reviewed. It writes no line
+   for a PR that has moved off that commit since; re-inventory that PR and, if its dependency
+   changes are the same (only rebased), use its new head, otherwise review it again. List
+   `merge` lines in merge order: a grouped PR before the PRs it overlaps. Set `e2e` from
+   question 2. The plan must stand alone: an agent with only that file can apply it.
 6. **Dry run only:** show the plan's lists and its path, then ask in one AskUserQuestion call:
    "Apply this plan now?" Options: apply now; apply with local e2e validation first (offer this
    only when the plan's `e2e` is `none`; choosing it changes the plan's `e2e` line and header to
@@ -121,7 +123,7 @@ platforms are reviewed like any other bump.
 needs a rebase after that one merges, it conflicts with the base and needs `@dependabot rebase`,
 or its required checks never ran (it predates the workflows). A review never rebases anything,
 so these are always defer lines, never merge lines. Record it with
-`plan.sh lines defer OWNER/REPO N --reason "..."`; apply never merges it, and
+`plan.sh lines defer OWNER/REPO N@SHA --reason "..."`; apply never merges it, and
 [applying.md](applying.md) says how it becomes a `merge` line later.
 
 Lockfile-only `indirect` patch/minor bumps usually only need the keyword hits checked. Majors and
