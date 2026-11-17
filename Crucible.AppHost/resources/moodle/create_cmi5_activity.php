@@ -15,6 +15,8 @@
 //   - If the target course has no cmi5launch activity -> create one from the bundled package.
 //   - If it has one but the player no longer serves that course -> recreate it.
 //   - Otherwise -> no-op.
+//   - If the player is unreachable -> no-op, leaving any existing activity in place.
+// Every run that reaches the player also refreshes the plugin's tenant token.
 //
 // The bundled package (sample_cmi5_geology.zip) is the Apache-2.0 licensed
 // "single_au_basic_framed" example from adlnet/CATAPULT (course_examples),
@@ -62,45 +64,74 @@ if (!file_exists($packagepath)) {
     cli_error("cmi5 package not found at '{$packagepath}'.");
 }
 
-// ---- Helper: is a Moodle cmi5launch record still served by the player? --------
-// Mints a tenant token and asks the player for the course; returns true only if the
-// player currently knows about the course id stored on the Moodle record.
-function cmi5_player_has_course(int $playercourseid): bool {
-    global $CFG;
-
+// ---- Helper: mint a tenant token from the player ------------------------------
+// Returns '' when the player is unreachable or refuses the credentials. The short
+// timeouts double as the reachability check: the plugin's own player calls have none,
+// so calling add_instance against a dead player stalls Moodle's startup for minutes.
+function cmi5_player_token(): string {
     $playerurl = trim((string) get_config('cmi5launch', 'cmi5launchplayerurl'));
     $basicname = (string) get_config('cmi5launch', 'cmi5launchbasicname');
     $basicpass = (string) get_config('cmi5launch', 'cmi5launchbasepass');
-    if ($playerurl === '' || $playercourseid <= 0) {
-        return false;
+    $tenantname = (string) get_config('cmi5launch', 'cmi5launchtenantname');
+    $tenantid = (int) get_config('cmi5launch', 'cmi5launchtenantid');
+    if ($playerurl === '' || $tenantname === '' || $tenantid <= 0) {
+        return '';
     }
 
-    // Mint a token for the first tenant (id 1, created at player startup).
     $authch = curl_init($playerurl . '/api/v1/auth');
     curl_setopt_array($authch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST           => true,
         CURLOPT_USERPWD        => $basicname . ':' . $basicpass,
         CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS     => json_encode(['tenantId' => 1, 'audience' => 'crucible']),
+        CURLOPT_POSTFIELDS     => json_encode(['tenantId' => $tenantid, 'audience' => $tenantname]),
+        CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_TIMEOUT        => 15,
     ]);
     $authresp = curl_exec($authch);
     $authcode = curl_getinfo($authch, CURLINFO_HTTP_CODE);
     curl_close($authch);
     if ($authcode !== 200) {
-        return false;
+        return '';
     }
-    $token = json_decode($authresp, true)['token'] ?? '';
-    if ($token === '') {
+    return (string) (json_decode($authresp, true)['token'] ?? '');
+}
+
+// ---- Helper: is a Moodle cmi5launch record still served by the player? --------
+// Returns true only if the player still has the course id stored on the Moodle record
+// AND its first AU's content file. The course row lives in MySQL and outlives the
+// content directory, so the row alone does not mean a launch will work.
+function cmi5_player_has_course(int $playercourseid, string $token): bool {
+    $playerurl = trim((string) get_config('cmi5launch', 'cmi5launchplayerurl'));
+    if ($playercourseid <= 0) {
         return false;
     }
 
-    // Ask the player for that specific course.
     $ch = curl_init($playerurl . '/api/v1/course/' . $playercourseid);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token],
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT        => 15,
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($code !== 200) {
+        return false;
+    }
+
+    $course = json_decode($resp, true);
+    $auurl = (string) ($course['metadata']['aus'][0]['url'] ?? '');
+    if ($auurl === '' || preg_match('#^https?://#', $auurl)) {
+        // No AU, or content hosted elsewhere: nothing on the player to check.
+        return $auurl !== '';
+    }
+
+    $ch = curl_init($playerurl . '/content/' . (int) $course['tenantId'] . '/' . $playercourseid . '/' . ltrim($auurl, '/'));
+    curl_setopt_array($ch, [
+        CURLOPT_NOBODY         => true,
+        CURLOPT_CONNECTTIMEOUT => 5,
         CURLOPT_TIMEOUT        => 15,
     ]);
     curl_exec($ch);
@@ -110,16 +141,30 @@ function cmi5_player_has_course(int $playercourseid): bool {
     return $code === 200;
 }
 
+// ---- Make sure the player is up, and give the plugin its tenant token ----------
+// Bail out before touching anything when the player is down: an unreachable player
+// would otherwise make every existing activity look stale and get deleted.
+$token = cmi5_player_token();
+if ($token === '') {
+    cli_writeln("No tenant token from the CATAPULT player at '" . get_config('cmi5launch', 'cmi5launchplayerurl')
+        . "' (player down, or tenant settings/credentials wrong); leaving cmi5 activities as they are.");
+    exit(0);
+}
+// The token never expires and is signed with the player's fixed TOKEN_SECRET, so
+// minting a fresh one every run is harmless and replaces the manual
+// "cmi5launch token setup" page step.
+set_config('cmi5launchtenanttoken', $token, 'cmi5launch');
+
 // ---- Check for an existing, healthy cmi5launch activity in the course ---------
 $existing = $DB->get_records('cmi5launch', ['course' => $course->id]);
 foreach ($existing as $rec) {
     $playercourseid = (int) ($rec->courseid ?? 0);
-    if ($playercourseid > 0 && cmi5_player_has_course($playercourseid)) {
+    if (cmi5_player_has_course($playercourseid, $token)) {
         cli_writeln("cmi5launch activity '{$rec->name}' already exists and is served by the player (course id {$playercourseid}). Nothing to do.");
         exit(0);
     }
     cli_writeln("Found stale cmi5launch activity '{$rec->name}' (player course id "
-        . $playercourseid . " missing); it will be replaced.");
+        . $playercourseid . " or its content missing); it will be replaced.");
     // Remove the stale course module so we can recreate cleanly.
     if ($cm = get_coursemodule_from_instance('cmi5launch', $rec->id, $course->id)) {
         course_delete_module($cm->id);

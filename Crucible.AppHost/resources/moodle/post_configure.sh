@@ -608,8 +608,11 @@ configure_cmi5launch() {
   fi
 
   echo "Configuring cmi5launch"
-  # CATAPULT player (reached from the Moodle container via host.docker.internal).
-  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchplayerurl --set=http://host.docker.internal:3398
+  # CATAPULT player, by container name on the shared Aspire network. Not
+  # host.docker.internal: that reaches the player only through VS Code's 3398 port
+  # forward on the host, which can hang and stall every player call. Launch URLs the
+  # browser opens come from the player's own PLAYER_STANDALONE_LAUNCH_URL_BASE.
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchplayerurl --set=http://catapult-player:3398
   php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchbasicname --set=catapult
   php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchbasepass --set=catapult-dev-secret
 
@@ -624,10 +627,11 @@ configure_cmi5launch() {
   # send_user_idnumber scheme - see classes/local/cmi5_connectors.php.)
   php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchcustomacchp --set=https://keycloak.dev.internal:8443/realms/crucible/
 
-  # NOTE: cmi5launchtenanttoken must be generated against the player's tenant
-  # (Site administration > Plugins > Activity modules > cmi5launch token setup).
-  # It cannot be set statically here because the player issues it at runtime.
-  log "mod_cmi5launch configured (tenant token still requires manual setup)"
+  # The player creates its first tenant (id 1) from FIRST_TENANT_NAME in AppHost.cs.
+  # The bearer token itself is minted from the running player by create_cmi5_activity.php.
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchtenantname --set=crucible
+  php /var/www/html/admin/cli/cfg.php --component=cmi5launch --name=cmi5launchtenantid --set=1
+  log "mod_cmi5launch configured"
 }
 
 configure_cmi5_activity() {
