@@ -18,6 +18,12 @@ For example, a draft prepared for this release ("Draft until the Caster releaseâ
 **ask** whether to fold it into this PR, building on its branch, or to leave it alone. Its author
 may intend different chart versions.
 
+Then run the **Fallback** section's checks for bot PRs from this batch and zero values on `main`,
+before working out any version. A bot PR from this batch that is already merged has put its
+version bump on `main`, so step 2 must not bump that chart again: Chart Version Check only checks
+that a changed chart's version moved, so it wouldn't catch a second bump. Anything else the checks
+find goes into this same PR.
+
 ## 2. Work out every chart change
 
 Work out each change against `origin/main` of helm-charts, for each released repository. The
@@ -27,7 +33,8 @@ beside its settings file (`settings_file`, `settings_file_kind`).
 1. **Versions.** Set the subchart's `appVersion` to the release. Bump its `version` at the same
    level as the app version: patch for a patch, minor for a minor. Bump each **parent** chart once,
    at the highest level among its subcharts in this PR. For example, topomojo-api and topomojo-ui
-   both at patch give the topomojo chart one patch bump, not two.
+   both at patch give the topomojo chart one patch bump, not two. Skip any bump that a merged bot
+   PR from this batch already put on `main` (step 1).
 2. **Settings.** Get the settings file at both tags, then run
    `settings-diff.mjs diff <settings_file_kind> <old> <new>`:
    - `ADDED` scalar key: add it with the printed default, under `env:` in the subchart's
@@ -50,8 +57,6 @@ beside its settings file (`settings_file`, `settings_file_kind`).
    as the values comment. Delete rows for removed settings. Correct any row the release made
    wrong. If no section fits, add a short one. CI's README Reminder check only warns, without
    failing, so read the README even when it passes.
-4. **The fallback checks:** before building, run the Fallback section's checks for bot PRs from
-   this batch and zero values on `main`. Anything they find goes into this same PR.
 
 ## 3. Build, validate and open the PR
 

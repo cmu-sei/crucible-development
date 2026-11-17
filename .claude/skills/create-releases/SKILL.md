@@ -54,10 +54,11 @@ Local clones live under `/mnt/data/crucible/` (`alloy/alloy.api`, `player/vm.ui`
 
 ### 1. Survey
 
-Run `survey.sh $ARGUMENTS` (it ignores `--dry-run`). Skip a repository with `ahead: 0`. Warn if `behind` isn't 0 (the tag
-isn't on `main`). Rerun any repository that shows `status: ERROR` before deciding anything about
-it: an error isn't "unchanged". Show the user a short table: repository, last release, commits since, and
-whether CI on `main` is green. Then continue; this table isn't a question.
+Run `survey.sh <targets>`, with the targets from `$ARGUMENTS` and without `--dry-run`. Skip a
+repository with `ahead: 0`. Warn if `behind` isn't 0 (the tag isn't on `main`). Rerun any
+repository that shows `status: ERROR` before deciding anything about it: an error isn't
+"unchanged". Show the user a short table: repository, last release, commits since, and whether
+CI on `main` is green. Then continue; this table isn't a question.
 
 `main` moves during a long run, often with Dependabot merges. The survey is a starting point: every
 later step reads `main` again.
@@ -121,7 +122,9 @@ ships (only development-only or unimported dependency bumps, CI, tests or docs),
 operators a chart bump and an image rebuild for no change in behavior, so recommend waiting,
 unless something outside the image needs it, such as a security scanner that flags the old
 version in the repository. Still draft the notes, so the user has them either way. You can ask
-this and the dependency questions separately, or fold them into the step 6 confirmation.
+this and the dependency questions separately, or fold them into the step 6 confirmation. With
+`--dry-run`, ask none of them: put each question and your recommendation in the step 6 table, so
+the user sees them with the rest of the plan.
 
 ### 4. Choose the version
 

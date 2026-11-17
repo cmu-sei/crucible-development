@@ -9,9 +9,6 @@
 # Usage:
 #   survey.sh [--resolve-only] <target> [<target>...]
 #
-# The skill's own arguments can be passed through as they are: --dry-run is ignored here,
-# because the survey never writes anything.
-#
 # Targets (case-insensitive):
 #   all                      every API and UI below
 #   <project>                the project's API and UI (console and topomojo-ui have no pair)
@@ -64,7 +61,6 @@ declare -A want=()
 for raw in "$@"; do
   t=${raw,,}
   case $t in
-    --dry-run) continue ;;
     all)
       for p in "${PROJECTS[@]}"; do
         [[ -n ${API[$p]:-} ]] && want[${API[$p]}]=1
@@ -91,7 +87,7 @@ repos=()
 for p in "${PROJECTS[@]}"; do [[ -n ${API[$p]:-} && -n ${want[${API[$p]}]:-} ]] && repos+=("${API[$p]}"); done
 for p in "${PROJECTS[@]}"; do [[ -n ${UI[$p]:-} && -n ${want[${UI[$p]}]:-} ]] && repos+=("${UI[$p]}"); done
 if [[ ${#repos[@]} -eq 0 ]]; then
-  echo "error: no targets given (only flags)" >&2
+  echo "error: no targets given" >&2
   echo "usage: survey.sh [--resolve-only] <all|project|project.api|project.ui>..." >&2
   exit 2
 fi
