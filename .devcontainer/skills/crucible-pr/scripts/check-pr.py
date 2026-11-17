@@ -1,3 +1,6 @@
+# Copyright 2026 Carnegie Mellon University. All Rights Reserved.
+# Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
+
 #!/usr/bin/env python3
 """PreToolUse gate for agent-created PRs (Claude Code and Codex CLI).
 
