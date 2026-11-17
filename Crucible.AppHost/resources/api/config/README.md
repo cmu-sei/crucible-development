@@ -158,10 +158,12 @@ In `local/hybrid/player-vm-api.conf`, keep the Proxmox settings, replace
 `Vsphere__Hosts__0__Enabled=false` with the `Vsphere__...` entries from
 `local/vsphere/player-vm-api.conf`, including `Vsphere__Hosts__0__Enabled=true`.
 
-In `local/hybrid/caster-api.conf`, add the
-`Terraform__EnvironmentVariables__Direct__VSPHERE_...` entries from
-`local/vsphere/caster-api.conf`. Keep the Proxmox entries.
-Replace matching keys rather than appending duplicates.
+In `local/hybrid/caster-api.conf`, keep the Proxmox entries and add the
+`SeedData__EnvironmentSets__0__...` and `Infrastructure__Connections__0__...` lines from `local/vsphere/caster-api.conf`,
+renumbering the copied lines from `SeedData__EnvironmentSets__0__` to
+`SeedData__EnvironmentSets__1__` and from `Infrastructure__Connections__0__` to
+`Infrastructure__Connections__1__`, so Caster seeds both a "Proxmox" and a "vSphere"
+Environment Set and lists both hypervisors' inventory.
 For VMC, apply the upload adjustments above to the hybrid Player VM file.
 
 The generated `local/hybrid/topomojo.conf` still uses Proxmox only. To use vSphere
@@ -205,10 +207,45 @@ automatically and there is no fallback to a different profile.
 Unspecified keys still come from existing app configuration. A profile does not
 replace a whole section or array. Proxmox-only Player VM templates disable vSphere
 host index `0`; explicitly disable any other locally configured indices as well.
-Caster templates blank the other provider's configured direct variables, but do not
-prevent Terraform projects from supplying their own credentials/configuration.
+Caster templates give no provider variables to every run; see Caster and Environment
+Sets below. They do not prevent Terraform projects from supplying their own
+credentials/configuration.
 Templates use development certificate defaults; review those for your environment.
 Keep dynamic database/endpoints and existing authentication settings out of these profiles.
+
+## Caster and Environment Sets
+
+Caster's profile does not hand hypervisor credentials to every Terraform run. It configures one
+infrastructure connection (`Infrastructure__Connections__0__...`, named `proxmox` or `vsphere`)
+and seeds an Environment Set ("Proxmox" or "vSphere") through `SeedData__EnvironmentSets__...`
+whose entries read that connection's settings (its endpoint, insecure flag and credential) into
+the provider's variables when each run starts. The vSphere set's cluster, resource pool and
+datastore are plain values, as they aren't connection settings.
+
+- Assign the set to the projects (or project groups) that should deploy to the hypervisor, with
+  **Assign** under **Administration > Environment Sets**, or in a project's **Environment**
+  dialog. Seeded sets are not assigned to any project, and a project without the set has no
+  provider variables.
+- The set is created only if no set has its name. Later edits to the seed lines do not change an
+  existing set: delete it in Caster and restart Aspire to seed it again. The connection's settings
+  are read at each run, so a changed token or password needs only a restart.
+- Profiles generated before Environment Sets used `Terraform__EnvironmentVariables__Direct__...`
+  lines, which still work but give the credentials to every project. Regenerate the profile to
+  switch.
+
+See `docs/EnvironmentSets.md` in caster.api for the rules and the security model.
+
+## Caster inventory
+
+Caster's profile also configures an inventory connection (`Infrastructure__Connections__0__...`),
+which lists the hypervisor's VM templates, ISOs, networks, storage and hosts on
+**Administration > Connections** (`ViewInfrastructure`) and in the **Inventory** panel of each
+project it is assigned to. Assign it with **Assign** on that page, or in a project's
+**Environment** dialog. The connection reuses the profile's credentials but is never passed to
+Terraform runs. The ISO list reads `<iso-storage>` on Proxmox and TopoMojo's
+`[<datastore>] topomojo` folder on vSphere, and the vSphere connection reads only the datacenter
+named first in the pool path. Profiles generated before the inventory have no connection: add
+the lines from the template, or regenerate. See `docs/Inventory.md` in caster.api for the other settings.
 
 ## Proxmox provisioning
 

@@ -68,7 +68,7 @@
       "version": "13.6.3"
     },
     "ghcr.io/cmu-sei/devcontainer-features/herdr:1.1": {},
-    "ghcr.io/cmu-sei/devcontainer-features/claude:1.2": { "bedrock": true },
+    "ghcr.io/cmu-sei/devcontainer-features/claude:1.3": { "bedrock": true },
     "ghcr.io/cmu-sei/devcontainer-features/codex:1.1": {}
   },
   // IDs without version tags. aws-cli is not declared above; it arrives as a dependency of
@@ -125,6 +125,9 @@
     "source=${localWorkspaceFolder}/.devcontainer/.aws,target=/home/vscode/.aws,type=bind",
     // Codex shared defaults
     "source=${localWorkspaceFolder}/.devcontainer/codex/config.toml,target=/etc/codex/config.toml,type=bind,readonly",
+    // crucible-pr gate: agent-created PRs must go through the crucible-pr skill (see .devcontainer/skills)
+    "source=${localWorkspaceFolder}/.devcontainer/codex/requirements.toml,target=/etc/codex/requirements.toml,type=bind,readonly",
+    "source=${localWorkspaceFolder}/.devcontainer/claude/managed-settings.json,target=/etc/claude-code/managed-settings.json,type=bind,readonly",
     // OMP settings, sessions, history, and cached model metadata
     "source=crucible-dev-omp,target=/home/vscode/.omp,type=volume",
     // SSH keys and config
