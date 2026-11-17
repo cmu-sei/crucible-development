@@ -1,6 +1,6 @@
 ---
 name: crucible-pr
-description: Open a pull request for Crucible work, after an independent simplify pass, merge-risk score and cross-vendor review, with a description written as release notes. Use whenever the user asks to open, create, put up, raise or draft a PR, or to get a branch ready for review, in any Crucible repo (the cmu-sei app repos under /mnt/data/crucible, or crucible-development), even if they don't mention review or the description. Also use to refresh an existing PR's description after new commits, for PRs stacked on another PR's branch, and for the same change across several repos.
+description: Open a reviewed pull request for Crucible work. Use whenever the user asks to open, create, put up, raise or draft a PR, or to get a branch ready for review, in any Crucible repo (the cmu-sei app repos under /mnt/data/crucible, or crucible-development), even if they don't mention review or the description. Also use to refresh an existing PR's description after new commits, for PRs stacked on another PR's branch, and for the same change across several repos.
 ---
 
 # Crucible PR
