@@ -36,7 +36,7 @@ Write it to a file: what the change is meant to do and why. For a PR, use its ti
 ## Run it
 
 ```bash
-scripts/review.sh run <profile> <lens> <repo-or-worktree> <range> <task-file>
+~/.agents/skills/crucible-review/scripts/review.sh run <profile> <lens> <repo-or-worktree> <range> <task-file>
 ```
 
 It prints the run directory, which holds `findings.json` and `meta.json`. Reviews take several minutes, so run them in the background, and run two reviewers in parallel when the user asks for two.
@@ -54,7 +54,7 @@ Don't apply fixes or post anything to GitHub unless the user asks.
 When the user wants the same reviewer to confirm fixes, write a prompt file. It says which findings were fixed (with commits) or declined (with reasons), and asks the reviewer to confirm each fix and flag anything new the fixes introduced. Then run:
 
 ```bash
-scripts/review.sh resume <run-dir> <prompt-file>
+~/.agents/skills/crucible-review/scripts/review.sh resume <run-dir> <prompt-file>
 ```
 
 This resumes the reviewer's own session, so it remembers why it raised each finding.

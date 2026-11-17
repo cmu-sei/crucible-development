@@ -10,7 +10,7 @@ Gives a human reviewer a quick read on how much attention a change needs, and wh
 ## Who scores
 
 - **Someone else's PR:** score it yourself.
-- **A change you wrote, or helped write:** have an independent model score it. Authors underrate their own risk. Run the crucible-review skill's `review.sh` with the `risk` lens and the `risk` reviewer from its `reviewers.json`, and present its result.
+- **A change you wrote, or helped write:** have an independent model score it. Authors underrate their own risk. Run `~/.agents/skills/crucible-review/scripts/review.sh` with the `risk` lens and the `risk` reviewer from `~/.agents/skills/crucible-review/reviewers.json`, and present its result.
 
 ## What to look at
 
@@ -75,9 +75,9 @@ Show the tier, then each category with its rating and gaps. Don't show the numbe
 
 **Alignment:** low ✅
 **Impact:** medium 👀
-- Changes the Environment Set response used by Caster.Ui ([file](…))
+- Changes the Environment Set response used by Caster.Ui ([file](...))
 **Verification:** medium 👀
-- No test for an Environment Set with no inventory connection ([file](…))
+- No test for an Environment Set with no inventory connection ([file](...))
 **Rollback cost:** low ✅
 **Error detection:** low ✅
 ```

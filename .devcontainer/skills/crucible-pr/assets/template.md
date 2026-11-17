@@ -11,7 +11,7 @@ Use these sections in this order, in your own words:
 
 ## Summary
 
-<2–5 sentences: the problem and what this PR does about it>
+<2-5 sentences: the problem and what this PR does about it>
 
 ## User-facing changes
 
