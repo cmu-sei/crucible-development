@@ -649,7 +649,10 @@ public static partial class BuilderExtensions
             .WithEnvironment("Terraform__ModuleSources__0__Layout", "Subdirectories")
             .WithEnvironment("GIT_CONFIG_COUNT", "1")
             .WithEnvironment("GIT_CONFIG_KEY_0", "url.http://localhost:3010/.insteadOf")
-            .WithEnvironment("GIT_CONFIG_VALUE_0", "http://host.minikube.internal:3010/");
+            .WithEnvironment("GIT_CONFIG_VALUE_0", "http://host.minikube.internal:3010/")
+            // the job pods inherit caster-api's environment, rewrite and all, and in a pod localhost is the pod; the pods
+            // reach Gitea as host.minikube.internal, so they take no rewrite
+            .WithEnvironment("Terraform__EnvironmentVariables__Direct__GIT_CONFIG_COUNT", "0");
 
         if (!IsEnabled(casterMode) || !IsEnabled(giteaMode))
         {
