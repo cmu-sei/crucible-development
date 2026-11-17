@@ -27,8 +27,17 @@ OVERRIDE_HINT = (
 SEPARATORS = {"&&", "||", ";", "|", "&", "\n", "(", ")"}
 # Words that can come before the real command: shell keywords and command wrappers.
 KEYWORDS = {"if", "then", "else", "elif", "do", "while", "until", "!", "{", "}", "time"}
-# Commands that run another command; their options can take values, so look past them for gh or a shell.
-WRAPPERS = {"env", "timeout", "nice", "sudo", "xargs", "nohup", "exec", "command", "builtin", "stdbuf", "ionice"}
+# Commands that run another command, with the options of each that take a value.
+WRAPPERS = {
+    "env": {"-u", "--unset", "-C", "--chdir"},
+    "timeout": {"-s", "--signal", "-k", "--kill-after"},
+    "nice": {"-n", "--adjustment"},
+    "sudo": {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-T", "-U"},
+    "ionice": {"-c", "-n", "-p", "-P", "-u"},
+    "stdbuf": {"-i", "-o", "-e"},
+    "xargs": {"-a", "-d", "-E", "-I", "-L", "-n", "-P", "-s", "--arg-file", "--delimiter", "--max-args", "--max-procs"},
+    "nohup": set(), "exec": {"-a"}, "command": set(), "builtin": set(),
+}
 SHELLS = {"bash", "sh", "zsh", "dash"}
 REQUIRED_SECTIONS = {
     "Summary": re.compile(r"^##\s*Summary\b", re.M | re.I),
@@ -91,12 +100,28 @@ def command_words(words):
     while i < len(words) and (re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[i]) or words[i] in KEYWORDS):
         i += 1
     words = words[i:]
-    if words and os.path.basename(words[0]) in WRAPPERS:
-        for j, w in enumerate(words[1:], 1):
-            if os.path.basename(w) == "gh" or os.path.basename(w) in SHELLS:
-                return words[j:]
-        return []
-    return words
+    name = os.path.basename(words[0]) if words else ""
+    if name not in WRAPPERS:
+        return words
+    takes_value, i = WRAPPERS[name], 1
+    while i < len(words):
+        w = words[i]
+        if name == "env" and (w in ("-S", "--split-string") or w.startswith(("-S", "--split-string="))):
+            # env -S runs its argument as a command line, like sh -c.
+            value = w.split("=", 1)[1] if w.startswith("--split-string=") else (w[2:] or (words[i + 1] if i + 1 < len(words) else ""))
+            return ["sh", "-c", value]
+        if w == "--":
+            i += 1
+            break
+        if w.startswith("-"):
+            i += 2 if w in takes_value else 1
+        elif name == "env" and "=" in w:
+            i += 1
+        else:
+            break
+    if name == "timeout":
+        i += 1  # the duration
+    return command_words(words[i:])
 
 
 def shell_script(words):
@@ -108,25 +133,35 @@ def shell_script(words):
     return None
 
 
-def substitutions(word):
-    """Bodies of $(...) and `...` command substitutions in a word, including inside quotes."""
-    bodies, i = [], 0
-    while i < len(word):
-        if word.startswith("$(", i):
+def substitutions(command):
+    """Bodies of $(...) and `...` command substitutions the shell would run: not inside single quotes."""
+    bodies, i, quote = [], 0, None
+    while i < len(command):
+        c = command[i]
+        if quote == "'":
+            if c == "'":
+                quote = None
+        elif c == "\\":
+            i += 1
+        elif c == "'" and quote is None:
+            quote = "'"
+        elif c == '"':
+            quote = None if quote == '"' else '"'
+        elif command.startswith("$(", i):
             depth, j = 1, i + 2
-            while j < len(word) and depth:
-                depth += {"(": 1, ")": -1}.get(word[j], 0)
+            while j < len(command) and depth:
+                depth += {"(": 1, ")": -1}.get(command[j], 0)
                 j += 1
-            bodies.append(word[i + 2:j - 1])
+            bodies.append(command[i + 2:j - 1])
             i = j
-        elif word[i] == "`":
-            j = word.find("`", i + 1)
+            continue
+        elif c == "`":
+            j = command.find("`", i + 1)
             if j == -1:
                 break
-            bodies.append(word[i + 1:j])
-            i = j + 1
-        else:
-            i += 1
+            bodies.append(command[i + 1:j])
+            i = j
+        i += 1
     return bodies
 
 
@@ -236,14 +271,10 @@ def check_stack(args):
 
 
 def check_command(command, cwd, depth=0):
-    # Unquoted backticks split across words, so take their bodies from the raw command.
     if depth < 3:
-        for body in re.findall(r"`([^`]*)`", command):
+        for body in substitutions(command):
             check_command(body, cwd, depth + 1)
     for words in segments(command):
-        if depth < 3:
-            for body in (b for w in words for b in substitutions(w)):
-                check_command(body, cwd, depth + 1)
         words = command_words(words)
         if not words:
             continue
