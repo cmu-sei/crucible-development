@@ -26,6 +26,9 @@ public class LaunchOptions
     public bool Misp { get; set; }
     public bool Superset { get; set; }
     public bool Catapult { get; set; }
+    public bool RangerAI { get; set; }
+    // RangerAI waits for Keycloak and gets the crucible realm settings
+    public bool RangerAIKeycloak { get; set; }
 
     // Supporting apps (appsettings.Development.json): arrays grouped by mode
     public string[] Prod { get; set; } = Array.Empty<string>();

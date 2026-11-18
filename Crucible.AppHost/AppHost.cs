@@ -34,6 +34,7 @@ builder.AddLrsql(postgres, keycloak, launchOptions);
 builder.AddMisp(postgres, keycloak, launchOptions);
 builder.AddSuperset(postgres, keycloak, launchOptions);
 builder.AddCatapult(postgres, keycloak, launchOptions);
+builder.AddRangerAI(keycloak, launchOptions);
 builder.AddDocs(launchOptions);
 
 builder.Build().Run();
@@ -45,7 +46,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Gallery: {launchOptions.Gallery}, Cite: {launchOptions.Cite}");
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
     Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Moodle52: {launchOptions.Moodle52}, Moodle53: {launchOptions.Moodle53}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
-    Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, TopoMojo Launchpoint: {launchOptions.TopoMojoLaunchpoint}, Gameboard: {launchOptions.Gameboard}");
+    Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, TopoMojo Launchpoint: {launchOptions.TopoMojoLaunchpoint}, Gameboard: {launchOptions.Gameboard}, RangerAI: {launchOptions.RangerAI}, RangerAIKeycloak: {launchOptions.RangerAIKeycloak}");
     Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, Gitea: {launchOptions.Gitea}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  DefaultUiMode: {launchOptions.DefaultUiMode}");
     Console.WriteLine($"  Prod: [{string.Join(", ", launchOptions.Prod)}]");
@@ -1411,6 +1412,98 @@ public static partial class BuilderExtensions
             catapultMysql.WithExplicitStart();
             catapult.WithExplicitStart();
         }
+    }
+
+    /// <summary>
+    /// RangerAI (https://github.com/cmu-sei/rangerai): Chronicle and Scenario Builder, each a .NET API
+    /// with an Angular UI. The APIs keep their own SQLite files and don't use Postgres or Keycloak.
+    /// The APIs target net11.0, so the devcontainer needs the .NET 11 SDK.
+    /// With Launch:RangerAIKeycloak, everything waits for Keycloak and the APIs get the crucible
+    /// realm's settings (realm clients chronicle.ui/.api and scenario-builder.ui/.api).
+    /// </summary>
+    public static void AddRangerAI(this IDistributedApplicationBuilder builder, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
+    {
+        var rangerMode = ResolveMode(options.RangerAI, "RangerAI", options);
+
+        if (!options.AddAllApplications && !IsEnabled(rangerMode))
+            return;
+
+        var rangerSrc = "/mnt/data/crucible/rangerai/rangerai/src";
+
+        // The UIs' proxy.conf.json files hard-code the API ports (Chronicle :5285, Scenario Builder
+        // :5280), so those stay. Scenario Builder's UI defaults to :4310, which Caster UI already
+        // uses here, so it runs on :4330 and both APIs' app switcher entries (Apps:0) point there.
+        const int scenarioBuilderUiPort = 4330;
+        var scenarioBuilderUiUrl = $"http://localhost:{scenarioBuilderUiPort}";
+
+        // The repo has no launchSettings.json, so the endpoints and environment are set here.
+        var chronicleApi = builder.AddProject("chronicle-api", $"{rangerSrc}/chronicle/Chronicle.Api/Chronicle.Api.csproj")
+            .WithHttpEndpoint(port: 5285, isProxied: false)
+            .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+            .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
+            .WithHttpHealthCheck("/health")
+            .WithUrl("/swagger", "Swagger UI");
+
+        var chronicleUi = builder.AddJavaScriptApp("chronicle-ui", $"{rangerSrc}/chronicle/ui", "start")
+            .WithArgs("--", "--host", "0.0.0.0", "--port", "4320")
+            .WithEnvironment("NG_CLI_ANALYTICS", "false")
+            .WithEnvironment("NG_FORCE_AUTOCOMPLETE", "false")
+            .WithHttpEndpoint(port: 4320, isProxied: false)
+            .WithHttpHealthCheck()
+            .WaitFor(chronicleApi);
+
+        var scenarioBuilderApi = builder.AddProject("scenario-builder-api", $"{rangerSrc}/scenario-builder/api/ScenarioBuilder.Api/ScenarioBuilder.Api.csproj")
+            .WithHttpEndpoint(port: 5280, isProxied: false)
+            .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+            .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
+            .WithHttpHealthCheck("/api/scenario-types");
+
+        // The UI's prestart builds the agent's browser bundle from ../agent, which needs the
+        // agent's packages installed first.
+        var scenarioBuilderAgentInstall = builder.AddExecutable("scenario-builder-agent-install", "bash", $"{rangerSrc}/scenario-builder/agent",
+            "-c", "[ -d node_modules/esbuild ] || npm ci");
+
+        var scenarioBuilderUi = builder.AddJavaScriptApp("scenario-builder-ui", $"{rangerSrc}/scenario-builder/ui", "start")
+            .WithArgs("--", "--host", "0.0.0.0", "--port", scenarioBuilderUiPort.ToString())
+            .WithEnvironment("NG_CLI_ANALYTICS", "false")
+            .WithEnvironment("NG_FORCE_AUTOCOMPLETE", "false")
+            .WithHttpEndpoint(port: scenarioBuilderUiPort, isProxied: false)
+            .WithHttpHealthCheck()
+            .WaitForCompletion(scenarioBuilderAgentInstall)
+            .WaitFor(scenarioBuilderApi);
+
+        if (options.RangerAIKeycloak)
+        {
+            ConfigureRangerAIKeycloak(chronicleApi, keycloak, "chronicle.api", "chronicle");
+            ConfigureRangerAIKeycloak(scenarioBuilderApi, keycloak, "scenario-builder.api", "scenario-builder");
+            chronicleUi.WaitFor(keycloak);
+            scenarioBuilderUi.WaitFor(keycloak);
+        }
+
+        if (!IsEnabled(rangerMode))
+        {
+            chronicleApi.WithExplicitStart();
+            chronicleUi.WithExplicitStart();
+            scenarioBuilderApi.WithExplicitStart();
+            scenarioBuilderAgentInstall.WithExplicitStart();
+            scenarioBuilderUi.WithExplicitStart();
+        }
+    }
+
+    /// <summary>
+    /// Keycloak settings for a RangerAI API, named like the Crucible APIs' Authorization section.
+    /// The apps don't read these yet; they're here for adding a Keycloak login.
+    /// </summary>
+    private static void ConfigureRangerAIKeycloak(IResourceBuilder<ProjectResource> api, IResourceBuilder<KeycloakResource> keycloak, string clientId, string audience)
+    {
+        const string realm = "https://localhost:8443/realms/crucible";
+
+        api.WaitFor(keycloak)
+            .WithEnvironment("Authorization__Authority", realm)
+            .WithEnvironment("Authorization__AuthorizationUrl", $"{realm}/protocol/openid-connect/auth")
+            .WithEnvironment("Authorization__TokenUrl", $"{realm}/protocol/openid-connect/token")
+            .WithEnvironment("Authorization__ClientId", clientId)
+            .WithEnvironment("Authorization__Audience", audience);
     }
 
     private static void ConfigureApiSecrets(

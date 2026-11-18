@@ -213,6 +213,15 @@
       ]
     },
     {
+      "name": "rangerai",
+      "repos": [
+        {
+          "name": "rangerai",
+          "url": "https://github.com/cmu-sei/rangerai"
+        }
+      ]
+    },
+    {
       "name": "terraform-providers",
       "repos": [
         {
