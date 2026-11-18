@@ -97,7 +97,7 @@ def segments(command: str):
     current = []
     for tok in lexer:
         # shlex joins neighbouring punctuation into one token, such as ");" or ")&&".
-        if set(tok) <= set("".join(SEPARATORS)):
+        if tok and set(tok) <= set("".join(SEPARATORS)):
             if current:
                 yield current
             current = []
@@ -222,6 +222,9 @@ def git(cwd, *args):
 
 
 def check_pr_create(args, cwd):
+    if cwd is None:
+        deny("the gate doesn't expand shell variables, so it can't tell which directory cd went to. "
+             "Use a literal path.")
     opts = options(args)
     missing = [f for f in ("--repo", "--base", "--head", "--body-file") if f not in opts]
     if missing:
@@ -311,7 +314,12 @@ def check_command(command, cwd, depth=0):
         if not words:
             continue
         if words[0] == "cd" and len(words) > 1:
-            cwd = str(Path(cwd, os.path.expanduser(words[1])).resolve())
+            target = os.path.expanduser(words[1])
+            # A variable could hold any directory, so after one the directory is unknown (None).
+            if "$" in target or (cwd is None and not os.path.isabs(target)):
+                cwd = None
+            else:
+                cwd = str(Path(cwd or "/", target).resolve())
             continue
         script = shell_script(words)
         if script is not None and depth < 3:
