@@ -134,7 +134,7 @@ case $cmd in
       | ([$r.runs[] | select(.pass == "review" or .pass == "recheck")] | last | .head // "") as $seen
       | "<details>",
         "<summary>Risk & review: \($tier | cap) \($tier | mark) · reviewed by \($who) at \($seen[0:7])"
-          + (if $seen != $h then ", later commits not re-reviewed" else "" end) + " · "
+          + (if $seen != $h then ", later commits not reviewed" else "" end) + " · "
           + (if ($rf | length) == 0 then "no findings"
              else count($fixed; "finding") + " fixed, \($declined) declined" end)
           + "</summary>",
