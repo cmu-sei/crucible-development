@@ -8,7 +8,7 @@
   "tiers": {
     "simplify": { "claude": ["sol-medium"], "codex": ["opus-medium"] },
     "risk": { "claude": ["sol-medium"], "codex": ["opus-medium"] },
-    "low": { "claude": ["sol-high"], "codex": ["opus-high"] },
+    "low": { "claude": ["opus-high"], "codex": ["opus-high"] },
     "medium": { "claude": ["sol-high", "opus-high"], "codex": ["opus-high", "sol-high"] },
     "high": { "claude": ["sol-high", "opus-high"], "codex": ["opus-high", "sol-high"] },
     "ad-hoc": { "claude": ["sol-high"], "codex": ["opus-high"] }
