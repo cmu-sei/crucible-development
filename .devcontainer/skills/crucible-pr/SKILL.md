@@ -57,7 +57,7 @@ gh label create risk:<tier> --repo <owner/name> --color <0e8a16|fbca04|d93f0b> 2
 gh pr edit <number> --repo <owner/name> --add-label risk:<tier>
 ```
 
-The colors are green for low, yellow for medium and red for high. Then report the PR URL.
+The colors are green for low, yellow for medium and red for high. Then report the PR URL, the risk tier and its main gaps, and each finding with what was done: fixed (with the commit) or declined (with the reason). Take them from the review record (`record.sh path`), not from memory.
 
 **Stacked PRs:** review and open each layer this way, with its parent branch as `--base`. Once every layer has a PR, link them, bottom first, using PR numbers:
 
