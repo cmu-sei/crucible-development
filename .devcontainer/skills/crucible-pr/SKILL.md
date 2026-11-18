@@ -29,7 +29,7 @@ Run each step with `review.sh run <profile> <lens> <repo> <base>..<head> <task-f
 5. **Re-check.** At medium and high risk, resume each reviewer with `review.sh resume <run-dir> <prompt-file>`. The prompt lists the dispositions and fix commits, and asks the reviewer to confirm each fix and flag anything new. Tell it that declined findings, with their reasons, are settled, so it doesn't raise them again. Record the re-check with pass `recheck`, and handle its findings the same way. After 3 rounds, stop and ask the user whether to keep going, decline what's left with reasons, or open the PR themselves.
 6. **Final check.**
    - Run the relevant tests at the final HEAD unless they already ran at this commit, and record each run with `record.sh tests`.
-   - If the code or the test evidence changed since the scorer ran, resume it with the new test results and any fix commits, and record it as pass `risk`. Tell it which gaps were declined and why. The latest score is the one shown in the PR, and only its gaps need a disposition.
+   - If the code or the test evidence changed since the scorer ran, resume it with the new test results and any fix commits, and record it as pass `risk`. The latest score is the one shown in the PR, and only its gaps need a disposition.
    - If the tier went up, run the new tier's additional reviewers and handle their findings the same way.
 7. `record.sh finalize`, then `record.sh check`. Fix whatever it lists.
 
