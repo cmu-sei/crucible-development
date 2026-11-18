@@ -236,7 +236,7 @@ Once the container is running with valid Bedrock credentials, run `codex` in the
 
 ## Agent PRs and Reviews
 
-When you ask Claude Code or Codex to open a PR, it has the change reviewed by another model first, then opens the PR with a release-notes description and a `risk:low`, `risk:medium` or `risk:high` label. You can also ask an agent for a review on its own, of a branch, your uncommitted changes, or anyone's PR.
+When you ask Claude Code or Codex to open a PR, it has the change reviewed independently first, then opens the PR with a release-notes description and a `risk:low`, `risk:medium` or `risk:high` label. You can also ask an agent for a review on its own, of a branch, your uncommitted changes, or anyone's PR.
 
 Agents can't open a PR that skipped the review. To open one anyway, run `gh pr create` yourself in a terminal.
 
