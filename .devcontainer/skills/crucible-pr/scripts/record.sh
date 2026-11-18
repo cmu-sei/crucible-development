@@ -35,7 +35,8 @@ case $cmd in
     [[ $# -eq 2 ]] || die "usage: record.sh init <base-branch> <author-cli>"
     jq -e --arg a "$2" '.tiers.low | has($a)' "$REVIEWERS" >/dev/null || die "no tiers for author CLI '$2' in reviewers.json"
     repo=$(gh repo view --json nameWithOwner -q .nameWithOwner </dev/null)
-    jq -n --arg repo "$repo" --arg base "$1" --arg head "$branch" --arg author "$2" \
+    # The branch name, as gh pr create --base takes it (origin/main -> main).
+    jq -n --arg repo "$repo" --arg base "${1#origin/}" --arg head "$branch" --arg author "$2" \
       '{version: 1, repo: $repo, base: $base, head_branch: $head, author_cli: $author,
         tier: null, risk: null, runs: [], findings: [], tests: [], final: null}' >"$rec"
     echo "$rec"
@@ -56,8 +57,12 @@ case $cmd in
           .risk = $o[0]
           | .tier = (if .tier == null or ($o[0].tier | rank) > (.tier | rank) then $o[0].tier else .tier end)
         else . end
-      | .findings += [($o[0].findings // [])[] | {run_dir: $d, pass: $pass, id, severity, category, file, line, summary,
-                                                  disposition: null, commit: null, reason: null}]'
+      # Verification gaps from the scorer are findings too: add the test, or decline with a reason.
+      | (if $pass == "risk" then [$o[0].categories.verification.gaps // [] | to_entries[]
+           | {id: "verification-\(.key + 1)", severity: "minor", category: "verification", file: null, line: null, summary: .value}]
+         else $o[0].findings // [] end) as $new
+      | .findings += [$new[] | {run_dir: $d, pass: $pass, id, severity, category, file, line, summary,
+                                disposition: null, commit: null, reason: null}]'
     jq -r --arg d "$run" '"tier: \(.tier // "not scored")  open findings from this run: \([.findings[] | select(.run_dir == $d and .disposition == null)] | length)"' "$rec"
     ;;
 
@@ -86,6 +91,8 @@ case $cmd in
     problems=$(jq -r --arg h "$(git rev-parse HEAD)" --arg mb "$(git merge-base "$(base_ref)" HEAD)" --slurpfile rv "$REVIEWERS" '
       . as $r
       | ($rv[0].tiers[$r.tier // "high"][$r.author_cli] // []) as $required
+      # Only the latest score counts; gaps from earlier scores are superseded.
+      | ([$r.runs[] | select(.pass == "risk")] | last | .run_dir) as $latest_risk
       | [ (if $r.final == null then "not finalized (record.sh finalize)" else empty end),
           (if $r.final != null and $r.final.head != $h then "HEAD has moved since the record was finalized" else empty end),
           (if $r.final != null and $r.final.merge_base != $mb then "the base has changed since the record was finalized" else empty end),
@@ -99,7 +106,7 @@ case $cmd in
             ($required[] as $p | [$r.runs[] | select((.pass == "review" or .pass == "recheck") and .profile == $p)] | last
              | if . == null or .head == $h then empty
                else "the \($p) reviewer has not seen HEAD; resume it to re-check the fixes" end) end),
-          ($r.findings[] | select(.disposition == null) | "finding \(.id) from \(.pass) (\(.run_dir | split("/") | last)) has no disposition"),
+          ($r.findings[] | select(.disposition == null and (.pass != "risk" or .run_dir == $latest_risk)) | "finding \(.id) from \(.pass) (\(.run_dir | split("/") | last)) has no disposition"),
           (if any($r.tests[]; .commit == $h) then empty else "no automated test run recorded at HEAD" end)
         ] | .[]' "$rec")
     if [[ -n $problems ]]; then echo "$problems" >&2; exit 1; fi
@@ -116,6 +123,8 @@ case $cmd in
                  "rollback_cost": "Rollback cost", "error_detection": "Error detection"}[.];
       def count($n; $word): "\($n) \($word)\(if $n == 1 then "" else "s" end)";
       . as $r
+      | ([$r.runs[] | select(.pass == "risk")] | last | .run_dir) as $latest_risk
+      | [$r.findings[] | select(.disposition == "declined" and (.pass != "risk" or .run_dir == $latest_risk))] as $declined_all
       # Show the latest score. The record keeps the highest tier only to decide which reviews are required.
       | ($r.risk.tier // $r.tier) as $tier
       | ([$r.findings[] | select(.pass == "review" or .pass == "recheck")]) as $rf
@@ -140,8 +149,8 @@ case $cmd in
           | "| \($run.pass | cap) | \($run.profile) | \($f | length) | "
             + (if ($f | length) == 0 then "none" else
                 ([$f | group_by(.disposition)[] | "\(length) \(.[0].disposition)"] | join(", ")) end) + " |"),
-        (if any($r.findings[]; .disposition == "declined") then
-          "", "**Declined:**", ($r.findings[] | select(.disposition == "declined") | "- *\(.summary)*: \(.reason)")
+        (if ($declined_all | length) > 0 then
+          "", "**Declined:**", ($declined_all[] | "- *\(.summary)*: \(.reason)")
          else empty end),
         "</details>",
         "",
