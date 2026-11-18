@@ -9,6 +9,9 @@ Reads the hook's JSON on stdin. For `gh pr create`/`gh pr new`, `gh stack submit
 Draft or ready is the user's choice, so it isn't checked.
 Anything else gets no output, so the normal permission flow applies.
 
+It's a guardrail against an agent skipping the review by accident, not a defense against one
+trying to get around it: it handles the command shapes agents write, and denies what it can't read.
+
 The hook command in the devcontainer config only calls this for commands that look like
 those, and turns any failure of this script into a deny, so a broken gate fails closed.
 """
