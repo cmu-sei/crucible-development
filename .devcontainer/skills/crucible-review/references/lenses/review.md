@@ -12,7 +12,7 @@ Then review for:
 - **Security-sensitive areas:** anything that widens access, weakens validation, skips an authorization check, or logs sensitive data. Pay particular attention to authorization, authentication, Keycloak realm changes, secrets and configuration.
 - **Crucible design specs:** if `/workspaces/crucible-development/design-specs` has a spec for the area, check the change against it.
 
-Each finding needs a concrete failure scenario: the inputs or state, and what goes wrong. If you'd mention something to the author at all, even as optional or a follow-up, report it as a `minor` or `nit` finding: the author decides, and only findings reach them.
+Each finding needs a concrete failure scenario: the inputs or state, and what goes wrong. Points you'd only mention to the author as optional or a follow-up are findings too, as `minor` or `nit`: the author decides, and only findings reach them.
 
 Severity:
 
