@@ -23,13 +23,13 @@ The review steps use the crucible-review skill's `~/.agents/skills/crucible-revi
 Run each step with `review.sh run <profile> <lens> <repo> <base>..<head> <task-file>`, taking the profile from the matching tier in `reviewers.json` for your CLI. Record each completed run with `record.sh add-run <pass> <run-dir>`. A run that exits non-zero is incomplete: fix the cause or tell the user, and never treat it as a clean review.
 
 1. **Simplify** (tier `simplify`, lens `simplify`). Apply or decline each suggestion, and record it with `record.sh dispose`. If there's an `approach` finding, rework the change or decline with a reason. A rework starts this step again, so you don't polish code that's about to be replaced.
-2. **Risk** (tier `risk`, lens `risk`). Add the tests that ran at the tip, and their results, to the task file. The scorer's tier picks the reviewers.
+2. **Risk** (tier `risk`, lens `risk`). Add the tests that ran at the tip, and their results, to the task file. The scorer's tier picks the reviewers. Its Verification gaps are recorded as findings (`verification-1`, ...): add the missing tests in step 4, or decline a gap with the reason it can't be tested here.
 3. **Review** (the scored tier: `low`, `medium` or `high`; lens `review`). When there are two reviewers, run them in parallel.
 4. **Fix.** Check each finding against the code before changing anything. Then fix it, committing the fix, or decline it with a technical reason. Record each one with `record.sh dispose <run-dir> <id> fixed <commit>` or `declined "<reason>"`. A reasoned decline is final.
 5. **Re-check.** At medium and high risk, resume each reviewer with `review.sh resume <run-dir> <prompt-file>`. The prompt lists the dispositions and fix commits, and asks the reviewer to confirm each fix and flag anything new. Tell it that declined findings, with their reasons, are settled, so it doesn't raise them again. Record the re-check with pass `recheck`, and handle its findings the same way. After 3 rounds, stop and ask the user whether to keep going, decline what's left with reasons, or open the PR themselves.
 6. **Final check.**
    - Run the relevant tests at the final HEAD unless they already ran at this commit, and record each run with `record.sh tests`.
-   - If the code or the test evidence changed since the scorer ran, resume it with the new test results and any fix commits, and record it as pass `risk`. The latest score is the one shown in the PR.
+   - If the code or the test evidence changed since the scorer ran, resume it with the new test results and any fix commits, and record it as pass `risk`. The latest score is the one shown in the PR, and only its gaps need a disposition.
    - If the tier went up, run the new tier's additional reviewers and handle their findings the same way.
 7. `record.sh finalize`, then `record.sh check`. Fix whatever it lists.
 
@@ -57,7 +57,7 @@ gh label create risk:<tier> --repo <owner/name> --color <0e8a16|fbca04|d93f0b> 2
 gh pr edit <number> --repo <owner/name> --add-label risk:<tier>
 ```
 
-The colors are green for low, yellow for medium and red for high. Then report the PR URL.
+The colors are green for low, yellow for medium and red for high. Then report the PR URL, the risk tier and its main gaps, and each finding with what was done: fixed (with the commit) or declined (with the reason). Take them from the review record (`record.sh path`), not from memory.
 
 **Stacked PRs:** review and open each layer this way, with its parent branch as `--base`. Once every layer has a PR, link them, bottom first, using PR numbers:
 

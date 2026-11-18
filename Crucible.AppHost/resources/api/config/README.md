@@ -81,7 +81,9 @@ but rewrite the JSON formatting and remove comments.
 ## Global and per-app settings
 
 File configuration is disabled unless `Launch.ApiConfig.Enabled` is `true`.
-Supported apps that are running inherit the shared profile:
+Supported apps inherit the shared profile, including apps registered but left
+stopped (for example by `Launch.AddAllApplications`), so starting one by hand from the
+dashboard uses the profile too:
 
 ```json
 {
@@ -106,8 +108,9 @@ Player VM and Caster can use both backends. TopoMojo requires a single backend.
 ```
 
 This sets the global switch to `false`, retaining local files. Global disable wins
-over per-app settings. Disabled or unlaunched apps do not read or require profile
-files. Disabling profile delivery does **not** disable the apps or their backends:
+over per-app settings. Disabled or unregistered apps do not read profile files, and an
+app registered but left stopped skips a profile that has no file for it; only a selected
+app requires its file. Disabling profile delivery does **not** disable the apps or their backends:
 their own configuration and AppHost defaults apply again.
 
 Environment variables and user secrets can override AppHost launch settings.

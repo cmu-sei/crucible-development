@@ -12,13 +12,15 @@ public static class ApiConfigExtensions
     /// <summary>
     /// Injects profile entries as environment variables, or passes the resolved file path
     /// through the named environment variable when the app loads configuration files itself.
+    /// Pass required: false for an app registered but not selected, so a profile without its
+    /// file skips the app instead of failing the launch.
     /// </summary>
     public static IResourceBuilder<T> WithApiConfig<T>(
         this IResourceBuilder<T> resource, string appHostDirectory, ApiConfigOptions options,
-        string? configPathEnvironmentVariable = null)
+        string? configPathEnvironmentVariable = null, bool required = true)
         where T : IResourceWithEnvironment
     {
-        var config = ApiConfigFile.Resolve(appHostDirectory, resource.Resource.Name, options);
+        var config = ApiConfigFile.Resolve(appHostDirectory, resource.Resource.Name, options, required);
         if (config is null)
             return resource;
 

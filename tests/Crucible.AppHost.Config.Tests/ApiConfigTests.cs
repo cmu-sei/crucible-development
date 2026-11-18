@@ -103,6 +103,15 @@ public sealed class ApiConfigTests : IDisposable
     }
 
     [Fact]
+    public void MissingFileForAStoppedAppIsSkipped()
+    {
+        var options = new ApiConfigOptions { Enabled = true, Profile = "missing" };
+        Assert.Null(ApiConfigFile.Resolve(root, "caster-api", options, required: false));
+        var path = Write("missing", "caster-api", "Example__Value=profile");
+        Assert.Equal(path, ApiConfigFile.Resolve(root, "caster-api", options, required: false)!.Path);
+    }
+
+    [Fact]
     public void ParserPreservesLiteralValuesAndEmptyStrings()
     {
         var file = Write("test", "caster-api",

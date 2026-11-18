@@ -68,6 +68,7 @@ For each real breaking change, say exactly what to do, for example "Set the new 
 - **Describe the code as it ends up.** Don't narrate intermediate versions or the order things were tried in. Approaches that were ruled out, and why, belong in Technical details when they'd save a reviewer from suggesting them.
 - **Plain language.** Write the Summary for someone who doesn't already know the problem, in terms a non-developer can follow.
 - **Don't overstate.** No alarming wording, no hype. Say plainly what changes.
+- **Cross-repo references:** write a PR or issue in another repo as `owner/repo#n` every time it appears, not just the first. A bare `#n` links to this repo.
 - **Title:** the outcome in imperative mood, e.g. "Add vSphere ISO storage groups".
   - No conventional-commit prefix or scope.
   - No tool names.
