@@ -227,10 +227,11 @@ def check_pr_create(args, cwd):
     if missing:
         deny(f"gh pr create needs {', '.join(missing)}. {SKILL_HINT}")
 
-    unresolved = [f"{flag} {opts[flag]}" for flag in ("--repo", "--base", "--head", "--body-file") if "$" in opts[flag]]
-    if unresolved:
-        deny(f"couldn't resolve the variable in {', '.join(unresolved)}. Use a literal value, or set the "
-             "variable earlier in the same command: the gate can't see variables from earlier commands.")
+    # The gate doesn't expand variables: quoting, control flow and subshells decide what gh would get.
+    variables = [f"{flag} {opts[flag]}" for flag in ("--repo", "--base", "--head", "--body-file") if "$" in opts[flag]]
+    if variables:
+        deny(f"the gate doesn't expand shell variables, so it can't tell what gh would get for "
+             f"{', '.join(variables)}. Use literal values.")
 
     repo, base, body_file = opts["--repo"], opts["--base"], opts["--body-file"]
     head = opts["--head"].split(":", 1)[-1]
@@ -300,29 +301,12 @@ def check_stack(args):
                  "Open that layer with the crucible-pr skill first, then link it by PR number.")
 
 
-ASSIGNMENT = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)=(.*)$", re.S)
-VARIABLE = re.compile(r"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))")
-
-
-def expand(word, env):
-    """Expand $NAME and ${NAME} the way the shell would. Unknown names are left as they are."""
-    return VARIABLE.sub(lambda m: env.get(m.group(1) or m.group(2), m.group(0)), word)
-
-
-def check_command(command, cwd, depth=0, env=None):
-    # Variables come from the environment and from assignments earlier in this command.
-    # Earlier Bash calls don't count: each one starts a fresh shell.
-    env = dict(os.environ) if env is None else env
+def check_command(command, cwd, depth=0):
     command, expanded = split_heredocs(command)
     if depth < 3:
         for body in substitutions(command) + substitutions(expanded, quotes=False):
-            check_command(body, cwd, depth + 1, dict(env))
+            check_command(body, cwd, depth + 1)
     for words in segments(command):
-        words = [expand(w, env) for w in words]
-        assignments = words[1:] if words[:1] == ["export"] else words
-        if assignments and all(ASSIGNMENT.match(w) for w in assignments):
-            env.update(ASSIGNMENT.match(w).groups() for w in assignments)
-            continue
         words = command_words(words)
         if not words:
             continue
@@ -331,7 +315,7 @@ def check_command(command, cwd, depth=0, env=None):
             continue
         script = shell_script(words)
         if script is not None and depth < 3:
-            check_command(script, cwd, depth + 1, dict(env))
+            check_command(script, cwd, depth + 1)
             continue
         args = gh_args(words)
         if args is None:
