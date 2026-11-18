@@ -25,7 +25,7 @@ Runs a review by a separate model in its own session, so the review isn't anchor
 
 - **Reviewer:** [reviewers.json](reviewers.json) maps each profile to a CLI, model and effort. Use the profile the user names. Otherwise use the `ad-hoc` entry for the CLI you're running in, which picks another vendor's model. For a model or effort with no profile, pass `<cli>:<model>:<effort>` instead of a profile name. It needs the full model ID: if the user gives only a name, ask for the ID or confirm a guess based on the existing profiles. A CLI with no adapter in `review.sh` isn't supported.
 - **Lens:**
-  - `review`, the default: correctness, tests, security, alignment with the task
+  - `review`, the default: correctness, tests, security, alignment with the task. A `claude` reviewer of a range runs Claude Code's built-in `/code-review` instead of the lens, with the task as context.
   - `simplify`, when the user asks for a simplification pass
   - both, if asked; run them as separate reviews
 

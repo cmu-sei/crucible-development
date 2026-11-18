@@ -41,9 +41,25 @@ invoke() {
       local session_args
       if [[ -z $resume ]]; then sid=$(cat /proc/sys/kernel/random/uuid); session_args=(--session-id "$sid")
       else sid=$resume; session_args=(--resume "$resume"); fi
-      (cd "$repo" && claude -p "${session_args[@]}" --model "$model" --effort "$effort" \
-        --output-format json --json-schema "$(cat "$SCHEMA")" --allowedTools "${CLAUDE_TOOLS[@]}" \
-        <"$prompt" >"$out/result.json" 2>"$out/stderr.log") || rc=$?
+      if [[ -z $resume && -f $out/context.md ]]; then
+        # Code review through Claude Code's built-in /code-review, with the task as context.
+        # It answers in its own format, so a second turn in the same session returns our schema.
+        (cd "$repo" && claude -p "${session_args[@]}" --model "$model" --effort "$effort" --output-format stream-json --verbose \
+          --append-system-prompt "$(cat "$out/context.md")" --allowedTools "${CLAUDE_TOOLS[@]}" \
+          <"$prompt" >"$out/code-review.jsonl" 2>"$out/stderr.log") || rc=$?
+        if ! jq -s -e 'any(.[]; .type == "system" and .subtype == "init" and (.slash_commands | index("code-review")))' \
+            "$out/code-review.jsonl" >/dev/null 2>&1; then
+          echo "review.sh: this Claude Code has no /code-review; update Claude Code" >>"$out/stderr.log"; [[ $rc -ne 0 ]] || rc=3
+        fi
+        session_args=(--resume "$sid")
+        prompt="$out/to-schema.md"
+        printf 'Return every finding from your review above in the provided JSON schema, one entry per finding, keeping your wording. Give each an id (F1, F2, ...), a severity (blocker, major, minor, nit), a category, and the fix in suggestion. Put a one-sentence overall verdict in summary.\n' >"$prompt"
+      fi
+      if [[ $rc -eq 0 ]]; then
+        (cd "$repo" && claude -p "${session_args[@]}" --model "$model" --effort "$effort" \
+          --output-format json --json-schema "$(cat "$SCHEMA")" --allowedTools "${CLAUDE_TOOLS[@]}" \
+          <"$prompt" >"$out/result.json" 2>>"$out/stderr.log") || rc=$?
+      fi
       jq '.structured_output // empty' "$out/result.json" >"$out/findings.json" 2>/dev/null || true
       ;;
     *) die "unknown cli '$cli'" ;;
@@ -96,12 +112,17 @@ case $cmd in
     fi
     mkdir -p "$out"; out=$(cd "$out" && pwd)
 
-    {
+    if [[ $cli == claude && $lens == review && $range != uncommitted ]]; then
+      # Claude Code's built-in /code-review finds more than a single pass with the review lens.
+      printf '/code-review %s %s\n' "$effort" "$range" >"$out/prompt.md"
+      { printf '## The task this change is for\n\n'; cat "$task"
+        printf '\n\n## Rules\n\n- Don'\''t modify files, commit, push, or open a browser.\n'; } >"$out/context.md"
+    else {
       sed "s|{{MERGE_RISK_SKILL}}|$SKILL_DIR/../crucible-merge-risk/SKILL.md|g" "$lens_file"
       printf '\n## The change\n\nRepository: `%s`\n\nReview %s. Read the surrounding code as needed.\n' "$repo" "$scope"
       printf '\n## The task\n\n'; cat "$task"
       printf '\n\n## Rules\n\n- Don'\''t modify files, commit, push, or open a browser.\n- Return your result as JSON matching the provided schema.\n'
-    } >"$out/prompt.md"
+    } >"$out/prompt.md"; fi
 
     started=$(now)
     read -r sid status rc < <(invoke "$cli" "$model" "$effort" "$repo" "$out/prompt.md" "$out")
