@@ -488,8 +488,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("IdentityClient__UserName", "crucible-admin")
             .WithEnvironment("IdentityClient__Password", "admin");
 
-        if (IsEnabled(playerMode))
-            vmApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
+        vmApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig, required: IsEnabled(playerMode));
 
         // Configure xAPI if LRS is enabled
         if (IsEnabled(lrsqlMode))
@@ -574,8 +573,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("Terraform__EnvironmentVariables__Direct__SSL_CERT_DIR", "/etc/ssl/certs:/usr/local/share/ca-certificates")
             .WithEnvironment("Terraform__EnvironmentVariables__Direct__TF_CLI_CONFIG_FILE", "/terraform/terraformrc");
 
-        if (IsEnabled(casterMode))
-            casterApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig);
+        casterApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig, required: IsEnabled(casterMode));
 
         builder.AddGitea(casterApi, casterMode, options);
 
@@ -762,12 +760,9 @@ public static partial class BuilderExtensions
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");
-        if (IsEnabled(topoMojoMode))
-        {
-            // Load the selected profile after TopoMojo's own .conf files so it wins.
-            topoApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig,
-                configPathEnvironmentVariable: "APPSETTINGS_PATH");
-        }
+        // Load the selected profile after TopoMojo's own .conf files so it wins.
+        topoApi.WithApiConfig(builder.AppHostDirectory, options.ApiConfig,
+            configPathEnvironmentVariable: "APPSETTINGS_PATH", required: IsEnabled(topoMojoMode));
 
         var topoUiRoot = "/mnt/data/crucible/topomojo/topomojo-ui/";
         const int topoWorkUiPort = 4201;

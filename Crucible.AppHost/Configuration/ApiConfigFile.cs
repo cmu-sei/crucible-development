@@ -8,7 +8,9 @@ namespace Crucible.AppHost;
 /// <summary>Resolves an opt-in, per-app configuration file without modifying app repositories.</summary>
 public sealed record ApiConfigFile(string Path, IReadOnlyDictionary<string, string> Values)
 {
-    public static ApiConfigFile? Resolve(string appHostDirectory, string app, ApiConfigOptions options)
+    // required is false for an app registered but left stopped: a profile with no file for
+    // the app returns null instead of failing the launch.
+    public static ApiConfigFile? Resolve(string appHostDirectory, string app, ApiConfigOptions options, bool required = true)
     {
         if (!options.Enabled)
             return null;
@@ -27,7 +29,11 @@ public sealed record ApiConfigFile(string Path, IReadOnlyDictionary<string, stri
         var path = System.IO.Path.GetFullPath(System.IO.Path.Combine(
             appHostDirectory, "resources", "api", "config", "local", profile, $"{app}.conf"));
         if (!File.Exists(path))
+        {
+            if (!required)
+                return null;
             throw new InvalidOperationException($"API configuration for {app}: selected file does not exist: {path}. Initialize and edit the profile first.");
+        }
 
         return new(path, Read(path, app));
     }
