@@ -41,11 +41,10 @@ invoke() {
       local session_args
       if [[ -z $resume ]]; then sid=$(cat /proc/sys/kernel/random/uuid); session_args=(--session-id "$sid")
       else sid=$resume; session_args=(--resume "$resume"); fi
-      # A /code-review run keeps its context in context.md (a re-check's is in the run dir above it).
+      # A /code-review run keeps its context in context.md, and each re-check gets a copy.
       # A resumed session doesn't keep an appended system prompt, so every turn passes it again.
-      local ctx=() ctx_file="$out/context.md"
-      [[ -f $ctx_file ]] || ctx_file="$(dirname "$out")/context.md"
-      [[ -f $ctx_file ]] && ctx=(--append-system-prompt "$(cat "$ctx_file")")
+      local ctx=()
+      [[ -f $out/context.md ]] && ctx=(--append-system-prompt "$(cat "$out/context.md")")
       if [[ -z $resume && -f $out/context.md ]]; then
         # Code review through Claude Code's built-in /code-review, with the task as context.
         # It answers in its own format, so a second turn in the same session returns our schema.
@@ -149,6 +148,7 @@ case $cmd in
     SCHEMA=$(schema_for "$lens")
     n=1; while [[ -d $run/recheck-$n ]]; do n=$((n + 1)); done
     out="$run/recheck-$n"; mkdir -p "$out"
+    if [[ -f $run/context.md ]]; then cp "$run/context.md" "$out/"; fi
     head=$(git -C "$repo" rev-parse HEAD)
     { cat "$prompt"
       jq -r --arg h "$head" 'if (.range | contains("..")) then "\n\nThe change is now `git diff \(.range | split("..")[0])..\($h)`." else "" end' "$run/meta.json"
