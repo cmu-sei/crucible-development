@@ -1411,10 +1411,11 @@ public static partial class BuilderExtensions
 
     /// <summary>
     /// RangerAI (https://github.com/cmu-sei/rangerai): Chronicle and Scenario Builder, each a .NET API
-    /// with an Angular UI. The APIs keep their own SQLite files and don't use Postgres or Keycloak.
+    /// with an Angular UI. The APIs keep their own SQLite files and don't use Postgres.
     /// The APIs target net11.0, so the devcontainer needs the .NET 11 SDK.
     /// With Launch:RangerAIKeycloak, everything waits for Keycloak and the APIs get the crucible
-    /// realm's settings (realm clients chronicle.ui/.api and scenario-builder.ui/.api).
+    /// realm's settings (realm clients chronicle.ui/.api and scenario-builder.ui/.api), and Scenario Builder
+    /// requires a Keycloak login.
     /// </summary>
     public static void AddRangerAI(this IDistributedApplicationBuilder builder, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
@@ -1451,7 +1452,8 @@ public static partial class BuilderExtensions
             .WithHttpEndpoint(port: 5280, isProxied: false)
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
-            .WithHttpHealthCheck("/api/scenario-types");
+            // Anonymous, so it answers with the Keycloak login on too.
+            .WithHttpHealthCheck("/api/version");
 
         // The UI's prestart builds the agent's browser bundle from ../agent, which needs the
         // agent's packages installed first.
@@ -1470,7 +1472,10 @@ public static partial class BuilderExtensions
         if (options.RangerAIKeycloak)
         {
             ConfigureRangerAIKeycloak(chronicleApi, keycloak, "chronicle.api", "chronicle");
-            ConfigureRangerAIKeycloak(scenarioBuilderApi, keycloak, "scenario-builder.api", "scenario-builder");
+            // Scenario Builder signs users in itself (OIDC code flow + session cookie) through its UI's /api proxy,
+            // so it uses the UI's client, whose redirect URIs cover :4330. Keycloak's admin user is its admin.
+            ConfigureRangerAIKeycloak(scenarioBuilderApi, keycloak, "scenario-builder.ui", "scenario-builder");
+            scenarioBuilderApi.WithEnvironment("Admins__0", "admin");
             chronicleUi.WaitFor(keycloak);
             scenarioBuilderUi.WaitFor(keycloak);
         }
@@ -1487,7 +1492,7 @@ public static partial class BuilderExtensions
 
     /// <summary>
     /// Keycloak settings for a RangerAI API, named like the Crucible APIs' Authorization section.
-    /// The apps don't read these yet; they're here for adding a Keycloak login.
+    /// Scenario Builder reads Authority and ClientId to sign users in; Chronicle doesn't read them yet.
     /// </summary>
     private static void ConfigureRangerAIKeycloak(IResourceBuilder<ProjectResource> api, IResourceBuilder<KeycloakResource> keycloak, string clientId, string audience)
     {
