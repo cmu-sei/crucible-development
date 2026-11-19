@@ -424,6 +424,7 @@ public static partial class BuilderExtensions
 
         var playerApi = builder.AddDotnetProject("player-api", playerApiProject, project => project.LaunchProfileName = "Player.Api")
             .WithTags("player", "api")
+            .WithUrl("/api", "Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -495,6 +496,7 @@ public static partial class BuilderExtensions
 
         var vmApi = builder.AddDotnetProject("player-vm-api", vmApiProject, project => project.LaunchProfileName = "Player.Vm.Api")
             .WithTags("player", "api")
+            .WithUrl("/api", "Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -582,6 +584,7 @@ public static partial class BuilderExtensions
 
         var casterApi = builder.AddDotnetProject("caster-api", casterApiProject, project => project.LaunchProfileName = "Caster.Api")
             .WithTags("caster", "api")
+            .WithUrl("/api", "Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WaitForCompletion(minikubeStart)
@@ -712,6 +715,7 @@ public static partial class BuilderExtensions
 
         var alloyApi = builder.AddDotnetProject("alloy-api", alloyApiProject, project => project.LaunchProfileName = "Alloy.Api")
             .WithTags("alloy", "api")
+            .WithUrl("/api", "Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -778,6 +782,7 @@ public static partial class BuilderExtensions
 
         var topoApi = builder.AddDotnetProject("topomojo", topoApiProject)
             .WithTags("topomojo", "api")
+            .WithUrl("/api", "Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithReference(topoDb, "PostgreSQL")
@@ -941,6 +946,7 @@ public static partial class BuilderExtensions
 
         var steamfitterApi = builder.AddDotnetProject("steamfitter-api", steamfitterApiProject, project => project.LaunchProfileName = "Steamfitter.Api")
             .WithTags("steamfitter", "api")
+            .WithUrl("/api", "Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1000,6 +1006,7 @@ public static partial class BuilderExtensions
 
         var citeApi = builder.AddDotnetProject("cite-api", citeApiProject, project => project.LaunchProfileName = "Cite.Api")
             .WithTags("cite", "api")
+            .WithUrl("/api", "Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1059,6 +1066,7 @@ public static partial class BuilderExtensions
 
         var galleryApi = builder.AddDotnetProject("gallery-api", galleryApiProject, project => project.LaunchProfileName = "Api")
             .WithTags("gallery", "api")
+            .WithUrl("/api", "Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1118,6 +1126,7 @@ public static partial class BuilderExtensions
 
         var blueprintApi = builder.AddDotnetProject("blueprint-api", blueprintApiProject, project => project.LaunchProfileName = "Blueprint.Api")
             .WithTags("blueprint", "api")
+            .WithUrl("/api", "Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1176,6 +1185,7 @@ public static partial class BuilderExtensions
 
         var gameboardApi = builder.AddDotnetProject("gameboard", gameboardApiProject, project => project.LaunchProfileName = "Project")
             .WithTags("gameboard", "api")
+            .WithUrl("/api", "Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithReference(gameboardDb, "PostgreSQL")
@@ -1527,6 +1537,7 @@ public static partial class BuilderExtensions
 
         var scenarioBuilderApi = builder.AddDotnetProject("scenario-builder-api", $"{rangerSrc}/scenario-builder/api/ScenarioBuilder.Api/ScenarioBuilder.Api.csproj")
             .WithTags("rangerai", "api")
+            .WithUrl("/swagger", "Swagger UI")
             .WithHttpEndpoint(port: 5280, isProxied: false)
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
