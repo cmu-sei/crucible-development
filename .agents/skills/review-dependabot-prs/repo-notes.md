@@ -21,11 +21,12 @@ Delete it when it stops being true. Keep version numbers out.
   Crucible.AppHost, runs `tests/Crucible.AppHost.Config.Tests`, or builds the Dockerfiles under
   `Crucible.AppHost/resources`, so green CI says nothing about a NuGet or resource-image bump.
   Check locally: `dotnet test tests/Crucible.AppHost.Config.Tests` needs no app clones (it compiles
-  the AppHost's config files in directly). The AppHost's ProjectReferences are absolute paths into
-  the clones, so build it with `-p:RestoreRecursive=false -p:BuildProjectReferences=false`.
-- An `Aspire.AppHost.Sdk` bump in `Crucible.AppHost.csproj` also needs the `./features/aspire`
-  version in `.devcontainer/devcontainer.json`, which Dependabot never bumps (see the comments in
-  both files). Don't merge the SDK bump alone.
+  the AppHost's config files in directly). `dotnet build Crucible.AppHost` builds only the AppHost:
+  it adds the APIs by path with `AddDotnetProject`, and Aspire builds them when it starts them.
+- An Aspire package bump in `Crucible.AppHost.csproj` (`Aspire.Hosting.AppHost` and the other
+  `Aspire.Hosting.*` packages) also needs the `./features/aspire` version in
+  `.devcontainer/devcontainer.json`, which Dependabot never bumps (see the comments in both
+  files). Don't merge the package bump alone.
 
 ## cmu-sei/devcontainer-features
 - Every merge to main runs `release.yml`, which publishes the changed features to GHCR, and a

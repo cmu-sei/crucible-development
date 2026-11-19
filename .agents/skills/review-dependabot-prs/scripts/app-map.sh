@@ -7,7 +7,7 @@
 # exercise them. Nothing is tabulated here; it is all derived at run time from:
 #   scripts/repos.json (+ repos.local.json)  repo -> group -> clone path (rule from clone-repos.sh)
 #   Crucible.AppHost/*.cs                     resources rooted in, built from or mounted from a clone
-#   Crucible.AppHost/Crucible.AppHost.csproj  Projects.X -> csproj path -> clone
+#   AddDotnetProject("name", path, ...)       .NET project resource -> csproj path -> clone
 #   <api>/Properties/launchSettings.json      API port (for the launch profile AppHost uses)
 #   AppHost File.Copy of UI settings files    which UI clones call which API port
 #   crucible-tests/run-tests.sh (+ .env)      suite names, UI ports and dependency lines
@@ -141,19 +141,15 @@ while IFS= read -r m; do
 done < <(grep -oE "const int $id = [0-9]+" <<<"$ah")
 angular_default_dist=$(grep -oE 'string distPath = "[^"]*"' <<<"$ah" | head -1 | sed -E 's/.*"([^"]*)"/\1/')
 
-# Projects.X -> csproj. Aspire names the generated Projects class after the csproj file
-# name with characters that are invalid in a C# identifier ('.', '-') replaced by '_'.
-declare -A projmap=()
-while read -r p; do
-  p=${p//\\//}; [[ $p == /* ]] || p=$apphost_dir/$p
-  b=$(basename "$p" .csproj); projmap[${b//[.-]/_}]=$p
-done < <(grep -oE 'ProjectReference Include="[^"]+"' "$csproj" 2>/dev/null | sed -E 's/.*Include="([^"]+)"/\1/')
-
-resolve_str() { # token -> path: "literal", $"{builder.AppHostDirectory}/...", or a string variable
-  local t=$1
+resolve_str() { # token -> path: "literal", $"{builder.AppHostDirectory}/..." or $"{stringVar}/...", or a string variable
+  local t=$1 v
   t=${t#"${t%%[! ]*}"}; t=${t%"${t##*[! ]}"}
   case $t in
-    \$\"*) t=${t#\$\"}; t=${t%\"}; printf '%s' "${t//\{builder.AppHostDirectory\}/$apphost_dir}" ;;
+    \$\"*) t=${t#\$\"}; t=${t%\"}; t=${t//\{builder.AppHostDirectory\}/$apphost_dir}
+          for v in $(grep -oE "\\{$id\\}" <<<"$t" | tr -d '{}' | sort -u); do
+            [[ -n ${strs[$v]:-} ]] && t=${t//\{$v\}/${strs[$v]}}
+          done
+          printf '%s' "$t" ;;
     \"*)   t=${t#\"}; printf '%s' "${t%\"}" ;;
     *)     printf '%s' "${strs[$t]:-}" ;;
   esac
@@ -225,10 +221,10 @@ while IFS= read -r s; do
   port=$(grep -oE 'WithHttpEndpoint\( ?port: ?[A-Za-z0-9_]+' <<<"$s" | head -1 | sed -E 's/.*port: ?//')
   port=$(resolve_int "${port:-x}")
   case $how in
-    AngularUI)
-      path=$(resolve_str "$a1")
-      port=$(grep -oE 'port: ?[0-9]+' <<<"$a2" | grep -oE '[0-9]+')
-      mode=$(tr -d ' ' <<<"$a3")
+    AngularUI) # AddAngularUI("name", "app", appRoot, port: N, mode, ...)
+      path=$(resolve_str "$a2")
+      port=$(grep -oE 'port: ?[0-9]+' <<<"$a3" | grep -oE '[0-9]+')
+      mode=$(tr -d ' ' <<<"$a4")
       dist=$(grep -oE 'distPath: ?"[^"]*"' <<<"$s" | sed -E 's/.*"([^"]*)"/\1/')
       add_resource "$name" angular-ui "$port" "${dist:-$angular_default_dist}" "$mode" "$var" "$path" "" ;;
     JavaScriptApp)
@@ -239,16 +235,16 @@ while IFS= read -r s; do
     Container)
       paths=$(grep -oE 'With(BindMount|Dockerfile)\( ?"/[^"]+"' <<<"$s" | sed -E 's/.*"([^"]+)"/\1/' | paste -sd' ')
       [[ -n $paths ]] && add_resource "$name" container "$port" "" "$(gate_of "$var")" "$var" "$paths" "" ;;
-    Project*)
-      proj=$(grep -oE 'Projects\.[A-Za-z0-9_]+' <<<"$s" | head -1); proj=${proj#Projects.}
-      profile=$(grep -oE 'launchProfileName: ?"[^"]+"' <<<"$s" | sed -E 's/.*"([^"]+)"/\1/')
-      if [[ -z ${projmap[$proj]:-} ]]; then
-        warn "AppHost resource $name uses Projects.$proj but no ProjectReference in $(basename "$csproj") maps to it"
+    DotnetProject) # AddDotnetProject("name", path[, project => project.LaunchProfileName = "X"])
+      cs=$(resolve_str "${a1%%)*}")
+      profile=$(grep -oE 'LaunchProfileName = "[^"]+"' <<<"$s" | head -1 | sed -E 's/.*"([^"]+)"/\1/')
+      if [[ $cs != /*.csproj ]]; then
+        warn "AppHost resource $name: can't resolve its project path from ${a1%%)*}"
         continue
       fi
-      add_resource "$name" dotnet-project "" "" "$(gate_of "$var")" "$var" "${projmap[$proj]}" "Projects.$proj|$profile|$s" ;;
+      add_resource "$name" dotnet-project "" "" "$(gate_of "$var")" "$var" "$cs" "$(basename "$cs" .csproj)|$profile|$s" ;;
   esac
-done < <(grep -oE "($id = )?builder\.Add(AngularUI|JavaScriptApp|Executable|Container|Project<Projects\.[A-Za-z0-9_]+>)\( ?\"[^\"]+\"[^;]*" <<<"$ah")
+done < <(grep -oE "($id = )?builder\.Add(AngularUI|JavaScriptApp|Executable|Container|DotnetProject)\( ?\"[^\"]+\"[^;]*" <<<"$ah")
 
 for i in "${!r_name[@]}"; do r_launch[$i]=$(launch_of "${r_mode[$i]}"); done
 
@@ -345,7 +341,7 @@ for i in "${!r_name[@]}"; do
       ls_json=$(dirname "$cs")/Properties/launchSettings.json
       ports=""
       if [[ -f $ls_json ]]; then
-        # Aspire uses launchProfileName, else the first profile with commandName "Project".
+        # Aspire uses LaunchProfileName, else the first profile with commandName "Project".
         ports=$(jq -r --arg p "$profile" '.profiles | (if $p != "" then .[$p] else ([.[] | select(.commandName == "Project")] | first) end)
                  | .applicationUrl // "" | split(";")[]' "$ls_json" 2>/dev/null \
                  | sed -nE 's#^[a-z]+://[^/:]+:([0-9]+).*#\1#p' | paste -sd' ')
@@ -372,14 +368,16 @@ for i in "${!r_name[@]}"; do
       for c in $(printf '%s\n' "${others[@]}" | sort -u); do
         warn "${r_name[$i]} is also called by ${m_name[$c]} (group ${m_group[$c]}), outside group $t_group; its suites are not included"
       done
-      if ((${#callers[@]} == 0)); then
+      if ((${#callers[@]} == 0)) && [[ -z $t_group ]]; then
+        warn "${r_name[$i]}: no UI settings file references its port ${ports:-?}, and the repo has no group to fall back to"
+      elif ((${#callers[@]} == 0)); then
         # Fallback: every UI in the same group.
         for c in "${!m_group[@]}"; do [[ ${m_group[$c]} == "$t_group" && $c != "$target" ]] && callers+=("$c"); done
         warn "${r_name[$i]}: no UI settings file references its port ${ports:-?}; assuming every UI in group $t_group calls it"
       fi
       # UI clones in the group with no copied settings file can't be checked.
       for c in "${!m_group[@]}"; do
-        [[ ${m_group[$c]} == "$t_group" && $c != "$target" ]] || continue
+        [[ -n $t_group && ${m_group[$c]} == "$t_group" && $c != "$target" ]] || continue
         has_ui=0; has_settings=0
         for k in "${!r_name[@]}"; do [[ ${r_clone[$k]} == "$c" && ${r_kind[$k]} != dotnet-project && -n ${r_port[$k]} ]] && has_ui=1; done
         for k in "${!s_clone[@]}"; do [[ ${s_clone[$k]} == "$c" ]] && has_settings=1; done
