@@ -64,7 +64,7 @@
       "desktop": true,
       "desktopPassword": "crucible"
     },
-    // Keep on the same version as the Aspire.AppHost.Sdk in Crucible.AppHost.csproj: the AppHost
+    // Keep on the same version as the Aspire packages in Crucible.AppHost.csproj: the AppHost
     // uses the CLI bundle, so this CLI supplies its DCP and dashboard
     "./features/aspire": {
       "version": "17.0.0"

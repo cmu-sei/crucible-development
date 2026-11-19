@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/17.0.0">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,33 +7,24 @@
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);ASPIRECERTIFICATES001</NoWarn>
+    <!-- WithTags is experimental in Aspire 17 -->
+    <NoWarn>$(NoWarn);ASPIRERESOURCETRAITS001</NoWarn>
     <NoWarn>$(NoWarn);1591</NoWarn>
     <!-- DCP and the dashboard come from the installed Aspire CLI, so keep the CLI pin in
-         .devcontainer/devcontainer.json on the same version as the SDK above -->
+         .devcontainer/devcontainer.json on the same version as the Aspire packages below -->
     <AspireUseCliBundle>true</AspireUseCliBundle>
     <UserSecretsId>98efcc77-ed92-4f61-8c56-50f0fbbb7eb2</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="17.0.0" />
+    <PackageReference Include="Aspire.Hosting.Dotnet" Version="17.0.0" />
     <PackageReference Include="Aspire.Hosting.JavaScript" Version="17.0.0" />
     <PackageReference Include="Aspire.Hosting.Keycloak" Version="17.0.0-preview.1.26567.5" />
     <PackageReference Include="Aspire.Hosting.MySql" Version="17.0.0" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="17.0.0" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="17.0.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.15" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="/mnt/data/crucible/player/player.api/Player.Api/Player.Api.csproj" />
-    <ProjectReference Include="/mnt/data/crucible/player/vm.api/src/Player.Vm.Api/Player.Vm.Api.csproj" />
-    <ProjectReference Include="/mnt/data/crucible/caster/caster.api/src/Caster.Api/Caster.Api.csproj" />
-    <ProjectReference Include="/mnt/data/crucible/alloy/alloy.api/Alloy.Api/Alloy.Api.csproj" />
-    <ProjectReference Include="/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/TopoMojo.Api.csproj" />
-    <ProjectReference Include="/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api/Steamfitter.Api.csproj" />
-    <ProjectReference Include="/mnt/data/crucible/cite/cite.api/Cite.Api/Cite.Api.csproj" />
-    <ProjectReference Include="/mnt/data/crucible/gallery/gallery.api/Gallery.Api/Gallery.Api.csproj" />
-    <ProjectReference Include="/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api/Blueprint.Api.csproj" />
-    <ProjectReference Include="/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api/Gameboard.Api.csproj" />
   </ItemGroup>
 
 </Project>

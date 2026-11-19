@@ -1,6 +1,7 @@
 // Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
+using Aspire.Hosting.Dotnet;
 using Crucible.AppHost;
 
 // Moodle resource wiring, split out of AppHost.cs.
@@ -203,10 +204,10 @@ public static partial class BuilderExtensions
             return null;
 
         // builder.Resources holds IResource, not IResourceBuilder<T> - a builder wraps a
-        // resource rather than being one - so filtering it for IResourceBuilder<ProjectResource>
-        // never matched and this always bailed out. Match the resource, then wrap it.
+        // resource rather than being one - so filtering it for IResourceBuilder<DotnetProjectResource>
+        // never matches. Match the resource, then wrap it.
         var topoMojoApi = builder.Resources
-            .OfType<ProjectResource>()
+            .OfType<DotnetProjectResource>()
             .FirstOrDefault(r => r.Name.StartsWith("topomojo") && !r.Name.Contains("ui"));
 
         if (topoMojoApi == null)
@@ -218,7 +219,8 @@ public static partial class BuilderExtensions
             builder.AppHostDirectory,
             "-c",
             $"bash {builder.AppHostDirectory}/../scripts/get-or-create-topomojo-apikey.sh")
-            .WaitFor(topoMojoApiBuilder);
+            .WaitFor(topoMojoApiBuilder)
+            .WithTags("moodle", "tooling");
     }
 
     /// <summary>
@@ -260,7 +262,8 @@ public static partial class BuilderExtensions
 
         EnsureMoodleCoreMounts(instance);
 
-        var moodleDb = postgres.AddDatabase(instance.DbResourceName, instance.DbName);
+        var moodleDb = postgres.AddDatabase(instance.DbResourceName, instance.DbName)
+            .WithTags("moodle", "database");
 
         // Read AWS credentials from ~/.aws/credentials file
         var awsCreds = AwsCredentials.Read();
@@ -282,6 +285,7 @@ public static partial class BuilderExtensions
         var siteUrl = "http://localhost:" + instance.Port;
 
         var moodle = builder.AddContainer(instance.Name, $"{instance.Name}-custom-image")
+            .WithTags("moodle", "service")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
