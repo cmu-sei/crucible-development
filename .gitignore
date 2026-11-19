@@ -65,6 +65,11 @@ nunit-*.xml
 .devcontainer/certs/*.crt
 .devcontainer/certs/*.key
 
+# Personal startup scripts run by poststart.sh; only the README and examples are tracked
+.devcontainer/hooks/*
+!.devcontainer/hooks/README.md
+!.devcontainer/hooks/*.example
+
 # moodle certs
 Crucible.AppHost/resources/moodle/certs/*.crt
 Crucible.AppHost/resources/moodle/certs/*.key
