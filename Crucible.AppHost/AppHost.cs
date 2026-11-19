@@ -1065,8 +1065,14 @@ public static partial class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "blueprint.admin")
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
-            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite caster")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery cite caster")
             .WithEnvironment("ClientSettings__CasterApiUrl", "http://localhost:4309/")
+            .WithEnvironment("ClientSettings__PlayerVmApiUrl", "http://localhost:4302/")
+            // automation tasks: a fixed key for this dev stack only, so stored task secrets survive a restart, and
+            // http tasks may reach the other APIs on localhost, which a deployment refuses
+            .WithEnvironment("Automation__SecretKeys__dev", "pUuB2SB8YOuV2dk1wlgR+Pe+GRqMXPi2SZuHcI/zARM=")
+            .WithEnvironment("Automation__ActiveSecretKeyId", "dev")
+            .WithEnvironment("Automation__Http__AllowLoopbackAddresses", "true")
             .WithEnvironment("ClientSettings__CasterUiUrl", "http://localhost:4310")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
