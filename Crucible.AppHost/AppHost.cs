@@ -412,8 +412,8 @@ public static partial class BuilderExtensions
             return;
 
         var playerDb = postgres.AddDatabase("playerDb", "player")
-            .WithDevSettings()
-            .WithTags("player", "database");
+            .WithTags("player", "database")
+            .WithDevSettings();
 
         const string playerApiProject = "/mnt/data/crucible/player/player.api/Player.Api/Player.Api.csproj";
 
@@ -478,11 +478,11 @@ public static partial class BuilderExtensions
     private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, UiMode? playerMode, UiMode? lrsqlMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm")
-            .WithDevSettings()
-            .WithTags("player", "database");
+            .WithTags("player", "database")
+            .WithDevSettings();
         var vmLoggingDb = postgres.AddDatabase("vmLoggingDb", "player_vm_logging")
-            .WithDevSettings()
-            .WithTags("player", "database");
+            .WithTags("player", "database")
+            .WithDevSettings();
 
         const string vmApiProject = "/mnt/data/crucible/player/vm.api/src/Player.Vm.Api/Player.Vm.Api.csproj";
 
@@ -553,8 +553,8 @@ public static partial class BuilderExtensions
             return;
 
         var casterDb = postgres.AddDatabase("casterDb", "caster")
-            .WithDevSettings()
-            .WithTags("caster", "database");
+            .WithTags("caster", "database")
+            .WithDevSettings();
 
         const string casterApiProject = "/mnt/data/crucible/caster/caster.api/src/Caster.Api/Caster.Api.csproj";
 
@@ -707,8 +707,8 @@ public static partial class BuilderExtensions
             return;
 
         var alloyDb = postgres.AddDatabase("alloyDb", "alloy")
-            .WithDevSettings()
-            .WithTags("alloy", "database");
+            .WithTags("alloy", "database")
+            .WithDevSettings();
 
         const string alloyApiProject = "/mnt/data/crucible/alloy/alloy.api/Alloy.Api/Alloy.Api.csproj";
 
@@ -775,8 +775,8 @@ public static partial class BuilderExtensions
             return;
 
         var topoDb = postgres.AddDatabase("topoDb", "topomojo")
-            .WithDevSettings()
-            .WithTags("topomojo", "database");
+            .WithTags("topomojo", "database")
+            .WithDevSettings();
 
         const string topoApiProject = "/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/TopoMojo.Api.csproj";
 
@@ -941,8 +941,8 @@ public static partial class BuilderExtensions
             return;
 
         var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter")
-            .WithDevSettings()
-            .WithTags("steamfitter", "database");
+            .WithTags("steamfitter", "database")
+            .WithDevSettings();
 
         const string steamfitterApiProject = "/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api/Steamfitter.Api.csproj";
 
@@ -1002,8 +1002,8 @@ public static partial class BuilderExtensions
             return;
 
         var citeDb = postgres.AddDatabase("citeDb", "cite")
-            .WithDevSettings()
-            .WithTags("cite", "database");
+            .WithTags("cite", "database")
+            .WithDevSettings();
 
         const string citeApiProject = "/mnt/data/crucible/cite/cite.api/Cite.Api/Cite.Api.csproj";
 
@@ -1063,8 +1063,8 @@ public static partial class BuilderExtensions
             return;
 
         var galleryDb = postgres.AddDatabase("galleryDb", "gallery")
-            .WithDevSettings()
-            .WithTags("gallery", "database");
+            .WithTags("gallery", "database")
+            .WithDevSettings();
 
         const string galleryApiProject = "/mnt/data/crucible/gallery/gallery.api/Gallery.Api/Gallery.Api.csproj";
 
@@ -1124,8 +1124,8 @@ public static partial class BuilderExtensions
             return;
 
         var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint")
-            .WithDevSettings()
-            .WithTags("blueprint", "database");
+            .WithTags("blueprint", "database")
+            .WithDevSettings();
 
         const string blueprintApiProject = "/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api/Blueprint.Api.csproj";
 
@@ -1184,8 +1184,8 @@ public static partial class BuilderExtensions
             return;
 
         var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard")
-            .WithDevSettings()
-            .WithTags("gameboard", "database");
+            .WithTags("gameboard", "database")
+            .WithDevSettings();
 
         const string gameboardApiProject = "/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api/Gameboard.Api.csproj";
 
