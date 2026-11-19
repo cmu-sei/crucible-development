@@ -424,7 +424,7 @@ public static partial class BuilderExtensions
 
         var playerApi = builder.AddDotnetProject("player-api", playerApiProject, project => project.LaunchProfileName = "Player.Api")
             .WithTags("player", "api")
-            .WithUrl("/api", "Swagger UI")
+            .WithUrl("/api", "Player Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -463,7 +463,8 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{playerUiRoot}/src/assets");
 
-        var playerUi = builder.AddAngularUI("player-ui", "player", playerUiRoot, port: 4301, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var playerUi = builder.AddAngularUI("player-ui", "player", playerUiRoot, port: 4301, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Player UI");
 
         if (!IsEnabled(playerMode))
         {
@@ -496,7 +497,7 @@ public static partial class BuilderExtensions
 
         var vmApi = builder.AddDotnetProject("player-vm-api", vmApiProject, project => project.LaunchProfileName = "Player.Vm.Api")
             .WithTags("player", "api")
-            .WithUrl("/api", "Swagger UI")
+            .WithUrl("/api", "Player VM Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -526,13 +527,15 @@ public static partial class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var vmUi = builder.AddAngularUI("player-vm-ui", "player", vmUiRoot, port: 4303, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var vmUi = builder.AddAngularUI("player-vm-ui", "player", vmUiRoot, port: 4303, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Player VM UI");
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var consoleUi = builder.AddAngularUI("player-vm-console-ui", "player", consoleUiRoot, port: 4305, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var consoleUi = builder.AddAngularUI("player-vm-console-ui", "player", consoleUiRoot, port: 4305, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Player Console UI");
 
         if (!IsEnabled(playerMode))
         {
@@ -584,7 +587,7 @@ public static partial class BuilderExtensions
 
         var casterApi = builder.AddDotnetProject("caster-api", casterApiProject, project => project.LaunchProfileName = "Caster.Api")
             .WithTags("caster", "api")
-            .WithUrl("/api", "Swagger UI")
+            .WithUrl("/api", "Caster Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WaitForCompletion(minikubeStart)
@@ -616,7 +619,8 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{casterUiRoot}/src/assets");
 
-        var casterUi = builder.AddAngularUI("caster-ui", "caster", casterUiRoot, port: 4310, casterMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var casterUi = builder.AddAngularUI("caster-ui", "caster", casterUiRoot, port: 4310, casterMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Caster UI");
 
         if (!IsEnabled(casterMode))
         {
@@ -715,7 +719,7 @@ public static partial class BuilderExtensions
 
         var alloyApi = builder.AddDotnetProject("alloy-api", alloyApiProject, project => project.LaunchProfileName = "Alloy.Api")
             .WithTags("alloy", "api")
-            .WithUrl("/api", "Swagger UI")
+            .WithUrl("/api", "Alloy Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -743,7 +747,8 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{alloyUiRoot}/src/assets");
 
-        var alloyUi = builder.AddAngularUI("alloy-ui", "alloy", alloyUiRoot, port: 4403, alloyMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var alloyUi = builder.AddAngularUI("alloy-ui", "alloy", alloyUiRoot, port: 4403, alloyMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Alloy UI");
 
         if (!IsEnabled(alloyMode))
         {
@@ -782,7 +787,7 @@ public static partial class BuilderExtensions
 
         var topoApi = builder.AddDotnetProject("topomojo", topoApiProject)
             .WithTags("topomojo", "api")
-            .WithUrl("/api", "Swagger UI")
+            .WithUrl("/api", "TopoMojo Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithReference(topoDb, "PostgreSQL")
@@ -914,8 +919,10 @@ public static partial class BuilderExtensions
             }
         }
 
-        topoUi.WithTags("topomojo", "ui");
-        topoLaunchpointUi?.WithTags("topomojo", "ui");
+        topoUi.WithTags("topomojo", "ui")
+            .WithUrlForEndpoint("http", url => url.DisplayText = "TopoMojo UI");
+        topoLaunchpointUi?.WithTags("topomojo", "ui")
+            .WithUrlForEndpoint("http", url => url.DisplayText = "TopoMojo Launchpoint UI");
 
         if (!IsEnabled(topoMojoMode))
         {
@@ -946,7 +953,7 @@ public static partial class BuilderExtensions
 
         var steamfitterApi = builder.AddDotnetProject("steamfitter-api", steamfitterApiProject, project => project.LaunchProfileName = "Steamfitter.Api")
             .WithTags("steamfitter", "api")
-            .WithUrl("/api", "Swagger UI")
+            .WithUrl("/api", "Steamfitter Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -976,7 +983,8 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{steamfitterUiRoot}/src/assets");
 
-        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", "steamfitter", steamfitterUiRoot, port: 4401, steamfitterMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", "steamfitter", steamfitterUiRoot, port: 4401, steamfitterMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Steamfitter UI");
 
         if (!IsEnabled(steamfitterMode))
         {
@@ -1006,7 +1014,7 @@ public static partial class BuilderExtensions
 
         var citeApi = builder.AddDotnetProject("cite-api", citeApiProject, project => project.LaunchProfileName = "Cite.Api")
             .WithTags("cite", "api")
-            .WithUrl("/api", "Swagger UI")
+            .WithUrl("/api", "CITE Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1036,7 +1044,8 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{citeUiRoot}/src/assets");
 
-        var citeUi = builder.AddAngularUI("cite-ui", "cite", citeUiRoot, port: 4721, citeMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var citeUi = builder.AddAngularUI("cite-ui", "cite", citeUiRoot, port: 4721, citeMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "CITE UI");
 
         if (!IsEnabled(citeMode))
         {
@@ -1066,7 +1075,7 @@ public static partial class BuilderExtensions
 
         var galleryApi = builder.AddDotnetProject("gallery-api", galleryApiProject, project => project.LaunchProfileName = "Api")
             .WithTags("gallery", "api")
-            .WithUrl("/api", "Swagger UI")
+            .WithUrl("/api", "Gallery Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1096,7 +1105,8 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{galleryUiRoot}/src/assets");
 
-        var galleryUi = builder.AddAngularUI("gallery-ui", "gallery", galleryUiRoot, port: 4723, galleryMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var galleryUi = builder.AddAngularUI("gallery-ui", "gallery", galleryUiRoot, port: 4723, galleryMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Gallery UI");
 
         if (!IsEnabled(galleryMode))
         {
@@ -1126,7 +1136,7 @@ public static partial class BuilderExtensions
 
         var blueprintApi = builder.AddDotnetProject("blueprint-api", blueprintApiProject, project => project.LaunchProfileName = "Blueprint.Api")
             .WithTags("blueprint", "api")
-            .WithUrl("/api", "Swagger UI")
+            .WithUrl("/api", "Blueprint Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1156,7 +1166,8 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{blueprintUiRoot}/src/assets");
 
-        var blueprintUi = builder.AddAngularUI("blueprint-ui", "blueprint", blueprintUiRoot, port: 4725, blueprintMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var blueprintUi = builder.AddAngularUI("blueprint-ui", "blueprint", blueprintUiRoot, port: 4725, blueprintMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Blueprint UI");
 
         if (!IsEnabled(blueprintMode))
         {
@@ -1185,7 +1196,7 @@ public static partial class BuilderExtensions
 
         var gameboardApi = builder.AddDotnetProject("gameboard", gameboardApiProject, project => project.LaunchProfileName = "Project")
             .WithTags("gameboard", "api")
-            .WithUrl("/api", "Swagger UI")
+            .WithUrl("/api", "Gameboard Swagger UI")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithReference(gameboardDb, "PostgreSQL")
@@ -1215,7 +1226,8 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
         SetLandingBackgroundImage(options, $"{gameboardUiRoot}/projects/gameboard-ui/src/assets", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json");
 
-        var gameboardUi = builder.AddAngularUI("gameboard-ui", "gameboard", gameboardUiRoot, port: 4202, gameboardMode, options, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: null, settingsConfigDir: null);
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", "gameboard", gameboardUiRoot, port: 4202, gameboardMode, options, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: null, settingsConfigDir: null)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Gameboard UI");
 
         if (!IsEnabled(gameboardMode))
         {
@@ -1529,15 +1541,16 @@ public static partial class BuilderExtensions
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
             .WithHttpHealthCheck("/health")
-            .WithUrl("/swagger", "Swagger UI");
+            .WithUrl("/swagger", "Chronicle Swagger UI");
 
         var uiMode = ResolveUiMode(rangerMode, options);
         var chronicleUi = builder.AddRangerUI("chronicle-ui", $"{rangerSrc}/chronicle/ui", 4320, uiMode)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Chronicle UI")
             .WaitFor(chronicleApi);
 
         var scenarioBuilderApi = builder.AddDotnetProject("scenario-builder-api", $"{rangerSrc}/scenario-builder/api/ScenarioBuilder.Api/ScenarioBuilder.Api.csproj")
             .WithTags("rangerai", "api")
-            .WithUrl("/swagger", "Swagger UI")
+            .WithUrl("/swagger", "Scenario Builder Swagger UI")
             .WithHttpEndpoint(port: 5280, isProxied: false)
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
@@ -1549,6 +1562,7 @@ public static partial class BuilderExtensions
             .WithTags("rangerai", "tooling");
 
         var scenarioBuilderUi = builder.AddRangerUI("scenario-builder-ui", $"{rangerSrc}/scenario-builder/ui", scenarioBuilderUiPort, uiMode)
+            .WithUrlForEndpoint("http", url => url.DisplayText = "Scenario Builder UI")
             .WaitForCompletion(scenarioBuilderAgentInstall)
             .WaitFor(scenarioBuilderApi);
 
