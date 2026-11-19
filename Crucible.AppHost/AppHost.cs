@@ -1486,10 +1486,10 @@ public static partial class BuilderExtensions
         }
         else
         {
-            // Vite ships in both Angular lockfiles. Preview serves the production build and
-            // uses the same API proxy as ng serve, including Chronicle's WebSocket feed.
+            // Keep ng serve's API proxy (including Chronicle's WebSocket) for the static build.
             ui = builder.AddExecutable(name, "bash", uiRoot, "-c",
-                "npm ci --include=dev && npm run build && exec node_modules/.bin/vite preview --config \"$1\" --port \"$2\"",
+                "npm ci --include=dev && npm run build -- --output-path dist/ui && " +
+                "exec npx --yes vite@8.3.8 preview --config \"$1\" --port \"$2\"",
                 name, Path.Combine(builder.AppHostDirectory, "resources", "rangerai-preview.mjs"), port.ToString());
         }
 
