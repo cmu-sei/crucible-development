@@ -213,15 +213,6 @@
       ]
     },
     {
-      "name": "rangerai",
-      "repos": [
-        {
-          "name": "rangerai",
-          "url": "https://github.com/cmu-sei/rangerai"
-        }
-      ]
-    },
-    {
       "name": "terraform-providers",
       "repos": [
         {
@@ -243,6 +234,10 @@
     {
       "name": "crucible-tests",
       "url": "https://github.com/cmu-sei/crucible-tests.git"
+    },
+    {
+      "name": "rangerai",
+      "url": "https://github.com/cmu-sei/rangerai"
     }
   ]
 }

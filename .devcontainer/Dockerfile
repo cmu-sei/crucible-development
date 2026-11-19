@@ -120,29 +120,6 @@ RUN set -eux; \
     && chmod +x /usr/local/bin/kubefwd \
     && kubefwd version
 
-# Task and Jira's devcontainer features both query the unauthenticated GitHub
-# Releases API. Fetch their pinned assets directly so CI can build on shared runner IPs.
-ARG TASK_VERSION=3.50.0
-ARG JIRA_VERSION=1.7.0
-RUN set -eux; \
-    case "${TARGETARCH}" in \
-      amd64) JIRA_ARCH=x86_64; \
-        TASK_SHA256=d449ba85ab85a0769989d78f8b9872938e4ba9347f7f4f925f73d98272a0a655; \
-        JIRA_SHA256=b5e0ba4804f3f11f92c483d9a6ea9ebccec1c735cd2e12b0440cab9d7afd626a ;; \
-      arm64) JIRA_ARCH=arm64; \
-        TASK_SHA256=ee67e7d999a4a70711bff1946c70bf76628012c91d9be55626ee90ba976897da; \
-        JIRA_SHA256=80aa3cc02790892b29e1580a8e49eb49a6550815b362c5ef8c05aea1dee73a95 ;; \
-      *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
-    esac; \
-    JIRA_DIST="jira_${JIRA_VERSION}_linux_${JIRA_ARCH}"; \
-    curl -fsSL --retry 3 -o /tmp/task.tgz "https://github.com/go-task/task/releases/download/v${TASK_VERSION}/task_linux_${TARGETARCH}.tar.gz"; \
-    curl -fsSL --retry 3 -o /tmp/jira.tgz "https://github.com/ankitpokhrel/jira-cli/releases/download/v${JIRA_VERSION}/${JIRA_DIST}.tar.gz"; \
-    echo "${TASK_SHA256}  /tmp/task.tgz" | sha256sum -c -; \
-    echo "${JIRA_SHA256}  /tmp/jira.tgz" | sha256sum -c -; \
-    tar --no-same-owner -xzf /tmp/task.tgz -C /usr/local/bin task; \
-    tar --no-same-owner -xzf /tmp/jira.tgz -C /usr/local/bin --strip-components=2 "${JIRA_DIST}/bin/jira"; \
-    rm /tmp/task.tgz /tmp/jira.tgz
-
 # Export GitHub token from gh CLI for MCP server auth
 RUN echo '' >> /home/vscode/.zshrc && \
     echo '# GitHub MCP token from gh CLI' >> /home/vscode/.zshrc && \

@@ -1423,7 +1423,7 @@ public static partial class BuilderExtensions
         if (!options.AddAllApplications && !IsEnabled(rangerMode))
             return;
 
-        var rangerSrc = "/mnt/data/crucible/rangerai/rangerai/src";
+        var rangerSrc = "/mnt/data/crucible/rangerai/src";
 
         // The UIs' proxy.conf.json files hard-code the API ports (Chronicle :5285, Scenario Builder
         // :5280), so those stay. Scenario Builder's UI defaults to :4310, which Caster UI already
