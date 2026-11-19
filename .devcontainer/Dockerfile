@@ -30,15 +30,11 @@ ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt \
     REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
     PIP_CERT=/etc/ssl/certs/ca-certificates.crt
 
-# Install man pages and additional packages
-# Use a docker cache mount to increase rebuild speed
-# unminimize only runs apt-get update in its restore-documentation branch, so update explicitly or
-# the cache-mounted index goes stale and installs 404. Again after, since unminimize is slow enough
-# for the archive to rotate underneath it.
+# Install additional packages
+# Use a docker cache mount to increase rebuild speed. The cached package index can be stale, so
+# always update it before installing.
 RUN --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    apt-get update && \
-    yes | unminimize && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     php \
@@ -98,9 +94,17 @@ RUN set -eux; \
 
 # Prepare persistent state directories before Docker initializes named volumes, so fresh volumes
 # are owned by vscode. The ~/.data ones must exist before the cmu-sei features' postCreate hooks.
+# Docker creates a missing parent of a mount point as root, and install -d only sets the owner of
+# the directories it is given, so list each parent too. A root-owned ~/.nuget breaks NuGet for any
+# build that starts before postcreate.sh fixes ownership, such as the C# extension's first load.
 RUN install -d -o vscode -g vscode /home/vscode/.omp /home/vscode/.data \
     /home/vscode/.data/claude /home/vscode/.data/codex /home/vscode/.data/herdr \
-    /home/vscode/.data/playwright /home/vscode/.data/shell-history
+    /home/vscode/.data/playwright /home/vscode/.data/shell-history \
+    /home/vscode/.nuget /home/vscode/.nuget/packages \
+    /home/vscode/.npm /home/vscode/.minikube /home/vscode/.microsoft \
+    /home/vscode/.config /home/vscode/.config/gh /home/vscode/.config/composer \
+    /home/vscode/.cache /home/vscode/.cache/composer \
+    && install -d -o vscode -g vscode -m 700 /home/vscode/.ssh /home/vscode/.config/.jira
 
 # Codex system config is bind-mounted into this directory at container runtime.
 RUN mkdir -p /etc/codex
