@@ -24,7 +24,6 @@ arg=${1:?usage: app-map.sh OWNER/REPO}
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(git -C "$here" rev-parse --show-toplevel 2>/dev/null) || root=$(cd "$here/../../../.." && pwd)
 apphost_dir=$root/Crucible.AppHost
-csproj=$apphost_dir/Crucible.AppHost.csproj
 repos_json=$root/scripts/repos.json
 repos_local=$root/scripts/repos.local.json
 clone_sh=$root/scripts/clone-repos.sh
@@ -242,7 +241,7 @@ while IFS= read -r s; do
         warn "AppHost resource $name: can't resolve its project path from ${a1%%)*}"
         continue
       fi
-      add_resource "$name" dotnet-project "" "" "$(gate_of "$var")" "$var" "$cs" "$(basename "$cs" .csproj)|$profile|$s" ;;
+      add_resource "$name" dotnet-project "$port" "" "$(gate_of "$var")" "$var" "$cs" "$(basename "$cs" .csproj)|$profile|$s" ;;
   esac
 done < <(grep -oE "($id = )?builder\.Add(AngularUI|JavaScriptApp|Executable|Container|DotnetProject)\( ?\"[^\"]+\"[^;]*" <<<"$ah")
 
@@ -346,9 +345,14 @@ for i in "${!r_name[@]}"; do
                  | .applicationUrl // "" | split(";")[]' "$ls_json" 2>/dev/null \
                  | sed -nE 's#^[a-z]+://[^/:]+:([0-9]+).*#\1#p' | paste -sd' ')
       fi
-      [[ -n $ports ]] || warn "${r_name[$i]}: no API port from $ls_json${profile:+ profile $profile}; caller UIs found by group only"
-      grep -qE 'WithHttpEndpoint|WithEndpoint|ASPNETCORE_URLS|Kestrel__' <<<"$stmt" \
-        && warn "${r_name[$i]}: AppHost overrides its endpoint, so the launchSettings port may be wrong"
+      if [[ -n $ports ]]; then
+        grep -qE 'WithHttpEndpoint|WithEndpoint|ASPNETCORE_URLS|Kestrel__' <<<"$stmt" \
+          && warn "${r_name[$i]}: AppHost overrides its endpoint, so the launchSettings port may be wrong"
+      elif [[ -n ${r_port[$i]} ]]; then
+        ports=${r_port[$i]} # no launchSettings.json port; the AppHost sets the endpoint itself
+      else
+        warn "${r_name[$i]}: no API port from $ls_json${profile:+ profile $profile}; caller UIs found by group only"
+      fi
       line+=" project=$proj csproj=${cs#"$t_clone"/}${ports:+ port=${ports// /,}}"
       line+=" mode_var=${r_mode[$i]:--} launch=${r_launch[$i]:--}"
       echo "$line"
