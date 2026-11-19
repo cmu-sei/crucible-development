@@ -1413,9 +1413,8 @@ public static partial class BuilderExtensions
     /// RangerAI (https://github.com/cmu-sei/rangerai): Chronicle and Scenario Builder, each a .NET API
     /// with an Angular UI. The APIs keep their own SQLite files and don't use Postgres.
     /// The APIs target net11.0, so the devcontainer needs the .NET 11 SDK.
-    /// With Launch:RangerAIKeycloak, everything waits for Keycloak and the APIs get the crucible
-    /// realm's settings (realm clients chronicle.ui/.api and scenario-builder.ui/.api), and Scenario Builder
-    /// requires a Keycloak login.
+    /// With Launch:RangerAIKeycloak, the APIs receive the crucible realm's settings for
+    /// RangerAI versions that support login. Scenario Builder manages its own administrators.
     /// </summary>
     public static void AddRangerAI(this IDistributedApplicationBuilder builder, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
@@ -1440,42 +1439,28 @@ public static partial class BuilderExtensions
             .WithHttpHealthCheck("/health")
             .WithUrl("/swagger", "Swagger UI");
 
-        var chronicleUi = builder.AddJavaScriptApp("chronicle-ui", $"{rangerSrc}/chronicle/ui", "start")
-            .WithArgs("--", "--host", "0.0.0.0", "--port", "4320")
-            .WithEnvironment("NG_CLI_ANALYTICS", "false")
-            .WithEnvironment("NG_FORCE_AUTOCOMPLETE", "false")
-            .WithHttpEndpoint(port: 4320, isProxied: false)
-            .WithHttpHealthCheck()
+        var uiMode = ResolveUiMode(rangerMode, options);
+        var chronicleUi = builder.AddRangerUI("chronicle-ui", $"{rangerSrc}/chronicle/ui", 4320, uiMode)
             .WaitFor(chronicleApi);
 
         var scenarioBuilderApi = builder.AddProject("scenario-builder-api", $"{rangerSrc}/scenario-builder/api/ScenarioBuilder.Api/ScenarioBuilder.Api.csproj")
             .WithHttpEndpoint(port: 5280, isProxied: false)
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
-            // Anonymous, so it answers with the Keycloak login on too.
             .WithHttpHealthCheck("/api/version");
 
-        // The UI's prestart builds the agent's browser bundle from ../agent, which needs the
-        // agent's packages installed first.
-        var scenarioBuilderAgentInstall = builder.AddExecutable("scenario-builder-agent-install", "bash", $"{rangerSrc}/scenario-builder/agent",
-            "-c", "[ -d node_modules/esbuild ] || npm ci");
+        // Both prestart and prebuild bundle the agent using its locked development dependencies.
+        var scenarioBuilderAgentInstall = builder.AddExecutable("scenario-builder-agent-install", "npm",
+            $"{rangerSrc}/scenario-builder/agent", "ci", "--include=dev");
 
-        var scenarioBuilderUi = builder.AddJavaScriptApp("scenario-builder-ui", $"{rangerSrc}/scenario-builder/ui", "start")
-            .WithArgs("--", "--host", "0.0.0.0", "--port", scenarioBuilderUiPort.ToString())
-            .WithEnvironment("NG_CLI_ANALYTICS", "false")
-            .WithEnvironment("NG_FORCE_AUTOCOMPLETE", "false")
-            .WithHttpEndpoint(port: scenarioBuilderUiPort, isProxied: false)
-            .WithHttpHealthCheck()
+        var scenarioBuilderUi = builder.AddRangerUI("scenario-builder-ui", $"{rangerSrc}/scenario-builder/ui", scenarioBuilderUiPort, uiMode)
             .WaitForCompletion(scenarioBuilderAgentInstall)
             .WaitFor(scenarioBuilderApi);
 
         if (options.RangerAIKeycloak)
         {
             ConfigureRangerAIKeycloak(chronicleApi, keycloak, "chronicle.api", "chronicle");
-            // Scenario Builder signs users in itself (OIDC code flow + session cookie) through its UI's /api proxy,
-            // so it uses the UI's client, whose redirect URIs cover :4330. Keycloak's admin user is its admin.
             ConfigureRangerAIKeycloak(scenarioBuilderApi, keycloak, "scenario-builder.ui", "scenario-builder");
-            scenarioBuilderApi.WithEnvironment("Admins__0", "admin");
             chronicleUi.WaitFor(keycloak);
             scenarioBuilderUi.WaitFor(keycloak);
         }
@@ -1490,9 +1475,32 @@ public static partial class BuilderExtensions
         }
     }
 
+    private static IResourceBuilder<ExecutableResource> AddRangerUI(this IDistributedApplicationBuilder builder,
+        string name, string uiRoot, int port, UiMode mode)
+    {
+        IResourceBuilder<ExecutableResource> ui;
+        if (mode == UiMode.Dev)
+        {
+            ui = builder.AddJavaScriptApp(name, uiRoot, "start")
+                .WithArgs("--", "--host", "0.0.0.0", "--port", port.ToString());
+        }
+        else
+        {
+            // Vite ships in both Angular lockfiles. Preview serves the production build and
+            // uses the same API proxy as ng serve, including Chronicle's WebSocket feed.
+            ui = builder.AddExecutable(name, "bash", uiRoot, "-c",
+                "npm ci --include=dev && npm run build && exec node_modules/.bin/vite preview --config \"$1\" --port \"$2\"",
+                name, Path.Combine(builder.AppHostDirectory, "resources", "rangerai-preview.mjs"), port.ToString());
+        }
+
+        return ui.WithEnvironment("NG_CLI_ANALYTICS", "false")
+            .WithEnvironment("NG_FORCE_AUTOCOMPLETE", "false")
+            .WithHttpEndpoint(port: port, isProxied: false)
+            .WithHttpHealthCheck();
+    }
+
     /// <summary>
     /// Keycloak settings for a RangerAI API, named like the Crucible APIs' Authorization section.
-    /// Scenario Builder reads Authority and ClientId to sign users in; Chronicle doesn't read them yet.
     /// </summary>
     private static void ConfigureRangerAIKeycloak(IResourceBuilder<ProjectResource> api, IResourceBuilder<KeycloakResource> keycloak, string clientId, string audience)
     {

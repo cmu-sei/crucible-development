@@ -92,6 +92,8 @@ Each profile runs a different subset of services depending on what you're workin
 
 - **Default** - Launches most services (resource-intensive)
 - **Player**, **Blueprint**, **Caster**, **Steamfitter**, etc. - Focused on a single application
+- **RangerAI** - Runs Chronicle (UI on port 4320, API on 5285) and Scenario Builder (UI on 4330, API on 5280). Rebuild an existing dev container for the .NET 11 SDK and Aspire 17.
+- **RangerAI + Keycloak** - Also gives both APIs the `crucible` realm settings. Login support depends on the RangerAI revision. The published version without login keeps its local `dev` administrator in Scenario Builder.
 - **Exercise**, **TTX** - Multi-app profiles for specific workflows
 - **Moodle**, **Moodle Debug** - Moodle development, with **Moodle Debug** also attaching the PHP Xdebug listener
 - **All Apps (Stopped)** - Registers all applications and leaves unselected apps stopped. Choose Angular dev or static hosting with `DefaultUiMode`.
@@ -560,6 +562,7 @@ Moodle automatically configures itself based on which Crucible services are runn
 - Gallery (gallery-ui)
 - Blueprint (blueprint-ui)
 - Gameboard (gameboard-ui)
+- RangerAI (chronicle-ui and scenario-builder-ui)
 
 **Containers** (support prod mode only via boolean flags or Prod array):
 - Moodle (with optional Xdebug - see Moodle Configuration below)
