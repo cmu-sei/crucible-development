@@ -924,6 +924,15 @@ public static partial class BuilderExtensions
         topoLaunchpointUi?.WithTags("topomojo", "ui")
             .WithUrlForEndpoint("http", url => url.DisplayText = "TopoMojo Launchpoint UI");
 
+        // The dev Launchpoint skips npm install (topomojo-ui installs the shared workspace), but
+        // AddJavaScriptApp still registers an installer for it, which stays Not Started.
+        var topoLaunchpointInstaller = builder.Resources.OfType<JavaScriptInstallerResource>()
+            .FirstOrDefault(r => r.Name == "topomojo-launchpoint-installer");
+        if (topoLaunchpointInstaller != null)
+        {
+            builder.CreateResourceBuilder(topoLaunchpointInstaller).WithTags("topomojo", "tooling");
+        }
+
         if (!IsEnabled(topoMojoMode))
         {
             topoApi.WithExplicitStart();
