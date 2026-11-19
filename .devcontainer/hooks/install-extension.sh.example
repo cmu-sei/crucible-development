@@ -1,0 +1,22 @@
+#!/bin/bash
+# Installs a VS Code extension for you only, without changing the shared devcontainer.json.
+# Copy to install-extension.sh (or 10-install-extension.sh to control the order) to enable it.
+#
+# To install from a .vsix file instead of the Marketplace, keep ext as the extension's ID
+# (<publisher>.<name> from its package.json) so the installed check still works, and pass
+# the file path to --install-extension:
+#
+#   ext="my-publisher.my-extension"
+#   vsix="/mnt/data/my-extensions/my-extension-1.2.0.vsix"
+#   ...
+#   "$cli" --list-extensions | grep -qixF "$ext" || "$cli" --install-extension "$vsix"
+#
+# Keep .vsix files on a volume that survives rebuilds, such as /mnt/data.
+ext="ms-vscode.hexeditor"
+
+# Newest server first: after a VS Code update, older servers stay in ~/.vscode-server/bin.
+server=$(ls -td ~/.vscode-server/bin/* 2>/dev/null | head -1)
+cli="$server/bin/code-server"
+[ -n "$server" ] && [ -x "$cli" ] || { echo "VS Code server not found; skipping $ext"; exit 0; }
+
+"$cli" --list-extensions | grep -qixF "$ext" || "$cli" --install-extension "$ext"

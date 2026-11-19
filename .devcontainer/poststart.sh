@@ -17,6 +17,13 @@ done
 setsid nohup scripts/restore-skills.sh > /tmp/restore-skills.log 2>&1 < /dev/null &
 echo "Installing AI agent skills in the background (log: /tmp/restore-skills.log)"
 
+# Personal startup scripts. Git-ignored; see .devcontainer/hooks/README.md.
+for hook in .devcontainer/hooks/*.sh; do
+  [ -f "$hook" ] || continue
+  echo "Running personal startup script ${hook}"
+  bash -l "$hook" < /dev/null || echo "Warning: ${hook} failed (exit $?); continuing" >&2
+done
+
 # Welcome message
 cat <<'EOF'
 

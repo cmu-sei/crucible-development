@@ -92,6 +92,8 @@ Each profile runs a different subset of services depending on what you're workin
 
 - **Default** - Launches most services (resource-intensive)
 - **Player**, **Blueprint**, **Caster**, **Steamfitter**, etc. - Focused on a single application
+- **RangerAI** - Runs Chronicle (UI on port 4320, API on 5285) and Scenario Builder (UI on 4330, API on 5280). Rebuild an existing dev container for the .NET 11 SDK and Aspire 17.
+- **RangerAI + Keycloak** - Sign in to either UI through the `crucible` realm. Use `admin` / `admin` for Scenario Builder administration. Scenario Builder publishes to Chronicle with its own service account. Both profiles use each app’s default SQLite database and start the shared PostgreSQL and Keycloak resources.
 - **Exercise**, **TTX** - Multi-app profiles for specific workflows
 - **Moodle**, **Moodle Debug** - Moodle development, with **Moodle Debug** also attaching the PHP Xdebug listener
 - **All Apps (Stopped)** - Registers all applications and leaves unselected apps stopped. Choose Angular dev or static hosting with `DefaultUiMode`.
@@ -560,6 +562,7 @@ Moodle automatically configures itself based on which Crucible services are runn
 - Gallery (gallery-ui)
 - Blueprint (blueprint-ui)
 - Gameboard (gameboard-ui)
+- RangerAI (chronicle-ui and scenario-builder-ui)
 
 **Containers** (support prod mode only via boolean flags or Prod array):
 - Moodle (with optional Xdebug - see Moodle Configuration below)
@@ -1171,6 +1174,7 @@ Some configuration files are git-ignored for local customization:
 - **`scripts/repos.local.json`** - Private/override repositories (see [Adding Private/Internal Repositories](#adding-privateinternal-repositories))
 - **`.claude/settings.local.json`** - Per-developer Claude Code settings (`.claude/settings.json` is the shared team config)
 - **`/home/vscode/.codex/config.toml`** - Per-developer Codex settings (`.devcontainer/codex/config.toml` is the shared dev container default)
+- **`.devcontainer/hooks/*.sh`** - Personal scripts run on every container start, such as installing extra VS Code extensions (see the [hooks README](.devcontainer/hooks/README.md))
 
 ## Library Development
 

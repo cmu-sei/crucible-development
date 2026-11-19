@@ -316,6 +316,34 @@
     {
       "type": "aspire",
       "request": "launch",
+      "name": "RangerAI",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/rangerai.env"
+        }
+      },
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "RangerAI + Keycloak",
+      "program": "",
+      "debuggers": {
+        "apphost": {
+          "envFile": "${workspaceFolder}/.env/rangerai-keycloak.env"
+        }
+      },
+      "presentation": {
+        "group": "a"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
       "name": "All Apps (Stopped)",
       "program": "",
       "debuggers": {

@@ -65,6 +65,11 @@ nunit-*.xml
 .devcontainer/certs/*.crt
 .devcontainer/certs/*.key
 
+# Personal startup scripts run by poststart.sh; only the README and examples are tracked
+.devcontainer/hooks/*
+!.devcontainer/hooks/README.md
+!.devcontainer/hooks/*.example
+
 # moodle certs
 Crucible.AppHost/resources/moodle/certs/*.crt
 Crucible.AppHost/resources/moodle/certs/*.key
@@ -124,3 +129,7 @@ node_modules
 .agents/skills/*
 !.agents/skills/crucible-add-service/
 !.agents/skills/nuget-restore-hang/
+!.agents/skills/review-dependabot-prs/
+
+# Plans written by the review-dependabot-prs skill (dry runs); local working files.
+.dependabot-plans/
