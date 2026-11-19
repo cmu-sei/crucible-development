@@ -1638,6 +1638,173 @@
       ],
       "access": {},
       "frontchannelLogout": true
+    },
+    {
+      "clientId": "chronicle.ui",
+      "rootUrl": "http://localhost:4320",
+      "adminUrl": "http://localhost:4320",
+      "redirectUris": ["http://localhost:4320/*"],
+      "webOrigins": ["http://localhost:4320"],
+      "directAccessGrantsEnabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oidc.ciba.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "http://localhost:4320/*",
+        "pkce.code.challenge.method": "S256",
+        "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "chronicle",
+        "acr",
+        "profile",
+        "roles",
+        "email",
+        "basic"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "access": {},
+      "frontchannelLogout": true
+    },
+    {
+      "clientId": "chronicle.api",
+      "rootUrl": "http://localhost:5285",
+      "adminUrl": "http://localhost:5285",
+      "redirectUris": ["http://localhost:5285/*"],
+      "webOrigins": ["http://localhost:5285"],
+      "directAccessGrantsEnabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oidc.ciba.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "+",
+        "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "chronicle",
+        "acr",
+        "profile",
+        "roles",
+        "email",
+        "basic"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "access": {},
+      "frontchannelLogout": true
+    },
+    {
+      "clientId": "scenario-builder.ui",
+      "rootUrl": "http://localhost:4330",
+      "adminUrl": "http://localhost:4330",
+      "redirectUris": ["http://localhost:4330/*"],
+      "webOrigins": ["http://localhost:4330"],
+      "directAccessGrantsEnabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oidc.ciba.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "http://localhost:4330/*",
+        "pkce.code.challenge.method": "S256",
+        "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "scenario-builder",
+        "acr",
+        "profile",
+        "roles",
+        "email",
+        "basic"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "access": {},
+      "frontchannelLogout": true
+    },
+    {
+      "clientId": "scenario-builder.api",
+      "rootUrl": "http://localhost:5280",
+      "adminUrl": "http://localhost:5280",
+      "redirectUris": ["http://localhost:5280/*"],
+      "webOrigins": ["http://localhost:5280"],
+      "directAccessGrantsEnabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oidc.ciba.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "+",
+        "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "scenario-builder",
+        "acr",
+        "profile",
+        "roles",
+        "email",
+        "basic"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "access": {},
+      "frontchannelLogout": true
+    },
+    {
+      "clientId": "scenario-builder.service",
+      "name": "Scenario Builder (service)",
+      "description": "Scenario Builder's API calling Chronicle as itself, with client credentials.",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "f1d58ac0e58a3ab290d22ecd064a54dd",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "chronicle",
+        "profile",
+        "roles",
+        "basic"
+      ],
+      "optionalClientScopes": []
     }
   ],
   "clientScopes": [
@@ -1984,6 +2151,54 @@
             "id.token.claim": "false",
             "access.token.claim": "true",
             "included.custom.audience": "player"
+          }
+        }
+      ]
+    },
+    {
+      "name": "chronicle",
+      "description": "",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "gui.order": "",
+        "consent.screen.text": ""
+      },
+      "protocolMappers": [
+        {
+          "name": "chronicle",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "included.custom.audience": "chronicle"
+          }
+        }
+      ]
+    },
+    {
+      "name": "scenario-builder",
+      "description": "",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "gui.order": "",
+        "consent.screen.text": ""
+      },
+      "protocolMappers": [
+        {
+          "name": "scenario-builder",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "included.custom.audience": "scenario-builder"
           }
         }
       ]
