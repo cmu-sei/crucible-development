@@ -182,6 +182,7 @@ public static partial class BuilderExtensions
     private static IResourceBuilder<ExecutableResource> AddAngularUI(
         this IDistributedApplicationBuilder builder,
         string name,
+        string app,
         string appRoot,
         int port,
         UiMode? mode,
@@ -205,6 +206,13 @@ public static partial class BuilderExtensions
         if (ResolveUiMode(mode, options) == UiMode.Dev)
         {
             ui = builder.AddJavaScriptApp(name, appRoot, "start");
+
+            var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
+                .FirstOrDefault(r => r.Name == $"{name}-installer");
+            if (installerResource != null)
+            {
+                builder.CreateResourceBuilder(installerResource).WithTags(app, "tooling");
+            }
 
             if (options.UseAspireProxy)
             {
@@ -238,16 +246,14 @@ public static partial class BuilderExtensions
             // Set up local common UI library: copy tsconfig.local-npm.json and use --configuration localNPM
             if (commonUiSetup != null)
             {
-                var installerResource = builder.Resources.OfType<JavaScriptInstallerResource>()
-                    .FirstOrDefault(r => r.Name == $"{name}-installer");
-
                 if (installerResource != null)
                 {
                     var setupLocal = builder.AddExecutable($"{name}-setup-local", "bash", appRoot, [
                         "-c",
                         $"npm link @cmusei/crucible-common && cp {builder.AppHostDirectory}/resources/tsconfig.local-npm.json ."
                     ])
-                    .WithParentRelationship(installerResource);
+                    .WithParentRelationship(installerResource)
+                    .WithTags(app, "tooling");
 
                     setupLocal.Resource.Annotations.Add(new WaitAnnotation(installerResource, WaitType.WaitForCompletion));
                     setupLocal.WaitFor(commonUiSetup);
@@ -263,7 +269,8 @@ public static partial class BuilderExtensions
                 .WithHttpEndpoint(port: port, isProxied: false);
         }
 
-        return ui.WithHttpHealthCheck();
+        return ui.WithHttpHealthCheck()
+            .WithTags(app, "ui");
     }
 
     public static IResourceBuilder<PostgresServerResource> AddPostgres(this IDistributedApplicationBuilder builder, LaunchOptions options)
@@ -271,6 +278,7 @@ public static partial class BuilderExtensions
         var pgAdminMode = ResolveMode(options.PGAdmin, "PGAdmin", options);
 
         var postgres = builder.AddPostgres("postgres")
+            .WithTags("shared", "database")
             // AddPostgres defaults to version 18. Postgres 18 changed the data layout.
             // Consult https://aspire.dev/whats-new/aspire-13-4/#postgresql-default-image-bumped-to-183-breaking-existing-data-volumes
             // when changing this tag to 18+ to avoid data loss.
@@ -291,7 +299,8 @@ public static partial class BuilderExtensions
                 endpoint.Port = 33000;
                 endpoint.IsProxied = false;
             });
-            pgAdmin.WithLifetime(ContainerLifetime.Persistent);
+            pgAdmin.WithLifetime(ContainerLifetime.Persistent)
+                .WithTags("shared", "tooling");
 
             if (!IsEnabled(pgAdminMode))
             {
@@ -312,7 +321,8 @@ public static partial class BuilderExtensions
         var docs = builder.AddContainer("mkdocs", "squidfunk/mkdocs-material")
             .WithBindMount("/mnt/data/crucible/crucible-docs", "/docs", isReadOnly: true)
             .WithHttpEndpoint(port: 8000, targetPort: 8000)
-            .WithArgs("serve", "-a", "0.0.0.0:8000");
+            .WithArgs("serve", "-a", "0.0.0.0:8000")
+            .WithTags("docs", "service");
 
         if (!IsEnabled(docsMode))
         {
@@ -322,9 +332,11 @@ public static partial class BuilderExtensions
 
     public static IResourceBuilder<KeycloakResource> AddKeycloak(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres)
     {
-        var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak");
+        var keycloakDb = postgres.AddDatabase("keycloakDb", "keycloak")
+            .WithTags("shared", "database");
 
         var keycloak = builder.AddKeycloak("keycloak", 8443)
+            .WithTags("shared", "service")
             .WithReference(keycloakDb)
             .WaitFor(keycloakDb)
             .WithLifetime(ContainerLifetime.Persistent)
@@ -373,6 +385,7 @@ public static partial class BuilderExtensions
         // The 26.6 Keycloak image has no matching build; the newest 26.x client is used.
         return builder.AddContainer("keycloak-config", "adorsys/keycloak-config-cli", "6.5.1-26.5.5")
             .WithParentRelationship(keycloak)
+            .WithTags("shared", "tooling")
             // Not WaitFor: Keycloak's health waits on this container, so that would deadlock.
             // The availability check below waits for Keycloak to answer instead.
             .WaitForStart(keycloak)
@@ -399,7 +412,8 @@ public static partial class BuilderExtensions
             return;
 
         var playerDb = postgres.AddDatabase("playerDb", "player")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("player", "database");
 
         const string playerApiProject = "/mnt/data/crucible/player/player.api/Player.Api/Player.Api.csproj";
 
@@ -409,6 +423,7 @@ public static partial class BuilderExtensions
             playerDb.Resource.ConnectionStringExpression);
 
         var playerApi = builder.AddDotnetProject("player-api", playerApiProject, project => project.LaunchProfileName = "Player.Api")
+            .WithTags("player", "api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -447,7 +462,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/player.ui.json", $"{playerUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{playerUiRoot}/src/assets");
 
-        var playerUi = builder.AddAngularUI("player-ui", playerUiRoot, port: 4301, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var playerUi = builder.AddAngularUI("player-ui", "player", playerUiRoot, port: 4301, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(playerMode))
         {
@@ -461,9 +476,11 @@ public static partial class BuilderExtensions
     private static void AddPlayerVm(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options, UiMode? playerMode, UiMode? lrsqlMode, IResourceBuilder<ExecutableResource>? commonUiSetup = null)
     {
         var vmDb = postgres.AddDatabase("vmDb", "player_vm")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("player", "database");
         var vmLoggingDb = postgres.AddDatabase("vmLoggingDb", "player_vm_logging")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("player", "database");
 
         const string vmApiProject = "/mnt/data/crucible/player/vm.api/src/Player.Vm.Api/Player.Vm.Api.csproj";
 
@@ -477,6 +494,7 @@ public static partial class BuilderExtensions
             });
 
         var vmApi = builder.AddDotnetProject("player-vm-api", vmApiProject, project => project.LaunchProfileName = "Player.Vm.Api")
+            .WithTags("player", "api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -506,13 +524,13 @@ public static partial class BuilderExtensions
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/vm.ui.json", $"{vmUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var vmUi = builder.AddAngularUI("player-vm-ui", vmUiRoot, port: 4303, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var vmUi = builder.AddAngularUI("player-vm-ui", "player", vmUiRoot, port: 4303, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         var consoleUiRoot = "/mnt/data/crucible/player/console.ui";
 
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/console.ui.json", $"{consoleUiRoot}/src/assets/config/settings.env.json", overwrite: true);
 
-        var consoleUi = builder.AddAngularUI("player-vm-console-ui", consoleUiRoot, port: 4305, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var consoleUi = builder.AddAngularUI("player-vm-console-ui", "player", consoleUiRoot, port: 4305, playerMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(playerMode))
         {
@@ -530,7 +548,8 @@ public static partial class BuilderExtensions
             return;
 
         var casterDb = postgres.AddDatabase("casterDb", "caster")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("caster", "database");
 
         const string casterApiProject = "/mnt/data/crucible/caster/caster.api/src/Caster.Api/Caster.Api.csproj";
 
@@ -542,23 +561,27 @@ public static partial class BuilderExtensions
         var minikubeStart = builder.AddExecutable("minikube", "bash", $"{builder.AppHostDirectory}/../minikube/", [
             "-c",
             "./start-minikube.sh"
-        ]);
+        ])
+        .WithTags("caster", "service");
 
         var minikubeStop = builder.AddExecutable("stop-minikube", "minikube", "",
         [
             "stop",
         ])
         .WithExplicitStart()
-        .WithParentRelationship(minikubeStart);
+        .WithParentRelationship(minikubeStart)
+        .WithTags("caster", "tooling");
 
         var minikubeDelete = builder.AddExecutable("delete-minikube", "minikube", "",
         [
             "delete",
         ])
         .WithExplicitStart()
-        .WithParentRelationship(minikubeStart); ;
+        .WithParentRelationship(minikubeStart)
+        .WithTags("caster", "tooling");
 
         var casterApi = builder.AddDotnetProject("caster-api", casterApiProject, project => project.LaunchProfileName = "Caster.Api")
+            .WithTags("caster", "api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WaitForCompletion(minikubeStart)
@@ -590,7 +613,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/caster.ui.json", $"{casterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{casterUiRoot}/src/assets");
 
-        var casterUi = builder.AddAngularUI("caster-ui", casterUiRoot, port: 4310, casterMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var casterUi = builder.AddAngularUI("caster-ui", "caster", casterUiRoot, port: 4310, casterMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(casterMode))
         {
@@ -616,6 +639,7 @@ public static partial class BuilderExtensions
         // localhost for caster-api only. Not persistent: it stops with the AppHost,
         // and the volume keeps the repository between runs.
         var gitea = builder.AddContainer("gitea", "gitea/gitea", "1.27.3")
+            .WithTags("caster", "service")
             .WithVolume("crucible-dev-gitea", "/data")
             .WithHttpEndpoint(port: 3010, targetPort: 3000)
             .WithEndpoint("http", endpoint => endpoint.TargetHost = "0.0.0.0")
@@ -633,6 +657,7 @@ public static partial class BuilderExtensions
         ])
         .WaitFor(gitea)
         .WithParentRelationship(gitea)
+        .WithTags("caster", "tooling")
         .WithEnvironment(async context =>
         {
             // Aspire names the container gitea-<suffix>, so the script can't docker exec
@@ -675,7 +700,8 @@ public static partial class BuilderExtensions
             return;
 
         var alloyDb = postgres.AddDatabase("alloyDb", "alloy")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("alloy", "database");
 
         const string alloyApiProject = "/mnt/data/crucible/alloy/alloy.api/Alloy.Api/Alloy.Api.csproj";
 
@@ -685,6 +711,7 @@ public static partial class BuilderExtensions
             alloyDb.Resource.ConnectionStringExpression);
 
         var alloyApi = builder.AddDotnetProject("alloy-api", alloyApiProject, project => project.LaunchProfileName = "Alloy.Api")
+            .WithTags("alloy", "api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -712,7 +739,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/alloy.ui.json", $"{alloyUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{alloyUiRoot}/src/assets");
 
-        var alloyUi = builder.AddAngularUI("alloy-ui", alloyUiRoot, port: 4403, alloyMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var alloyUi = builder.AddAngularUI("alloy-ui", "alloy", alloyUiRoot, port: 4403, alloyMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(alloyMode))
         {
@@ -739,7 +766,8 @@ public static partial class BuilderExtensions
             return;
 
         var topoDb = postgres.AddDatabase("topoDb", "topomojo")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("topomojo", "database");
 
         const string topoApiProject = "/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/TopoMojo.Api.csproj";
 
@@ -749,6 +777,7 @@ public static partial class BuilderExtensions
             topoDb.Resource.ConnectionStringExpression);
 
         var topoApi = builder.AddDotnetProject("topomojo", topoApiProject)
+            .WithTags("topomojo", "api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithReference(topoDb, "PostgreSQL")
@@ -799,6 +828,13 @@ public static partial class BuilderExtensions
                 .WithArgs("--", "topomojo-work", "--configuration", "development", "--port", topoWorkUiPort.ToString())
                 .WithHttpEndpoint(port: topoWorkUiPort, isProxied: false)
                 .WithHttpHealthCheck();
+
+            var topoUiInstaller = builder.Resources.OfType<JavaScriptInstallerResource>()
+                .FirstOrDefault(r => r.Name == "topomojo-ui-installer");
+            if (topoUiInstaller != null)
+            {
+                builder.CreateResourceBuilder(topoUiInstaller).WithTags("topomojo", "tooling");
+            }
 
             if (launchpointIncluded && effectiveLaunchpointMode == UiMode.Dev)
             {
@@ -873,6 +909,9 @@ public static partial class BuilderExtensions
             }
         }
 
+        topoUi.WithTags("topomojo", "ui");
+        topoLaunchpointUi?.WithTags("topomojo", "ui");
+
         if (!IsEnabled(topoMojoMode))
         {
             topoApi.WithExplicitStart();
@@ -890,7 +929,8 @@ public static partial class BuilderExtensions
             return;
 
         var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("steamfitter", "database");
 
         const string steamfitterApiProject = "/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api/Steamfitter.Api.csproj";
 
@@ -900,6 +940,7 @@ public static partial class BuilderExtensions
             steamfitterDb.Resource.ConnectionStringExpression);
 
         var steamfitterApi = builder.AddDotnetProject("steamfitter-api", steamfitterApiProject, project => project.LaunchProfileName = "Steamfitter.Api")
+            .WithTags("steamfitter", "api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -929,7 +970,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/steamfitter.ui.json", $"{steamfitterUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{steamfitterUiRoot}/src/assets");
 
-        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", steamfitterUiRoot, port: 4401, steamfitterMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var steamfitterUi = builder.AddAngularUI("steamfitter-ui", "steamfitter", steamfitterUiRoot, port: 4401, steamfitterMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(steamfitterMode))
         {
@@ -947,7 +988,8 @@ public static partial class BuilderExtensions
             return;
 
         var citeDb = postgres.AddDatabase("citeDb", "cite")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("cite", "database");
 
         const string citeApiProject = "/mnt/data/crucible/cite/cite.api/Cite.Api/Cite.Api.csproj";
 
@@ -957,6 +999,7 @@ public static partial class BuilderExtensions
             citeDb.Resource.ConnectionStringExpression);
 
         var citeApi = builder.AddDotnetProject("cite-api", citeApiProject, project => project.LaunchProfileName = "Cite.Api")
+            .WithTags("cite", "api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -986,7 +1029,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/cite.ui.json", $"{citeUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{citeUiRoot}/src/assets");
 
-        var citeUi = builder.AddAngularUI("cite-ui", citeUiRoot, port: 4721, citeMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var citeUi = builder.AddAngularUI("cite-ui", "cite", citeUiRoot, port: 4721, citeMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(citeMode))
         {
@@ -1004,7 +1047,8 @@ public static partial class BuilderExtensions
             return;
 
         var galleryDb = postgres.AddDatabase("galleryDb", "gallery")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("gallery", "database");
 
         const string galleryApiProject = "/mnt/data/crucible/gallery/gallery.api/Gallery.Api/Gallery.Api.csproj";
 
@@ -1014,6 +1058,7 @@ public static partial class BuilderExtensions
             galleryDb.Resource.ConnectionStringExpression);
 
         var galleryApi = builder.AddDotnetProject("gallery-api", galleryApiProject, project => project.LaunchProfileName = "Api")
+            .WithTags("gallery", "api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1043,7 +1088,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gallery.ui.json", $"{galleryUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{galleryUiRoot}/src/assets");
 
-        var galleryUi = builder.AddAngularUI("gallery-ui", galleryUiRoot, port: 4723, galleryMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var galleryUi = builder.AddAngularUI("gallery-ui", "gallery", galleryUiRoot, port: 4723, galleryMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(galleryMode))
         {
@@ -1061,7 +1106,8 @@ public static partial class BuilderExtensions
             return;
 
         var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("blueprint", "database");
 
         const string blueprintApiProject = "/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api/Blueprint.Api.csproj";
 
@@ -1071,6 +1117,7 @@ public static partial class BuilderExtensions
             blueprintDb.Resource.ConnectionStringExpression);
 
         var blueprintApi = builder.AddDotnetProject("blueprint-api", blueprintApiProject, project => project.LaunchProfileName = "Blueprint.Api")
+            .WithTags("blueprint", "api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1100,7 +1147,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/blueprint.ui.json", $"{blueprintUiRoot}/src/assets/config/settings.env.json", overwrite: true);
         CopyLandingBackgroundImage(options, $"{blueprintUiRoot}/src/assets");
 
-        var blueprintUi = builder.AddAngularUI("blueprint-ui", blueprintUiRoot, port: 4725, blueprintMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
+        var blueprintUi = builder.AddAngularUI("blueprint-ui", "blueprint", blueprintUiRoot, port: 4725, blueprintMode, options, distPath: "dist/browser", commonUiSetup: commonUiSetup);
 
         if (!IsEnabled(blueprintMode))
         {
@@ -1117,7 +1164,8 @@ public static partial class BuilderExtensions
             return;
 
         var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard")
-            .WithDevSettings();
+            .WithDevSettings()
+            .WithTags("gameboard", "database");
 
         const string gameboardApiProject = "/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api/Gameboard.Api.csproj";
 
@@ -1127,6 +1175,7 @@ public static partial class BuilderExtensions
             gameboardDb.Resource.ConnectionStringExpression);
 
         var gameboardApi = builder.AddDotnetProject("gameboard", gameboardApiProject, project => project.LaunchProfileName = "Project")
+            .WithTags("gameboard", "api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithReference(gameboardDb, "PostgreSQL")
@@ -1156,7 +1205,7 @@ public static partial class BuilderExtensions
         File.Copy($"{builder.AppHostDirectory}/resources/ui/settings/gameboard.ui.json", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json", overwrite: true);
         SetLandingBackgroundImage(options, $"{gameboardUiRoot}/projects/gameboard-ui/src/assets", $"{gameboardUiRoot}/projects/gameboard-ui/src/assets/settings.json");
 
-        var gameboardUi = builder.AddAngularUI("gameboard-ui", gameboardUiRoot, port: 4202, gameboardMode, options, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: null, settingsConfigDir: null);
+        var gameboardUi = builder.AddAngularUI("gameboard-ui", "gameboard", gameboardUiRoot, port: 4202, gameboardMode, options, distPath: "dist/gameboard-ui/browser", buildArgs: "gameboard-ui", commonUiSetup: null, settingsConfigDir: null);
 
         if (!IsEnabled(gameboardMode))
         {
@@ -1172,9 +1221,11 @@ public static partial class BuilderExtensions
         if (!options.AddAllApplications && !IsEnabled(lrsqlMode))
             return;
 
-        var lrsqlDb = postgres.AddDatabase("lrsqlDb", "lrsql");
+        var lrsqlDb = postgres.AddDatabase("lrsqlDb", "lrsql")
+            .WithTags("lrsql", "database");
 
         var lrsql = builder.AddContainer("lrsql", "yetanalytics/lrsql")
+            .WithTags("lrsql", "service")
             .WaitFor(postgres)
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("lrsql")
@@ -1211,19 +1262,23 @@ public static partial class BuilderExtensions
 
         // Redis for MISP background jobs (without TLS for dev environment)
         var mispRedis = builder.AddRedis("misp-redis")
-            .WithContainerName("misp-redis");
+            .WithContainerName("misp-redis")
+            .WithTags("misp", "database");
 
         // MySQL for MISP (MISP requires MySQL/MariaDB, not PostgreSQL)
         var mispMysql = builder.AddMySql("misp-mysql")
             .WithContainerName("misp-mysql")
-            .WithDataVolume();
+            .WithDataVolume()
+            .WithTags("misp", "database");
 
-        var mispDb = mispMysql.AddDatabase("mispDb", "misp");
+        var mispDb = mispMysql.AddDatabase("mispDb", "misp")
+            .WithTags("misp", "database");
 
         // MISP Core application with custom fast-startup image
         var misp = builder.AddContainer("misp", "misp-custom-image")
             .WithDockerfile("./resources/misp", "Dockerfile.MispCustom")
             .WithContainerName("misp")
+            .WithTags("misp", "service")
             .WaitFor(mispMysql)
             .WaitFor(mispRedis)
             .WithHttpEndpoint(port: 8444, targetPort: 80, name: "http", isProxied: false)
@@ -1260,6 +1315,7 @@ public static partial class BuilderExtensions
         var mispModules = builder.AddContainer("misp-modules", "misp-modules-custom")
             .WithDockerfile("./resources/misp", "Dockerfile.MispModules")
             .WithContainerName("misp-modules")
+            .WithTags("misp", "service")
             .WithHttpEndpoint(port: 8666, targetPort: 6666, isProxied: false)
             .WithBindMount("/mnt/data/crucible/misp/misp-module-moodle/misp_module.py", "/usr/local/lib/python3.12/site-packages/misp_modules/modules/action_mod/moodle.py", isReadOnly: false);
 
@@ -1293,7 +1349,8 @@ public static partial class BuilderExtensions
             "-c",
             $"rm -f {builder.AppHostDirectory}/.common-ui-build-ready && npm install && npx ng build crucible-common --watch | while IFS= read -r line; do echo \"$line\"; if echo \"$line\" | grep -q 'Compilation complete' && [ ! -f {builder.AppHostDirectory}/.common-ui-build-ready ]; then npm link dist/@crucible-common && touch {builder.AppHostDirectory}/.common-ui-build-ready; fi; done"
         ])
-        .WithHealthCheck("common-ui-healthy");
+        .WithHealthCheck("common-ui-healthy")
+        .WithTags("shared", "tooling");
 
         return commonUi;
     }
@@ -1305,12 +1362,14 @@ public static partial class BuilderExtensions
         if (!options.AddAllApplications && !IsEnabled(supersetMode))
             return;
 
-        var supersetDb = postgres.AddDatabase("supersetDb", "superset");
+        var supersetDb = postgres.AddDatabase("supersetDb", "superset")
+            .WithTags("superset", "database");
 
         var superset = builder.AddContainer("superset", "superset-custom-image")
             .WithDockerfile("./resources/superset", "Dockerfile.SupersetCustom")
             .WithLifetime(ContainerLifetime.Persistent)
             .WithContainerName("superset")
+            .WithTags("superset", "service")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpEndpoint(port: 8088, targetPort: 8088)
@@ -1383,9 +1442,11 @@ public static partial class BuilderExtensions
             .WithImageTag("8.0.31")
             .WithContainerName("catapult-mysql")
             .WithArgs("--default-authentication-plugin=mysql_native_password")
-            .WithDataVolume();
+            .WithDataVolume()
+            .WithTags("catapult", "database");
 
-        var catapultDb = catapultMysql.AddDatabase("catapultPlayerDb", "catapult_player");
+        var catapultDb = catapultMysql.AddDatabase("catapultPlayerDb", "catapult_player")
+            .WithTags("catapult", "database");
 
         // ADL publishes no prebuilt image; the repo's own Dockerfile builds the Node app
         // from source. Build from the cloned repo's player directory.
@@ -1396,6 +1457,7 @@ public static partial class BuilderExtensions
         var catapult = builder.AddContainer("catapult-player", "catapult-player-image")
             .WithDockerfile("/mnt/data/crucible/catapult/catapult/player", catapultDockerfile)
             .WithContainerName("catapult-player")
+            .WithTags("catapult", "service")
             // Imported package content lives on the container filesystem while the course
             // rows live in MySQL. The container is recreated on every Aspire run, so without
             // a volume the content goes and every existing cmi5 activity 404s on launch.
@@ -1452,6 +1514,7 @@ public static partial class BuilderExtensions
 
         // The repo has no launchSettings.json, so the endpoints and environment are set here.
         var chronicleApi = builder.AddDotnetProject("chronicle-api", $"{rangerSrc}/chronicle/Chronicle.Api/Chronicle.Api.csproj")
+            .WithTags("rangerai", "api")
             .WithHttpEndpoint(port: 5285, isProxied: false)
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
@@ -1463,6 +1526,7 @@ public static partial class BuilderExtensions
             .WaitFor(chronicleApi);
 
         var scenarioBuilderApi = builder.AddDotnetProject("scenario-builder-api", $"{rangerSrc}/scenario-builder/api/ScenarioBuilder.Api/ScenarioBuilder.Api.csproj")
+            .WithTags("rangerai", "api")
             .WithHttpEndpoint(port: 5280, isProxied: false)
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
@@ -1470,7 +1534,8 @@ public static partial class BuilderExtensions
 
         // Both prestart and prebuild bundle the agent using its locked development dependencies.
         var scenarioBuilderAgentInstall = builder.AddExecutable("scenario-builder-agent-install", "npm",
-            $"{rangerSrc}/scenario-builder/agent", "ci", "--include=dev");
+            $"{rangerSrc}/scenario-builder/agent", "ci", "--include=dev")
+            .WithTags("rangerai", "tooling");
 
         var scenarioBuilderUi = builder.AddRangerUI("scenario-builder-ui", $"{rangerSrc}/scenario-builder/ui", scenarioBuilderUiPort, uiMode)
             .WaitForCompletion(scenarioBuilderAgentInstall)
@@ -1507,6 +1572,13 @@ public static partial class BuilderExtensions
         {
             ui = builder.AddJavaScriptApp(name, uiRoot, "start")
                 .WithArgs("--", "--host", "0.0.0.0", "--port", port.ToString());
+
+            var installer = builder.Resources.OfType<JavaScriptInstallerResource>()
+                .FirstOrDefault(r => r.Name == $"{name}-installer");
+            if (installer != null)
+            {
+                builder.CreateResourceBuilder(installer).WithTags("rangerai", "tooling");
+            }
         }
         else
         {
@@ -1520,7 +1592,8 @@ public static partial class BuilderExtensions
         return ui.WithEnvironment("NG_CLI_ANALYTICS", "false")
             .WithEnvironment("NG_FORCE_AUTOCOMPLETE", "false")
             .WithHttpEndpoint(port: port, isProxied: false)
-            .WithHttpHealthCheck();
+            .WithHttpHealthCheck()
+            .WithTags("rangerai", "ui");
     }
 
     /// <summary>

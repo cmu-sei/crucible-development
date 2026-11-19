@@ -219,7 +219,8 @@ public static partial class BuilderExtensions
             builder.AppHostDirectory,
             "-c",
             $"bash {builder.AppHostDirectory}/../scripts/get-or-create-topomojo-apikey.sh")
-            .WaitFor(topoMojoApiBuilder);
+            .WaitFor(topoMojoApiBuilder)
+            .WithTags("moodle", "tooling");
     }
 
     /// <summary>
@@ -261,7 +262,8 @@ public static partial class BuilderExtensions
 
         EnsureMoodleCoreMounts(instance);
 
-        var moodleDb = postgres.AddDatabase(instance.DbResourceName, instance.DbName);
+        var moodleDb = postgres.AddDatabase(instance.DbResourceName, instance.DbName)
+            .WithTags("moodle", "database");
 
         // Read AWS credentials from ~/.aws/credentials file
         var awsCreds = AwsCredentials.Read();
@@ -283,6 +285,7 @@ public static partial class BuilderExtensions
         var siteUrl = "http://localhost:" + instance.Port;
 
         var moodle = builder.AddContainer(instance.Name, $"{instance.Name}-custom-image")
+            .WithTags("moodle", "service")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithDockerfile("./resources/moodle", "Dockerfile.MoodleCustom")
