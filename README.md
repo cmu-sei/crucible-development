@@ -1174,6 +1174,7 @@ Some configuration files are git-ignored for local customization:
 - **`scripts/repos.local.json`** - Private/override repositories (see [Adding Private/Internal Repositories](#adding-privateinternal-repositories))
 - **`.claude/settings.local.json`** - Per-developer Claude Code settings (`.claude/settings.json` is the shared team config)
 - **`/home/vscode/.codex/config.toml`** - Per-developer Codex settings (`.devcontainer/codex/config.toml` is the shared dev container default)
+- **`.devcontainer/hooks/*.sh`** - Personal scripts run on every container start, such as installing extra VS Code extensions (see the [hooks README](.devcontainer/hooks/README.md))
 
 ## Library Development
 
