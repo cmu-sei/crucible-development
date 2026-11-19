@@ -1,6 +1,7 @@
 // Copyright 2025 Carnegie Mellon University. All Rights Reserved.
 // Released under a MIT (SEI)-style license. See LICENSE.md in the project root for license information.
 
+using Aspire.Hosting.Dotnet;
 using Crucible.AppHost;
 
 // Moodle resource wiring, split out of AppHost.cs.
@@ -203,10 +204,10 @@ public static partial class BuilderExtensions
             return null;
 
         // builder.Resources holds IResource, not IResourceBuilder<T> - a builder wraps a
-        // resource rather than being one - so filtering it for IResourceBuilder<ProjectResource>
-        // never matched and this always bailed out. Match the resource, then wrap it.
+        // resource rather than being one - so filtering it for IResourceBuilder<DotnetProjectResource>
+        // never matches. Match the resource, then wrap it.
         var topoMojoApi = builder.Resources
-            .OfType<ProjectResource>()
+            .OfType<DotnetProjectResource>()
             .FirstOrDefault(r => r.Name.StartsWith("topomojo") && !r.Name.Contains("ui"));
 
         if (topoMojoApi == null)

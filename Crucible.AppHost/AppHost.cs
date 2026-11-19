@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Configuration;
 using Crucible.AppHost;
 using System.Diagnostics;
+using Aspire.Hosting.Dotnet;
 using Aspire.Hosting.JavaScript;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -400,12 +401,14 @@ public static partial class BuilderExtensions
         var playerDb = postgres.AddDatabase("playerDb", "player")
             .WithDevSettings();
 
+        const string playerApiProject = "/mnt/data/crucible/player/player.api/Player.Api/Player.Api.csproj";
+
         builder.ConfigureApiSecrets(
-            new Projects.Player_Api().ProjectPath,
+            playerApiProject,
             "cmu-sei-crucible-player-api",
             playerDb.Resource.ConnectionStringExpression);
 
-        var playerApi = builder.AddProject<Projects.Player_Api>("player-api", launchProfileName: "Player.Api")
+        var playerApi = builder.AddDotnetProject("player-api", playerApiProject, project => project.LaunchProfileName = "Player.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -462,8 +465,10 @@ public static partial class BuilderExtensions
         var vmLoggingDb = postgres.AddDatabase("vmLoggingDb", "player_vm_logging")
             .WithDevSettings();
 
+        const string vmApiProject = "/mnt/data/crucible/player/vm.api/src/Player.Vm.Api/Player.Vm.Api.csproj";
+
         builder.ConfigureApiSecrets(
-            new Projects.Player_Vm_Api().ProjectPath,
+            vmApiProject,
             "cmu-sei-crucible-vm-api",
             vmDb.Resource.ConnectionStringExpression,
             new Dictionary<string, ReferenceExpression>
@@ -471,7 +476,7 @@ public static partial class BuilderExtensions
                 ["VmUsageLogging:PostgreSQL"] = vmLoggingDb.Resource.ConnectionStringExpression
             });
 
-        var vmApi = builder.AddProject<Projects.Player_Vm_Api>("player-vm-api", launchProfileName: "Player.Vm.Api")
+        var vmApi = builder.AddDotnetProject("player-vm-api", vmApiProject, project => project.LaunchProfileName = "Player.Vm.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -527,8 +532,10 @@ public static partial class BuilderExtensions
         var casterDb = postgres.AddDatabase("casterDb", "caster")
             .WithDevSettings();
 
+        const string casterApiProject = "/mnt/data/crucible/caster/caster.api/src/Caster.Api/Caster.Api.csproj";
+
         builder.ConfigureApiSecrets(
-            new Projects.Caster_Api().ProjectPath,
+            casterApiProject,
             "cmu-sei-crucible-caster-api",
             casterDb.Resource.ConnectionStringExpression);
 
@@ -551,7 +558,7 @@ public static partial class BuilderExtensions
         .WithExplicitStart()
         .WithParentRelationship(minikubeStart); ;
 
-        var casterApi = builder.AddProject<Projects.Caster_Api>("caster-api", launchProfileName: "Caster.Api")
+        var casterApi = builder.AddDotnetProject("caster-api", casterApiProject, project => project.LaunchProfileName = "Caster.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WaitForCompletion(minikubeStart)
@@ -596,7 +603,7 @@ public static partial class BuilderExtensions
     /// <summary>
     /// Adds a dev Gitea as Caster's module source. Off unless Gitea is enabled.
     /// </summary>
-    private static void AddGitea(this IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> casterApi, UiMode? casterMode, LaunchOptions options)
+    private static void AddGitea(this IDistributedApplicationBuilder builder, IResourceBuilder<DotnetProjectResource> casterApi, UiMode? casterMode, LaunchOptions options)
     {
         var giteaMode = ResolveMode(options.Gitea, "Gitea", options);
 
@@ -670,12 +677,14 @@ public static partial class BuilderExtensions
         var alloyDb = postgres.AddDatabase("alloyDb", "alloy")
             .WithDevSettings();
 
+        const string alloyApiProject = "/mnt/data/crucible/alloy/alloy.api/Alloy.Api/Alloy.Api.csproj";
+
         builder.ConfigureApiSecrets(
-            new Projects.Alloy_Api().ProjectPath,
+            alloyApiProject,
             "cmu-sei-crucible-alloy-api",
             alloyDb.Resource.ConnectionStringExpression);
 
-        var alloyApi = builder.AddProject<Projects.Alloy_Api>("alloy-api", launchProfileName: "Alloy.Api")
+        var alloyApi = builder.AddDotnetProject("alloy-api", alloyApiProject, project => project.LaunchProfileName = "Alloy.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -732,12 +741,14 @@ public static partial class BuilderExtensions
         var topoDb = postgres.AddDatabase("topoDb", "topomojo")
             .WithDevSettings();
 
+        const string topoApiProject = "/mnt/data/crucible/topomojo/topomojo/src/TopoMojo.Api/TopoMojo.Api.csproj";
+
         builder.ConfigureApiSecrets(
-            new Projects.TopoMojo_Api().ProjectPath,
+            topoApiProject,
             "cmu-sei-crucible-topomojo-api",
             topoDb.Resource.ConnectionStringExpression);
 
-        var topoApi = builder.AddProject<Projects.TopoMojo_Api>("topomojo")
+        var topoApi = builder.AddDotnetProject("topomojo", topoApiProject)
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithReference(topoDb, "PostgreSQL")
@@ -881,12 +892,14 @@ public static partial class BuilderExtensions
         var steamfitterDb = postgres.AddDatabase("steamfitterDb", "steamfitter")
             .WithDevSettings();
 
+        const string steamfitterApiProject = "/mnt/data/crucible/steamfitter/steamfitter.api/Steamfitter.Api/Steamfitter.Api.csproj";
+
         builder.ConfigureApiSecrets(
-            new Projects.Steamfitter_Api().ProjectPath,
+            steamfitterApiProject,
             "cmu-sei-crucible-steamfitter-api",
             steamfitterDb.Resource.ConnectionStringExpression);
 
-        var steamfitterApi = builder.AddProject<Projects.Steamfitter_Api>("steamfitter-api", launchProfileName: "Steamfitter.Api")
+        var steamfitterApi = builder.AddDotnetProject("steamfitter-api", steamfitterApiProject, project => project.LaunchProfileName = "Steamfitter.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -936,12 +949,14 @@ public static partial class BuilderExtensions
         var citeDb = postgres.AddDatabase("citeDb", "cite")
             .WithDevSettings();
 
+        const string citeApiProject = "/mnt/data/crucible/cite/cite.api/Cite.Api/Cite.Api.csproj";
+
         builder.ConfigureApiSecrets(
-            new Projects.Cite_Api().ProjectPath,
+            citeApiProject,
             "cmu-sei-crucible-cite-api",
             citeDb.Resource.ConnectionStringExpression);
 
-        var citeApi = builder.AddProject<Projects.Cite_Api>("cite-api", launchProfileName: "Cite.Api")
+        var citeApi = builder.AddDotnetProject("cite-api", citeApiProject, project => project.LaunchProfileName = "Cite.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -991,12 +1006,14 @@ public static partial class BuilderExtensions
         var galleryDb = postgres.AddDatabase("galleryDb", "gallery")
             .WithDevSettings();
 
+        const string galleryApiProject = "/mnt/data/crucible/gallery/gallery.api/Gallery.Api/Gallery.Api.csproj";
+
         builder.ConfigureApiSecrets(
-            new Projects.Gallery_Api().ProjectPath,
+            galleryApiProject,
             "cmu-sei-crucible-gallery-api",
             galleryDb.Resource.ConnectionStringExpression);
 
-        var galleryApi = builder.AddProject<Projects.Gallery_Api>("gallery-api", launchProfileName: "Api")
+        var galleryApi = builder.AddDotnetProject("gallery-api", galleryApiProject, project => project.LaunchProfileName = "Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1046,12 +1063,14 @@ public static partial class BuilderExtensions
         var blueprintDb = postgres.AddDatabase("blueprintDb", "blueprint")
             .WithDevSettings();
 
+        const string blueprintApiProject = "/mnt/data/crucible/blueprint/blueprint.api/Blueprint.Api/Blueprint.Api.csproj";
+
         builder.ConfigureApiSecrets(
-            new Projects.Blueprint_Api().ProjectPath,
+            blueprintApiProject,
             "cmu-sei-crucible-blueprint-api",
             blueprintDb.Resource.ConnectionStringExpression);
 
-        var blueprintApi = builder.AddProject<Projects.Blueprint_Api>("blueprint-api", launchProfileName: "Blueprint.Api")
+        var blueprintApi = builder.AddDotnetProject("blueprint-api", blueprintApiProject, project => project.LaunchProfileName = "Blueprint.Api")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithHttpHealthCheck("api/health/ready")
@@ -1100,12 +1119,14 @@ public static partial class BuilderExtensions
         var gameboardDb = postgres.AddDatabase("gameboardDb", "gameboard")
             .WithDevSettings();
 
+        const string gameboardApiProject = "/mnt/data/crucible/gameboard/gameboard/src/Gameboard.Api/Gameboard.Api.csproj";
+
         builder.ConfigureApiSecrets(
-            new Projects.Gameboard_Api().ProjectPath,
+            gameboardApiProject,
             "cmu-sei-crucible-gameboard-api",
             gameboardDb.Resource.ConnectionStringExpression);
 
-        var gameboardApi = builder.AddProject<Projects.Gameboard_Api>("gameboard", launchProfileName: "Project")
+        var gameboardApi = builder.AddDotnetProject("gameboard", gameboardApiProject, project => project.LaunchProfileName = "Project")
             .WaitFor(postgres)
             .WaitFor(keycloak)
             .WithReference(gameboardDb, "PostgreSQL")
@@ -1430,7 +1451,7 @@ public static partial class BuilderExtensions
         var scenarioBuilderUiUrl = $"http://localhost:{scenarioBuilderUiPort}";
 
         // The repo has no launchSettings.json, so the endpoints and environment are set here.
-        var chronicleApi = builder.AddProject("chronicle-api", $"{rangerSrc}/chronicle/Chronicle.Api/Chronicle.Api.csproj")
+        var chronicleApi = builder.AddDotnetProject("chronicle-api", $"{rangerSrc}/chronicle/Chronicle.Api/Chronicle.Api.csproj")
             .WithHttpEndpoint(port: 5285, isProxied: false)
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
@@ -1441,7 +1462,7 @@ public static partial class BuilderExtensions
         var chronicleUi = builder.AddRangerUI("chronicle-ui", $"{rangerSrc}/chronicle/ui", 4320, uiMode)
             .WaitFor(chronicleApi);
 
-        var scenarioBuilderApi = builder.AddProject("scenario-builder-api", $"{rangerSrc}/scenario-builder/api/ScenarioBuilder.Api/ScenarioBuilder.Api.csproj")
+        var scenarioBuilderApi = builder.AddDotnetProject("scenario-builder-api", $"{rangerSrc}/scenario-builder/api/ScenarioBuilder.Api/ScenarioBuilder.Api.csproj")
             .WithHttpEndpoint(port: 5280, isProxied: false)
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Apps__0__Url", scenarioBuilderUiUrl)
@@ -1505,7 +1526,7 @@ public static partial class BuilderExtensions
     /// <summary>
     /// Keycloak settings for a RangerAI API, named like the Crucible APIs' Authorization section.
     /// </summary>
-    private static void ConfigureRangerAIKeycloak(IResourceBuilder<ProjectResource> api, IResourceBuilder<KeycloakResource> keycloak, string audience)
+    private static void ConfigureRangerAIKeycloak(IResourceBuilder<DotnetProjectResource> api, IResourceBuilder<KeycloakResource> keycloak, string audience)
     {
         const string realm = "https://localhost:8443/realms/crucible";
 
