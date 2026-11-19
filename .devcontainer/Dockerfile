@@ -139,8 +139,8 @@ RUN set -eux; \
     curl -fsSL --retry 3 -o /tmp/jira.tgz "https://github.com/ankitpokhrel/jira-cli/releases/download/v${JIRA_VERSION}/${JIRA_DIST}.tar.gz"; \
     echo "${TASK_SHA256}  /tmp/task.tgz" | sha256sum -c -; \
     echo "${JIRA_SHA256}  /tmp/jira.tgz" | sha256sum -c -; \
-    tar -xzf /tmp/task.tgz -C /usr/local/bin task; \
-    tar -xzf /tmp/jira.tgz -C /usr/local/bin --strip-components=2 "${JIRA_DIST}/bin/jira"; \
+    tar --no-same-owner -xzf /tmp/task.tgz -C /usr/local/bin task; \
+    tar --no-same-owner -xzf /tmp/jira.tgz -C /usr/local/bin --strip-components=2 "${JIRA_DIST}/bin/jira"; \
     rm /tmp/task.tgz /tmp/jira.tgz
 
 # Export GitHub token from gh CLI for MCP server auth
