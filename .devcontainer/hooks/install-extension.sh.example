@@ -9,12 +9,14 @@
 #   ext="my-publisher.my-extension"
 #   vsix="/mnt/data/my-extensions/my-extension-1.2.0.vsix"
 #   ...
-#   "$cli" --list-extensions | grep -qix "$ext" || "$cli" --install-extension "$vsix"
+#   "$cli" --list-extensions | grep -qixF "$ext" || "$cli" --install-extension "$vsix"
 #
 # Keep .vsix files on a volume that survives rebuilds, such as /mnt/data.
 ext="ms-vscode.hexeditor"
 
-cli=$(ls ~/.vscode-server/bin/*/bin/code-server 2>/dev/null | head -1)
-[ -n "$cli" ] || { echo "VS Code server not found; skipping $ext"; exit 0; }
+# Newest server first: after a VS Code update, older servers stay in ~/.vscode-server/bin.
+server=$(ls -td ~/.vscode-server/bin/* 2>/dev/null | head -1)
+cli="$server/bin/code-server"
+[ -n "$server" ] && [ -x "$cli" ] || { echo "VS Code server not found; skipping $ext"; exit 0; }
 
-"$cli" --list-extensions | grep -qix "$ext" || "$cli" --install-extension "$ext"
+"$cli" --list-extensions | grep -qixF "$ext" || "$cli" --install-extension "$ext"
