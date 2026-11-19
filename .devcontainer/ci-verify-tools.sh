@@ -23,6 +23,7 @@ check() {
 
 echo "Verifying core tools..."
 check dotnet     dotnet --version
+check dotnet-10  bash -c 'dotnet --list-sdks | grep "^10\."'
 check dotnet-11  bash -c 'dotnet --list-sdks | grep "^11\."'
 check aspire     aspire --version
 check node       node --version
