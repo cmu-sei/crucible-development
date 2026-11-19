@@ -1780,6 +1780,31 @@
       ],
       "access": {},
       "frontchannelLogout": true
+    },
+    {
+      "clientId": "scenario-builder.service",
+      "name": "Scenario Builder (service)",
+      "description": "Scenario Builder's API calling Chronicle as itself, with client credentials.",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "f1d58ac0e58a3ab290d22ecd064a54dd",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "display.on.consent.screen": "false",
+        "oauth2.device.authorization.grant.enabled": "false"
+      },
+      "defaultClientScopes": [
+        "chronicle",
+        "profile",
+        "roles",
+        "basic"
+      ],
+      "optionalClientScopes": []
     }
   ],
   "clientScopes": [

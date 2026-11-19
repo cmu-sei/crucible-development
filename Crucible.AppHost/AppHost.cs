@@ -1411,10 +1411,8 @@ public static partial class BuilderExtensions
 
     /// <summary>
     /// RangerAI (https://github.com/cmu-sei/rangerai): Chronicle and Scenario Builder, each a .NET API
-    /// with an Angular UI. The APIs keep their own SQLite files and don't use Postgres.
-    /// The APIs target net11.0, so the devcontainer needs the .NET 11 SDK.
-    /// With Launch:RangerAIKeycloak, the APIs receive the crucible realm's settings for
-    /// RangerAI versions that support login. Scenario Builder manages its own administrators.
+    /// with an Angular UI. Each API uses its own storage configuration (currently SQLite).
+    /// The APIs target net11.0. Launch:RangerAIKeycloak enables sign-in through the crucible realm.
     /// </summary>
     public static void AddRangerAI(this IDistributedApplicationBuilder builder, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
@@ -1459,8 +1457,13 @@ public static partial class BuilderExtensions
 
         if (options.RangerAIKeycloak)
         {
-            ConfigureRangerAIKeycloak(chronicleApi, keycloak, "chronicle.api", "chronicle");
-            ConfigureRangerAIKeycloak(scenarioBuilderApi, keycloak, "scenario-builder.ui", "scenario-builder");
+            ConfigureRangerAIKeycloak(chronicleApi, keycloak, "chronicle");
+            ConfigureRangerAIKeycloak(scenarioBuilderApi, keycloak, "scenario-builder");
+            scenarioBuilderApi
+                .WithEnvironment("Admins__0", "admin")
+                // Development service account in crucible-realm.json, used when publishing a scenario.
+                .WithEnvironment("Chronicle__Token__ClientId", "scenario-builder.service")
+                .WithEnvironment("Chronicle__Token__ClientSecret", "f1d58ac0e58a3ab290d22ecd064a54dd");
             chronicleUi.WaitFor(keycloak);
             scenarioBuilderUi.WaitFor(keycloak);
         }
@@ -1502,7 +1505,7 @@ public static partial class BuilderExtensions
     /// <summary>
     /// Keycloak settings for a RangerAI API, named like the Crucible APIs' Authorization section.
     /// </summary>
-    private static void ConfigureRangerAIKeycloak(IResourceBuilder<ProjectResource> api, IResourceBuilder<KeycloakResource> keycloak, string clientId, string audience)
+    private static void ConfigureRangerAIKeycloak(IResourceBuilder<ProjectResource> api, IResourceBuilder<KeycloakResource> keycloak, string audience)
     {
         const string realm = "https://localhost:8443/realms/crucible";
 
@@ -1510,7 +1513,9 @@ public static partial class BuilderExtensions
             .WithEnvironment("Authorization__Authority", realm)
             .WithEnvironment("Authorization__AuthorizationUrl", $"{realm}/protocol/openid-connect/auth")
             .WithEnvironment("Authorization__TokenUrl", $"{realm}/protocol/openid-connect/token")
-            .WithEnvironment("Authorization__ClientId", clientId)
+            // Browser callbacks go through the UI's /api proxy. Swagger callbacks use the API port.
+            .WithEnvironment("Authorization__ClientId", $"{audience}.ui")
+            .WithEnvironment("Authorization__SwaggerClientId", $"{audience}.api")
             .WithEnvironment("Authorization__Audience", audience);
     }
 
