@@ -111,6 +111,8 @@ The default admin user credentials are:
 
 `Crucible.AppHost/resources/crucible-realm.json` is the shared definition of the `crucible` realm. On every launch the `keycloak-config` resource ([keycloak-config-cli](https://github.com/adorsys/keycloak-config-cli)) applies it to the running Keycloak. On a fresh database, Keycloak's own import first creates the realm and the seed users with their fixed IDs, which only that import can do; `keycloak-config` then fills in everything else. APIs that need the realm wait for it to finish.
 
+The realm turns HSTS off (`strictTransportSecurity` is `max-age=0` in `browserSecurityHeaders`). HSTS is per host name, not per port, so once Safari or WebKit visits Keycloak at `https://localhost:8443` it would upgrade every `http://localhost:*` app URL to HTTPS and fail with a TLS error. The dev stack serves the apps over plain HTTP, so keep this off here.
+
 - **Unchanged file:** the import is skipped, so the launch stays fast and the live realm is left alone.
 - **Changed file:** everything the file defines is applied, overwriting manual edits to those same clients, users, roles and settings. Seeded users' passwords are reset to the file's values.
 - **Manual additions survive:** clients, users, roles and groups you add in the admin console are never deleted. Only things that were once in the file and were later removed from it are deleted.
