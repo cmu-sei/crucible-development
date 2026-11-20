@@ -28,13 +28,26 @@ done
 
 # GraySpace runs with every RangerAI profile, simulated, with its own sign-in. Sign in through the
 # UI's API proxy and list the simulated deployments.
+if [[ ! -d /mnt/data/crucible/grayspace ]]; then
+  echo "GraySpace isn't cloned, so the AppHost left it out. Run scripts/clone-repos.sh and restart the AppHost." >&2
+  exit 1
+fi
 curl -fsS http://localhost:8010/health >/dev/null
+status=$(curl -sS --output /dev/null --write-out '%{http_code}' http://localhost:3000/api/v1/deployments)
+[[ $status == 401 ]] || { echo "GraySpace's deployments returned $status without a sign-in, expected 401" >&2; exit 1; }
 grayspace_token=$(curl -fsS -X POST http://localhost:3000/api/v1/auth/login -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"grayspace-dev"}' | jq -er '.token')
 curl -fsS -H "Authorization: Bearer $grayspace_token" http://localhost:3000/api/v1/deployments |
   jq -e 'map(.id) | index("dev") != null' >/dev/null
-curl -fsS http://localhost:9090/api/v1/targets |
-  jq -e '[.data.activeTargets[] | select(.labels.job == "frr" or .labels.job == "node") | .health] == ["up", "up"]' >/dev/null
+# The targets are "unknown" until Prometheus's first scrape (every 5s).
+for attempt in {1..12}; do
+  if curl -fsS http://localhost:9090/api/v1/targets |
+      jq -e '[.data.activeTargets[] | select(.labels.job == "frr" or .labels.job == "node") | .health] | sort == ["up", "up"]' >/dev/null; then
+    break
+  fi
+  [[ $attempt -lt 12 ]] || { echo "Prometheus isn't scraping GraySpace's simulated router metrics" >&2; exit 1; }
+  sleep 5
+done
 echo "GraySpace API health, sign-in through the UI, simulated deployments and Prometheus scrape targets passed."
 
 if [[ ${2:-} == keycloak ]]; then
