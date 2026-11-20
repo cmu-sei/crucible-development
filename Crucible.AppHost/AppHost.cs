@@ -1163,10 +1163,12 @@ public static partial class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery cite caster")
             .WithEnvironment("ClientSettings__CasterApiUrl", "http://localhost:4309/")
             .WithEnvironment("ClientSettings__PlayerVmApiUrl", "http://localhost:4302/")
-            // automation tasks: a fixed key for this dev stack only, so stored task secrets survive a restart, and
-            // http tasks may reach the other APIs on localhost, which a deployment refuses
+            // automation tasks: new task secrets are written with this machine's own key, kept in the AppHost's user
+            // secrets so they survive a restart; the first dev stacks' fixed key only reads the secrets they wrote.
+            // http tasks may reach the other APIs on localhost, which a deployment refuses.
+            .WithEnvironment("Automation__SecretKeys__local", builder.MachineAutomationKey())
             .WithEnvironment("Automation__SecretKeys__dev", "pUuB2SB8YOuV2dk1wlgR+Pe+GRqMXPi2SZuHcI/zARM=")
-            .WithEnvironment("Automation__ActiveSecretKeyId", "dev")
+            .WithEnvironment("Automation__ActiveSecretKeyId", "local")
             .WithEnvironment("Automation__Http__AllowLoopbackAddresses", "true")
             .WithEnvironment("ClientSettings__CasterUiUrl", "http://localhost:4310")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
@@ -1716,6 +1718,22 @@ public static partial class BuilderExtensions
         {
             RunProcess("dotnet", $"user-secrets init --id {userSecretsId} --project {projecFilePath}");
         }
+    }
+
+    /// <summary>
+    /// Blueprint's key for automation task secrets on this machine: 32 random bytes, made on the first run and kept in
+    /// the AppHost's user secrets, so a dev database's task secrets are not readable with a key in this repository.
+    /// </summary>
+    private static string MachineAutomationKey(this IDistributedApplicationBuilder builder)
+    {
+        const string setting = "Blueprint:AutomationSecretKey";
+        var key = builder.Configuration[setting];
+        if (string.IsNullOrEmpty(key))
+        {
+            key = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            SetUserSecret(Path.Combine(builder.AppHostDirectory, "Crucible.AppHost.csproj"), setting, key);
+        }
+        return key;
     }
 
     private static void SetUserSecret(string projectFilePath, string key, string value)
