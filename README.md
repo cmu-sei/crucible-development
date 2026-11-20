@@ -111,8 +111,6 @@ The default admin user credentials are:
 
 `Crucible.AppHost/resources/crucible-realm.json` is the shared definition of the `crucible` realm. On every launch the `keycloak-config` resource ([keycloak-config-cli](https://github.com/adorsys/keycloak-config-cli)) applies it to the running Keycloak. On a fresh database, Keycloak's own import first creates the realm and the seed users with their fixed IDs, which only that import can do; `keycloak-config` then fills in everything else. APIs that need the realm wait for it to finish.
 
-The realm turns HSTS off (`strictTransportSecurity` is `max-age=0` in `browserSecurityHeaders`). HSTS is per host name, not per port, so once Safari or WebKit visits Keycloak at `https://localhost:8443` it would upgrade every `http://localhost:*` app URL to HTTPS and fail with a TLS error. The dev stack serves the apps over plain HTTP, so keep this off here.
-
 - **Unchanged file:** the import is skipped, so the launch stays fast and the live realm is left alone.
 - **Changed file:** everything the file defines is applied, overwriting manual edits to those same clients, users, roles and settings. Seeded users' passwords are reset to the file's values.
 - **Manual additions survive:** clients, users, roles and groups you add in the admin console are never deleted. Only things that were once in the file and were later removed from it are deleted.
@@ -123,6 +121,8 @@ The file holds only what Crucible adds or changes: its clients, client scopes, r
 
 - Don't paste in a full realm export. Copy only the entries you changed, and leave out `id` fields, except on seed users. A user's ID becomes the `sub` claim that the apps store users by, so seed users keep fixed IDs to stay the same user in every environment and in shared database dumps.
 - A client's `defaultClientScopes` replaces the client's whole list, so keep `basic` in it. Without `basic`, Keycloak 25 and later leave the `sub` claim out of that client's tokens.
+
+The realm turns HSTS off (`strictTransportSecurity` is `max-age=0` in `browserSecurityHeaders`). HSTS is per host name, not per port, so once Safari or WebKit visits Keycloak at `https://localhost:8443` with it on, the browser upgrades every `http://localhost:*` app URL to HTTPS and fails with a TLS error, because the dev apps serve plain HTTP. `max-age=0` also clears an entry a browser already stored, the next time it loads a `crucible` realm page over HTTPS. Keycloak's `master` realm, where the admin console at `/admin` lives, still sends HSTS, so avoid opening `https://localhost:8443/admin` in Safari, or load a `crucible` realm page afterwards to clear it.
 - User attributes such as `organization` work because the file's `userProfile` sets `unmanagedAttributePolicy` to `ADMIN_EDIT`: admins (and so this import) can set any attribute, and users can't see or change them in the account console. Without a user profile, Keycloak 24 and later drop attributes it doesn't know about. The rest of `userProfile` is a copy of Keycloak's default profile, because Keycloak replaces the whole profile rather than merging a partial one. After a Keycloak upgrade, refresh it: create a throwaway realm, copy its profile from **Realm settings → User profile → JSON editor** into `userProfile`, set `unmanagedAttributePolicy` back to `ADMIN_EDIT`, and delete the throwaway realm.
 
 #### Moving admin-console changes into the file
