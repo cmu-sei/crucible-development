@@ -68,6 +68,9 @@ if [ -d "$PLAYWRIGHT_TESTING_DIR" ]; then
     echo "Installing Playwright browser binaries..."
     npx playwright install chromium
     npx playwright install firefox
+    # WebKit (the engine behind Safari) also needs system libraries from apt, which are not
+    # in a persisted volume, so --with-deps reinstalls them on every rebuild.
+    npx playwright install --with-deps webkit
   ) &
   PLAYWRIGHT_SETUP_PID=$!
 fi
