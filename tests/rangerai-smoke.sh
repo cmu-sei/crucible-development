@@ -26,6 +26,17 @@ for route in http://localhost:4320/events/harbor-ttx http://localhost:4330/admin
   fi
 done
 
+# GraySpace runs with every RangerAI profile, simulated, with its own sign-in. Sign in through the
+# UI's API proxy and list the simulated deployments.
+curl -fsS http://localhost:8010/health >/dev/null
+grayspace_token=$(curl -fsS -X POST http://localhost:3000/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"grayspace-dev"}' | jq -er '.token')
+curl -fsS -H "Authorization: Bearer $grayspace_token" http://localhost:3000/api/v1/deployments |
+  jq -e 'map(.id) | index("dev") != null' >/dev/null
+curl -fsS http://localhost:9090/api/v1/targets |
+  jq -e '[.data.activeTargets[] | select(.labels.job == "frr" or .labels.job == "node") | .health] == ["up", "up"]' >/dev/null
+echo "GraySpace API health, sign-in through the UI, simulated deployments and Prometheus scrape targets passed."
+
 if [[ ${2:-} == keycloak ]]; then
   for path in localhost:4320/api/chronicles localhost:4330/api/me localhost:4330/api/admin/scenario-types; do
     status=$(curl -sS --output /dev/null --write-out '%{http_code}' "http://$path")

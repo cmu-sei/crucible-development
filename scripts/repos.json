@@ -238,6 +238,10 @@
     {
       "name": "rangerai",
       "url": "https://github.com/cmu-sei/rangerai"
+    },
+    {
+      "name": "grayspace",
+      "url": "https://github.com/cmu-sei/grayspace"
     }
   ]
 }
