@@ -39,6 +39,11 @@ grayspace_token=$(curl -fsS -X POST http://localhost:3000/api/v1/auth/login -H '
   -d '{"username":"admin","password":"grayspace-dev"}' | jq -er '.token')
 curl -fsS -H "Authorization: Bearer $grayspace_token" http://localhost:3000/api/v1/deployments |
   jq -e 'map(.id) | index("dev") != null' >/dev/null
+# The app switchers and the dashboard's Swagger link use the ports the apps have here.
+switcher='map({(.id): .url}) | add | .["scenario-builder"] == "http://localhost:4330" and
+  .grayspace == "http://localhost:3000" and .chronicle == "http://localhost:4320"'
+curl -fsS -H "Authorization: Bearer $grayspace_token" http://localhost:3000/api/apps | jq -e "$switcher" >/dev/null
+curl -fsS --output /dev/null http://localhost:8010/control/docs
 # The targets are "unknown" until Prometheus's first scrape (every 5s).
 for attempt in {1..12}; do
   if curl -fsS http://localhost:9090/api/v1/targets |
@@ -48,7 +53,7 @@ for attempt in {1..12}; do
   [[ $attempt -lt 12 ]] || { echo "Prometheus isn't scraping GraySpace's simulated router metrics" >&2; exit 1; }
   sleep 5
 done
-echo "GraySpace API health, sign-in through the UI, simulated deployments and Prometheus scrape targets passed."
+echo "GraySpace API health, sign-in through the UI, simulated deployments, app switcher and Prometheus scrape targets passed."
 
 if [[ ${2:-} == keycloak ]]; then
   for path in localhost:4320/api/chronicles localhost:4330/api/me localhost:4330/api/admin/scenario-types; do
@@ -75,4 +80,6 @@ fi
 curl -fsS http://localhost:4320/api/chronicles | jq -e 'type == "array"' >/dev/null
 curl -fsS http://localhost:4330/api/me | jq -e '.user == "dev" and .admin == true' >/dev/null
 curl -fsS http://localhost:4330/api/admin/scenario-types | jq -e 'type == "array"' >/dev/null
-echo "RangerAI $mode UI routes, API proxies and default administrator passed."
+curl -fsS http://localhost:4320/api/apps | jq -e "$switcher" >/dev/null
+curl -fsS http://localhost:4330/api/apps | jq -e "$switcher" >/dev/null
+echo "RangerAI $mode UI routes, API proxies, app switchers and default administrator passed."
