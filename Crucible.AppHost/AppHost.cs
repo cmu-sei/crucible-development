@@ -1160,8 +1160,15 @@ public static partial class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__ClientId", "blueprint.admin")
             .WithEnvironment("ResourceOwnerAuthorization__UserName", "crucible-admin")
             .WithEnvironment("ResourceOwnerAuthorization__Password", "admin")
-            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery steamfitter cite caster")
+            .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm gallery cite caster")
             .WithEnvironment("ClientSettings__CasterApiUrl", "http://localhost:4309/")
+            .WithEnvironment("ClientSettings__PlayerVmApiUrl", "http://localhost:4302/")
+            // automation tasks: new task secrets are written with this machine's own key, kept in the AppHost's user
+            // secrets so they survive a restart; the first dev stacks' fixed key only reads the secrets they wrote, and
+            // writes new ones only on a run whose own key could not be saved. http tasks may reach the other APIs on
+            // localhost, which a deployment refuses.
+            .WithAutomationKeys(builder.MachineAutomationKey())
+            .WithEnvironment("Automation__Http__AllowLoopbackAddresses", "true")
             .WithEnvironment("ClientSettings__CasterUiUrl", "http://localhost:4310")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false");
 
@@ -1709,6 +1716,79 @@ public static partial class BuilderExtensions
         if (existingUserSecretsId == null)
         {
             RunProcess("dotnet", $"user-secrets init --id {userSecretsId} --project {projecFilePath}");
+        }
+    }
+
+    private const string FixedDevAutomationKey = "pUuB2SB8YOuV2dk1wlgR+Pe+GRqMXPi2SZuHcI/zARM=";
+
+    /// <summary>The automation keys: this machine's, active, and the fixed one, to read what it wrote; the fixed one only, without a machine key.</summary>
+    private static IResourceBuilder<T> WithAutomationKeys<T>(this IResourceBuilder<T> resource, string? machineKey)
+        where T : IResourceWithEnvironment
+    {
+        resource.WithEnvironment("Automation__SecretKeys__dev", FixedDevAutomationKey);
+        if (machineKey is null)
+            return resource.WithEnvironment("Automation__ActiveSecretKeyId", "dev");
+        return resource
+            .WithEnvironment("Automation__SecretKeys__local", machineKey)
+            .WithEnvironment("Automation__ActiveSecretKeyId", "local");
+    }
+
+    /// <summary>
+    /// Blueprint's key for automation task secrets on this machine: 32 random bytes, made on the first run and kept in
+    /// the AppHost's user secrets, so a dev database's task secrets are not readable with a key in this repository.
+    /// It is written straight to the secrets file under a lock, so two AppHosts starting at once agree on one key and
+    /// the key never appears on a command line or in a log. Null when it could not be saved: a key that would not
+    /// survive the next run is not used to write secrets.
+    /// </summary>
+    private static string? MachineAutomationKey(this IDistributedApplicationBuilder builder)
+    {
+        const string setting = "Blueprint:AutomationSecretKey";
+        if (builder.Configuration[setting] is { Length: > 0 } configured)
+            return configured;
+        try
+        {
+            var id = typeof(BuilderExtensions).Assembly
+                .GetCustomAttributes(typeof(Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute), false)
+                .OfType<Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute>()
+                .Single().UserSecretsId;
+            var path = Microsoft.Extensions.Configuration.UserSecrets.PathHelper.GetSecretsPathFromSecretsId(id);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            using var gate = LockFile(path + ".lock");
+            var secrets = File.Exists(path)
+                ? System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))?.AsObject() ?? new System.Text.Json.Nodes.JsonObject()
+                : new System.Text.Json.Nodes.JsonObject();
+            // another AppHost may have saved one while this one waited for the lock
+            if (secrets[setting]?.GetValue<string>() is { Length: > 0 } saved)
+                return saved;
+            var key = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            secrets[setting] = key;
+            var written = path + ".tmp";
+            File.WriteAllText(written, secrets.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+            File.Move(written, path, overwrite: true);
+            return key;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Blueprint's automation key could not be saved to the AppHost's user secrets ({ex.GetType().Name}); " +
+                "this run writes new task secrets with the fixed dev key.");
+            return null;
+        }
+    }
+
+    /// <summary>Holds a lock file for the caller, waiting up to 30 s for another process to let it go.</summary>
+    private static FileStream LockFile(string path)
+    {
+        var until = DateTime.UtcNow.AddSeconds(30);
+        while (true)
+        {
+            try
+            {
+                return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            }
+            catch (IOException) when (DateTime.UtcNow < until)
+            {
+                Thread.Sleep(100);
+            }
         }
     }
 
