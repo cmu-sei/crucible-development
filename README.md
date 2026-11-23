@@ -1015,7 +1015,7 @@ Moodle plugins are checked two independent ways, and a plugin repo's CI runs bot
 | | What it checks | Where the tool lives | How to run it |
 |---|---|---|---|
 | **PHPUnit** | Behaviour. Does the code do the right thing? | `vendor/bin/phpunit` inside the Moodle container | `./scripts/moodle-phpunit.sh mod_topomojo` |
-| **phpcs + moodle-cs** | Style and docblocks. Does the code look like Moodle code? | `phpcs` in the dev container, from `moodlehq/moodle-cs` | `./scripts/moodle-lint.sh mod/topomojo` |
+| **phpcs + moodle-cs** | Style and docblocks. Does the code look like Moodle code? | `moodle-plugin-ci phpcs`, the same command CI runs, from the dev container | `./scripts/moodle-lint.sh mod/topomojo` |
 
 Neither substitutes for the other. A plugin can pass every test and still fail CI on 1800
 sniff violations, and vice versa.
@@ -1036,9 +1036,9 @@ resolves with no further configuration. `phpcs` and `phpcbf` land in
 comment there for why neither `devcontainer.json` env block can set `PATH` instead. Both the
 global install and the composer download cache are named volumes, so they survive rebuilds.
 
-**`moodlehq/moodle-plugin-ci`** is deliberately **not** installed anywhere in this repo. Each
-plugin repo's GitHub Actions workflow installs it per-job, which is the only place it is
-needed. Two reasons not to have it locally:
+**`moodlehq/moodle-plugin-ci`** is not part of the dev container image. Each plugin repo's
+GitHub Actions workflow installs it per-job, and `scripts/moodle-lint.sh` installs its own copy
+under `/mnt/data/crucible/.moodle-ci/ci-lint` on first use. Two things shape that:
 
 - It cannot be installed with `composer global require`, because it depends on
   `moodlehq/moodle-local_ci`, which is not on packagist. The only supported install is
@@ -1049,8 +1049,12 @@ needed. Two reasons not to have it locally:
   spawn phpcs at all. CI never sees this, because a fresh checkout has neither directory.
 
 `scripts/moodle-lint.sh` sidesteps that by linting only the files git tracks, which is
-exactly the set CI sees, and by setting the same phpcs runtime options `moodle-plugin-ci`
-does, so the violation counts match.
+exactly the set CI sees. It copies them into a Moodle tree (`/mnt/data/crucible/.moodle-ci/moodle`)
+and runs `moodle-plugin-ci phpcs` itself, with the newest moodle-cs, as CI does. Plain `phpcs`
+on the plugin directory is not enough: several sniffs only work inside a Moodle tree (lang file
+ordering, the file docblock position, PHPUnit coverage tags), and the moodle-cs in the dev
+container's composer global is older than the one CI installs, so a plugin can be clean there
+and still fail CI. `./scripts/moodle-lint.sh --update-ci` refreshes the local `moodle-plugin-ci`.
 
 **PHPUnit** ships as a dev dependency of Moodle itself, so it lives in the **Moodle
 container**, not the dev container. It needs a full Moodle install, a generated
@@ -1109,14 +1113,14 @@ Three things to know:
 # Apply every auto-fixable violation via phpcbf
 ./scripts/moodle-lint.sh mod/topomojo --fix
 
-# Anything else is passed through to phpcs
-./scripts/moodle-lint.sh mod/topomojo --report=source
-./scripts/moodle-lint.sh mod/topomojo --sniffs=moodle.Commenting.InlineComment
+# Tally violations by sniff
+./scripts/moodle-lint.sh mod/topomojo --summary
 ```
 
-The path is absolute, or relative to `/mnt/data/crucible/moodle`. `--report=source` gives a
+The path is absolute, or relative to `/mnt/data/crucible/moodle`. `--summary` gives a
 per-sniff tally, which is the useful view when burning down a large backlog — most of the
-volume is usually a handful of sniffs, and `--fix` clears the bulk of it.
+volume is usually a handful of sniffs, and `--fix` clears the bulk of it. Only errors fail
+CI; warnings are listed but leave the exit code at 0.
 
 ### Adding Additional Official Plugins for Moodle
 
