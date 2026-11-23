@@ -14,7 +14,7 @@
 # Options:
 #   --fix        run phpcbf instead of phpcs, applying every auto-fixable violation, then copy the
 #                changes back into the plugin checkout
-#   --summary    count violations by sniff (phpcs --report=source) instead of listing them
+#   --summary    count violations by sniff code instead of listing them
 #   --update-ci  reinstall moodle-plugin-ci so the local moodle-cs matches what CI installs today
 #
 # Why not plain phpcs: the sniffs that matter most here only work inside a Moodle tree (lang file
@@ -40,15 +40,35 @@ usage() {
   exit 2
 }
 
+# One run at a time: two runs would trample each other's copy of the plugin, and a reinstall
+# would delete moodle-plugin-ci under a running lint.
+lock() {
+  mkdir -p "$CI_ROOT"
+  exec 9>"${CI_ROOT}/.moodle-lint.lock"
+  if ! flock -n 9; then
+    echo "Another moodle-lint.sh run is in progress (lock ${CI_ROOT}/.moodle-lint.lock)" >&2
+    exit 1
+  fi
+}
+
 install_ci() {
-  # Same command the workflow runs; ^4 is the current major.
+  # Same command the workflow runs; ^4 is the current major. Install beside the old copy and
+  # swap on success, so a failed download leaves the working install in place.
+  rm -rf "${CI_LINT}.new"
+  composer create-project -n --no-dev --prefer-dist moodlehq/moodle-plugin-ci "${CI_LINT}.new" ^4
   rm -rf "$CI_LINT"
-  composer create-project -n --no-dev --prefer-dist moodlehq/moodle-plugin-ci "$CI_LINT" ^4
+  mv "${CI_LINT}.new" "$CI_LINT"
+}
+
+# Copy the git-tracked files of $1 into $2, skipping any that are deleted in the working tree.
+copy_tracked() {
+  git -C "$1" ls-files -z | tar -C "$1" --null -T - --ignore-failed-read -cf - | tar -C "$2" -xf -
 }
 
 [ $# -ge 1 ] || usage
 
 if [ "$1" = "--update-ci" ]; then
+  lock
   install_ci
   exit 0
 fi
@@ -88,13 +108,14 @@ if [ ! -f "${MOODLE_TREE}/version.php" ]; then
   exit 1
 fi
 
+lock
 if [ ! -x "${CI_LINT}/bin/moodle-plugin-ci" ]; then
   echo "Installing moodle-plugin-ci into ${CI_LINT} (one time)..."
   install_ci
 fi
 
 # The plugin's directory inside the Moodle tree comes from its component name.
-component=$(sed -n "s/.*\$plugin->component *= *['\"]\([a-z0-9_]*\)['\"].*/\1/p" "${target}/version.php" | head -1)
+component=$(sed -n "s/^[[:space:]]*\$plugin->component *= *['\"]\([a-z0-9_]*\)['\"].*/\1/p" "${target}/version.php" | head -1)
 if [ -z "$component" ]; then
   echo "No \$plugin->component in ${target}/version.php" >&2
   exit 2
@@ -111,6 +132,21 @@ case "$type" in
   qbehaviour) base=question/behaviour ;;
   tool) base=admin/tool ;;
   aiplacement) base=ai/placement ;;
+  aiprovider) base=ai/provider ;;
+  format) base=course/format ;;
+  gradereport) base=grade/report ;;
+  gradeexport) base=grade/export ;;
+  gradeimport) base=grade/import ;;
+  report) base=report ;;
+  auth) base=auth ;;
+  enrol) base=enrol ;;
+  filter) base=filter ;;
+  editor) base=lib/editor ;;
+  repository) base=repository ;;
+  logstore) base=admin/tool/log/store ;;
+  assignsubmission) base=mod/assign/submission ;;
+  assignfeedback) base=mod/assign/feedback ;;
+  qformat) base=question/format ;;
   *)
     echo "Unknown plugin type '${type}' for ${component}; add it to the case in $(basename "$0")" >&2
     exit 2
@@ -118,6 +154,15 @@ case "$type" in
 esac
 dest="${MOODLE_TREE}/${base}/${name}"
 mkdir -p "$(dirname "$dest")"
+if [ "$(realpath -m "$dest")" = "$(realpath "$target")" ]; then
+  echo "${target} is the copy inside the Moodle tree; point the script at the plugin's own checkout" >&2
+  exit 2
+fi
+count=$(git -C "$target" ls-files -- '*.php' | wc -l)
+if [ "$count" -eq 0 ]; then
+  echo "No tracked PHP files in $target"
+  exit 0
+fi
 if [ -L "$dest" ]; then
   echo "${dest} is a symlink; refusing to lint through it" >&2
   exit 1
@@ -133,12 +178,6 @@ restore() {
     mv "$aside" "$dest"
   fi
 }
-# One lint at a time: two runs would trample each other's copy and backup.
-exec 9>"${CI_ROOT}/.moodle-lint.lock"
-if ! flock -n 9; then
-  echo "Another moodle-lint.sh run is in progress (lock ${CI_ROOT}/.moodle-lint.lock)" >&2
-  exit 1
-fi
 # A backup left by a run that was killed holds the original plugin: put it back first.
 if [ -d "$aside" ]; then
   rm -rf "$dest"
@@ -152,28 +191,27 @@ trap restore EXIT
 # Lint exactly the tracked files, which is what a CI checkout contains. Several checkouts carry a
 # gitignored vendor/ or node_modules/ that CI never sees.
 mkdir -p "$dest"
-git -C "$target" ls-files -z | rsync -a --from0 --files-from=- "$target/" "$dest/"
-count=$(git -C "$target" ls-files -- '*.php' | wc -l)
+copy_tracked "$target" "$dest"
 echo "Running moodle-plugin-ci ${mode} (moodle-cs $(sed -n '/"name": "moodlehq\/moodle-cs"/{n;s/.*"version": "\(.*\)".*/\1/p}' "${CI_LINT}/composer.lock" | head -1)) over ${count} PHP files for ${component} in ${MOODLE_TREE}"
 
 export MOODLE_DIR="$MOODLE_TREE"
+ci="${CI_LINT}/bin/moodle-plugin-ci"
 status=0
-if [ "$summary" -eq 1 ]; then
-  (cd "$dest" && "${CI_LINT}/vendor/bin/phpcs" --standard=moodle --extensions=php -s --report=source \
-    --runtime-set ignore_warnings_on_exit 1 .) || status=$?
-else
-  "${CI_LINT}/bin/moodle-plugin-ci" "$mode" "$dest" || status=$?
-fi
-
 if [ "$mode" = "phpcbf" ]; then
+  # moodle-plugin-ci phpcbf always exits 0, so it says nothing about what is left. Fix, copy the
+  # changes back, then run the real check and report its result.
+  "$ci" phpcbf "$dest" || true
   # Copy back only files that git tracks, so a stray file in the Moodle tree never lands in the plugin.
-  git -C "$target" ls-files -z | rsync -a --from0 --files-from=- "$dest/" "$target/"
+  git -C "$target" ls-files -z | tar -C "$dest" --null -T - --ignore-failed-read -cf - | tar -C "$target" -xf -
   echo "Applied fixes to ${target}. Review with: git -C ${target} diff --stat"
-  # phpcbf exits 1 when it fixed everything it found; that is not a failure here. Any other
-  # non-zero status (violations it cannot fix, or a crash) is passed on.
-  if [ "$status" -eq 1 ]; then
-    status=0
-  fi
+  echo "Re-checking what is left:"
+  "$ci" phpcs "$dest" || status=$?
+elif [ "$summary" -eq 1 ]; then
+  # Same run as CI (same files, same options), with the sniff codes from its output counted.
+  out=$("$ci" phpcs "$dest" 2>&1) || status=$?
+  printf '%s\n' "$out" | grep -oE '\([A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+\)$' | tr -d '()' | sort | uniq -c | sort -rn || true
+else
+  "$ci" phpcs "$dest" || status=$?
 fi
 
 exit "$status"
