@@ -12,8 +12,8 @@
 #   scripts/moodle-lint.sh --update-ci
 #
 # Options:
-#   --fix        run phpcbf instead of phpcs, applying every auto-fixable violation, then copy the
-#                changes back into the plugin checkout
+#   --fix        apply every auto-fixable violation with phpcbf, copy the changes back into the
+#                plugin checkout, then re-run the CI check and exit with its result
 #   --summary    count violations by sniff code instead of listing them
 #   --update-ci  reinstall moodle-plugin-ci so the local moodle-cs matches what CI installs today
 #
@@ -60,9 +60,15 @@ install_ci() {
   mv "${CI_LINT}.new" "$CI_LINT"
 }
 
-# Copy the git-tracked files of $1 into $2, skipping any that are deleted in the working tree.
+# Copy the files tracked by the git checkout $1 from directory $2 into directory $3. Files that are
+# deleted in the working tree are skipped; other read errors stay fatal. Submodules are not
+# descended into, as in a CI checkout without them.
 copy_tracked() {
-  git -C "$1" ls-files -z | tar -C "$1" --null -T - --ignore-failed-read -cf - | tar -C "$2" -xf -
+  git -C "$1" ls-files -z |
+    while IFS= read -r -d '' f; do
+      if [ -e "$2/$f" ] || [ -L "$2/$f" ]; then printf '%s\0' "$f"; fi
+    done |
+    tar -C "$2" --null --no-recursion -T - -cf - | tar -C "$3" -xf -
 }
 
 [ $# -ge 1 ] || usage
@@ -191,7 +197,7 @@ trap restore EXIT
 # Lint exactly the tracked files, which is what a CI checkout contains. Several checkouts carry a
 # gitignored vendor/ or node_modules/ that CI never sees.
 mkdir -p "$dest"
-copy_tracked "$target" "$dest"
+copy_tracked "$target" "$target" "$dest"
 echo "Running moodle-plugin-ci ${mode} (moodle-cs $(sed -n '/"name": "moodlehq\/moodle-cs"/{n;s/.*"version": "\(.*\)".*/\1/p}' "${CI_LINT}/composer.lock" | head -1)) over ${count} PHP files for ${component} in ${MOODLE_TREE}"
 
 export MOODLE_DIR="$MOODLE_TREE"
@@ -202,14 +208,20 @@ if [ "$mode" = "phpcbf" ]; then
   # changes back, then run the real check and report its result.
   "$ci" phpcbf "$dest" || true
   # Copy back only files that git tracks, so a stray file in the Moodle tree never lands in the plugin.
-  git -C "$target" ls-files -z | tar -C "$dest" --null -T - --ignore-failed-read -cf - | tar -C "$target" -xf -
+  copy_tracked "$target" "$dest" "$target"
   echo "Applied fixes to ${target}. Review with: git -C ${target} diff --stat"
   echo "Re-checking what is left:"
   "$ci" phpcs "$dest" || status=$?
 elif [ "$summary" -eq 1 ]; then
   # Same run as CI (same files, same options), with the sniff codes from its output counted.
   out=$("$ci" phpcs "$dest" 2>&1) || status=$?
-  printf '%s\n' "$out" | grep -oE '\([A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+\)$' | tr -d '()' | sort | uniq -c | sort -rn || true
+  tally=$(printf '%s\n' "$out" | grep -oE '\([A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+\)$' | tr -d '()' | sort | uniq -c | sort -rn || true)
+  if [ -n "$tally" ]; then
+    printf '%s\n' "$tally"
+  elif [ "$status" -ne 0 ]; then
+    # Failed without any sniff results: show why.
+    printf '%s\n' "$out" >&2
+  fi
 else
   "$ci" phpcs "$dest" || status=$?
 fi
