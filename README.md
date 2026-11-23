@@ -93,7 +93,7 @@ Each profile runs a different subset of services depending on what you're workin
 - **Default** - Launches most services (resource-intensive)
 - **Player**, **Blueprint**, **Caster**, **Steamfitter**, etc. - Focused on a single application
 - **RangerAI** - Runs Chronicle (UI on port 4320, API on 5285) and Scenario Builder (UI on 4330, API on 5280). Rebuild an existing dev container for the .NET 11 SDK and Aspire 17.
-- **RangerAI + Keycloak** - Sign in to either UI through the `crucible` realm. Use `admin` / `admin` for Scenario Builder administration. Scenario Builder publishes to Chronicle with its own service account. Both profiles use each app’s default SQLite database and start the shared PostgreSQL and Keycloak resources.
+- **RangerAI + Keycloak** - Sign in to either UI through the `crucible` realm. Use `admin` / `admin` for Scenario Builder administration. Scenario Builder publishes to Chronicle with its own service account. Both profiles use each app’s default SQLite database and start the shared PostgreSQL and Keycloak resources. Both also run [GraySpace](https://github.com/cmu-sei/grayspace) in its simulated mode, which needs no Proxmox (UI on port 3000, API on 8010, Prometheus on 9090, simulated router metrics on 9342). GraySpace has its own sign-in in both profiles: `admin`, `builder` or `user`, with the password `grayspace-dev`.
 - **Exercise**, **TTX** - Multi-app profiles for specific workflows
 - **Moodle**, **Moodle Debug** - Moodle development, with **Moodle Debug** also attaching the PHP Xdebug listener
 - **All Apps (Stopped)** - Registers all applications and leaves unselected apps stopped. Choose Angular dev or static hosting with `DefaultUiMode`.

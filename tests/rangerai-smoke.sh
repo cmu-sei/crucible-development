@@ -26,6 +26,35 @@ for route in http://localhost:4320/events/harbor-ttx http://localhost:4330/admin
   fi
 done
 
+# GraySpace runs with every RangerAI profile, simulated, with its own sign-in. Sign in through the
+# UI's API proxy and list the simulated deployments.
+if [[ ! -d /mnt/data/crucible/grayspace ]]; then
+  echo "GraySpace isn't cloned, so the AppHost left it out. Run scripts/clone-repos.sh and restart the AppHost." >&2
+  exit 1
+fi
+curl -fsS http://localhost:8010/health >/dev/null
+status=$(curl -sS --output /dev/null --write-out '%{http_code}' http://localhost:3000/api/v1/deployments)
+[[ $status == 401 ]] || { echo "GraySpace's deployments returned $status without a sign-in, expected 401" >&2; exit 1; }
+grayspace_token=$(curl -fsS -X POST http://localhost:3000/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"grayspace-dev"}' | jq -er '.token')
+curl -fsS -H "Authorization: Bearer $grayspace_token" http://localhost:3000/api/v1/deployments |
+  jq -e 'map(.id) | index("dev") != null' >/dev/null
+# The app switchers and the dashboard's Swagger link use the ports the apps have here.
+switcher='map({(.id): .url}) | add | .["scenario-builder"] == "http://localhost:4330" and
+  .grayspace == "http://localhost:3000" and .chronicle == "http://localhost:4320"'
+curl -fsS -H "Authorization: Bearer $grayspace_token" http://localhost:3000/api/apps | jq -e "$switcher" >/dev/null
+curl -fsS --output /dev/null http://localhost:8010/control/docs
+# The targets are "unknown" until Prometheus's first scrape (every 5s).
+for attempt in {1..12}; do
+  if curl -fsS http://localhost:9090/api/v1/targets |
+      jq -e '[.data.activeTargets[] | select(.labels.job == "frr" or .labels.job == "node") | .health] | sort == ["up", "up"]' >/dev/null; then
+    break
+  fi
+  [[ $attempt -lt 12 ]] || { echo "Prometheus isn't scraping GraySpace's simulated router metrics" >&2; exit 1; }
+  sleep 5
+done
+echo "GraySpace API health, sign-in through the UI, simulated deployments, app switcher and Prometheus scrape targets passed."
+
 if [[ ${2:-} == keycloak ]]; then
   for path in localhost:4320/api/chronicles localhost:4330/api/me localhost:4330/api/admin/scenario-types; do
     status=$(curl -sS --output /dev/null --write-out '%{http_code}' "http://$path")
@@ -51,4 +80,6 @@ fi
 curl -fsS http://localhost:4320/api/chronicles | jq -e 'type == "array"' >/dev/null
 curl -fsS http://localhost:4330/api/me | jq -e '.user == "dev" and .admin == true' >/dev/null
 curl -fsS http://localhost:4330/api/admin/scenario-types | jq -e 'type == "array"' >/dev/null
-echo "RangerAI $mode UI routes, API proxies and default administrator passed."
+curl -fsS http://localhost:4320/api/apps | jq -e "$switcher" >/dev/null
+curl -fsS http://localhost:4330/api/apps | jq -e "$switcher" >/dev/null
+echo "RangerAI $mode UI routes, API proxies, app switchers and default administrator passed."
