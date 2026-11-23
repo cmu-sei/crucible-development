@@ -1036,9 +1036,9 @@ resolves with no further configuration. `phpcs` and `phpcbf` land in
 comment there for why neither `devcontainer.json` env block can set `PATH` instead. Both the
 global install and the composer download cache are named volumes, so they survive rebuilds.
 
-**`moodlehq/moodle-plugin-ci`** is deliberately **not** installed anywhere in this repo. Each
-plugin repo's GitHub Actions workflow installs it per-job, which is the only place it is
-needed. Two reasons not to have it locally:
+**`moodlehq/moodle-plugin-ci`** is not part of the dev container image. Each plugin repo's
+GitHub Actions workflow installs it per-job, and `scripts/moodle-lint.sh` installs its own copy
+under `/mnt/data/crucible/.moodle-ci/ci-lint` on first use. Two things shape that:
 
 - It cannot be installed with `composer global require`, because it depends on
   `moodlehq/moodle-local_ci`, which is not on packagist. The only supported install is

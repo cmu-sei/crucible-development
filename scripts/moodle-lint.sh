@@ -71,6 +71,10 @@ for arg in "$@"; do
     *) usage ;;
   esac
 done
+if [ "$mode" = "phpcbf" ] && [ "$summary" -eq 1 ]; then
+  echo "--fix and --summary cannot be combined" >&2
+  usage
+fi
 
 if ! git -C "$target" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Not a git repository: $target" >&2
@@ -129,7 +133,17 @@ restore() {
     mv "$aside" "$dest"
   fi
 }
-rm -rf "$aside"
+# One lint at a time: two runs would trample each other's copy and backup.
+exec 9>"${CI_ROOT}/.moodle-lint.lock"
+if ! flock -n 9; then
+  echo "Another moodle-lint.sh run is in progress (lock ${CI_ROOT}/.moodle-lint.lock)" >&2
+  exit 1
+fi
+# A backup left by a run that was killed holds the original plugin: put it back first.
+if [ -d "$aside" ]; then
+  rm -rf "$dest"
+  mv "$aside" "$dest"
+fi
 if [ -e "$dest" ]; then
   mv "$dest" "$aside"
 fi
@@ -155,8 +169,11 @@ if [ "$mode" = "phpcbf" ]; then
   # Copy back only files that git tracks, so a stray file in the Moodle tree never lands in the plugin.
   git -C "$target" ls-files -z | rsync -a --from0 --files-from=- "$dest/" "$target/"
   echo "Applied fixes to ${target}. Review with: git -C ${target} diff --stat"
-  # phpcbf exits non-zero when it fixed something; that is not a failure here.
-  status=0
+  # phpcbf exits 1 when it fixed everything it found; that is not a failure here. Any other
+  # non-zero status (violations it cannot fix, or a crash) is passed on.
+  if [ "$status" -eq 1 ]; then
+    status=0
+  fi
 fi
 
 exit "$status"
