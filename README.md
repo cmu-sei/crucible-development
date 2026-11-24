@@ -961,14 +961,14 @@ With the hierarchical directory structure, `launch.json` uses **simplified pathM
 ```json
 {
   // Specific paths for moodle-core (must come first)
-  "/var/www/html/theme": "/mnt/data/crucible/moodle/moodle-core/theme",
-  "/var/www/html/lib": "/mnt/data/crucible/moodle/moodle-core/lib",
-  "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/moodle-core/admin/cli",
-  "/var/www/html/ai/provider": "/mnt/data/crucible/moodle/moodle-core/ai/provider",
-  "/var/www/html/ai/classes": "/mnt/data/crucible/moodle/moodle-core/ai/classes",
+  "/var/www/html/public/theme": "/mnt/data/crucible/moodle/moodle-core-52/theme",
+  "/var/www/html/public/lib": "/mnt/data/crucible/moodle/moodle-core-52/lib",
+  "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/moodle-core-52/admin/cli",
+  "/var/www/html/public/ai/provider": "/mnt/data/crucible/moodle/moodle-core-52/ai/provider",
+  "/var/www/html/public/ai/classes": "/mnt/data/crucible/moodle/moodle-core-52/ai/classes",
 
   // General catch-all for ALL plugins
-  "/var/www/html": "/mnt/data/crucible/moodle"
+  "/var/www/html/public": "/mnt/data/crucible/moodle"
 }
 ```
 
