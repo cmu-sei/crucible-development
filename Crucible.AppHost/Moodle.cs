@@ -96,7 +96,7 @@ public static partial class BuilderExtensions
                     boostUnion: "2026042012",
                     boostDark: "2026052400",
                     dynamicCohorts: "2026031300")),
-            // Moodle 5.3 test instance - the next LTS. Also left out of
+            // Moodle 5.3 test instance - the next LTS. Left out of
             // AddAllApplications; Launch__Moodle53 asks for it.
             new MoodleInstance(
                 Name: "moodle53",

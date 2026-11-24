@@ -823,7 +823,7 @@ public static partial class BuilderExtensions
         if (launchpointIncluded)
         {
             topoApi = topoApi
-                .WithEnvironment("Headers__Cors__Origins__2", topoLaunchpointUiUrl)
+                .WithEnvironment("Headers__Cors__Origins__3", topoLaunchpointUiUrl)
                 .WithEnvironment("Core__LaunchUrl", topoLaunchpointUiUrl);
         }
 
