@@ -160,7 +160,6 @@
     6080, // noVNC (Playwright headed browser)
     // Moodle. Declared explicitly because the containers are persistent: recreating one
     // replaces the listening socket, and an auto-detected forward does not survive that.
-    8081, // Moodle 5.0
     8082, // Moodle 5.2
     8083, // Moodle 5.3
     // CATAPULT player. cmi5 launch URLs are pinned to localhost:3398, so a remapped

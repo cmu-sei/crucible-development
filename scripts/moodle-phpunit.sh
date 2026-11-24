@@ -13,7 +13,7 @@
 #   scripts/moodle-phpunit.sh mod_topomojo              # run one plugin's suite
 #   scripts/moodle-phpunit.sh mod_topomojo --strict     # with the flags CI fails on
 #   scripts/moodle-phpunit.sh --rebuild-config          # after adding a new test file
-#   scripts/moodle-phpunit.sh -c moodle52 mod_topomojo  # against Moodle 5.2
+#   scripts/moodle-phpunit.sh -c moodle53 mod_topomojo  # against Moodle 5.3
 #   scripts/moodle-phpunit.sh mod_topomojo -- --filter test_add_instance
 #
 # --init is not part of container startup, deliberately. It installs ~70 composer dev
@@ -30,7 +30,7 @@
 
 set -euo pipefail
 
-CONTAINER="${MOODLE_CONTAINER:-moodle}"
+CONTAINER="${MOODLE_CONTAINER:-moodle52}"
 MODE=run
 STRICT=0
 SUITE=""
@@ -40,7 +40,7 @@ usage() {
   cat >&2 <<'EOF'
 Usage: moodle-phpunit.sh [-c CONTAINER] [--init | --rebuild-config | <component>] [--strict] [-- phpunit args]
 
-  -c, --container NAME  Moodle container to use (default: moodle, or $MOODLE_CONTAINER)
+  -c, --container NAME  Moodle container to use (default: moodle52, or $MOODLE_CONTAINER)
   -i, --init            Provision the PHPUnit environment in the container, then exit
       --rebuild-config  Regenerate phpunit.xml, needed after adding a test file or plugin
       --strict          Add the --fail-on-* flags moodle-plugin-ci uses in CI

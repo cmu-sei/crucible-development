@@ -294,8 +294,8 @@ configure_session_cookie() {
 
   # Cookies are scoped by host and ignore the port, so every Moodle instance on
   # localhost shares one jar. Both default to the MoodleSession cookie name, which
-  # means signing in to 8082 silently overwrites the 8081 session, and the next
-  # click on 8081 fails with a session timeout - in either direction. Give each
+  # means signing in to 8083 silently overwrites the 8082 session, and the next
+  # click on 8082 fails with a session timeout - in either direction. Give each
   # instance its own cookie name, taken from the port in SITE_URL.
   #
   # The image has no environment variable for this and chmods config.php read-only

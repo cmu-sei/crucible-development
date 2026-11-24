@@ -5,14 +5,14 @@
 # Aspire runs side by side. Stay on the plain tags (not -php84): those are a second
 # PHP build of the same Moodle branch, and the ABI resolution below already picks up
 # whatever PHP the plain tag ships.
-ARG MOODLE_BASE_IMAGE=erseco/alpine-moodle:v5.0.0
+ARG MOODLE_BASE_IMAGE=erseco/alpine-moodle:v5.2.2
 FROM ${MOODLE_BASE_IMAGE}
 
 USER root
 
 # Install Xdebug cleanly without apk update. Alpine names both the package and the
 # conf.d directory after PHP's major.minor, and that moves with the Moodle branch
-# (5.0 and 5.2 ship PHP 8.3, 5.3 ships 8.4), so resolve it from the image's own php
+# (5.2 ships PHP 8.3, 5.3 ships 8.4), so resolve it from the image's own php
 # rather than hardcoding one. Hardcoding php83 on a php84 image installs a second
 # PHP runtime and drops the ini where the running PHP never reads it, which leaves
 # Xdebug quietly absent instead of failing the build.

@@ -4049,7 +4049,7 @@ foreach (\$tasks as \$task) {
 
 rebuild_course_cache(\$courseid, true);
 echo "Upserted {\$upserted} Moodle Crucible task definition rows\n";
-echo "Activity URL: http://localhost:8081/mod/crucible/view.php?id={\$cm->id}\n";
+echo "Activity URL: http://localhost:8082/mod/crucible/view.php?id={\$cm->id}\n";
 PHP
 }
 
@@ -4605,7 +4605,7 @@ mode_setup() {
     echo "  • Caster UI: http://localhost:4310/projects/${RESOURCE_IDS[caster_project1]}"
     echo "  • TopoMojo UI: http://localhost:4201"
     if [ -n "$moodle_task_grading_cmid" ]; then
-        echo "  • Moodle Task-Grading Lab: http://localhost:8081/mod/crucible/view.php?id=$moodle_task_grading_cmid"
+        echo "  • Moodle Task-Grading Lab: http://localhost:8082/mod/crucible/view.php?id=$moodle_task_grading_cmid"
     fi
     echo ""
 

@@ -69,7 +69,7 @@ Client applications are identified by port number in activity IRIs:
 | 4403 | Alloy |
 | 4310 | Caster |
 | 5000 | TopoMojo |
-| 8081 | Moodle |
+| 8082 | Moodle |
 
 ### Cross-App Correlation
 

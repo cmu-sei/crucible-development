@@ -16,7 +16,6 @@ public class LaunchOptions
     public bool Gallery { get; set; }
     public bool Blueprint { get; set; }
     public bool Gameboard { get; set; }
-    public bool Moodle { get; set; }
     public bool Moodle52 { get; set; }
     public bool Moodle53 { get; set; }
     public bool Lrsql { get; set; }
