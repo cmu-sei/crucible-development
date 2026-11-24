@@ -76,7 +76,7 @@ public static partial class BuilderExtensions
                 Mode: ResolveMode(options.Moodle52, "Moodle52", options),
                 IncludeWithAll: true,
                 // Versions the plugin API reports for branch 5.2 (boost_union v5.2-r8,
-                // boost_dark 1.3.7, userdebug v5.0.3 which spans through 5.2).
+                // boost_dark 1.3.7, userdebug v5.0.4 which spans through 5.2).
                 //
                 // dynamic_cohorts: upstream ships one build for 4.4 through 5.1 and none
                 // for 5.2. It declares $plugin->supported = [404, 501], so 5.2 lists it as
@@ -84,7 +84,7 @@ public static partial class BuilderExtensions
                 // 2022112800 and 015-copy-plugins.sh unzips into the tree directly, so it
                 // installs and upgrades anyway. Move the pin to a real 5.2 release when there is one.
                 MarketplacePlugins: MarketplacePluginsFor(
-                    toolUserdebug: "2025070300",
+                    toolUserdebug: "2025070400",
                     boostUnion: "2026042012",
                     boostDark: "2026052400",
                     dynamicCohorts: "2026031300")),
@@ -118,7 +118,7 @@ public static partial class BuilderExtensions
                 //
                 // Move each of these to a real 5.3 release as upstream ships one.
                 MarketplacePlugins: MarketplacePluginsFor(
-                    toolUserdebug: "2025070300",
+                    toolUserdebug: "2025070400",
                     boostUnion: null,
                     boostDark: null,
                     dynamicCohorts: "2026031300",
