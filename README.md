@@ -644,18 +644,18 @@ Moodle will be configured using files located in `scripts/` and `resources/moodl
 When starting for the first time, Moodle will make a copy of some core files that will
 be copied into mounts on the dev container's file system so that they are accessible for
 debugging with xdebug. These files will be mounted alongside our repos under the folder
-`/mnt/data/crucible/moodle/moodle-core/`. The xAPI logstore plugin will also be configured
+`/mnt/data/crucible/moodle/moodle-core-52/`. The xAPI logstore plugin will also be configured
 automatically as will one default Moodle course with no activities within it.
 
 ### Moodle Tasks
 
 The following Moodle task configurations are available:
 
-- **`.env/moodle.env`** - Moodle without Xdebug (faster, for general development/testing)
+- **`.env/moodle.env`** - Moodle 5.2 without Xdebug (faster, for general development/testing)
 - **`.env/moodle-xdebug.env`** - Moodle with Xdebug enabled (for PHP debugging)
 - **`.env/catapult.env`** - Moodle + the ADL CATAPULT cmi5 player + LRS, for cmi5/xAPI content (launches Moodle, Catapult, and Lrsql together)
-- **`.env/moodle52.env`** - Moodle 5.2 test instance (see below)
-- **`.env/moodle53.env`** - Moodle 5.3 test instance (see below)
+- **`.env/moodle52.env`** - the same Moodle 5.2 instance as `moodle.env`
+- **`.env/moodle53.env`** - Moodle 5.3 test instance, side by side with 5.2 (see below)
 
 Use the appropriate task based on whether you need to debug PHP code. Xdebug has significant performance overhead, so only enable it when actively debugging.
 
@@ -666,24 +666,24 @@ Moodle against an older instance's database runs irreversible upgrade migrations
 that, the older version will not start against it. Each instance therefore gets its own
 container name, port, database, and `moodle-core` mount:
 
-| | Moodle 5.0 | Moodle 5.2 | Moodle 5.3 |
-| --- | --- | --- | --- |
-| Launch task | `.env/moodle.env` | `.env/moodle52.env` | `.env/moodle53.env` |
-| URL | http://localhost:8081 | http://localhost:8082 | http://localhost:8083 |
-| Container | `moodle` | `moodle52` | `moodle53` |
-| Database | `moodle` | `moodle52` | `moodle53` |
-| Core mount | `/mnt/data/crucible/moodle/moodle-core/` | `/mnt/data/crucible/moodle/moodle-core-52/` | `/mnt/data/crucible/moodle/moodle-core-53/` |
-| Container web root | `/var/www/html` | `/var/www/html/public` | `/var/www/html/public` |
+| | Moodle 5.2 | Moodle 5.3 |
+| --- | --- | --- |
+| Launch task | `.env/moodle.env` or `.env/moodle52.env` | `.env/moodle53.env` |
+| URL | http://localhost:8082 | http://localhost:8083 |
+| Container | `moodle52` | `moodle53` |
+| Database | `moodle52` | `moodle53` |
+| Core mount | `/mnt/data/crucible/moodle/moodle-core-52/` | `/mnt/data/crucible/moodle/moodle-core-53/` |
+| Container web root | `/var/www/html/public` | `/var/www/html/public` |
 
-5.3 is the next LTS; 5.2 is what production rides until it reaches end of support. 5.0 is
-the instance with the seeded TopoMojo demo data.
+5.2 is the default and what production runs until it reaches end of support; 5.3 is the next
+LTS. Moodle 5.0 is no longer run here.
 
 Every instance shares the same Dockerfile (`resources/moodle/Dockerfile.MoodleCustom`); the
 base image comes from the `MOODLE_BASE_IMAGE` build arg. The plugins mounted from
 `repos.json` are shared, but marketplace plugin versions are pinned per instance in
 `AppHost.cs` since those downloads are branch-specific.
 
-The base image's PHP version moves with the Moodle branch - 5.0 and 5.2 ship PHP 8.3, 5.3
+The base image's PHP version moves with the Moodle branch - 5.2 ships PHP 8.3, 5.3
 ships 8.4 - and Alpine names both the Xdebug package and the `conf.d` directory after it
 (`php83-pecl-xdebug`, `/etc/php83/conf.d`). The Dockerfile resolves that from the image's
 own `php` rather than hardcoding a version, because the hardcoded form fails silently:
@@ -761,7 +761,7 @@ Moodle plugins are stored in a hierarchical directory structure that mirrors the
   ├── mod/crucible/          # mod_crucible plugin
   ├── admin/tool/lptmanager/ # tool_lptmanager plugin
   ├── blocks/crucible/       # block_crucible plugin
-  └── moodle-core/           # Core Moodle files (theme, lib, etc.)
+  └── moodle-core-52/        # Core Moodle files (theme, lib, etc.)
 ```
 
 To add new Moodle plugin repositories, add them to `scripts/repos.json` or `scripts/repos.local.json`. The clone script automatically maps plugin names to the correct hierarchical paths. **Everything else is automatic:**
@@ -961,14 +961,14 @@ With the hierarchical directory structure, `launch.json` uses **simplified pathM
 ```json
 {
   // Specific paths for moodle-core (must come first)
-  "/var/www/html/theme": "/mnt/data/crucible/moodle/moodle-core/theme",
-  "/var/www/html/lib": "/mnt/data/crucible/moodle/moodle-core/lib",
-  "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/moodle-core/admin/cli",
-  "/var/www/html/ai/provider": "/mnt/data/crucible/moodle/moodle-core/ai/provider",
-  "/var/www/html/ai/classes": "/mnt/data/crucible/moodle/moodle-core/ai/classes",
+  "/var/www/html/public/theme": "/mnt/data/crucible/moodle/moodle-core-52/theme",
+  "/var/www/html/public/lib": "/mnt/data/crucible/moodle/moodle-core-52/lib",
+  "/var/www/html/admin/cli": "/mnt/data/crucible/moodle/moodle-core-52/admin/cli",
+  "/var/www/html/public/ai/provider": "/mnt/data/crucible/moodle/moodle-core-52/ai/provider",
+  "/var/www/html/public/ai/classes": "/mnt/data/crucible/moodle/moodle-core-52/ai/classes",
 
   // General catch-all for ALL plugins
-  "/var/www/html": "/mnt/data/crucible/moodle"
+  "/var/www/html/public": "/mnt/data/crucible/moodle"
 }
 ```
 
@@ -1081,8 +1081,8 @@ every F5.
 # After adding a new test file or a new plugin, phpunit.xml has to be regenerated
 ./scripts/moodle-phpunit.sh --rebuild-config
 
-# Against the Moodle 5.2 container, or pass anything through to phpunit
-./scripts/moodle-phpunit.sh -c moodle52 mod_topomojo
+# Against the Moodle 5.3 container (the default is 5.2), or pass anything through to phpunit
+./scripts/moodle-phpunit.sh -c moodle53 mod_topomojo
 ./scripts/moodle-phpunit.sh mod_topomojo -- --filter test_topomojo_supports
 ```
 

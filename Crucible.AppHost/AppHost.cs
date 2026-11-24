@@ -46,7 +46,7 @@ static void LogLaunchOptions(LaunchOptions launchOptions)
     Console.WriteLine($"  Player: {launchOptions.Player}, Caster: {launchOptions.Caster}, Alloy: {launchOptions.Alloy}");
     Console.WriteLine($"  Gallery: {launchOptions.Gallery}, Cite: {launchOptions.Cite}");
     Console.WriteLine($"  Blueprint: {launchOptions.Blueprint}, Steamfitter: {launchOptions.Steamfitter}");
-    Console.WriteLine($"  Moodle: {launchOptions.Moodle}, Moodle52: {launchOptions.Moodle52}, Moodle53: {launchOptions.Moodle53}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
+    Console.WriteLine($"  Moodle52: {launchOptions.Moodle52}, Moodle53: {launchOptions.Moodle53}, Lrsql: {launchOptions.Lrsql}, Misp: {launchOptions.Misp}, Catapult: {launchOptions.Catapult}");
     Console.WriteLine($"  TopoMojo: {launchOptions.TopoMojo}, TopoMojo Launchpoint: {launchOptions.TopoMojoLaunchpoint}, Gameboard: {launchOptions.Gameboard}, RangerAI: {launchOptions.RangerAI}, RangerAIKeycloak: {launchOptions.RangerAIKeycloak}");
     Console.WriteLine($"  PGAdmin: {launchOptions.PGAdmin}, Docs: {launchOptions.Docs}, Gitea: {launchOptions.Gitea}, AddAllApplications: {launchOptions.AddAllApplications}");
     Console.WriteLine($"  DefaultUiMode: {launchOptions.DefaultUiMode}");
@@ -738,9 +738,8 @@ public static partial class BuilderExtensions
             .WithEnvironment("ResourceOwnerAuthorization__Scope", "player player-vm alloy steamfitter caster")
             .WithEnvironment("ResourceOwnerAuthorization__ValidateDiscoveryDocument", "false")
             .WithEnvironment("CorsPolicy__Origins__0", "http://localhost:4403") // for alloy-ui
-            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8081") // for moodle
-            .WithEnvironment("CorsPolicy__Origins__2", "http://localhost:8082") // for moodle52
-            .WithEnvironment("CorsPolicy__Origins__3", "http://localhost:8083"); // for moodle53
+            .WithEnvironment("CorsPolicy__Origins__1", "http://localhost:8082") // for moodle52
+            .WithEnvironment("CorsPolicy__Origins__2", "http://localhost:8083"); // for moodle53
 
         var alloyUiRoot = "/mnt/data/crucible/alloy/alloy.ui";
 
@@ -805,9 +804,8 @@ public static partial class BuilderExtensions
             .WithEnvironment("OpenApi__Client__ClientId", "topomojo.api")
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
             .WithEnvironment("Headers__Cors__Origins__0", "http://localhost:4201") // for topo-ui
-            .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8081") // for moodle
-            .WithEnvironment("Headers__Cors__Origins__2", "http://localhost:8082") // for moodle52
-            .WithEnvironment("Headers__Cors__Origins__3", "http://localhost:8083") // for moodle53
+            .WithEnvironment("Headers__Cors__Origins__1", "http://localhost:8082") // for moodle52
+            .WithEnvironment("Headers__Cors__Origins__2", "http://localhost:8083") // for moodle53
             .WithEnvironment("Headers__Cors__Methods__0", "*")
             .WithEnvironment("Headers__Cors__Headers__0", "*")
             .WithEnvironment("Headers__Cors__AllowCredentials", "true");
@@ -825,7 +823,7 @@ public static partial class BuilderExtensions
         if (launchpointIncluded)
         {
             topoApi = topoApi
-                .WithEnvironment("Headers__Cors__Origins__2", topoLaunchpointUiUrl)
+                .WithEnvironment("Headers__Cors__Origins__3", topoLaunchpointUiUrl)
                 .WithEnvironment("Core__LaunchUrl", topoLaunchpointUiUrl);
         }
 
@@ -1331,7 +1329,7 @@ public static partial class BuilderExtensions
             .WithEnvironment("CRON_USER_ID", "1")
             .WithEnvironment("USERID", "33")
             .WithEnvironment("GROUPID", "33")
-            .WithEnvironment("MOODLE_URL", "http://localhost:8081")
+            .WithEnvironment("MOODLE_URL", "http://localhost:8082")
             // OIDC authentication via Keycloak
             .WithEnvironment("OIDC_PROVIDER_URL", "http://keycloak:8080/realms/crucible")
             .WithEnvironment("OIDC_ISSUER", "http://localhost:8080/realms/crucible")
@@ -1457,7 +1455,7 @@ public static partial class BuilderExtensions
     public static void AddCatapult(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
         var catapultMode = ResolveMode(options.Catapult, "Catapult", options);
-        var moodleMode = ResolveMode(options.Moodle, "Moodle", options);
+        var moodleMode = ResolveMode(options.Moodle52, "Moodle52", options);
         var catapultEnabled = IsEnabled(catapultMode) && IsEnabled(moodleMode);
 
         if (!options.AddAllApplications && !catapultEnabled)

@@ -51,7 +51,7 @@ SELECT
         WHEN a.activity_iri LIKE '%:4310/%' OR a.activity_iri LIKE '%caster%' THEN 'Caster'
         WHEN a.activity_iri LIKE '%:5000/%' OR a.activity_iri LIKE '%topomojo%' THEN 'TopoMojo'
         WHEN a.activity_iri LIKE '%:4303/%' THEN 'Player VM'
-        WHEN a.activity_iri LIKE '%:8081/%' OR a.activity_iri LIKE '%moodle%' THEN 'Moodle'
+        WHEN a.activity_iri LIKE '%:8081/%' OR a.activity_iri LIKE '%:8082/%' OR a.activity_iri LIKE '%moodle%' THEN 'Moodle'
         ELSE 'Other'
     END AS client_app,
     REPLACE(REPLACE(s.verb_iri, 'http://adlnet.gov/expapi/verbs/', ''), 'https://w3id.org/xapi/dod-isd/verbs/', '') AS verb,
