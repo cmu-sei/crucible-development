@@ -15,6 +15,10 @@ public static partial class BuilderExtensions
     /// WebRoot is where the Moodle tree lives inside the container. Moodle 5.1 moved
     /// everything web-accessible under public/, so plugins and core directories sit one
     /// level deeper on 5.1+ (admin/cli stays outside the web root in both layouts).
+    ///
+    /// CoreMountRoot is seeded from the image when its folders are empty, and pre_configure.sh records which image
+    /// it seeded them from. When BaseImage changes, the next boot copies each folder to CoreMountRoot/.previous and
+    /// seeds it again, since the old code would otherwise run beside the new image, lib/db/upgrade.php included.
     /// </summary>
     private sealed record MoodleInstance(
         string Name,
@@ -40,9 +44,10 @@ public static partial class BuilderExtensions
     /// rebuilding it.
     ///
     /// A null version leaves that plugin out. boostUnionUrl replaces the boost_union
-    /// marketplace download with another zip, e.g. a GitHub commit archive while upstream
-    /// has no release for the instance's branch; 015-copy-plugins.sh takes any zip whose
-    /// single top-level folder holds the plugin's version.php.
+    /// marketplace download with another zip, e.g. a GitHub release tag or commit archive while
+    /// the marketplace has no build for the instance's branch. A release can require an exact
+    /// Moodle version, so move it together with the image. 015-copy-plugins.sh takes any zip
+    /// whose single top-level folder holds the plugin's version.php.
     /// </summary>
     private static string MarketplacePluginsFor(string toolUserdebug, string? boostUnion, string? boostDark, string dynamicCohorts, string? boostUnionUrl = null) =>
         string.Join(" ", new (string Component, string? Url)[]
@@ -74,7 +79,7 @@ public static partial class BuilderExtensions
             // includes it. Launch__Moodle52 starts it on its own.
             new MoodleInstance(
                 Name: "moodle52",
-                BaseImage: "erseco/alpine-moodle:v5.2.2",
+                BaseImage: "erseco/alpine-moodle:v5.2.5",
                 Port: 8082,
                 DbResourceName: "moodle52Db",
                 DbName: "moodle52",
@@ -100,7 +105,7 @@ public static partial class BuilderExtensions
             // AddAllApplications; Launch__Moodle53 asks for it.
             new MoodleInstance(
                 Name: "moodle53",
-                BaseImage: "erseco/alpine-moodle:v5.3.0",
+                BaseImage: "erseco/alpine-moodle:v5.3.1",
                 Port: 8083,
                 DbResourceName: "moodle53Db",
                 DbName: "moodle53",
@@ -116,13 +121,15 @@ public static partial class BuilderExtensions
                 // 015-copy-plugins.sh unzips into the tree directly, so they install and
                 // upgrade even though the plugins check page lists them as unsupported.
                 //
-                // boost_union comes from upstream's unreleased upgrade-503 branch (2026100500),
-                // which adds the colour mode toggle to the navbar; the newest marketplace build
-                // (v5.2-r10, 2026042014) has none. Upstream force-pushes the branch, so re-pin
-                // to its current head whenever the pinned commit drops off it. boost_dark is
-                // left out so it doesn't fight 5.3's native dark mode. An instance that already
-                // has boost_dark installed needs it uninstalled, or moodle53Db dropped, before
-                // rebuilding.
+                // boost_union is upstream's v5.3-r3 release (2026100503), pinned by tag because
+                // the marketplace API has no 5.3 build. It carries the colour mode toggle the
+                // earlier upgrade-503 commit pin was used for, and it requires Moodle 2026100501,
+                // which is 5.3.1 exactly, so it cannot load on the 5.3.0 image: bump the image
+                // and this tag together. boost_dark is left out so it doesn't fight 5.3's native
+                // dark mode. An instance that already has boost_dark installed needs it
+                // uninstalled, or moodle53Db dropped, before rebuilding. An instance already
+                // upgraded to this boost_union or this image cannot go back to the earlier
+                // pins: Moodle refuses a downgrade, so drop its database to return.
                 //
                 // Move each of these to a real 5.3 release as upstream ships one.
                 MarketplacePlugins: MarketplacePluginsFor(
@@ -130,7 +137,7 @@ public static partial class BuilderExtensions
                     boostUnion: null,
                     boostDark: null,
                     dynamicCohorts: "2026031300",
-                    boostUnionUrl: "https://github.com/moodle-an-hochschulen/moodle-theme_boost_union/archive/e404d91b88beb5178fed5a9085df93d003fbcc7f.zip")),
+                    boostUnionUrl: "https://github.com/moodle-an-hochschulen/moodle-theme_boost_union/archive/refs/tags/v5.3-r3.zip")),
         };
 
         var enabled = instances
@@ -229,7 +236,7 @@ public static partial class BuilderExtensions
             UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
 
         // The host layout stays flat across versions; only the container side moves under public/.
-        string[] coreDirs = ["", "theme", "lib", "admin/cli", "ai/provider", "ai/classes"];
+        string[] coreDirs = ["", "theme", "lib", "admin/cli", "ai/provider", "ai/classes", ".previous"];
 
         foreach (var relative in coreDirs)
         {
@@ -354,6 +361,8 @@ public static partial class BuilderExtensions
             .WithBindMount($"{instance.CoreMountRoot}/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount($"{instance.CoreMountRoot}/ai/provider", $"{instance.WebRoot}/ai/provider", isReadOnly: false)
             .WithBindMount($"{instance.CoreMountRoot}/ai/classes", $"{instance.WebRoot}/ai/classes", isReadOnly: false)
+            // Where pre_configure.sh keeps a copy of a core mount it moves aside because the image changed.
+            .WithBindMount($"{instance.CoreMountRoot}/.previous", "/moodle-previous", isReadOnly: false)
             .WithBindMount("/tmp/crucible", "/tmp/crucible", isReadOnly: true);
 
         // When CATAPULT is enabled, mount the Apache-2.0 cmi5 sample package from the
