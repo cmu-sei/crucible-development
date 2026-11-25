@@ -698,6 +698,14 @@ detect the layout at build/boot time, so one image definition serves every versi
 side of the `moodle-core` mounts stays flat regardless of version. The base image re-points
 nginx at `public/` itself on boot.
 
+The `moodle-core` folders are seeded from the image only when they are empty, and `pre_configure.sh`
+records which image it seeded each one from in a `.crucible-image` file. When an instance's
+`BaseImage` changes, the next boot copies each folder that was seeded from another image (or before
+the marker existed) to `<mount root>/.previous/<folder>-from-<old image>` and seeds it again, so a
+new image never runs on the previous image's core code, `lib/db/upgrade.php` included. Edits you made
+in those folders are in the copy. If `.previous` is not writable, the folder is left as it is and the
+container log says so. `tests/moodle-core-mounts.sh` checks this against a throwaway container.
+
 To add another version, add a `MoodleInstance` entry in `AddMoodle` with an unused port,
 a new database name, a new mount root, and the web root that version uses, plus a
 `Launch__<Name>` flag in `LaunchOptions`. New instances are left out of

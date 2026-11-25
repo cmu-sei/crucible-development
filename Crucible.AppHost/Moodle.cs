@@ -16,10 +16,9 @@ public static partial class BuilderExtensions
     /// everything web-accessible under public/, so plugins and core directories sit one
     /// level deeper on 5.1+ (admin/cli stays outside the web root in both layouts).
     ///
-    /// CoreMountRoot is seeded from the image only when its folders are empty, and is never refreshed: after
-    /// BaseImage changes, an existing instance keeps the old theme, lib, admin/cli and ai code beside the new
-    /// image, including lib/db/upgrade.php, so the database upgrade skips steps. Empty those folders under
-    /// CoreMountRoot, keeping any edits you made in them, before rebuilding an instance on a new image.
+    /// CoreMountRoot is seeded from the image when its folders are empty, and pre_configure.sh records which image
+    /// it seeded them from. When BaseImage changes, the next boot copies each folder to CoreMountRoot/.previous and
+    /// seeds it again, since the old code would otherwise run beside the new image, lib/db/upgrade.php included.
     /// </summary>
     private sealed record MoodleInstance(
         string Name,
@@ -237,7 +236,7 @@ public static partial class BuilderExtensions
             UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
 
         // The host layout stays flat across versions; only the container side moves under public/.
-        string[] coreDirs = ["", "theme", "lib", "admin/cli", "ai/provider", "ai/classes"];
+        string[] coreDirs = ["", "theme", "lib", "admin/cli", "ai/provider", "ai/classes", ".previous"];
 
         foreach (var relative in coreDirs)
         {
@@ -362,6 +361,8 @@ public static partial class BuilderExtensions
             .WithBindMount($"{instance.CoreMountRoot}/admin/cli", "/var/www/html/admin/cli", isReadOnly: false)
             .WithBindMount($"{instance.CoreMountRoot}/ai/provider", $"{instance.WebRoot}/ai/provider", isReadOnly: false)
             .WithBindMount($"{instance.CoreMountRoot}/ai/classes", $"{instance.WebRoot}/ai/classes", isReadOnly: false)
+            // Where pre_configure.sh keeps a copy of a core mount it moves aside because the image changed.
+            .WithBindMount($"{instance.CoreMountRoot}/.previous", "/moodle-previous", isReadOnly: false)
             .WithBindMount("/tmp/crucible", "/tmp/crucible", isReadOnly: true);
 
         // When CATAPULT is enabled, mount the Apache-2.0 cmi5 sample package from the

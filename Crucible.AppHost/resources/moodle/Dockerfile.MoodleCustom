@@ -48,6 +48,11 @@ RUN set -eu; \
     cp -pr "$MOODLE_WEB_ROOT/ai/classes" /moodle/ai/; \
     chown -R nobody:nobody /moodle
 
+# The image the seed copies in /moodle came from. pre_configure.sh compares it with the one a bind mount was
+# seeded from, and moves a stale mount aside, so a new image never runs on the previous image's core code.
+ARG MOODLE_BASE_IMAGE
+RUN printf '%s\n' "${MOODLE_BASE_IMAGE}" > /moodle/.image && chown nobody:nobody /moodle/.image
+
 # Copy Xdebug configuration. Staged through /tmp because the conf.d path carries the
 # PHP ABI resolved above, which a COPY destination cannot compute.
 COPY xdebug.ini /tmp/xdebug.ini
