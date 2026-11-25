@@ -13,7 +13,7 @@ It defers to:
 
 ## 1. Rules
 
-1. **Viewer's local time, with a zone.** Every date and time is shown in the viewer's local time zone with a short zone name, for example `6:45 PM EST`. Never raw UTC, never an ISO string, never a time without its zone.
+1. **Viewer's local time, with a zone.** Every date and time (every timestamp) is shown in the viewer's local time zone with a short zone name, for example `6:45 PM EST`. Never raw UTC, never an ISO string, never a time without its zone.
 2. **One format.** Month-name date, 12-hour time, short zone: `Nov 6, 2026, 4:40 PM EST`. The formatter sets `hour12: true`; without it the viewer's locale decides, and a viewer in `en-GB` or `de-DE` sees `22:40`.
    - A **date-only** value (a calendar date with no time of day, such as `2026-11-06`) shows the date only, `Nov 6, 2026`. It is a calendar date, not an instant: format it in UTC (`timeZone: 'UTC'`, no zone name) and never convert it to local time, or a viewer west of UTC sees the previous day.
    - A time-only value shows `4:40 PM EST`.
@@ -24,7 +24,7 @@ It defers to:
 7. **Search matches the formatted text** the user sees (admin-tables.md section 4).
 8. **A missing value is an empty cell.** A value that means "has not happened" is written in words by the page ("Never synced"), not as a blank. The general "no value" rule is in admin-tables.md section 6.
 9. **Relative times** ("3 minutes ago") always carry the absolute time with its zone as the tooltip and the `aria-label`.
-10. **Date column headers name the event** ("Created", "Started"), not "Date", and the header tooltip says the time is "in your time zone".
+10. **Date column headers name the event** ("Created", "Started"), not "Date". For a column with a time of day, the header description says the time is "in your time zone"; a date-only column does not.
 11. **Durations are not dates.** Show them as `1 h 30 min`, never as clock times.
 
 ---
@@ -37,7 +37,7 @@ All Crucible apps use one formatter, so the rules above are implemented once. It
 - `formatDateTime(value)`: `Nov 6, 2026, 4:40 PM EST`.
 - `formatDate(value)`: `Nov 6, 2026`. A date-only value is formatted in UTC (rule 2); a timestamp is shown in the viewer's zone.
 - `formatTime(value)`: `4:40 PM EST`.
-- Each accepts a string, a `Date`, `null` or `undefined`, and returns `''` for a missing or invalid value.
+- Each accepts a string, a `Date`, `null` or `undefined`, and returns `''` for a missing or invalid value. A `YYYY-MM-DD` string is a date-only value; a `Date` argument is always an instant.
 - Each applies rules 2 to 5 above.
 - A pipe wraps each function for templates.
 
@@ -47,15 +47,15 @@ An app does not keep a private formatter, a private zone-abbreviation helper, or
 
 ## 3. Testing
 
-A spec that asserts a rendered date pins the time zone and the locale (for example `vi.stubEnv('TZ', 'UTC')`, or the formatter's zone parameter) and asserts the exact string, including the zone name (`Oct 14, 2026, 12:30 PM UTC`), so it does not depend on the machine. It also covers the missing-value case, a date-only value in a zone west of UTC (it keeps its calendar day), and a zone-less timestamp (sorted and shown as UTC).
+A spec that asserts a rendered date pins the time zone and the locale (for example `vi.stubEnv('TZ', 'UTC')`, or the formatter's zone parameter) and asserts the exact string, including the zone name (`Oct 14, 2026, 12:30 PM UTC`), so it does not depend on the machine. It also covers the missing-value case, a date-only value in a zone west of UTC (it keeps its calendar day), and a zone-less timestamp (parsed as UTC, shown in the viewer's zone, and sorted by that instant).
 
 ---
 
 ## 4. Review checklist
 
-- [ ] Every date and time is viewer-local, 12-hour, with a short zone name.
+- [ ] Every timestamp is viewer-local, 12-hour, with a short zone name; date-only values are shown as calendar dates in UTC.
 - [ ] Values come from the shared formatter; no `DatePipe` pattern, no private helper.
 - [ ] Zone-less API timestamps are read as UTC.
-- [ ] Date columns sort by value, and their headers name the event with an "in your time zone" tooltip.
+- [ ] Date columns sort by value, and their headers name the event (with "in your time zone" where there is a time of day).
 - [ ] A missing value is an empty cell, or words where "has not happened" matters.
 - [ ] Specs pin the zone and locale.

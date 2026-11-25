@@ -80,7 +80,7 @@ Every admin list has exactly one search field per table.
 7. **Paginator reset.** A new search term returns the paginator to the first page (`paginator.firstPage()`). `MatTableDataSource` only clamps the page index back into range when the filtered list becomes shorter.
 8. **No persistence.** A search term is local to the visit. A page opened later starts unfiltered.
 9. **No results.** The empty-result state is in section 12.
-10. **Nested tables and membership lists.** Each has its own field, same wording, same Clear Search, and its own paginator. Rules 4 to 7 apply to each. Field labels in a nested table or a two-list page say which list they search (section 11).
+10. **Nested tables and membership lists.** Each has its own field, the same placeholder ("Search"), the same Clear Search, and its own paginator. Rules 4 to 7 apply to each. Field labels in a nested table or a two-list page say which list they search (section 11).
 11. **Screen readers.** The field is reachable by Tab and has an accessible name (rule 2). Changes to the result count are announced by the paginator's `role="status"` range label (Material provides this).
 
 ---
@@ -106,13 +106,17 @@ Every admin list has exactly one search field per table.
 3. Cells: `padding-right: 10px; vertical-align: middle`.
 4. Real table markup: `<table mat-table>` with `<th mat-header-cell>` and `<td mat-cell>`. Never `<mat-header-cell>`/`<mat-cell>` elements inside a native `<table>`. The browser's table semantics then apply (section 13).
 
-**Row outlines.** Every table shows a divider under **every** record, the last included, exactly once. A table without row expansion uses Material's default row divider. In a table with `multiTemplateDataRows`, each record is two rows: the data row has `border-bottom-width: 0` and the detail row's cell draws the divider, so a collapsed record has one line and the last record keeps its divider. No style zeroes the detail cell's border.
+**Row outlines.** Every table shows a divider under **every** record, the last included, exactly once. Material draws the divider on the cells and removes it under the last row (`.mdc-data-table__row:last-child > .mat-mdc-cell { border-bottom: none }`), so every table restores it for the last row:
+
+`.mdc-data-table__row:last-child > .mat-mdc-cell { border-bottom: var(--mat-table-row-item-outline-width, 1px) solid var(--mat-table-row-item-outline-color); }`
+
+In a table with `multiTemplateDataRows`, each record is two rows: the data row's cells (`tr.element-row > td`) have `border-bottom-width: 0` and the detail row's cells draw the divider, so a collapsed record has one line. No style zeroes the detail cell's border.
 
 **Columns.**
 
 1. Column order: actions first (section 7), then identity (Name), then descriptive columns, then dates last.
 2. Every column is sortable (`mat-sort-header`) except the actions column and counts that are not loaded yet. Set a default sort when the data has a natural order (`matSortActive="name" matSortDirection="asc"`). Sorting is case-insensitive for text and by underlying value for dates and numbers ([dates.md](dates.md)).
-3. Header cells explain the column in a `matTooltip` ("The Project's name", "When the Project was created, in your time zone"), placed on the `mat-sort-header` (the focusable element) so it opens on keyboard focus. A non-sortable header with a tooltip is focusable (`tabindex="0"`). Never a native `title`, which is not shown on keyboard focus.
+3. A sortable header explains the column ("The Project's name", "When the Project was created, in your time zone") in `sortActionDescription` on `mat-sort-header`, which puts the description on the focusable sort button for keyboard and assistive-technology users. A `matTooltip` with the same text on the header is a mouse aid only. Columns without sorting (actions, counts not loaded yet) need no explanation. Never a native `title`, which is not shown on keyboard focus.
 4. Column header text is Title Case nouns ("Started By", "Created"). A date column is headed by the event ("Created", "Started"), not "Date".
 5. Status columns show text. Where an icon helps, it is a `mat-icon` with `role="img"`, an `aria-label`, `aria-hidden="false"` and a `matTooltip` that state the meaning. Never color or an icon alone: the text or the label carries the meaning (WCAG 1.4.1).
 6. If a cell truncates text, the full text is available as a tooltip and to assistive technology. Nothing is silently cut.
@@ -137,7 +141,7 @@ Every admin list has exactly one search field per table.
 5. Add is `mdi-plus-circle` with tooltip and `aria-label` "Add &lt;Thing&gt;"; Import/Upload `mdi-upload`; Export/Download `mdi-download`. Icon conventions are in [ui-conventions.md](ui-conventions.md) section 2.
 6. An information button next to the Add button (`mdi-information`, `matTooltipShowDelay="0"`) explains something about the whole list. It is enabled, keyboard-focusable, labelled ("About groups"), and its tooltip opens on focus.
 
-**Accessible names.** Every icon button has an `aria-label` that names the action **and the row** ("Rename Range", "Delete Range") and a matching `matTooltip`.
+**Accessible names.** Every icon button has an `aria-label` that names the action **and the row** ("Rename Range", "Delete Range") and a matching `matTooltip`. On a disabled button the tooltip carries the reason and the `aria-label` ends "(not available)" ([permissions.md](permissions.md)).
 
 **Row-click tables.** In a table whose rows are clickable (expandable rows), every control inside a row calls `$event.stopPropagation()` on `click`, so the click does not also toggle the row. Enter and Space on a button produce a click, so the same guard covers the keyboard. The expand button is the one exception (section 9, rule 5).
 
@@ -245,7 +249,7 @@ Every table has a `*matNoDataRow` with these two messages. A table is never sile
 
 **Expand control (WCAG 4.1.2, 2.1.1).** A `<button>` with `aria-expanded` and `aria-controls` (section 9, rule 5). A clickable `tr` with no keyboard path fails 2.1.1.
 
-**Names for icon buttons (WCAG 4.1.2, 2.5.3).** Every icon button has an `aria-label` naming the action and, in a row, the record. On an enabled button the `matTooltip` text matches the `aria-label`; on a disabled button the tooltip carries the reason and the `aria-label` ends "(not available)" ([permissions.md](permissions.md)). A native `title` is not a substitute.
+**Names for icon buttons (WCAG 4.1.2).** Every icon button has an `aria-label` naming the action and, in a row, the record. On an enabled button the `matTooltip` text matches the `aria-label`; on a disabled button the tooltip carries the reason and the `aria-label` ends "(not available)" ([permissions.md](permissions.md)). A native `title` is not a substitute.
 
 **Sort (WCAG 4.1.2, 4.1.3).** `mat-sort-header` sets `aria-sort` on the header; keep it and do not wrap header text in a second button. Material makes no live announcement when the sort changes, so announce it: use `LiveAnnouncer` from `@angular/cdk/a11y` (or a visually hidden `aria-live="polite"` region) on `matSortChange` with "Sorted by &lt;column&gt;, ascending", "Sorted by &lt;column&gt;, descending", or "Sorting removed" when the direction is `''` (set `matSortDisableClear` to remove that state).
 
@@ -257,7 +261,7 @@ Every table has a `*matNoDataRow` with these two messages. A table is never sile
 
 **Color and icons (WCAG 1.4.1, 1.4.11).** Meaning is never by color or icon alone. Icon contrast follows [colors.md](colors.md).
 
-**Motion (WCAG 2.3.3).** Respect `prefers-reduced-motion` on the expand animation.
+**Motion.** A Crucible requirement (WCAG 2.3.3, Level AAA): respect `prefers-reduced-motion` on the expand animation.
 
 **Verify, don't assume.** Run axe or Lighthouse on each admin page, then do a keyboard-only pass (Tab, Shift-Tab, Enter, Space, Escape reach and operate search, sort, paginator, every action, expand), and a screen-reader spot check.
 
@@ -309,17 +313,17 @@ Page and header:
 
 Toolbar and search:
 
-- [ ] Order: section icon (`role="img"`, labelled, tooltip), Search, paginator, spacer, page-level content only.
+- [ ] Order: section icon (`role="img"`, `aria-label`, `aria-hidden="false"`, `tabindex="0"`, tooltip), Search, paginator, spacer, page-level content only.
 - [ ] Search has `placeholder="Search"` and `aria-label="Search"` (a list-specific `aria-label` in nested and membership lists), no leading icon; Clear Search has `aria-label` and `matTooltip`, shown only with text.
 - [ ] Filter matches the visible text, documented columns; resets to page 1.
 
 Table:
 
 - [ ] `th`/`td`, `matSort` with a default sort, sticky header, `width: 100%`, accessible name.
-- [ ] Divider under every row including the last.
+- [ ] Divider under every record including the last (Material's last-row override restored).
 - [ ] Paginator default 20 with `[5, 10, 15, 20, 25, 50, 100, 200]` (nested and membership: 10 and `[10, 25, 50, 100]`); paginator has an `aria-label`.
 - [ ] Dates follow [dates.md](dates.md).
-- [ ] Row detail and per-row data load on demand; the list call returns a summary.
+- [ ] Row detail and per-row data load on demand; the page renders only fields the list call returns.
 
 Actions:
 

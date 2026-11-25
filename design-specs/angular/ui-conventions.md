@@ -53,7 +53,7 @@ This spec collects the cross-cutting conventions that are neither tables nor mod
 | Back to a list | `mdi-keyboard-return` | "Back to &lt;list&gt;" |
 | Section in the Administration sidebar | `mdi-menu-right` | the section name |
 
-**Copy to the clipboard.** The ID-copy button keeps `mdi-content-copy`, with tooltip and `aria-label` "Copy ID of &lt;name&gt;" and the success message "Copied to clipboard" with a "Dismiss" action. Cloning a record uses `mdi-content-duplicate` and "Duplicate &lt;name&gt;", so the two actions never share an icon. A copied value that is not an ID says what it is ("Copied link").
+**Copy to the clipboard.** The ID-copy button keeps `mdi-content-copy`, with tooltip and `aria-label` "Copy ID of &lt;name&gt;" and the success message "Copied to clipboard" (a 2-second confirmation with no action). Cloning a record uses `mdi-content-duplicate` and "Duplicate &lt;name&gt;", so the two actions never share an icon. A copied value that is not an ID says what it is ("Copied link").
 
 **Delete.** The same operation has the same row action (`mdi-trash-can-outline`, last in the row) in every app that offers it. A role that may not use it sees it disabled with the reason, not absent in one app and present in another ([permissions.md](permissions.md)).
 
@@ -87,7 +87,7 @@ This spec collects the cross-cutting conventions that are neither tables nor mod
 2. **Wording.** Success: past tense, names the object: "Added Project Range", "Deleted Range". Failure: "Couldn't &lt;verb&gt; &lt;object&gt;" then the reason from the API: "Couldn't delete Range: Conflict: Has Resources". Not "An error occurred" and not "Error".
 3. **Problem details.** Show the `title` and the `detail` only for a 4xx response (validation, conflict, not found, forbidden), where the API's text is written for people; list a validation problem's messages under each field's name. For a 5xx or any unexpected failure show the generic message in rule 4 and neither `title` nor `detail`. The UI does not rewrite a 4xx text and does not append a status code.
 4. **Never shown to a user:** a stack trace, a request URL, the framework's `Http failure response for ...` string, a raw JSON body, an exception class name, or a GUID with no object name. Those go to the console (and Aspire telemetry). When there is no usable message, say "Something went wrong. Try again, and tell your administrator if it keeps happening."
-5. **Duration and dismissal.** Successes: 5 seconds, with a "Dismiss" action. Failures: no auto-dismiss, with a "Dismiss" action, so a user who looks away does not lose the reason (WCAG 2.2.1). Confirmations that need no reading ("Copied to clipboard"): 2 seconds.
+5. **Duration and dismissal.** Successes: 5 seconds, with a "Dismiss" action. Failures: no auto-dismiss, with a "Dismiss" action, so a user who looks away does not lose the reason (WCAG 2.2.1). Confirmations that need no reading ("Copied to clipboard"): 2 seconds, with no action.
 6. **Position and action label.** `top` / `center`. Action label "Dismiss".
 7. **Live regions.** Success snackbars keep the default `polite` announcement. Failure snackbars set `politeness: 'assertive'`. A failure shown inside a page region (a failed load) is `role="alert"`. The snackbar action is reachable by keyboard; focus does not move to it.
 8. **One service.** A single `NotificationService` (a thin wrapper over `MatSnackBar` and the problem-details formatter, for example `report(call, success, failure)`) holds the wording and timings above in one place. No page calls `MatSnackBar` directly.
@@ -157,7 +157,7 @@ The notification service (section 5, rule 8), the top bar (section 8) and the lo
 - [ ] Copy-ID uses `mdi-content-copy` with "Copy ID of &lt;name&gt;"; cloning uses `mdi-content-duplicate`.
 - [ ] Spinners are 48px centered in their region (18px in a button); no 100px defaults.
 - [ ] An initial or blocking load shows the spinner and no rows, empty message or error; a refresh with rows shown keeps them with a non-blocking indicator; empty, loading and error are distinct; `aria-busy` and a status message are set.
-- [ ] List calls return summaries and every column's value; detail loads on demand.
+- [ ] Pages render only fields the list call returns and load detail on demand.
 - [ ] Outcomes use a snackbar with "Dismiss"; failures do not auto-dismiss and are assertive; wording names the object.
 - [ ] No stack trace, URL, `Http failure response` text or raw JSON is shown anywhere.
 - [ ] Dialogs that collect input bind `[form]`; Enter submits; inline editors save on Enter and cancel on Escape.
