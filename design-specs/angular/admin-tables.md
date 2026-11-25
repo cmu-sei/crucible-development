@@ -106,7 +106,7 @@ Every admin list has exactly one search field per table.
 3. Cells: `padding-right: 10px; vertical-align: middle`.
 4. Real table markup: `<table mat-table>` with `<th mat-header-cell>` and `<td mat-cell>`. Never `<mat-header-cell>`/`<mat-cell>` elements inside a native `<table>`. The browser's table semantics then apply (section 13).
 
-**Row outlines.** Every table shows a divider under **every** record, the last included, exactly once. Material draws the divider on the cells and removes it under the last row (`.mdc-data-table__row:last-child > .mat-mdc-cell { border-bottom: none }`), so every table restores it for the last row:
+**Row outlines.** Every table shows a divider under **every** record, the last included, exactly once. Material draws the divider on the cells and removes it under the last row (`.mdc-data-table__row:last-child > .mat-mdc-cell { border-bottom: none }`), so every table restores it for the last row. Put the rule in each table component's styles (or raise its specificity, for example `.mat-mdc-table .mdc-data-table__row:last-child > .mat-mdc-cell`), because Material's component styles load after a global stylesheet and win at equal specificity:
 
 `.mdc-data-table__row:last-child > .mat-mdc-cell { border-bottom: var(--mat-table-row-item-outline-width, 1px) solid var(--mat-table-row-item-outline-color, var(--mat-sys-outline, rgba(0, 0, 0, 0.12))); }`
 
