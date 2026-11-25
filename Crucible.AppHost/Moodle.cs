@@ -15,6 +15,11 @@ public static partial class BuilderExtensions
     /// WebRoot is where the Moodle tree lives inside the container. Moodle 5.1 moved
     /// everything web-accessible under public/, so plugins and core directories sit one
     /// level deeper on 5.1+ (admin/cli stays outside the web root in both layouts).
+    ///
+    /// CoreMountRoot is seeded from the image only when its folders are empty, and is never refreshed: after
+    /// BaseImage changes, an existing instance keeps the old theme, lib, admin/cli and ai code beside the new
+    /// image, including lib/db/upgrade.php, so the database upgrade skips steps. Empty those folders under
+    /// CoreMountRoot, keeping any edits you made in them, before rebuilding an instance on a new image.
     /// </summary>
     private sealed record MoodleInstance(
         string Name,
@@ -40,9 +45,10 @@ public static partial class BuilderExtensions
     /// rebuilding it.
     ///
     /// A null version leaves that plugin out. boostUnionUrl replaces the boost_union
-    /// marketplace download with another zip, e.g. a GitHub commit archive while upstream
-    /// has no release for the instance's branch; 015-copy-plugins.sh takes any zip whose
-    /// single top-level folder holds the plugin's version.php.
+    /// marketplace download with another zip, e.g. a GitHub release tag or commit archive while
+    /// the marketplace has no build for the instance's branch. A release can require an exact
+    /// Moodle version, so move it together with the image. 015-copy-plugins.sh takes any zip
+    /// whose single top-level folder holds the plugin's version.php.
     /// </summary>
     private static string MarketplacePluginsFor(string toolUserdebug, string? boostUnion, string? boostDark, string dynamicCohorts, string? boostUnionUrl = null) =>
         string.Join(" ", new (string Component, string? Url)[]
@@ -122,7 +128,9 @@ public static partial class BuilderExtensions
                 // which is 5.3.1 exactly, so it cannot load on the 5.3.0 image: bump the image
                 // and this tag together. boost_dark is left out so it doesn't fight 5.3's native
                 // dark mode. An instance that already has boost_dark installed needs it
-                // uninstalled, or moodle53Db dropped, before rebuilding.
+                // uninstalled, or moodle53Db dropped, before rebuilding. An instance already
+                // upgraded to this boost_union or this image cannot go back to the earlier
+                // pins: Moodle refuses a downgrade, so drop its database to return.
                 //
                 // Move each of these to a real 5.3 release as upstream ships one.
                 MarketplacePlugins: MarketplacePluginsFor(
