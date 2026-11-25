@@ -3929,7 +3929,7 @@ create_moodle_task_grading_lab() {
 
     log_step "Creating Moodle Crucible lab for task grading tests"
 
-    if ! docker ps --format '{{.Names}}' | grep -qx moodle; then
+    if ! docker ps --format '{{.Names}}' | grep -qx moodle52; then
         log_error "Moodle container is not running; cannot create Moodle task-grading lab"
         return 1
     fi
@@ -3949,7 +3949,7 @@ create_moodle_task_grading_lab() {
         return 0
     fi
 
-    docker exec -i moodle php <<PHP
+    docker exec -i moodle52 php <<PHP
 <?php
 define('CLI_SCRIPT', true);
 require_once('/var/www/html/config.php');
@@ -4049,7 +4049,7 @@ foreach (\$tasks as \$task) {
 
 rebuild_course_cache(\$courseid, true);
 echo "Upserted {\$upserted} Moodle Crucible task definition rows\n";
-echo "Activity URL: http://localhost:8081/mod/crucible/view.php?id={\$cm->id}\n";
+echo "Activity URL: http://localhost:8082/mod/crucible/view.php?id={\$cm->id}\n";
 PHP
 }
 
@@ -4585,9 +4585,9 @@ mode_setup() {
     fi
 
     local moodle_task_grading_cmid=""
-    if docker ps --format '{{.Names}}' | grep -qx moodle; then
-        local moodle_lab_count=$(docker exec moodle php -r 'define("CLI_SCRIPT", true); require_once("/var/www/html/config.php"); global $DB; echo $DB->count_records("crucible", ["eventtemplateid" => "74257398-e6ed-46e3-881a-8d7edacfddb9"]);' 2>/dev/null || echo 0)
-        moodle_task_grading_cmid=$(docker exec moodle php -r 'define("CLI_SCRIPT", true); require_once("/var/www/html/config.php"); global $DB; $sql = "SELECT cm.id FROM {course_modules} cm JOIN {modules} m ON m.id = cm.module JOIN {crucible} c ON c.id = cm.instance WHERE m.name = ? AND c.eventtemplateid = ? ORDER BY cm.id DESC"; echo $DB->get_field_sql($sql, ["crucible", "74257398-e6ed-46e3-881a-8d7edacfddb9"]) ?: "";' 2>/dev/null || echo "")
+    if docker ps --format '{{.Names}}' | grep -qx moodle52; then
+        local moodle_lab_count=$(docker exec moodle52 php -r 'define("CLI_SCRIPT", true); require_once("/var/www/html/config.php"); global $DB; echo $DB->count_records("crucible", ["eventtemplateid" => "74257398-e6ed-46e3-881a-8d7edacfddb9"]);' 2>/dev/null || echo 0)
+        moodle_task_grading_cmid=$(docker exec moodle52 php -r 'define("CLI_SCRIPT", true); require_once("/var/www/html/config.php"); global $DB; $sql = "SELECT cm.id FROM {course_modules} cm JOIN {modules} m ON m.id = cm.module JOIN {crucible} c ON c.id = cm.instance WHERE m.name = ? AND c.eventtemplateid = ? ORDER BY cm.id DESC"; echo $DB->get_field_sql($sql, ["crucible", "74257398-e6ed-46e3-881a-8d7edacfddb9"]) ?: "";' 2>/dev/null || echo "")
         echo "  Moodle Task-Grading Labs: $moodle_lab_count"
     fi
 
@@ -4605,7 +4605,7 @@ mode_setup() {
     echo "  • Caster UI: http://localhost:4310/projects/${RESOURCE_IDS[caster_project1]}"
     echo "  • TopoMojo UI: http://localhost:4201"
     if [ -n "$moodle_task_grading_cmid" ]; then
-        echo "  • Moodle Task-Grading Lab: http://localhost:8081/mod/crucible/view.php?id=$moodle_task_grading_cmid"
+        echo "  • Moodle Task-Grading Lab: http://localhost:8082/mod/crucible/view.php?id=$moodle_task_grading_cmid"
     fi
     echo ""
 

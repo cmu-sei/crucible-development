@@ -60,26 +60,18 @@ public static partial class BuilderExtensions
 
     public static void AddMoodle(this IDistributedApplicationBuilder builder, IResourceBuilder<PostgresServerResource> postgres, IResourceBuilder<KeycloakResource> keycloak, LaunchOptions options)
     {
+        // The 5.0 instance behind Launch__Moodle is gone. Say so, since an old env file or
+        // appsettings.Development.json would otherwise start no Moodle without a word.
+        if (string.Equals(builder.Configuration["Launch:Moodle"], "true", StringComparison.OrdinalIgnoreCase)
+            || options.Prod.Concat(options.Dev).Contains("Moodle", StringComparer.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("WARNING: Moodle 5.0 is no longer available, so Launch__Moodle and \"Moodle\" in Launch.Prod/Launch.Dev do nothing. Use Launch__Moodle52 or \"Moodle52\" instead.");
+        }
+
         var instances = new[]
         {
-            new MoodleInstance(
-                Name: "moodle",
-                BaseImage: "erseco/alpine-moodle:v5.0.0",
-                Port: 8081,
-                DbResourceName: "moodleDb",
-                DbName: "moodle",
-                CoreMountRoot: "/mnt/data/crucible/moodle/moodle-core",
-                WebRoot: "/var/www/html",
-                Mode: ResolveMode(options.Moodle, "Moodle", options),
-                IncludeWithAll: true,
-                // boost_dark 1.3.7, matching production and the 5.2 instance below.
-                MarketplacePlugins: MarketplacePluginsFor(
-                    toolUserdebug: "2025070100",
-                    boostUnion: "2025041407",
-                    boostDark: "2026052400",
-                    dynamicCohorts: "2026031300")),
-            // Moodle 5.2 test instance. Left out of AddAllApplications so it only
-            // builds and appears in the dashboard when Launch__Moodle52 asks for it.
+            // Moodle 5.2, the default instance: production runs 5.2, and AddAllApplications
+            // includes it. Launch__Moodle52 starts it on its own.
             new MoodleInstance(
                 Name: "moodle52",
                 BaseImage: "erseco/alpine-moodle:v5.2.2",
@@ -90,22 +82,21 @@ public static partial class BuilderExtensions
                 // 5.2 serves out of public/; the base image re-points nginx at it on boot.
                 WebRoot: "/var/www/html/public",
                 Mode: ResolveMode(options.Moodle52, "Moodle52", options),
-                IncludeWithAll: false,
+                IncludeWithAll: true,
                 // Versions the plugin API reports for branch 5.2 (boost_union v5.2-r8,
-                // boost_dark 1.3.7, userdebug v5.0.3 which spans through 5.2).
+                // boost_dark 1.3.7, userdebug v5.0.4 which spans through 5.2).
                 //
-                // dynamic_cohorts is the same id as the 5.0 instance: upstream ships one
-                // build for 4.4 through 5.1 and none for 5.2. It declares
-                // $plugin->supported = [404, 501], so 5.2 lists it as unsupported on the
-                // plugins check page, but $plugin->requires is only 2022112800 and
-                // 015-copy-plugins.sh unzips into the tree directly, so it installs and
-                // upgrades anyway. Move the pin to a real 5.2 release when there is one.
+                // dynamic_cohorts: upstream ships one build for 4.4 through 5.1 and none
+                // for 5.2. It declares $plugin->supported = [404, 501], so 5.2 lists it as
+                // unsupported on the plugins check page, but $plugin->requires is only
+                // 2022112800 and 015-copy-plugins.sh unzips into the tree directly, so it
+                // installs and upgrades anyway. Move the pin to a real 5.2 release when there is one.
                 MarketplacePlugins: MarketplacePluginsFor(
-                    toolUserdebug: "2025070300",
+                    toolUserdebug: "2025070400",
                     boostUnion: "2026042012",
                     boostDark: "2026052400",
                     dynamicCohorts: "2026031300")),
-            // Moodle 5.3 test instance - the next LTS. Also left out of
+            // Moodle 5.3 test instance - the next LTS. Left out of
             // AddAllApplications; Launch__Moodle53 asks for it.
             new MoodleInstance(
                 Name: "moodle53",
@@ -135,7 +126,7 @@ public static partial class BuilderExtensions
                 //
                 // Move each of these to a real 5.3 release as upstream ships one.
                 MarketplacePlugins: MarketplacePluginsFor(
-                    toolUserdebug: "2025070300",
+                    toolUserdebug: "2025070400",
                     boostUnion: null,
                     boostDark: null,
                     dynamicCohorts: "2026031300",

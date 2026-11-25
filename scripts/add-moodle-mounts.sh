@@ -9,7 +9,6 @@ fi
 # Each version needs its own root: sharing them would let one version's code end up
 # under another's.
 ROOTS=(
-    "/mnt/data/crucible/moodle/moodle-core"
     "/mnt/data/crucible/moodle/moodle-core-52"
     "/mnt/data/crucible/moodle/moodle-core-53"
 )

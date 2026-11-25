@@ -9,7 +9,7 @@
 set -e
 
 CAKE="/var/www/MISP/app/Console/cake"
-MOODLE_URL="${MOODLE_URL:-http://localhost:8081}"
+MOODLE_URL="${MOODLE_URL:-http://localhost:8082}"
 COMPETENCY_FRAMEWORK="${COMPETENCY_FRAMEWORK:-MITRE ATT&CK}"
 
 # OIDC settings (passed from AppHost environment)
