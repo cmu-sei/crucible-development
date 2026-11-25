@@ -12,7 +12,7 @@ This spec uses Angular Material's system tokens (`--mat-sys-*`), `mat-table`, `m
 
 The aim is one contract: every admin page has the same toolbar, action order, empty states and keyboard behavior.
 
-**Accessibility is a requirement.** Crucible is used in U.S. federal and DoD training contexts. Every admin page must satisfy **Section 508** (which incorporates **WCAG 2.1 Level AA**). Section 13 is normative.
+**Accessibility is a requirement.** Crucible is used in U.S. federal and DoD training contexts. Every admin page must satisfy **Section 508** (which incorporates WCAG 2.0 Level A and AA) and **WCAG 2.1 Level AA**, which Crucible requires in addition. Section 13 is normative.
 
 ---
 
@@ -32,7 +32,7 @@ The aim is one contract: every admin page has the same toolbar, action order, em
 
 The Administration area is a `mat-sidenav-container`:
 
-- **Sidebar header.** A `mat-toolbar` with the app icon and the text "Administration". It is the way out: its title is "Exit Administration" and it links to `/` with `routerLink` (not a click handler), so middle-click and "open in new tab" work.
+- **Sidebar header.** A `mat-toolbar` with the app icon and the text "Administration". It is the way out: it has `matTooltip="Exit Administration"` and `aria-label="Exit Administration"` and links to `/` with `routerLink` (not a click handler), so middle-click and "open in new tab" work.
 - **Sidebar items.** One item per section: a leading section icon, the section name, a trailing `mdi-menu-right` arrow. An item appears only when the user holds the view permission for that section.
 - **Top bar.** Shows the current section name as the page title.
 - **Content.** Exactly one section component is shown (`.admin-content`).
@@ -54,14 +54,14 @@ One flex row above the table: `display: flex; align-items: center; gap: 8px; fle
 
 Order, left to right:
 
-1. **Section icon**: a 24px `mat-icon` colored `var(--mat-sys-primary)`, with `role="img"`, an `aria-label` naming the section, and a tooltip that explains the list in one sentence ("Every Project in Caster. Click a Project to see and change its memberships.").
+1. **Section icon**: a 24px `mat-icon` colored `var(--mat-sys-primary)`, with `role="img"`, an `aria-label` naming the section, an explicit `aria-hidden="false"` (Material hides every `mat-icon` otherwise), `tabindex="0"` so the tooltip opens on keyboard focus, and a tooltip that explains the list in one sentence ("Every Project in Caster. Click a Project to see and change its memberships.").
 2. **Search field** (section 4), 300px wide.
 3. **Paginator** (section 5), immediately after the search field. Paginating from the top of the page saves vertical space.
 4. **Spacer**, then **page-level content**: status text or a control that is about the whole page, not one row.
 
 Rules:
 
-1. Page-level buttons that add, upload or download rows do not live in the toolbar row. They live in the header cell of the actions column (section 7). No buttons in the toolbar row.
+1. Page-level actions that add, upload or download rows do not live in the toolbar row. They live in the header cell of the actions column (section 7). The toolbar row holds only the section icon, the search field with its Clear Search button, the paginator, and page-level status or controls.
 2. The paginator is transparent (`background: transparent`) and does not shrink.
 3. Membership lists (section 11) use a `mat-toolbar` with two rows instead: a title row, then a search-and-paginator row.
 
@@ -72,15 +72,15 @@ Rules:
 Every admin list has exactly one search field per table.
 
 1. **No leading search icon.** The section icon (section 3) sits to the left of the field instead.
-2. **Wording.** `placeholder="Search"` and `aria-label="Search"` on every field, including Groups pages. A placeholder is not a label: the `aria-label` is required.
+2. **Wording.** A page-level list has `placeholder="Search"` and `aria-label="Search"`, including Groups pages. A search field in a nested table or a membership list has a list-specific `aria-label` (section 11, rule 3) so that no two controls on a page share a name. A placeholder is not a label: the `aria-label` is required.
 3. **Appearance and size.** The default `mat-form-field` appearance, 300px wide, `subscriptSizing="dynamic"` so the field does not reserve space for hint text. No density override inside the toolbar row.
 4. **Clear Search.** A suffix `mat-icon-button` with `mdi-close-circle-outline`, shown only while the field has text, with `aria-label="Clear Search"` and `matTooltip="Clear Search"`. It stays in the tab order. After activation, focus returns to the input.
-5. **What it matches.** A `filterPredicate` that lower-cases the filter and matches as a **substring**, case-insensitively, against the **text the user sees** (the formatted date included, so typing "EST" matches). Name the searched columns in a comment next to the `filterPredicate` and in the page's spec. Do not rely on the default `MatTableDataSource` predicate: it tests each property of the row separately, including IDs and other values the user cannot see.
+5. **What it matches.** A `filterPredicate` that lower-cases the filter and matches as a **substring**, case-insensitively, against the **text the user sees** (the formatted date included, so typing "EST" matches). Name the searched columns in a comment next to the `filterPredicate` and in the page's spec. Do not rely on the default `MatTableDataSource` predicate: it tests every property of the row, including IDs and other values the user cannot see.
 6. **When it applies.** On every change, with no debounce. Bind to value changes (`ngModelChange` or `valueChanges`), not `keyup`, which misses paste and cut by mouse.
 7. **Paginator reset.** A new search term returns the paginator to the first page (`paginator.firstPage()`). `MatTableDataSource` only clamps the page index back into range when the filtered list becomes shorter.
 8. **No persistence.** A search term is local to the visit. A page opened later starts unfiltered.
 9. **No results.** The empty-result state is in section 12.
-10. **Nested tables and membership lists.** Each has its own field, same wording, same Clear Search, and its own paginator. Rules 2 and 4 to 7 apply to each. Field labels in a two-list page say which list they search (section 11).
+10. **Nested tables and membership lists.** Each has its own field, same wording, same Clear Search, and its own paginator. Rules 4 to 7 apply to each. Field labels in a nested table or a two-list page say which list they search (section 11).
 11. **Screen readers.** The field is reachable by Tab and has an accessible name (rule 2). Changes to the result count are announced by the paginator's `role="status"` range label (Material provides this).
 
 ---
@@ -106,13 +106,13 @@ Every admin list has exactly one search field per table.
 3. Cells: `padding-right: 10px; vertical-align: middle`.
 4. Real table markup: `<table mat-table>` with `<th mat-header-cell>` and `<td mat-cell>`. Never `<mat-header-cell>`/`<mat-cell>` elements inside a native `<table>`. The browser's table semantics then apply (section 13).
 
-**Row outlines.** Every table, with or without row expansion, shows a divider under **every** row, the last included, using Material's default row divider. A table with `multiTemplateDataRows` does not zero the bottom border of the data row or of the detail cell (`border-bottom-width: 0`): that removes the divider under the last row.
+**Row outlines.** Every table shows a divider under **every** record, the last included, exactly once. A table without row expansion uses Material's default row divider. In a table with `multiTemplateDataRows`, each record is two rows: the data row has `border-bottom-width: 0` and the detail row's cell draws the divider, so a collapsed record has one line and the last record keeps its divider. No style zeroes the detail cell's border.
 
 **Columns.**
 
 1. Column order: actions first (section 7), then identity (Name), then descriptive columns, then dates last.
 2. Every column is sortable (`mat-sort-header`) except the actions column and counts that are not loaded yet. Set a default sort when the data has a natural order (`matSortActive="name" matSortDirection="asc"`). Sorting is case-insensitive for text and by underlying value for dates and numbers ([dates.md](dates.md)).
-3. Header cells explain the column in a `matTooltip` ("The Project's name", "When the Project was created, in your time zone"). Never a native `title`, which is not shown on keyboard focus.
+3. Header cells explain the column in a `matTooltip` ("The Project's name", "When the Project was created, in your time zone"), placed on the `mat-sort-header` (the focusable element) so it opens on keyboard focus. A non-sortable header with a tooltip is focusable (`tabindex="0"`). Never a native `title`, which is not shown on keyboard focus.
 4. Column header text is Title Case nouns ("Started By", "Created"). A date column is headed by the event ("Created", "Started"), not "Date".
 5. Status columns show text. Where an icon helps, it is a `mat-icon` with `role="img"`, an `aria-label`, `aria-hidden="false"` and a `matTooltip` that state the meaning. Never color or an icon alone: the text or the label carries the meaning (WCAG 1.4.1).
 6. If a cell truncates text, the full text is available as a tooltip and to assistive technology. Nothing is silently cut.
@@ -122,7 +122,7 @@ Every admin list has exactly one search field per table.
    - Where the absence changes what the user can do or means something happened or did not ("Never synced"; a Module with no versions cannot be inserted), write words, in muted text. Red is for errors, not for an empty value.
 8. **A status and a time do not repeat each other.** A status column holds the state as an icon and a short word. A time appears once, in its own column; the status cell carries no time. Detail about a problem (an error, a warning) is a muted second line in the status cell, without a time in it. A tooltip may carry a time when it explains a state ("showing data from ...").
 
-**Copy-ID.** Where an operator needs to paste an ID into another system (Users and Groups lists, membership lists, any list of records with IDs), the Name or ID cell has a leading `mat-icon-button` using `ngxClipboard` with `[cbContent]="id"`, icon `mdi-content-copy`, `matTooltip` and `aria-label="Copy ID of <name>"`, `(click)="$event.stopPropagation()"`, and on success `snackBar.open('Copied to clipboard', 'Dismiss')`. Cloning a record uses a different icon ([ui-conventions.md](ui-conventions.md) section 2).
+**Copy-ID.** Where an operator needs to paste an ID into another system (Users and Groups lists, membership lists, any list of records with IDs), the Name or ID cell has a leading `mat-icon-button` using `ngxClipboard` with `[cbContent]="id"`, icon `mdi-content-copy`, `matTooltip` and `aria-label="Copy ID of <name>"`, `(click)="$event.stopPropagation()"`, and on success shows "Copied to clipboard" through the notification service ([ui-conventions.md](ui-conventions.md) section 5). Cloning a record uses a different icon ([ui-conventions.md](ui-conventions.md) section 2).
 
 ---
 
@@ -133,13 +133,13 @@ Every admin list has exactly one search field per table.
 1. The actions column is **first**. Its **header cell** holds the page-level actions: Add, and where they apply Import, Upload, Download. Its **row cells** hold that row's actions. Membership lists are the exception: the actions column is last, and holds one button (Add or Remove).
 2. All actions are icon buttons: `mat-icon-button` with a **24px** icon in the header cell and in the row.
 3. Row action order: **Open** or **View**, **Edit** (`mdi-square-edit-outline`), **Copy** (clone), **Download** (`mdi-download`), **Delete** (`mdi-trash-can-outline`) last.
-4. "Open in a new tab" is a real link (`<a mat-icon-button [routerLink]="..." target="_blank">`, icon `mdi-open-in-new`, tooltip "Open <name> in a new tab"), not a button with a click handler.
-5. Add is `mdi-plus-circle` with tooltip and `aria-label` "Add <Thing>"; Import/Upload `mdi-upload`; Export/Download `mdi-download`. Icon conventions are in [ui-conventions.md](ui-conventions.md) section 2.
+4. "Open in a new tab" is a real link (`<a mat-icon-button [routerLink]="..." target="_blank">`, icon `mdi-open-in-new`, tooltip "Open &lt;name&gt; in a new tab"), not a button with a click handler.
+5. Add is `mdi-plus-circle` with tooltip and `aria-label` "Add &lt;Thing&gt;"; Import/Upload `mdi-upload`; Export/Download `mdi-download`. Icon conventions are in [ui-conventions.md](ui-conventions.md) section 2.
 6. An information button next to the Add button (`mdi-information`, `matTooltipShowDelay="0"`) explains something about the whole list. It is enabled, keyboard-focusable, labelled ("About groups"), and its tooltip opens on focus.
 
 **Accessible names.** Every icon button has an `aria-label` that names the action **and the row** ("Rename Range", "Delete Range") and a matching `matTooltip`.
 
-**Row-click tables.** In a table whose rows are clickable (expandable rows), every control inside a row calls `$event.stopPropagation()` on `click`, so the click does not also toggle the row. A button group also stops `keydown`, so Enter and Space on a button do not expand the row.
+**Row-click tables.** In a table whose rows are clickable (expandable rows), every control inside a row calls `$event.stopPropagation()` on `click`, so the click does not also toggle the row. Enter and Space on a button produce a click, so the same guard covers the keyboard. The expand button is the one exception (section 9, rule 5).
 
 **Permissions.** An action the user may not perform is disabled with the reason ([permissions.md](permissions.md)).
 
@@ -178,7 +178,7 @@ Rules:
 5. **The expand control is a chevron button, first in the actions column.** It is a real `<button type="button">` in the tab order, activated by Enter and Space, with:
    - `aria-expanded="true|false"`, `aria-controls` pointing at the detail container's `id`, and `aria-label="Show details for <name>"` or `"Hide details for <name>"` (or one label with the state carried by `aria-expanded`).
    - Icon `mdi-chevron-down`, rotated to point up when expanded.
-   - Clicking the row still toggles it (a mouse convenience); the button is the keyboard and assistive-technology path. The `tr` carries no `aria-expanded` and no `tabindex`.
+   - The button's click handler calls `toggle(row)` and `$event.stopPropagation()`, so a click on the button toggles the row once. Clicking elsewhere on the row also toggles it (a mouse convenience); the button is the keyboard and assistive-technology path. The `tr` carries no `aria-expanded` and no `tabindex`.
    - Why a button: a visible chevron shows at a glance which rows expand and which one is open, and it gives keyboard and assistive-technology users a named control.
 6. The detail container has the `id` the button points to, `role="region"`, and an `aria-label` naming it ("Range memberships").
 7. Focus stays on the expand button when the row opens or closes. Opening does not move focus into the detail; Tab reaches the detail's first control after the remaining focusable controls in the data row. If a user deletes the record while its detail is open, focus moves to the next row's expand button (or the Add button if none).
@@ -191,7 +191,7 @@ Rules:
 ## 10. Master/detail and tabs
 
 1. A page that has two peer lists of the same kind uses **tabs** (`mat-tab-group` with `matTabContent`, so tab bodies are lazy and a hidden tab loads nothing). Tabs for peers; row expansion for children (section 9); a separate routed page for a record with its own sub-pages.
-2. A detail page reached from a list has a Back button: an icon button `mdi-keyboard-return` with `aria-label` and tooltip "Back to <list>". The list the user came from is restored in the same state of expansion; the search term is not restored.
+2. A detail page reached from a list has a Back button: an icon button `mdi-keyboard-return` with `aria-label` and tooltip "Back to &lt;list&gt;". The list the user came from is restored in the same state of expansion; the search term is not restored.
 3. Each tab body that holds a list has its own toolbar row.
 4. A read-only inventory of cards (for example Hypervisors) with plain `<table>`s uses `<th scope="col">`. A table inside a card needs no search, sort or paginator while it is a fixed-size inventory. The card shell follows the state patterns of section 12.
 
@@ -203,10 +203,10 @@ Membership pages show **two lists side by side** (`d-flex gap-5 justify-content-
 
 | | Left: available | Right: members |
 |---|---|---|
-| Title row | icon `mdi-account-group` + "Users/Groups" | icon `mdi-account-multiple` + "<Thing> Members" |
+| Title row | icon `mdi-account-group` + "Users/Groups" | icon `mdi-account-multiple` + "&lt;Thing&gt; Members" |
 | Columns | Name (with the copy-ID button), Type if mixed users and groups, actions | Name, Type, Role (a `mat-select` when editable, text when read-only), actions |
-| Row action | Add: `mdi-plus-circle-outline`, "Add <name>" | Remove: `mdi-minus-circle-outline`, "Remove <name>" |
-| Empty | "Everyone is already a member" when nobody is left to add and no filter is set | "This <Thing> currently has no members" |
+| Row action | Add: `mdi-plus-circle-outline`, "Add &lt;name&gt;" | Remove: `mdi-minus-circle-outline`, "Remove &lt;name&gt;" |
+| Empty | "Everyone is already a member" when nobody is left to add and no filter is set | "This &lt;Thing&gt; currently has no members" |
 | Read-only | action column omitted | role shown as text; action column omitted |
 
 Rules:
@@ -245,9 +245,9 @@ Every table has a `*matNoDataRow` with these two messages. A table is never sile
 
 **Expand control (WCAG 4.1.2, 2.1.1).** A `<button>` with `aria-expanded` and `aria-controls` (section 9, rule 5). A clickable `tr` with no keyboard path fails 2.1.1.
 
-**Names for icon buttons (WCAG 4.1.2, 2.5.3).** Every icon button has an `aria-label` naming the action and, in a row, the record. The `matTooltip` text matches the `aria-label`. A native `title` is not a substitute.
+**Names for icon buttons (WCAG 4.1.2, 2.5.3).** Every icon button has an `aria-label` naming the action and, in a row, the record. On an enabled button the `matTooltip` text matches the `aria-label`; on a disabled button the tooltip carries the reason and the `aria-label` ends "(not available)" ([permissions.md](permissions.md)). A native `title` is not a substitute.
 
-**Sort (WCAG 4.1.2, 4.1.3).** `mat-sort-header` sets `aria-sort` on the header; keep it and do not wrap header text in a second button. Material makes no live announcement when the sort changes, so announce it: use `LiveAnnouncer` from `@angular/cdk/a11y` (or a visually hidden `aria-live="polite"` region) on `matSortChange` with "Sorted by <column>, ascending", "Sorted by <column>, descending", or "Sorting removed" when the direction is `''` (set `matSortDisableClear` to remove that state).
+**Sort (WCAG 4.1.2, 4.1.3).** `mat-sort-header` sets `aria-sort` on the header; keep it and do not wrap header text in a second button. Material makes no live announcement when the sort changes, so announce it: use `LiveAnnouncer` from `@angular/cdk/a11y` (or a visually hidden `aria-live="polite"` region) on `matSortChange` with "Sorted by &lt;column&gt;, ascending", "Sorted by &lt;column&gt;, descending", or "Sorting removed" when the direction is `''` (set `matSortDisableClear` to remove that state).
 
 **Focus (WCAG 2.4.3, 2.4.7).** The order is DOM order; no positive `tabindex`; no `outline: none` on any control. Focus returns to the invoking control after a dialog closes (Material does this).
 
@@ -265,7 +265,7 @@ Every table has a `*matNoDataRow` with these two messages. A table is never sile
 
 ## 14. Dialogs, forms, theming and shared components
 
-1. **Dialogs.** Add, edit and confirm flows open `crucible-dialog` and follow [modals.md](modals.md). Delete is confirmed with the shared confirm service: title "Delete Project", message "Are you sure that you want to delete <name>?", confirm text "Delete". The confirm names the record, and the destructive button's label repeats the verb.
+1. **Dialogs.** Add, edit and confirm flows open `crucible-dialog` and follow [modals.md](modals.md). Delete is confirmed with the shared confirm service: title "Delete Project", message "Are you sure that you want to delete &lt;name&gt;?", confirm text "Delete". The confirm names the record, and the destructive button's label repeats the verb.
 2. **Forms in cells.** Inline edit follows [ui-conventions.md](ui-conventions.md) section 6.
 3. **Theming.** Use theme tokens only (`var(--mat-sys-primary)`, `--mat-sys-on-surface-variant`, `--mat-sys-error-container`); no literal hex colors ([colors.md](colors.md)). A page-level warning is a `role="status"` block in `--mat-sys-error-container` / `--mat-sys-on-error-container`.
 4. **Shared components.** The table toolbar (section icon, Search with Clear Search, paginator, spacer, page-level content), the date formatter ([dates.md](dates.md)) and the notification service ([ui-conventions.md](ui-conventions.md) section 5) are specified here as one contract so they can move into `@cmusei/crucible-common` unchanged. Until the library provides them, each app implements exactly this contract and does not keep a private variant. Once the library provides one, apps replace their copy with it.
@@ -310,7 +310,7 @@ Page and header:
 Toolbar and search:
 
 - [ ] Order: section icon (`role="img"`, labelled, tooltip), Search, paginator, spacer, page-level content only.
-- [ ] Search has `placeholder="Search"`, `aria-label="Search"`, no leading icon; Clear Search has `aria-label` and `matTooltip`, shown only with text.
+- [ ] Search has `placeholder="Search"` and `aria-label="Search"` (a list-specific `aria-label` in nested and membership lists), no leading icon; Clear Search has `aria-label` and `matTooltip`, shown only with text.
 - [ ] Filter matches the visible text, documented columns; resets to page 1.
 
 Table:
@@ -324,8 +324,8 @@ Table:
 Actions:
 
 - [ ] Actions column first; header cell holds Add and bulk actions; row order Open, Edit, Copy, Download, Delete; 24px icons.
-- [ ] Every icon button has `aria-label` and `matTooltip` naming the row.
-- [ ] Controls in clickable rows call `stopPropagation` on click (and key events).
+- [ ] Every icon button has `aria-label` and `matTooltip` naming the row (a disabled one: the reason in the tooltip).
+- [ ] Controls in clickable rows call `stopPropagation` on click (the expand button toggles the row itself).
 - [ ] No-permission actions are disabled with a reason ([permissions.md](permissions.md)).
 
 Expansion:

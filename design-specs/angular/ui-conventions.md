@@ -10,7 +10,7 @@ This spec collects the cross-cutting conventions that are neither tables nor mod
 - Dates and times: [dates.md](dates.md).
 - Permission gating and permission descriptions: [permissions.md](permissions.md).
 
-**Accessibility is a requirement.** Crucible is used in U.S. federal and DoD training contexts, so everything here must satisfy **Section 508** (which incorporates **WCAG 2.1 Level AA**). Section 9 collects the requirements.
+**Accessibility is a requirement.** Crucible is used in U.S. federal and DoD training contexts, so everything here must satisfy **Section 508** (which incorporates WCAG 2.0 Level A and AA) and **WCAG 2.1 Level AA**, which Crucible requires in addition. Section 9 collects the requirements.
 
 ---
 
@@ -31,29 +31,29 @@ This spec collects the cross-cutting conventions that are neither tables nor mod
 1. Material Design Icons only, as `<mat-icon fontIcon="mdi-...">`, from one `@mdi/font` 7.x version in every app. No Font Awesome (dependency or class), no PNG menu icons.
 2. Icon sizes: 24px (`mdi-24px`) for toolbar and action icons, 18px for icons inside text or chips, nothing else. Row action icons are 24px ([admin-tables.md](admin-tables.md) section 7).
 3. A decorative icon next to text is `aria-hidden="true"`. An icon that is the only content of a control gets its name from the control's `aria-label`, never from the icon. An icon that carries a state (a check, a warning) has `role="img"`, an `aria-label` and an explicit `aria-hidden="false"`, plus a tooltip: Material sets `aria-hidden="true"` on every `mat-icon` unless the host has its own `aria-hidden` attribute, so a label alone leaves the state hidden from screen readers.
-4. A tooltip on an icon button is `matTooltip`, with the same text as the `aria-label`. Native `title` is not used: it is not shown on keyboard focus.
+4. A tooltip on an enabled icon button is `matTooltip`, with the same text as the `aria-label` (a disabled control's tooltip carries the reason instead: [permissions.md](permissions.md)). Native `title` is not used: it is not shown on keyboard focus.
 5. App logos are registered SVG icons named `crucible-icon-<app>`.
 
 **Convention table.**
 
 | Meaning | Icon | Tooltip and `aria-label` |
 |---|---|---|
-| Add | `mdi-plus-circle` | "Add <Thing>" |
-| Edit / Rename | `mdi-square-edit-outline` | "Edit <name>" / "Rename <name>" |
-| Delete | `mdi-trash-can-outline` | "Delete <name>" (last in a row) |
-| Upload / Import | `mdi-upload` | "Upload <Thing>" |
-| Download / Export | `mdi-download` | "Download <name>" |
-| Open in a new tab | `mdi-open-in-new` | "Open <name> in a new tab" (a real link) |
+| Add | `mdi-plus-circle` | "Add &lt;Thing&gt;" |
+| Edit / Rename | `mdi-square-edit-outline` | "Edit &lt;name&gt;" / "Rename &lt;name&gt;" |
+| Delete | `mdi-trash-can-outline` | "Delete &lt;name&gt;" (last in a row) |
+| Upload / Import | `mdi-upload` | "Upload &lt;Thing&gt;" |
+| Download / Export | `mdi-download` | "Download &lt;name&gt;" |
+| Open in a new tab | `mdi-open-in-new` | "Open &lt;name&gt; in a new tab" (a real link) |
 | Clear search | `mdi-close-circle-outline` | "Clear Search" |
-| Add a member | `mdi-plus-circle-outline` | "Add <name>" |
-| Remove a member | `mdi-minus-circle-outline` | "Remove <name>" |
-| Information | `mdi-information` | "About <thing>", opens on focus |
-| Copy an ID to the clipboard | `mdi-content-copy` | "Copy ID of <name>" |
-| Duplicate a record | `mdi-content-duplicate` | "Duplicate <name>" |
-| Back to a list | `mdi-keyboard-return` | "Back to <list>" |
+| Add a member | `mdi-plus-circle-outline` | "Add &lt;name&gt;" |
+| Remove a member | `mdi-minus-circle-outline` | "Remove &lt;name&gt;" |
+| Information | `mdi-information` | "About &lt;thing&gt;", opens on focus |
+| Copy an ID to the clipboard | `mdi-content-copy` | "Copy ID of &lt;name&gt;" |
+| Duplicate a record | `mdi-content-duplicate` | "Duplicate &lt;name&gt;" |
+| Back to a list | `mdi-keyboard-return` | "Back to &lt;list&gt;" |
 | Section in the Administration sidebar | `mdi-menu-right` | the section name |
 
-**Copy to the clipboard.** The ID-copy button keeps `mdi-content-copy`, with tooltip and `aria-label` "Copy ID of <name>" and the success message "Copied to clipboard" with a "Dismiss" action. Cloning a record uses `mdi-content-duplicate` and "Duplicate <name>", so the two actions never share an icon. A copied value that is not an ID says what it is ("Copied link").
+**Copy to the clipboard.** The ID-copy button keeps `mdi-content-copy`, with tooltip and `aria-label` "Copy ID of &lt;name&gt;" and the success message "Copied to clipboard" with a "Dismiss" action. Cloning a record uses `mdi-content-duplicate` and "Duplicate &lt;name&gt;", so the two actions never share an icon. A copied value that is not an ID says what it is ("Copied link").
 
 **Delete.** The same operation has the same row action (`mdi-trash-can-outline`, last in the row) in every app that offers it. A role that may not use it sees it disabled with the reason, not absent in one app and present in another ([permissions.md](permissions.md)).
 
@@ -68,15 +68,15 @@ This spec collects the cross-cutting conventions that are neither tables nor mod
 3. **Never a spinner and results together.** First load: only the spinner. No rows, no empty message, no error. Refresh with data already shown: keep the data and show progress on the control that started it (a spinning refresh icon or a thin `mat-progress-bar` at the top of the region, not a second spinner over the table). The empty state appears only after a successful load that returned nothing.
 4. Empty, loading and error are three different states with three different messages ([admin-tables.md](admin-tables.md) section 12). A failed load is never shown as empty.
 5. Progress with a known amount (an upload, an import with a count) uses a determinate `mat-progress-bar` with a text figure ("3 of 12").
-6. **Announce it.** The region gets `aria-busy="true"` while loading, and a visually hidden `role="status"` element says "Loading <Things>". A spinner alone is silent to a screen reader.
+6. **Announce it.** The region gets `aria-busy="true"` while loading, and a visually hidden `role="status"` element says "Loading &lt;Things&gt;". A spinner alone is silent to a screen reader.
 7. A spinner that stays longer than a few seconds adds text ("Still loading...") so the user is not left guessing.
 
 ---
 
 ## 4. Loading data
 
-1. **A list loads a summary.** The call that fills a list or table returns the fields the table shows plus the ID, not every row's full detail. Detail loads when a row is opened, or through an `include...` option on the list call that defaults to false.
-2. **A list call returns every value its columns show.** A page never depends on a field the list call does not return. When a column needs a value that is costly to compute (a module's latest version, a count), the list call takes an option to include it and the page asks for it; the page does not load every row's full detail to derive it.
+1. **A list loads a summary.** A page fills a list or table from the summary the list call returns and does not fetch every row's full detail. Detail loads when a row is opened.
+2. **A page renders only what the list call returns.** A page never depends on a field the list call does not return. When a column needs a value the list call does not provide, the page asks for it through the list call's existing option, if there is one; it does not load every row's full detail to derive it.
 3. **Specs use realistic data.** The page's spec asserts the arguments of the list call and renders a row from a response shaped like the real API's, not from a hand-built object that already has the field. Otherwise a page can read a field the list never returns and its specs still pass.
 
 ---
@@ -84,7 +84,7 @@ This spec collects the cross-cutting conventions that are neither tables nor mod
 ## 5. Error and success messages
 
 1. **Where a message goes.** The outcome of an action the user just took, success or failure, is a **snackbar**. A **dialog** is only for an error the user cannot continue past (an unreachable API, an expired session) or one that needs a decision. An error about **one field** is `<mat-error>` on that field. An error about a **form** that is open is shown in the form (`crucible-dialog` `errorMessage`, `role="alert"`), not in a snackbar behind the backdrop (see modals.md, "Errors & status messages").
-2. **Wording.** Success: past tense, names the object: "Added Project Range", "Deleted Range". Failure: "Couldn't <verb> <object>" then the reason from the API: "Couldn't delete Range: Conflict: Has Resources". Not "An error occurred" and not "Error".
+2. **Wording.** Success: past tense, names the object: "Added Project Range", "Deleted Range". Failure: "Couldn't &lt;verb&gt; &lt;object&gt;" then the reason from the API: "Couldn't delete Range: Conflict: Has Resources". Not "An error occurred" and not "Error".
 3. **Problem details.** Show the `title` and the `detail` only for a 4xx response (validation, conflict, not found, forbidden), where the API's text is written for people; list a validation problem's messages under each field's name. For a 5xx or any unexpected failure show the generic message in rule 4 and neither `title` nor `detail`. The UI does not rewrite a 4xx text and does not append a status code.
 4. **Never shown to a user:** a stack trace, a request URL, the framework's `Http failure response for ...` string, a raw JSON body, an exception class name, or a GUID with no object name. Those go to the console (and Aspire telemetry). When there is no usable message, say "Something went wrong. Try again, and tell your administrator if it keeps happening."
 5. **Duration and dismissal.** Successes: 5 seconds, with a "Dismiss" action. Failures: no auto-dismiss, with a "Dismiss" action, so a user who looks away does not lose the reason (WCAG 2.2.1). Confirmations that need no reading ("Copied to clipboard"): 2 seconds.
@@ -119,13 +119,13 @@ This spec collects the cross-cutting conventions that are neither tables nor mod
 
 ## 8. The top bar
 
-Common structure, left to right: a home link with the app's SVG icon, the view title, an optional team selector, a spacer, then a user menu button with `mdi-chevron-down` whose menu holds the page links, Edit User, Logout and a dark-mode `mat-slide-toggle`. The bar's colors come from `--crucible-topbar-background` and `--crucible-topbar-text` set by `crucible-theme` ([colors.md](colors.md)). The classification banner above it is the shared `comn-header-bar`; apps do not build their own.
+Common structure, left to right: a home link with the app's SVG icon, the view title, an optional team selector, a spacer, then a user menu button with `mdi-chevron-down` whose menu holds the page links, Edit User, Logout and the theme switch. The bar's colors come from `--crucible-topbar-background` and `--crucible-topbar-text` set by `crucible-theme` ([colors.md](colors.md)). The classification banner above it is the shared `comn-header-bar`; apps do not build their own.
 
 1. Order, left to right: sidebar toggle (if the app has one), home link, title, team selector (if any), spacer, app-specific controls, user menu. The bar's height, vertical alignment and the spacing between items are one set of values in the shared theme, not per-app margins.
 2. The home link is `<a mat-icon-button [routerLink]="['/']" aria-label="<App> home">`; the bar title is the page's `<h1>`, with the document `<title>` kept in step.
 3. The team selector and the user menu both use `mdi-chevron-down` and are `<button mat-button>` with `aria-haspopup="menu"` and a visible name (the team name, the user name), not an icon alone.
 4. No inline styles on top-bar controls; no `outline: none` (WCAG 2.4.7). Focus is visible on a colored background, so the focus ring uses `--crucible-topbar-text`.
-5. The top bar holds navigation context (home, title, team), the user menu, and the theme toggle inside the user menu. Page actions never live in the top bar.
+5. The top bar holds navigation context (home, title, team), the user menu, and the theme switch. The theme switch is a menu item ("Switch to dark mode" / "Switch to light mode"), not a slide toggle: Material menus support only `mat-menu-item` controls for arrow-key navigation, and a toggle inside one is skipped. Page actions never live in the top bar.
 
 ---
 
@@ -154,7 +154,7 @@ The notification service (section 5, rule 8), the top bar (section 8) and the lo
 **Checklist.**
 
 - [ ] Icons are `mat-icon fontIcon="mdi-..."` only; no Font Awesome class, no PNG icon; icon buttons have `aria-label` and `matTooltip` (no `title`).
-- [ ] Copy-ID uses `mdi-content-copy` with "Copy ID of <name>"; cloning uses `mdi-content-duplicate`.
+- [ ] Copy-ID uses `mdi-content-copy` with "Copy ID of &lt;name&gt;"; cloning uses `mdi-content-duplicate`.
 - [ ] Spinners are 48px centered in their region (18px in a button); no 100px defaults.
 - [ ] An initial or blocking load shows the spinner and no rows, empty message or error; a refresh with rows shown keeps them with a non-blocking indicator; empty, loading and error are distinct; `aria-busy` and a status message are set.
 - [ ] List calls return summaries and every column's value; detail loads on demand.
