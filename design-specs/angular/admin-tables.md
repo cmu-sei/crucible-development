@@ -108,7 +108,7 @@ Every admin list has exactly one search field per table.
 
 **Row outlines.** Every table shows a divider under **every** record, the last included, exactly once. Material draws the divider on the cells and removes it under the last row (`.mdc-data-table__row:last-child > .mat-mdc-cell { border-bottom: none }`), so every table restores it for the last row:
 
-`.mdc-data-table__row:last-child > .mat-mdc-cell { border-bottom: var(--mat-table-row-item-outline-width, 1px) solid var(--mat-table-row-item-outline-color); }`
+`.mdc-data-table__row:last-child > .mat-mdc-cell { border-bottom: var(--mat-table-row-item-outline-width, 1px) solid var(--mat-table-row-item-outline-color, var(--mat-sys-outline, rgba(0, 0, 0, 0.12))); }`
 
 In a table with `multiTemplateDataRows`, each record is two rows: the data row's cells (`tr.element-row > td`) have `border-bottom-width: 0` and the detail row's cells draw the divider, so a collapsed record has one line. No style zeroes the detail cell's border.
 
@@ -186,7 +186,7 @@ Rules:
    - Why a button: a visible chevron shows at a glance which rows expand and which one is open, and it gives keyboard and assistive-technology users a named control.
 6. The detail container has the `id` the button points to, `role="region"`, and an `aria-label` naming it ("Range memberships").
 7. Focus stays on the expand button when the row opens or closes. Opening does not move focus into the detail; Tab reaches the detail's first control after the remaining focusable controls in the data row. If a user deletes the record while its detail is open, focus moves to the next row's expand button (or the Add button if none).
-8. Animation: Angular `@detailExpand` trigger, `225ms cubic-bezier(0.4, 0.0, 0.2, 1)`, between `height: '0px'` and `'*'`. Turn it off for a detail that sizes itself (a terminal), with the reason in a code comment. Respect `prefers-reduced-motion` (WCAG 2.3.3).
+8. Animation: Angular `@detailExpand` trigger, `225ms cubic-bezier(0.4, 0.0, 0.2, 1)`, between `height: '0px'` and `'*'`. Turn it off for a detail that sizes itself (a terminal), with the reason in a code comment. Respect `prefers-reduced-motion` (a Crucible requirement; section 13).
 9. A nested table in the detail follows sections 4, 5 and 6 in full: its own search, sort and paginator. Nested expansion panels use Material's `mat-expansion-panel`, whose header is already a button with `aria-expanded`. Nested tables inside them are not themselves row-expandable except for one level.
 10. The detail loads by itself: the detail component takes an ID and loads what it needs (`<cas-project-memberships [projectId]>`).
 

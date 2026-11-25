@@ -100,7 +100,7 @@ This spec collects the cross-cutting conventions that are neither tables nor mod
 2. Inline editors (a name in a cell or header) use a `<form>`: Enter saves, Escape cancels and returns focus to the control that started the edit; the Save and Cancel icon buttons stay as the pointer path.
 3. Required fields use the `required` attribute (or `Validators.required`) so Material shows the asterisk and sets `aria-required`. A fixed legend "* required" appears once on a long form.
 4. Validation shows in `<mat-error>` under the field, in words that name the field and the fix ("Name is required", "Enter at least 4 characters"), after the field has been touched or on submit, never on first render. An error summary is not needed for short forms.
-5. **Disabled controls say why.** A primary action disabled by validation does not need a tooltip (the errors are visible). A control disabled by permission or state has the reason in a tooltip and "(not available)" in its `aria-label` ([permissions.md](permissions.md)).
+5. **Disabled controls say why.** A primary action disabled by validation does not need a tooltip (the errors are visible). A button disabled by permission or state has the reason in its tooltip and "(not available)" in its `aria-label`; any other control shows the reason as visible text or through an info button ([permissions.md](permissions.md) section 2).
 6. Labels are visible `mat-label`s, not placeholders alone. Search fields are the one exception and carry `aria-label` ([admin-tables.md](admin-tables.md) section 4).
 7. Form fields have no per-field density or width overrides inside a dialog; the dialog's width is set when it is opened (modals.md).
 
@@ -158,7 +158,7 @@ The notification service (section 5, rule 8), the top bar (section 8) and the lo
 - [ ] Spinners are 48px centered in their region (18px in a button); no 100px defaults.
 - [ ] An initial or blocking load shows the spinner and no rows, empty message or error; a refresh with rows shown keeps them with a non-blocking indicator; empty, loading and error are distinct; `aria-busy` and a status message are set.
 - [ ] Pages render only fields the list call returns and load detail on demand.
-- [ ] Outcomes use a snackbar with "Dismiss"; failures do not auto-dismiss and are assertive; wording names the object.
+- [ ] Outcomes use a snackbar with "Dismiss" (2-second confirmations such as "Copied to clipboard" have no action); failures do not auto-dismiss and are assertive; wording names the object.
 - [ ] No stack trace, URL, `Http failure response` text or raw JSON is shown anywhere.
 - [ ] Dialogs that collect input bind `[form]`; Enter submits; inline editors save on Enter and cancel on Escape.
 - [ ] Required fields use `required`; errors are `<mat-error>` text naming field and fix.
